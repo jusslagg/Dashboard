@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard Facturación{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-link:hover { background-color: rgba(255,255,255,0.1); }
+        .sidebar-link.active { background-color: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-full md:w-64 bg-slate-800 text-white flex flex-col">
+            <div class="p-4 md:p-6 border-b border-slate-700">
+                <h1 class="text-xl font-bold"><i class="fas fa-chart-line mr-2"></i>Facturación</h1>
+                <p class="text-sm text-slate-400 mt-1">Control 2026</p>
+            </div>
+            <nav class="flex-1 p-3 md:p-4 flex md:block gap-2 overflow-x-auto">
+                <a href="/" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/' %}active{% endif %}">
+                    <i class="fas fa-home w-6"></i>Dashboard
+                </a>
+                <a href="/cargar" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/cargar' %}active{% endif %}">
+                    <i class="fas fa-plus-circle w-6"></i>Cargar Datos
+                </a>
+                <a href="/catalogos" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/catalogos' %}active{% endif %}">
+                    <i class="fas fa-sitemap w-6"></i>Datos Maestros
+                </a>
+                <a href="/comparativo" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/comparativo' %}active{% endif %}">
+                    <i class="fas fa-chart-column w-6"></i>Comparativo
+                </a>
+                <a href="/control" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded {% if request.path == '/control' %}active{% endif %}">
+                    <i class="fas fa-table w-6"></i>Control
+                </a>
+            </nav>
+            <div class="p-3 md:p-4 border-t border-slate-700">
+                <button onclick="cargarSeed()" class="w-full bg-emerald-600 hover:bg-emerald-700 py-2 px-4 rounded text-sm">
+                    <i class="fas fa-database mr-2"></i>Cargar Ejemplo
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-8 overflow-auto">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        async function cargarSeed() {
+            try {
+                const response = await fetch('/api/seed', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.mensaje);
+                    location.reload();
+                } else {
+                    alert(data.mensaje);
+                }
+            } catch (error) {
+                alert('Error al cargar datos de ejemplo');
+            }
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

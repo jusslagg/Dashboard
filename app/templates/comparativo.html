@@ -1,0 +1,584 @@
+{% extends "layout.html" %}
+
+{% block title %}Comparativo - Facturacion{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Comparativo de Horas</h1>
+    <p class="text-gray-600 mt-2">Analisis de horas objetivo contra horas facturadas con filtros comerciales y rangos de horas</p>
+</div>
+
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Mes</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelMes')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenMes">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelMes" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarMes" type="text" oninput="filtrarOpciones('filtroMes', this.value)" placeholder="Buscar mes..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroMes" data-lista-multiple="true" data-resumen="resumenMes" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelCliente')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenCliente">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelCliente" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarCliente" type="text" oninput="filtrarOpciones('filtroCliente', this.value)" placeholder="Buscar cliente..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroCliente" data-lista-multiple="true" data-resumen="resumenCliente" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Gerente</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelGerente')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenGerente">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelGerente" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarGerente" type="text" oninput="filtrarOpciones('filtroGerente', this.value)" placeholder="Buscar gerente..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroGerente" data-lista-multiple="true" data-resumen="resumenGerente" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jefe de Site</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelJefeSite')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenJefeSite">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelJefeSite" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarJefeSite" type="text" oninput="filtrarOpciones('filtroJefeSite', this.value)" placeholder="Buscar jefe..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroJefeSite" data-lista-multiple="true" data-resumen="resumenJefeSite" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Campaña</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelCampania')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenCampania">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelCampania" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarCampania" type="text" oninput="filtrarOpciones('filtroCampania', this.value)" placeholder="Buscar campaña..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroCampania" data-lista-multiple="true" data-resumen="resumenCampania" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Sub campaña</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelSubcampania')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenSubcampania">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelSubcampania" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarSubcampania" type="text" oninput="filtrarOpciones('filtroSubcampania', this.value)" placeholder="Buscar sub campaña..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroSubcampania" data-lista-multiple="true" data-resumen="resumenSubcampania" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-4 items-end">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Objetivo desde</label>
+            <input id="horasObjetivoMin" type="number" min="0" step="0.01" oninput="debouncedCargarComparativo()" placeholder="Min." class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Objetivo hasta</label>
+            <input id="horasObjetivoMax" type="number" min="0" step="0.01" oninput="debouncedCargarComparativo()" placeholder="Max." class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Facturadas desde</label>
+            <input id="horasFacturadasMin" type="number" min="0" step="0.01" oninput="debouncedCargarComparativo()" placeholder="Min." class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Facturadas hasta</label>
+            <input id="horasFacturadasMax" type="number" min="0" step="0.01" oninput="debouncedCargarComparativo()" placeholder="Max." class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button onclick="limpiarFiltros()" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded text-sm">
+            <i class="fas fa-rotate-left mr-2"></i>Limpiar filtros
+        </button>
+    </div>
+</div>
+
+<div id="alertaComparativo" class="mb-6"></div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+        <p class="text-sm text-gray-500">Horas Objetivo</p>
+        <p class="text-2xl font-bold text-gray-800 mt-2" id="kpiHorasObjetivo">0</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-emerald-500">
+        <p class="text-sm text-gray-500">Horas Facturadas</p>
+        <p class="text-2xl font-bold text-gray-800 mt-2" id="kpiHorasFacturadas">0</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
+        <p class="text-sm text-gray-500">Diferencia</p>
+        <p class="text-2xl font-bold text-gray-800 mt-2" id="kpiDiferencia">0</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-indigo-500">
+        <p class="text-sm text-gray-500">Cumplimiento Horas</p>
+        <p class="text-2xl font-bold text-gray-800 mt-2" id="kpiCumplimiento">0%</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Evolucion mensual</h2>
+        <div class="h-80">
+            <canvas id="graficoComparativo"></canvas>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Brecha por cliente</h2>
+        <div class="h-80">
+            <canvas id="graficoBrecha"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6 mb-8">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Agrupacion por cliente</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[1120px] text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Cliente</th>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Gerente</th>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Jefe Site</th>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Campaña</th>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Sub campaña</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Reg.</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Horas Obj.</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Horas Fact.</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Diferencia</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">% Cump.</th>
+                </tr>
+            </thead>
+            <tbody id="tablaComparativo">
+                <tr>
+                    <td colspan="10" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Detalle de registros</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[980px] text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Fecha</th>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Cliente</th>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Campaña</th>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Sub campaña</th>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Tipo VH</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Horas Obj.</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Horas Fact.</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Diferencia</th>
+                </tr>
+            </thead>
+            <tbody id="tablaDetalle">
+                <tr>
+                    <td colspan="8" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let chartComparativo = null;
+let chartBrecha = null;
+let debounceTimer = null;
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await cargarFiltrosComparativo();
+    await cargarComparativo();
+});
+
+document.addEventListener('click', function(event) {
+    document.querySelectorAll('[data-dropdown-multiple="true"]').forEach(dropdown => {
+        if (!dropdown.contains(event.target)) {
+            dropdown.querySelectorAll('[id^="panel"]').forEach(panel => panel.classList.add('hidden'));
+        }
+    });
+});
+
+function getFiltrosBase() {
+    return {
+        mes: getSelectedValues('filtroMes'),
+        cliente: getSelectedValues('filtroCliente'),
+        gerente: getSelectedValues('filtroGerente'),
+        jefe_site: getSelectedValues('filtroJefeSite'),
+        campania: getSelectedValues('filtroCampania'),
+        subcampania: getSelectedValues('filtroSubcampania')
+    };
+}
+
+function getFiltrosComparativo() {
+    return {
+        ...getFiltrosBase(),
+        horas_objetivo_min: document.getElementById('horasObjetivoMin').value,
+        horas_objetivo_max: document.getElementById('horasObjetivoMax').value,
+        horas_facturadas_min: document.getElementById('horasFacturadasMin').value,
+        horas_facturadas_max: document.getElementById('horasFacturadasMax').value
+    };
+}
+
+function buildQuery(filtros) {
+    const params = new URLSearchParams();
+    Object.entries(filtros).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+            value.forEach(item => params.append(key, item));
+        } else if (value !== undefined && value !== null && value !== '') {
+            params.set(key, value);
+        }
+    });
+    const query = params.toString();
+    return query ? `?${query}` : '';
+}
+
+async function onFiltroChange() {
+    await cargarFiltrosComparativo(true);
+    await cargarComparativo();
+}
+
+async function onFiltroMultipleChange() {
+    await cargarComparativo();
+}
+
+function debouncedCargarComparativo() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(cargarComparativo, 350);
+}
+
+async function cargarFiltrosComparativo(mantenerSeleccion = false) {
+    const seleccion = getFiltrosBase();
+    const query = mantenerSeleccion ? buildQuery(seleccion) : '';
+    const response = await fetch('/api/filtros' + query);
+    const data = await response.json();
+    if (!data.success) return;
+
+    popularSelect('filtroMes', data.filtros.meses, 'Todos', formatMes, seleccion.mes);
+    popularSelect('filtroCliente', data.filtros.clientes, 'Todos', value => value, seleccion.cliente);
+    popularSelect('filtroGerente', data.filtros.gerentes, 'Todos', value => value, seleccion.gerente);
+    popularSelect('filtroJefeSite', data.filtros.jefes_site, 'Todos', value => value, seleccion.jefe_site);
+    popularSelect('filtroCampania', data.filtros.campanias, 'Todos', value => value, seleccion.campania);
+    popularSelect('filtroSubcampania', data.filtros.subcampanias, 'Todos', value => value, seleccion.subcampania);
+}
+
+function popularSelect(id, valores, placeholder, formatter, seleccionado) {
+    const select = document.getElementById(id);
+    const seleccionados = Array.isArray(seleccionado) ? seleccionado : (seleccionado ? [seleccionado] : []);
+    if (select.dataset.listaMultiple === 'true') {
+        const todosSeleccionados = valores.length > 0 && valores.every(valor => seleccionados.includes(valor));
+        const opcionesHtml = valores.map(valor => `
+            <label class="flex items-center gap-2 py-1 cursor-pointer" data-opcion-texto="${formatter(valor).toLowerCase()}">
+                <input type="checkbox" value="${valor}" ${seleccionados.includes(valor) ? 'checked' : ''} onchange="actualizarTodosMultiple('${id}'); actualizarResumenMultiple('${id}'); onFiltroMultipleChange()" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span>${formatter(valor)}</span>
+            </label>
+        `).join('');
+        select.innerHTML = valores.length ? `
+            <label class="flex items-center gap-2 py-1 mb-1 cursor-pointer border-b border-gray-200 font-semibold">
+                <input type="checkbox" data-todos="true" ${todosSeleccionados ? 'checked' : ''} onchange="toggleTodosMultiple('${id}', this.checked)" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span>Todos</span>
+            </label>
+            ${opcionesHtml}
+        ` : `<p class="text-gray-500 py-1">${placeholder}</p>`;
+        actualizarResumenMultiple(id);
+        return;
+    }
+    select.innerHTML = `<option value="">${placeholder}</option>`;
+    valores.forEach(valor => {
+        const option = document.createElement('option');
+        option.value = valor;
+        option.textContent = formatter(valor);
+        if (seleccionados.includes(valor)) option.selected = true;
+        select.appendChild(option);
+    });
+}
+
+function toggleListaMultiple(panelId) {
+    document.getElementById(panelId).classList.toggle('hidden');
+}
+
+function toggleTodosMultiple(id, checked) {
+    document.querySelectorAll(`#${id} input[type="checkbox"]:not([data-todos])`).forEach(input => {
+        input.checked = checked;
+    });
+    actualizarResumenMultiple(id);
+    onFiltroMultipleChange();
+}
+
+function actualizarTodosMultiple(id) {
+    const control = document.getElementById(id);
+    const todos = control.querySelector('input[data-todos="true"]');
+    const opciones = Array.from(control.querySelectorAll('input[type="checkbox"]:not([data-todos])'));
+    if (todos) todos.checked = opciones.length > 0 && opciones.every(input => input.checked);
+}
+
+function actualizarResumenMultiple(id) {
+    const control = document.getElementById(id);
+    const resumen = document.getElementById(control.dataset.resumen);
+    if (!resumen) return;
+    const seleccionados = getSelectedValues(id);
+    if (!seleccionados.length) {
+        resumen.textContent = control.dataset.placeholder;
+    } else if (seleccionados.length === control.querySelectorAll('input[type="checkbox"]:not([data-todos])').length) {
+        resumen.textContent = control.dataset.placeholder;
+    } else if (seleccionados.length === 1) {
+        resumen.textContent = seleccionados[0];
+    } else {
+        resumen.textContent = `${seleccionados.length} seleccionados`;
+    }
+}
+
+function getSelectedValues(id) {
+    const control = document.getElementById(id);
+    if (control.dataset.listaMultiple === 'true') {
+        return Array.from(control.querySelectorAll('input[type="checkbox"]:not([data-todos]):checked')).map(input => input.value);
+    }
+    return Array.from(control.selectedOptions).map(option => option.value).filter(Boolean);
+}
+
+function filtrarOpciones(selectId, texto) {
+    const filtro = texto.trim().toLowerCase();
+    const control = document.getElementById(selectId);
+    if (control.dataset.listaMultiple === 'true') {
+        Array.from(control.querySelectorAll('[data-opcion-texto]')).forEach(option => {
+            option.classList.toggle('hidden', Boolean(filtro) && !option.dataset.opcionTexto.includes(filtro));
+        });
+        return;
+    }
+    Array.from(control.options).forEach(option => option.hidden = filtro && !option.textContent.toLowerCase().includes(filtro));
+}
+
+async function cargarComparativo() {
+    try {
+        const response = await fetch('/api/comparativo' + buildQuery(getFiltrosComparativo()));
+        const data = await response.json();
+        if (!data.success) return;
+
+        actualizarKPIs(data.kpis);
+        actualizarAlertas(data.kpis, data.detalle.length);
+        actualizarGraficoComparativo(data.por_mes);
+        actualizarGraficoBrecha(data.por_cliente);
+        actualizarTablaComparativo(data.por_cliente);
+        actualizarTablaDetalle(data.detalle);
+    } catch (error) {
+        console.error('Error cargando comparativo:', error);
+    }
+}
+
+function actualizarKPIs(kpis) {
+    document.getElementById('kpiHorasObjetivo').textContent = formatNumber(kpis.horas_objetivo || 0);
+    document.getElementById('kpiHorasFacturadas').textContent = formatNumber(kpis.horas_facturadas || 0);
+    document.getElementById('kpiDiferencia').textContent = formatNumber(kpis.diferencia_horas || 0);
+    document.getElementById('kpiDiferencia').className = `text-2xl font-bold mt-2 ${(kpis.diferencia_horas || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`;
+    document.getElementById('kpiCumplimiento').textContent = (kpis.cumplimiento_horas || 0).toFixed(1) + '%';
+    document.getElementById('kpiCumplimiento').className = `text-2xl font-bold mt-2 ${(kpis.cumplimiento_horas || 0) >= 100 ? 'text-green-600' : 'text-red-600'}`;
+}
+
+function actualizarAlertas(kpis, cantidadRegistros) {
+    const container = document.getElementById('alertaComparativo');
+    if (!cantidadRegistros) {
+        container.innerHTML = alertaHtml('info', 'Sin registros', 'No hay datos para la seleccion actual.');
+        return;
+    }
+    if ((kpis.cumplimiento_horas || 0) < 95) {
+        container.innerHTML = alertaHtml('danger', 'Brecha critica de horas', `El cumplimiento de horas esta en ${(kpis.cumplimiento_horas || 0).toFixed(1)}%.`);
+        return;
+    }
+    if ((kpis.diferencia_horas || 0) < 0) {
+        container.innerHTML = alertaHtml('warning', 'Horas facturadas por debajo del objetivo', `Faltan ${formatNumber(Math.abs(kpis.diferencia_horas || 0))} horas para cubrir el objetivo.`);
+        return;
+    }
+    container.innerHTML = alertaHtml('success', 'Horas dentro de objetivo', 'La seleccion actual cumple o supera las horas objetivo.');
+}
+
+function alertaHtml(tipo, titulo, detalle) {
+    const styles = {
+        success: 'border-green-500 bg-green-50 text-green-800',
+        warning: 'border-yellow-500 bg-yellow-50 text-yellow-800',
+        danger: 'border-red-500 bg-red-50 text-red-800',
+        info: 'border-blue-500 bg-blue-50 text-blue-800'
+    };
+    const icons = {
+        success: 'fa-circle-check',
+        warning: 'fa-triangle-exclamation',
+        danger: 'fa-circle-exclamation',
+        info: 'fa-circle-info'
+    };
+    return `
+        <div class="border-l-4 rounded shadow p-4 ${styles[tipo] || styles.info}">
+            <div class="flex gap-3">
+                <i class="fas ${icons[tipo] || icons.info} mt-1"></i>
+                <div>
+                    <p class="font-semibold">${titulo}</p>
+                    <p class="text-sm mt-1">${detalle}</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function actualizarGraficoComparativo(datos) {
+    const ctx = document.getElementById('graficoComparativo').getContext('2d');
+    if (chartComparativo) chartComparativo.destroy();
+    chartComparativo = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: datos.map(item => formatMes(item.mes)),
+            datasets: [
+                {
+                    label: 'Horas objetivo',
+                    data: datos.map(item => item.horas_objetivo),
+                    backgroundColor: 'rgba(37, 99, 235, 0.75)'
+                },
+                {
+                    label: 'Horas facturadas',
+                    data: datos.map(item => item.horas_facturadas),
+                    backgroundColor: 'rgba(16, 185, 129, 0.75)'
+                }
+            ]
+        },
+        options: chartOptions()
+    });
+}
+
+function actualizarGraficoBrecha(clientes) {
+    const topClientes = clientes.slice(0, 10);
+    const ctx = document.getElementById('graficoBrecha').getContext('2d');
+    if (chartBrecha) chartBrecha.destroy();
+    chartBrecha = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: topClientes.map(item => item.cliente),
+            datasets: [{
+                label: 'Diferencia de horas',
+                data: topClientes.map(item => item.diferencia_horas),
+                backgroundColor: topClientes.map(item => item.diferencia_horas >= 0 ? 'rgba(16, 185, 129, 0.75)' : 'rgba(220, 38, 38, 0.75)')
+            }]
+        },
+        options: chartOptions()
+    });
+}
+
+function chartOptions() {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: { callback: value => value.toLocaleString('es-AR') }
+            }
+        }
+    };
+}
+
+function actualizarTablaComparativo(clientes) {
+    const tbody = document.getElementById('tablaComparativo');
+    if (!clientes.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">No hay datos disponibles</td></tr>';
+        return;
+    }
+    tbody.innerHTML = clientes.map(item => `
+        <tr class="border-b hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium">${item.cliente || '-'}</td>
+            <td class="px-4 py-3">${item.gerente || '-'}</td>
+            <td class="px-4 py-3">${item.jefe_site || '-'}</td>
+            <td class="px-4 py-3">${item.campania || '-'}</td>
+            <td class="px-4 py-3">${item.subcampania || '-'}</td>
+            <td class="px-4 py-3 text-right">${item.registros}</td>
+            <td class="px-4 py-3 text-right">${formatNumber(item.horas_objetivo)}</td>
+            <td class="px-4 py-3 text-right">${formatNumber(item.horas_facturadas)}</td>
+            <td class="px-4 py-3 text-right font-semibold ${item.diferencia_horas >= 0 ? 'text-green-600' : 'text-red-600'}">${formatNumber(item.diferencia_horas)}</td>
+            <td class="px-4 py-3 text-right font-semibold ${item.cumplimiento_horas >= 100 ? 'text-green-600' : 'text-red-600'}">${item.cumplimiento_horas.toFixed(1)}%</td>
+        </tr>
+    `).join('');
+}
+
+function actualizarTablaDetalle(registros) {
+    const tbody = document.getElementById('tablaDetalle');
+    if (!registros.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No hay datos disponibles</td></tr>';
+        return;
+    }
+    tbody.innerHTML = registros.map(item => {
+        const diferencia = (item.horas_facturadas || 0) - (item.horas_objetivo || 0);
+        return `
+            <tr class="border-b hover:bg-gray-50">
+                <td class="px-4 py-3">${formatFecha(item.fecha)}</td>
+                <td class="px-4 py-3 font-medium">${item.cliente || '-'}</td>
+                <td class="px-4 py-3">${item.campania || '-'}</td>
+                <td class="px-4 py-3">${item.subcampania || '-'}</td>
+                <td class="px-4 py-3">${item.tipo_jornada || '-'}</td>
+                <td class="px-4 py-3 text-right">${formatNumber(item.horas_objetivo)}</td>
+                <td class="px-4 py-3 text-right">${formatNumber(item.horas_facturadas)}</td>
+                <td class="px-4 py-3 text-right font-semibold ${diferencia >= 0 ? 'text-green-600' : 'text-red-600'}">${formatNumber(diferencia)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function limpiarFiltros() {
+    ['filtroMes', 'filtroCliente', 'filtroGerente', 'filtroJefeSite', 'filtroCampania', 'filtroSubcampania'].forEach(id => {
+        const control = document.getElementById(id);
+        if (control.dataset.listaMultiple === 'true') {
+            control.querySelectorAll('input[type="checkbox"]').forEach(input => input.checked = false);
+        } else if (control.multiple) {
+            Array.from(control.options).forEach(option => option.selected = false);
+        } else {
+            control.value = '';
+        }
+    });
+    ['horasObjetivoMin', 'horasObjetivoMax', 'horasFacturadasMin', 'horasFacturadasMax'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    ['buscarMes', 'buscarCliente', 'buscarGerente', 'buscarJefeSite', 'buscarCampania', 'buscarSubcampania'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    ['filtroMes', 'filtroCliente', 'filtroGerente', 'filtroJefeSite', 'filtroCampania', 'filtroSubcampania'].forEach(id => {
+        actualizarResumenMultiple(id);
+    });
+    onFiltroChange();
+}
+
+function formatNumber(value) {
+    return Number(value || 0).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+function formatMes(mes) {
+    if (!mes) return '';
+    const [year, month] = mes.split('-');
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return `${meses[parseInt(month) - 1]} ${year}`;
+}
+
+function formatFecha(fecha) {
+    if (!fecha) return '';
+    const [year, month, day] = fecha.split('-');
+    return `${day}/${month}/${year}`;
+}
+</script>
+{% endblock %}
+
