@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datos Maestros - Facturacion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-link:hover { background-color: rgba(255,255,255,0.1); }
+        .sidebar-link.active { background-color: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-full md:w-64 bg-slate-800 text-white flex flex-col">
+            <div class="p-4 md:p-6 border-b border-slate-700">
+                <h1 class="text-xl font-bold"><i class="fas fa-chart-line mr-2"></i>Facturación</h1>
+                <p class="text-sm text-slate-400 mt-1">Control 2026</p>
+            </div>
+            <nav class="flex-1 p-3 md:p-4 flex md:block gap-2 overflow-x-auto">
+                <a href="./index.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 ">
+                    <i class="fas fa-home w-6"></i>Dashboard
+                </a>
+                <a href="./cargar.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 ">
+                    <i class="fas fa-plus-circle w-6"></i>Cargar Datos
+                </a>
+                <a href="./catalogos.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 active">
+                    <i class="fas fa-sitemap w-6"></i>Datos Maestros
+                </a>
+                <a href="./comparativo.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 ">
+                    <i class="fas fa-chart-column w-6"></i>Comparativo
+                </a>
+                <a href="./control.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded ">
+                    <i class="fas fa-table w-6"></i>Control
+                </a>
+            </nav>
+            <div class="p-3 md:p-4 border-t border-slate-700">
+                <button onclick="cargarSeed()" class="w-full bg-emerald-600 hover:bg-emerald-700 py-2 px-4 rounded text-sm">
+                    <i class="fas fa-database mr-2"></i>Cargar Ejemplo
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-8 overflow-auto">
+            
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800">Datos Maestros</h1>
+    <p class="text-gray-600 mt-2">Alta de asociaciones para cargar registros sin tipear datos repetidos</p>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Nueva asociacion</h2>
+        <form id="formAsignacion" onsubmit="guardarAsignacion(event)" class="space-y-4">
+            <input type="hidden" id="asignacionId">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
+                <input id="cliente" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gerente *</label>
+                <input id="gerente" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Jefe de Site *</label>
+                <input id="jefe_site" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Campaña *</label>
+                <input id="campania" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sub campaña *</label>
+                <input id="subcampania" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium">
+                    <i class="fas fa-save mr-2"></i>Guardar
+                </button>
+                <button type="button" onclick="limpiarFormulario()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-medium">
+                    Limpiar
+                </button>
+            </div>
+        </form>
+        <div id="mensaje" class="mt-4 hidden"></div>
+    </div>
+
+    <div class="xl:col-span-2 bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Asociaciones disponibles</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[980px] text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-600">Cliente</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-600">Gerente</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-600">Jefe de Site</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-600">Campaña</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-600">Sub campaña</th>
+                        <th class="px-4 py-3 text-center font-semibold text-gray-600">Estado</th>
+                        <th class="px-4 py-3 text-center font-semibold text-gray-600">Accion</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaAsignaciones">
+                    <tr>
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+        </main>
+    </div>
+
+    <script src="./assets/config.js"></script>
+    <script src="./assets/api-client.js"></script>
+    <script>
+        async function cargarSeed() {
+            try {
+                const response = await fetch('/api/seed', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.mensaje);
+                    location.reload();
+                } else {
+                    alert(data.mensaje);
+                }
+            } catch (error) {
+                alert('Error al cargar datos de ejemplo');
+            }
+        }
+    </script>
+    
+<script>
+document.addEventListener('DOMContentLoaded', cargarAsignaciones);
+
+async function cargarAsignaciones() {
+    const response = await fetch('/api/asignaciones?activas=0');
+    const data = await response.json();
+    const tbody = document.getElementById('tablaAsignaciones');
+    if (!data.success || data.asignaciones.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">No hay asociaciones cargadas</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = data.asignaciones.map(item => `
+        <tr class="border-b hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium">${item.cliente}</td>
+            <td class="px-4 py-3">${item.gerente}</td>
+            <td class="px-4 py-3">${item.jefe_site}</td>
+            <td class="px-4 py-3">${item.campania}</td>
+            <td class="px-4 py-3">${item.subcampania}</td>
+            <td class="px-4 py-3 text-center">
+                <span class="px-2 py-1 rounded text-xs font-semibold ${item.activa ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">
+                    ${item.activa ? 'Activa' : 'Inactiva'}
+                </span>
+            </td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">
+                <button onclick='editarAsignacion(${JSON.stringify(item)})' class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Editar</button>
+                <button onclick="toggleAsignacion(${item.id}, ${!item.activa})" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1 rounded text-xs ml-1">${item.activa ? 'Desactivar' : 'Activar'}</button>
+                <button onclick="eliminarAsignacion(${item.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs ml-1">Eliminar</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function guardarAsignacion(event) {
+    event.preventDefault();
+    const id = document.getElementById('asignacionId').value;
+    const payload = getPayload();
+
+    if (id) {
+        const clave = pedirClave();
+        if (!clave) return;
+        payload.clave = clave;
+    }
+
+    const response = await fetch(id ? `/api/asignaciones/${id}` : '/api/asignaciones', {
+        method: id ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (data.success) {
+        const impacto = data.registros_actualizados ? ` (${data.registros_actualizados} carga(s) actualizadas)` : '';
+        mostrarMensaje((id ? 'Asociacion actualizada' : data.mensaje) + impacto, 'success');
+        limpiarFormulario();
+        cargarAsignaciones();
+    } else {
+        mostrarMensaje((data.errores || ['Error']).join(', '), 'error');
+    }
+}
+
+function getPayload() {
+    return {
+        cliente: document.getElementById('cliente').value,
+        gerente: document.getElementById('gerente').value,
+        jefe_site: document.getElementById('jefe_site').value,
+        campania: document.getElementById('campania').value,
+        subcampania: document.getElementById('subcampania').value
+    };
+}
+
+function editarAsignacion(item) {
+    document.getElementById('asignacionId').value = item.id;
+    document.getElementById('cliente').value = item.cliente;
+    document.getElementById('gerente').value = item.gerente;
+    document.getElementById('jefe_site').value = item.jefe_site;
+    document.getElementById('campania').value = item.campania;
+    document.getElementById('subcampania').value = item.subcampania;
+}
+
+async function toggleAsignacion(id, activa) {
+    const clave = pedirClave();
+    if (!clave) return;
+    await fetch(`/api/asignaciones/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activa, clave })
+    });
+    cargarAsignaciones();
+}
+
+async function eliminarAsignacion(id) {
+    const clave = pedirClave();
+    if (!clave) return;
+    if (!confirm('Eliminar esta asociacion tambien borrara todas las cargas vinculadas. Continuar?')) return;
+    const response = await fetch(`/api/asignaciones/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave })
+    });
+    const data = await response.json();
+    if (data.success) {
+        mostrarMensaje(`Asociacion eliminada (${data.registros_eliminados || 0} carga(s) eliminadas)`, 'success');
+    } else {
+        mostrarMensaje((data.errores || ['Error']).join(', '), 'error');
+    }
+    cargarAsignaciones();
+}
+
+function pedirClave() {
+    return prompt('Ingrese clave de autorizacion');
+}
+
+function limpiarFormulario() {
+    document.getElementById('formAsignacion').reset();
+    document.getElementById('asignacionId').value = '';
+}
+
+function mostrarMensaje(mensaje, tipo) {
+    const div = document.getElementById('mensaje');
+    div.className = `mt-4 p-4 rounded ${tipo === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+    div.textContent = mensaje;
+    div.classList.remove('hidden');
+}
+</script>
+
+</body>
+</html>

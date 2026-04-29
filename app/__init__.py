@@ -1,5 +1,8 @@
 # filepath: app/__init__.py
+import os
+
 from flask import Flask
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text
 
@@ -13,6 +16,10 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JSON_AS_ASCII'] = False
     app.json.ensure_ascii = False
+
+    cors_origins = os.getenv('CORS_ORIGINS', '*')
+    origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+    CORS(app, resources={r"/api/*": {"origins": origins or "*"}})
     
     db.init_app(app)
     

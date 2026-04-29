@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control - Facturación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-link:hover { background-color: rgba(255,255,255,0.1); }
+        .sidebar-link.active { background-color: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-full md:w-64 bg-slate-800 text-white flex flex-col">
+            <div class="p-4 md:p-6 border-b border-slate-700">
+                <h1 class="text-xl font-bold"><i class="fas fa-chart-line mr-2"></i>Facturación</h1>
+                <p class="text-sm text-slate-400 mt-1">Control 2026</p>
+            </div>
+            <nav class="flex-1 p-3 md:p-4 flex md:block gap-2 overflow-x-auto">
+                <a href="./index.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 ">
+                    <i class="fas fa-home w-6"></i>Dashboard
+                </a>
+                <a href="./cargar.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 ">
+                    <i class="fas fa-plus-circle w-6"></i>Cargar Datos
+                </a>
+                <a href="./catalogos.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 ">
+                    <i class="fas fa-sitemap w-6"></i>Datos Maestros
+                </a>
+                <a href="./comparativo.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 ">
+                    <i class="fas fa-chart-column w-6"></i>Comparativo
+                </a>
+                <a href="./control.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded active">
+                    <i class="fas fa-table w-6"></i>Control
+                </a>
+            </nav>
+            <div class="p-3 md:p-4 border-t border-slate-700">
+                <button onclick="cargarSeed()" class="w-full bg-emerald-600 hover:bg-emerald-700 py-2 px-4 rounded text-sm">
+                    <i class="fas fa-database mr-2"></i>Cargar Ejemplo
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-8 overflow-auto">
+            
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800">Control de Facturación</h1>
+    <p class="text-gray-600 mt-2">Vista detallada con filtros</p>
+</div>
+
+<!-- Filtros -->
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-4 items-end">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Mes</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelMes')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenMes">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelMes" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarMes" type="text" oninput="filtrarOpciones('filtroMes', this.value)" placeholder="Buscar mes..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroMes" data-lista-multiple="true" data-resumen="resumenMes" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelCliente')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenCliente">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelCliente" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarCliente" type="text" oninput="filtrarOpciones('filtroCliente', this.value)" placeholder="Buscar cliente..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroCliente" data-lista-multiple="true" data-resumen="resumenCliente" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Gerente</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelGerente')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenGerente">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelGerente" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarGerente" type="text" oninput="filtrarOpciones('filtroGerente', this.value)" placeholder="Buscar gerente..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroGerente" data-lista-multiple="true" data-resumen="resumenGerente" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jefe de Site</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelJefeSite')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenJefeSite">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelJefeSite" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarJefeSite" type="text" oninput="filtrarOpciones('filtroJefeSite', this.value)" placeholder="Buscar jefe..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroJefeSite" data-lista-multiple="true" data-resumen="resumenJefeSite" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Campaña</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelCampania')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenCampania">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelCampania" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarCampania" type="text" oninput="filtrarOpciones('filtroCampania', this.value)" placeholder="Buscar campaña..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroCampania" data-lista-multiple="true" data-resumen="resumenCampania" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Sub campaña</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelSubcampania')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenSubcampania">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelSubcampania" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarSubcampania" type="text" oninput="filtrarOpciones('filtroSubcampania', this.value)" placeholder="Buscar sub campaña..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroSubcampania" data-lista-multiple="true" data-resumen="resumenSubcampania" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-end gap-2">
+            <button onclick="cargarDatos()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                <i class="fas fa-filter mr-2"></i>Filtrar
+            </button>
+            <button onclick="exportarExcel()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm">
+                <i class="fas fa-file-excel mr-2"></i>Excel
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de Datos -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[2220px] text-sm">
+            <thead class="bg-gray-800 text-white">
+                <tr>
+                    <th class="px-4 py-3 text-left">Fecha</th>
+                    <th class="px-4 py-3 text-left">Mes</th>
+                    <th class="px-4 py-3 text-left">Cliente</th>
+                    <th class="px-4 py-3 text-left">Gerente</th>
+                    <th class="px-4 py-3 text-left">Jefe Site</th>
+                    <th class="px-4 py-3 text-left">Campaña</th>
+                    <th class="px-4 py-3 text-left">Sub campaña</th>
+                    <th class="px-4 py-3 text-left">Tipo VH</th>
+                    <th class="px-4 py-3 text-right">H.Obj.</th>
+                    <th class="px-4 py-3 text-right">H.Fact.</th>
+                    <th class="px-4 py-3 text-right">% Horas</th>
+                    <th class="px-4 py-3 text-right">VH Obj.</th>
+                    <th class="px-4 py-3 text-right">VH Alc.</th>
+                    <th class="px-4 py-3 text-right">Obj. Horas</th>
+                    <th class="px-4 py-3 text-right">Obj. Bono</th>
+                    <th class="px-4 py-3 text-right">Fact. Objetivo</th>
+                    <th class="px-4 py-3 text-right">Fact. Horas</th>
+                    <th class="px-4 py-3 text-right">Fact. Bono</th>
+                    <th class="px-4 py-3 text-right">Penaliz.</th>
+                    <th class="px-4 py-3 text-right">NetX Gen</th>
+                    <th class="px-4 py-3 text-right">Otros</th>
+                    <th class="px-4 py-3 text-right">Total Facturado</th>
+                    <th class="px-4 py-3 text-right">Desvío</th>
+                    <th class="px-4 py-3 text-center">% Cump.</th>
+                    <th class="px-4 py-3 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaDatos">
+                <tr>
+                    <td colspan="26" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modalEditar" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-auto p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-gray-800">Editar registro</h2>
+            <button onclick="cerrarModal()" class="text-gray-500 hover:text-gray-800 text-xl">&times;</button>
+        </div>
+        <form id="formEditar" onsubmit="guardarEdicion(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input type="hidden" id="editId">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de carga</label>
+                <input type="date" id="editFecha" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Mes de facturacion</label>
+                <input type="month" id="editMes" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                <input type="text" id="editCliente" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gerente</label>
+                <input type="text" id="editGerente" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Jefe de Site</label>
+                <input type="text" id="editJefeSite" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Campaña</label>
+                <input type="text" id="editCampania" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sub campaña</label>
+                <input type="text" id="editSubcampania" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de VH</label>
+                <select id="editTipoJornada" required class="w-full border border-gray-300 rounded px-3 py-2">
+                    <option value="Diurna">Diurna</option>
+                    <option value="Nocturna">Nocturna</option>
+                    <option value="Feriado">Feriado</option>
+                    <option value="Capacitación">Capacitación</option>
+                    <option value="Diurnas Feriado">Diurnas Feriado</option>
+                    <option value="Nocturnas Feriado">Nocturnas Feriado</option>
+                    <option value="horas líder">horas líder</option>
+                    <option value="radio">radio</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Horas objetivo</label>
+                <input type="number" id="editHorasObjetivo" min="0" step="0.5" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Horas facturadas</label>
+                <input type="number" id="editHorasFacturadas" min="0" step="0.5" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Valor hora objetivo</label>
+                <input type="number" id="editValorHoraObjetivo" min="0.01" step="0.01" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Valor hora facturado</label>
+                <input type="number" id="editValorHora" min="0.01" step="0.01" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tarifacion</label>
+                <input type="number" id="editTarifacion" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bonos</label>
+                <input type="number" id="editBonos" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Penalizaciones</label>
+                <input type="number" id="editPenalizaciones" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">NetX Gen</label>
+                <input type="number" id="editNetxGen" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Otros</label>
+                <input type="number" id="editOtros" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Clave</label>
+                <input type="password" id="editClave" required class="w-full border border-gray-300 rounded px-3 py-2" placeholder="CAT2026">
+            </div>
+            <div class="md:col-span-3 flex justify-end gap-2 mt-2">
+                <button type="button" onclick="cerrarModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Cancelar</button>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Leyenda -->
+<div class="mt-4 bg-white rounded-lg shadow p-4">
+    <h3 class="font-semibold text-gray-700 mb-2">Leyenda de Indicadores</h3>
+    <div class="flex flex-wrap gap-4 text-sm">
+        <div class="flex items-center">
+            <span class="w-4 h-4 bg-yellow-100 border-2 border-yellow-500 rounded mr-2"></span>
+            <span>Horas facturadas &gt; Horas objetivo (Alerta)</span>
+        </div>
+        <div class="flex items-center">
+            <span class="w-4 h-4 bg-red-100 border-2 border-red-500 rounded mr-2"></span>
+            <span>Total real &lt; 0 (Error)</span>
+        </div>
+    </div>
+</div>
+
+        </main>
+    </div>
+
+    <script src="./assets/config.js"></script>
+    <script src="./assets/api-client.js"></script>
+    <script>
+        async function cargarSeed() {
+            try {
+                const response = await fetch('/api/seed', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.mensaje);
+                    location.reload();
+                } else {
+                    alert(data.mensaje);
+                }
+            } catch (error) {
+                alert('Error al cargar datos de ejemplo');
+            }
+        }
+    </script>
+    
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    cargarFiltros();
+    cargarDatos();
+});
+
+document.addEventListener('click', function(event) {
+    document.querySelectorAll('[data-dropdown-multiple="true"]').forEach(dropdown => {
+        if (!dropdown.contains(event.target)) {
+            dropdown.querySelectorAll('[id^="panel"]').forEach(panel => panel.classList.add('hidden'));
+        }
+    });
+});
+
+async function cargarFiltros() {
+    try {
+        const filtrosResponse = await fetch('/api/filtros');
+        const filtrosData = await filtrosResponse.json();
+        if (filtrosData.success) {
+            popularSelect('filtroMes', filtrosData.filtros.meses, 'Todos', formatMes);
+            popularSelect('filtroCliente', filtrosData.filtros.clientes, 'Todos', value => value);
+            popularSelect('filtroGerente', filtrosData.filtros.gerentes, 'Todos', value => value);
+            popularSelect('filtroJefeSite', filtrosData.filtros.jefes_site, 'Todos', value => value);
+            popularSelect('filtroCampania', filtrosData.filtros.campanias, 'Todos', value => value);
+            popularSelect('filtroSubcampania', filtrosData.filtros.subcampanias, 'Todos', value => value);
+        }
+    } catch (error) {
+        console.error('Error cargando filtros:', error);
+    }
+}
+
+function popularSelect(id, valores, placeholder, formatter) {
+    const select = document.getElementById(id);
+    const seleccionados = getSelectedValues(id);
+    if (select.dataset.listaMultiple === 'true') {
+        const todosSeleccionados = valores.length > 0 && valores.every(valor => seleccionados.includes(valor));
+        const opcionesHtml = valores.map(valor => `
+            <label class="flex items-center gap-2 py-1 cursor-pointer" data-opcion-texto="${formatter(valor).toLowerCase()}">
+                <input type="checkbox" value="${valor}" ${seleccionados.includes(valor) ? 'checked' : ''} onchange="actualizarTodosMultiple('${id}'); actualizarResumenMultiple('${id}'); cargarDatos()" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span>${formatter(valor)}</span>
+            </label>
+        `).join('');
+        select.innerHTML = valores.length ? `
+            <label class="flex items-center gap-2 py-1 mb-1 cursor-pointer border-b border-gray-200 font-semibold">
+                <input type="checkbox" data-todos="true" ${todosSeleccionados ? 'checked' : ''} onchange="toggleTodosMultiple('${id}', this.checked)" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span>Todos</span>
+            </label>
+            ${opcionesHtml}
+        ` : `<p class="text-gray-500 py-1">${placeholder}</p>`;
+        actualizarResumenMultiple(id);
+        return;
+    }
+    select.innerHTML = `<option value="">${placeholder}</option>`;
+    valores.forEach(valor => {
+        const option = document.createElement('option');
+        option.value = valor;
+        option.textContent = formatter(valor);
+        if (seleccionados.includes(valor)) option.selected = true;
+        select.appendChild(option);
+    });
+}
+
+function toggleListaMultiple(panelId) {
+    document.getElementById(panelId).classList.toggle('hidden');
+}
+
+function toggleTodosMultiple(id, checked) {
+    document.querySelectorAll(`#${id} input[type="checkbox"]:not([data-todos])`).forEach(input => {
+        input.checked = checked;
+    });
+    actualizarResumenMultiple(id);
+    cargarDatos();
+}
+
+function actualizarTodosMultiple(id) {
+    const control = document.getElementById(id);
+    const todos = control.querySelector('input[data-todos="true"]');
+    const opciones = Array.from(control.querySelectorAll('input[type="checkbox"]:not([data-todos])'));
+    if (todos) todos.checked = opciones.length > 0 && opciones.every(input => input.checked);
+}
+
+function actualizarResumenMultiple(id) {
+    const control = document.getElementById(id);
+    const resumen = document.getElementById(control.dataset.resumen);
+    if (!resumen) return;
+    const seleccionados = getSelectedValues(id);
+    if (!seleccionados.length) {
+        resumen.textContent = control.dataset.placeholder;
+    } else if (seleccionados.length === control.querySelectorAll('input[type="checkbox"]:not([data-todos])').length) {
+        resumen.textContent = control.dataset.placeholder;
+    } else if (seleccionados.length === 1) {
+        resumen.textContent = seleccionados[0];
+    } else {
+        resumen.textContent = `${seleccionados.length} seleccionados`;
+    }
+}
+
+async function cargarDatos() {
+    const mes = getSelectedValues('filtroMes');
+    const cliente = getSelectedValues('filtroCliente');
+    const gerente = getSelectedValues('filtroGerente');
+    const jefeSite = getSelectedValues('filtroJefeSite');
+    const campania = getSelectedValues('filtroCampania');
+    const subcampania = getSelectedValues('filtroSubcampania');
+
+    const params = new URLSearchParams();
+    agregarParam(params, 'mes', mes);
+    agregarParam(params, 'cliente', cliente);
+    agregarParam(params, 'gerente', gerente);
+    agregarParam(params, 'jefe_site', jefeSite);
+    agregarParam(params, 'campania', campania);
+    agregarParam(params, 'subcampania', subcampania);
+    const url = '/api/datos' + (params.toString() ? `?${params.toString()}` : '');
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.success) {
+            actualizarTabla(data.data);
+        }
+    } catch (error) {
+        console.error('Error cargando datos:', error);
+    }
+}
+
+function actualizarTabla(datos) {
+    const tbody = document.getElementById('tablaDatos');
+
+    if (datos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="26" class="px-4 py-8 text-center text-gray-500">No hay datos disponibles</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = datos.map(d => {
+        // Indicadores visuales
+        const alertaHoras = d.horas_facturadas > d.horas_objetivo;
+        const errorNegativo = d.total_real < 0;
+        
+        let rowClass = 'border-b hover:bg-gray-50';
+        if (alertaHoras) rowClass += ' bg-yellow-50';
+        if (errorNegativo) rowClass += ' bg-red-50';
+
+        return `
+            <tr class="${rowClass}">
+                <td class="px-4 py-3">${d.fecha}</td>
+                <td class="px-4 py-3">${formatMes(d.mes)}</td>
+                <td class="px-4 py-3 font-medium">${d.cliente}</td>
+                <td class="px-4 py-3">${d.gerente || '-'}</td>
+                <td class="px-4 py-3">${d.jefe_site || '-'}</td>
+                <td class="px-4 py-3">${d.campania || '-'}</td>
+                <td class="px-4 py-3">${d.subcampania || '-'}</td>
+                <td class="px-4 py-3">${d.tipo_jornada}</td>
+                <td class="px-4 py-3 text-right">${d.horas_objetivo.toFixed(1)}</td>
+                <td class="px-4 py-3 text-right ${alertaHoras ? 'font-bold text-yellow-700' : ''}">
+                    ${alertaHoras ? '<i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>' : ''}
+                    ${d.horas_facturadas.toFixed(1)}
+                </td>
+                <td class="px-4 py-3 text-right font-semibold ${(d.porcentaje_cumplimiento_horas || 0) >= 100 ? 'text-green-600' : 'text-red-600'}">${(d.porcentaje_cumplimiento_horas || 0).toFixed(1)}%</td>
+                <td class="px-4 py-3 text-right">${formatCurrency(d.valor_hora_objetivo || d.valor_hora)}</td>
+                <td class="px-4 py-3 text-right">${formatCurrency(d.valor_hora_alcanzado || d.valor_hora)}</td>
+                <td class="px-4 py-3 text-right">${formatCurrency(d.objetivo_facturacion_horas || 0)}</td>
+                <td class="px-4 py-3 text-right">${formatCurrency(d.objetivo_facturacion_bono || 0)}</td>
+                <td class="px-4 py-3 text-right font-semibold">${formatCurrency(d.facturacion_objetivo || d.total_teorico)}</td>
+                <td class="px-4 py-3 text-right">${formatCurrency(d.facturado_horas || 0)}</td>
+                <td class="px-4 py-3 text-right text-green-600">${formatCurrency(d.facturado_bono || 0)}</td>
+                <td class="px-4 py-3 text-right text-red-600">-${formatCurrency(d.penalizaciones_incumplimientos || 0)}</td>
+                <td class="px-4 py-3 text-right">${d.netx_gen.toFixed(0)}</td>
+                <td class="px-4 py-3 text-right">${d.otros.toFixed(0)}</td>
+                <td class="px-4 py-3 text-right font-semibold ${errorNegativo ? 'text-red-600' : ''}">
+                    ${errorNegativo ? '<i class="fas fa-times-circle text-red-500 mr-1"></i>' : ''}
+                    ${formatCurrency(d.total_real)}
+                </td>
+                <td class="px-4 py-3 text-right font-semibold ${d.desvio >= 0 ? 'text-green-600' : 'text-red-600'}">
+                    ${formatCurrency(d.desvio)}
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <span class="px-2 py-1 rounded text-xs font-semibold ${d.porcentaje_cumplimiento >= 100 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                        ${d.porcentaje_cumplimiento.toFixed(1)}%
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-center whitespace-nowrap">
+                    <button onclick='abrirEditar(${JSON.stringify(d)})' class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Editar</button>
+                    <button onclick="eliminarRegistro(${d.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs ml-1">Eliminar</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function formatCurrency(value) {
+    return '$' + value.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function exportarExcel() {
+    const params = new URLSearchParams();
+    const mes = getSelectedValues('filtroMes');
+    const cliente = getSelectedValues('filtroCliente');
+    const gerente = getSelectedValues('filtroGerente');
+    const jefeSite = getSelectedValues('filtroJefeSite');
+    const campania = getSelectedValues('filtroCampania');
+    const subcampania = getSelectedValues('filtroSubcampania');
+    agregarParam(params, 'mes', mes);
+    agregarParam(params, 'cliente', cliente);
+    agregarParam(params, 'gerente', gerente);
+    agregarParam(params, 'jefe_site', jefeSite);
+    agregarParam(params, 'campania', campania);
+    agregarParam(params, 'subcampania', subcampania);
+    const query = params.toString();
+    window.location.href = window.apiUrl('/api/exportar_excel' + (query ? `?${query}` : ''));
+}
+
+function getSelectedValues(id) {
+    const control = document.getElementById(id);
+    if (control.dataset.listaMultiple === 'true') {
+        return Array.from(control.querySelectorAll('input[type="checkbox"]:not([data-todos]):checked')).map(input => input.value);
+    }
+    return Array.from(control.selectedOptions).map(option => option.value).filter(Boolean);
+}
+
+function agregarParam(params, nombre, valor) {
+    if (Array.isArray(valor)) {
+        valor.forEach(item => params.append(nombre, item));
+    } else if (valor) {
+        params.set(nombre, valor);
+    }
+}
+
+function filtrarOpciones(selectId, texto) {
+    const filtro = texto.trim().toLowerCase();
+    const control = document.getElementById(selectId);
+    if (control.dataset.listaMultiple === 'true') {
+        Array.from(control.querySelectorAll('[data-opcion-texto]')).forEach(option => {
+            option.classList.toggle('hidden', Boolean(filtro) && !option.dataset.opcionTexto.includes(filtro));
+        });
+        return;
+    }
+    Array.from(control.options).forEach(option => option.hidden = filtro && !option.textContent.toLowerCase().includes(filtro));
+}
+
+function abrirEditar(d) {
+    document.getElementById('editId').value = d.id;
+    document.getElementById('editFecha').value = d.fecha;
+    document.getElementById('editMes').value = d.mes;
+    document.getElementById('editCliente').value = d.cliente || '';
+    document.getElementById('editGerente').value = d.gerente || '';
+    document.getElementById('editJefeSite').value = d.jefe_site || '';
+    document.getElementById('editCampania').value = d.campania || '';
+    document.getElementById('editSubcampania').value = d.subcampania || '';
+    const tipoSelect = document.getElementById('editTipoJornada');
+    if (![...tipoSelect.options].some(option => option.value === d.tipo_jornada)) {
+        const option = document.createElement('option');
+        option.value = d.tipo_jornada;
+        option.textContent = d.tipo_jornada;
+        tipoSelect.appendChild(option);
+    }
+    tipoSelect.value = d.tipo_jornada;
+    document.getElementById('editHorasObjetivo').value = d.horas_objetivo;
+    document.getElementById('editHorasFacturadas').value = d.horas_facturadas;
+    document.getElementById('editValorHoraObjetivo').value = d.valor_hora_objetivo || d.valor_hora;
+    document.getElementById('editValorHora').value = d.valor_hora;
+    document.getElementById('editTarifacion').value = d.tarifacion || '';
+    document.getElementById('editBonos').value = d.bonos || 0;
+    document.getElementById('editPenalizaciones').value = d.penalizaciones || 0;
+    document.getElementById('editNetxGen').value = d.netx_gen || 0;
+    document.getElementById('editOtros').value = d.otros || 0;
+    document.getElementById('editClave').value = '';
+    document.getElementById('modalEditar').classList.remove('hidden');
+    document.getElementById('modalEditar').classList.add('flex');
+}
+
+function cerrarModal() {
+    document.getElementById('modalEditar').classList.add('hidden');
+    document.getElementById('modalEditar').classList.remove('flex');
+}
+
+async function guardarEdicion(event) {
+    event.preventDefault();
+    const id = document.getElementById('editId').value;
+    const payload = {
+        clave: document.getElementById('editClave').value,
+        fecha: document.getElementById('editFecha').value,
+        mes: document.getElementById('editMes').value,
+        cliente: document.getElementById('editCliente').value,
+        gerente: document.getElementById('editGerente').value,
+        jefe_site: document.getElementById('editJefeSite').value,
+        campania: document.getElementById('editCampania').value,
+        subcampania: document.getElementById('editSubcampania').value,
+        tipo_jornada: document.getElementById('editTipoJornada').value,
+        horas_objetivo: parseFloat(document.getElementById('editHorasObjetivo').value),
+        horas_facturadas: parseFloat(document.getElementById('editHorasFacturadas').value),
+        valor_hora_objetivo: parseFloat(document.getElementById('editValorHoraObjetivo').value),
+        valor_hora: parseFloat(document.getElementById('editValorHora').value),
+        tarifacion: parseFloat(document.getElementById('editTarifacion').value) || null,
+        bonos: parseFloat(document.getElementById('editBonos').value) || 0,
+        penalizaciones: parseFloat(document.getElementById('editPenalizaciones').value) || 0,
+        netx_gen: parseFloat(document.getElementById('editNetxGen').value) || 0,
+        otros: parseFloat(document.getElementById('editOtros').value) || 0
+    };
+    const response = await fetch(`/api/datos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (data.success) {
+        cerrarModal();
+        cargarDatos();
+        cargarFiltros();
+    } else {
+        alert((data.errores || ['Error al actualizar']).join(', '));
+    }
+}
+
+async function eliminarRegistro(id) {
+    const clave = prompt('Ingrese clave de autorizacion');
+    if (!clave) return;
+    if (!confirm('Eliminar este registro?')) return;
+    const response = await fetch(`/api/datos/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave })
+    });
+    const data = await response.json();
+    if (data.success) {
+        cargarDatos();
+        cargarFiltros();
+    } else {
+        alert((data.errores || ['Error al eliminar']).join(', '));
+    }
+}
+
+function formatMes(mes) {
+    if (!mes) return '';
+    const [year, month] = mes.split('-');
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return `${meses[parseInt(month) - 1]} ${year}`;
+}
+</script>
+
+</body>
+</html>

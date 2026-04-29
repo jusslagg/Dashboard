@@ -152,3 +152,68 @@ Tabla: `facturacion_2026`
 - Frontend: HTML + TailwindCSS + JavaScript
 - Gráficos: Chart.js
 - Base de datos: SQLite
+# Deploy: GitHub Pages + Render
+
+Esta app no puede correr completa en GitHub Pages porque Flask, SQLite y los endpoints `/api/*` necesitan un proceso Python. La estructura recomendada es:
+
+```text
+Dashboard/
+  app/                  # Backend Flask + templates fuente
+  docs/                 # Frontend estatico para GitHub Pages
+    index.html
+    cargar.html
+    catalogos.html
+    comparativo.html
+    control.html
+    assets/
+      config.js         # URL publica del backend
+      api-client.js     # Reescribe fetch('/api/...') hacia el backend
+  instance/             # SQLite local, no para GitHub Pages
+  build_static.py       # Regenera docs/ desde app/templates/
+  Procfile              # Render: gunicorn run:app
+  requirements.txt
+  run.py
+```
+
+## GitHub Pages
+
+1. En GitHub, configurar Pages con `Deploy from a branch`.
+2. Branch: `main`.
+3. Folder: `/docs`.
+4. Editar `docs/assets/config.js` y poner la URL publica del backend Flask:
+
+```js
+window.API_BASE = 'https://tu-dashboard.onrender.com';
+```
+
+Si `window.API_BASE` queda vacio, GitHub Pages intentara llamar `/api/*` dentro de GitHub Pages y las pantallas cargaran sin datos.
+
+## Render
+
+Configurar un Web Service:
+
+```text
+Build Command: pip install -r requirements.txt
+Start Command: gunicorn run:app
+```
+
+Variables recomendadas:
+
+```text
+CORS_ORIGINS=https://tu-usuario.github.io
+```
+
+Si usas SQLite en Render y queres conservar datos entre deploys, agregar un Persistent Disk montado en `instance/`. Sin disco persistente, la base puede recrearse al redeploy.
+
+Para desarrollo local:
+
+```bash
+pip install -r requirements.txt
+python run.py
+```
+
+Despues de cambiar templates, regenerar el frontend estatico:
+
+```bash
+python build_static.py
+```

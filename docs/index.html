@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Facturacion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-link:hover { background-color: rgba(255,255,255,0.1); }
+        .sidebar-link.active { background-color: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-full md:w-64 bg-slate-800 text-white flex flex-col">
+            <div class="p-4 md:p-6 border-b border-slate-700">
+                <h1 class="text-xl font-bold"><i class="fas fa-chart-line mr-2"></i>Facturación</h1>
+                <p class="text-sm text-slate-400 mt-1">Control 2026</p>
+            </div>
+            <nav class="flex-1 p-3 md:p-4 flex md:block gap-2 overflow-x-auto">
+                <a href="./index.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 active">
+                    <i class="fas fa-home w-6"></i>Dashboard
+                </a>
+                <a href="./cargar.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 ">
+                    <i class="fas fa-plus-circle w-6"></i>Cargar Datos
+                </a>
+                <a href="./catalogos.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 ">
+                    <i class="fas fa-sitemap w-6"></i>Datos Maestros
+                </a>
+                <a href="./comparativo.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 ">
+                    <i class="fas fa-chart-column w-6"></i>Comparativo
+                </a>
+                <a href="./control.html" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded ">
+                    <i class="fas fa-table w-6"></i>Control
+                </a>
+            </nav>
+            <div class="p-3 md:p-4 border-t border-slate-700">
+                <button onclick="cargarSeed()" class="w-full bg-emerald-600 hover:bg-emerald-700 py-2 px-4 rounded text-sm">
+                    <i class="fas fa-database mr-2"></i>Cargar Ejemplo
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-8 overflow-auto">
+            
+<div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Dashboard de Facturacion</h1>
+        <p class="text-gray-600 mt-2">Vista ejecutiva por mes, cliente, gerente, jefe de site, campaña y sub campaña</p>
+    </div>
+    <button onclick="exportarExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-medium">
+        <i class="fas fa-file-excel mr-2"></i>Exportar Excel
+    </button>
+</div>
+
+<!-- Filtros -->
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-4 items-end">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Mes</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelMes')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenMes">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelMes" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarMes" type="text" oninput="filtrarOpciones('filtroMes', this.value)" placeholder="Buscar mes..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroMes" data-lista-multiple="true" data-resumen="resumenMes" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelCliente')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenCliente">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelCliente" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarCliente" type="text" oninput="filtrarOpciones('filtroCliente', this.value)" placeholder="Buscar cliente..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroCliente" data-lista-multiple="true" data-resumen="resumenCliente" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Gerente</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelGerente')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenGerente">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelGerente" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarGerente" type="text" oninput="filtrarOpciones('filtroGerente', this.value)" placeholder="Buscar gerente..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroGerente" data-lista-multiple="true" data-resumen="resumenGerente" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jefe de Site</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelJefeSite')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenJefeSite">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelJefeSite" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarJefeSite" type="text" oninput="filtrarOpciones('filtroJefeSite', this.value)" placeholder="Buscar jefe..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroJefeSite" data-lista-multiple="true" data-resumen="resumenJefeSite" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Campaña</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelCampania')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenCampania">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelCampania" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarCampania" type="text" oninput="filtrarOpciones('filtroCampania', this.value)" placeholder="Buscar campaña..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroCampania" data-lista-multiple="true" data-resumen="resumenCampania" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Sub campaña</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelSubcampania')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenSubcampania">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelSubcampania" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarSubcampania" type="text" oninput="filtrarOpciones('filtroSubcampania', this.value)" placeholder="Buscar sub campaña..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroSubcampania" data-lista-multiple="true" data-resumen="resumenSubcampania" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <button onclick="limpiarFiltros()" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded text-sm">
+            <i class="fas fa-rotate-left mr-2"></i>Limpiar filtros
+        </button>
+    </div>
+</div>
+
+<div id="alertasDashboard" class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6"></div>
+
+<!-- KPIs -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-500">Total Facturado</p>
+                <p class="text-2xl font-bold text-gray-800" id="kpiTotalFacturado">$0</p>
+            </div>
+            <div class="bg-blue-100 p-3 rounded-full">
+                <i class="fas fa-dollar-sign text-blue-500 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-500">Total Teorico</p>
+                <p class="text-2xl font-bold text-gray-800" id="kpiTotalTeorico">$0</p>
+            </div>
+            <div class="bg-green-100 p-3 rounded-full">
+                <i class="fas fa-calculator text-green-500 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-500">Desvio</p>
+                <p class="text-2xl font-bold text-gray-800" id="kpiDesvio">$0</p>
+            </div>
+            <div class="bg-orange-100 p-3 rounded-full">
+                <i class="fas fa-scale-balanced text-orange-500 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-500">% Cumplimiento</p>
+                <p class="text-2xl font-bold text-gray-800" id="kpiCumplimiento">0%</p>
+            </div>
+            <div class="bg-purple-100 p-3 rounded-full">
+                <i class="fas fa-percent text-purple-500 text-xl"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Evolucion Mensual</h2>
+        <div class="h-80">
+            <canvas id="graficoEvolucion"></canvas>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Facturacion por Cliente</h2>
+        <div class="h-80">
+            <canvas id="graficoClientes"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Agrupacion por Cliente -->
+<div class="bg-white rounded-lg shadow p-6 mb-8">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Agrupacion por Cliente</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[920px] text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Cliente</th>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Gerente</th>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Jefe Site</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Reg.</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Horas Obj.</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Horas Fact.</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Total Real</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Total Teorico</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Desvio</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">% Cump.</th>
+                </tr>
+            </thead>
+            <tbody id="tablaClientes">
+                <tr>
+                    <td colspan="10" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Tabla Resumen por Mes -->
+<div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Resumen por Mes</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[860px] text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Mes</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Horas Obj.</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Horas Fact.</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Bonos</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Penaliz.</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Total Real</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Total Teorico</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Desvio</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">% Cump.</th>
+                </tr>
+            </thead>
+            <tbody id="tablaResumen">
+                <tr>
+                    <td colspan="9" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+        </main>
+    </div>
+
+    <script src="./assets/config.js"></script>
+    <script src="./assets/api-client.js"></script>
+    <script>
+        async function cargarSeed() {
+            try {
+                const response = await fetch('/api/seed', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.mensaje);
+                    location.reload();
+                } else {
+                    alert(data.mensaje);
+                }
+            } catch (error) {
+                alert('Error al cargar datos de ejemplo');
+            }
+        }
+    </script>
+    
+<script>
+let chartEvolucion = null;
+let chartClientes = null;
+let filtrosInicializados = false;
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await cargarFiltrosDashboard();
+    await cargarDashboard();
+});
+
+document.addEventListener('click', function(event) {
+    document.querySelectorAll('[data-dropdown-multiple="true"]').forEach(dropdown => {
+        if (!dropdown.contains(event.target)) {
+            dropdown.querySelectorAll('[id^="panel"]').forEach(panel => panel.classList.add('hidden'));
+        }
+    });
+});
+
+function getFiltros() {
+    return {
+        mes: getSelectedValues('filtroMes'),
+        cliente: getSelectedValues('filtroCliente'),
+        gerente: getSelectedValues('filtroGerente'),
+        jefe_site: getSelectedValues('filtroJefeSite'),
+        campania: getSelectedValues('filtroCampania'),
+        subcampania: getSelectedValues('filtroSubcampania')
+    };
+}
+
+function buildQuery() {
+    const filtros = getFiltros();
+    const params = new URLSearchParams();
+    agregarParam(params, 'mes', filtros.mes);
+    agregarParam(params, 'cliente', filtros.cliente);
+    agregarParam(params, 'gerente', filtros.gerente);
+    agregarParam(params, 'jefe_site', filtros.jefe_site);
+    agregarParam(params, 'campania', filtros.campania);
+    agregarParam(params, 'subcampania', filtros.subcampania);
+    const query = params.toString();
+    return query ? `?${query}` : '';
+}
+
+async function onFiltroChange() {
+    await cargarFiltrosDashboard(true);
+    await cargarDashboard();
+}
+
+async function onFiltroMultipleChange() {
+    await cargarDashboard();
+}
+
+async function cargarFiltrosDashboard(mantenerSeleccion = false) {
+    const seleccion = getFiltros();
+    const response = await fetch('/api/filtros' + (mantenerSeleccion ? buildQuery() : ''));
+    const data = await response.json();
+    if (!data.success) return;
+
+    popularSelect('filtroMes', data.filtros.meses, 'Todos', formatMes, seleccion.mes);
+    popularSelect('filtroCliente', data.filtros.clientes, 'Todos', value => value, seleccion.cliente);
+    popularSelect('filtroGerente', data.filtros.gerentes, 'Todos', value => value, seleccion.gerente);
+    popularSelect('filtroJefeSite', data.filtros.jefes_site, 'Todos', value => value, seleccion.jefe_site);
+    popularSelect('filtroCampania', data.filtros.campanias, 'Todos', value => value, seleccion.campania);
+    popularSelect('filtroSubcampania', data.filtros.subcampanias, 'Todos', value => value, seleccion.subcampania);
+    filtrosInicializados = true;
+}
+
+function popularSelect(id, valores, placeholder, formatter, seleccionado) {
+    const select = document.getElementById(id);
+    const seleccionados = Array.isArray(seleccionado) ? seleccionado : (seleccionado ? [seleccionado] : []);
+    if (select.dataset.listaMultiple === 'true') {
+        const todosSeleccionados = valores.length > 0 && valores.every(valor => seleccionados.includes(valor));
+        const opcionesHtml = valores.map(valor => `
+            <label class="flex items-center gap-2 py-1 cursor-pointer" data-opcion-texto="${formatter(valor).toLowerCase()}">
+                <input type="checkbox" value="${valor}" ${seleccionados.includes(valor) ? 'checked' : ''} onchange="actualizarTodosMultiple('${id}'); actualizarResumenMultiple('${id}'); onFiltroMultipleChange()" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span>${formatter(valor)}</span>
+            </label>
+        `).join('');
+        select.innerHTML = valores.length ? `
+            <label class="flex items-center gap-2 py-1 mb-1 cursor-pointer border-b border-gray-200 font-semibold">
+                <input type="checkbox" data-todos="true" ${todosSeleccionados ? 'checked' : ''} onchange="toggleTodosMultiple('${id}', this.checked)" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span>Todos</span>
+            </label>
+            ${opcionesHtml}
+        ` : `<p class="text-gray-500 py-1">${placeholder}</p>`;
+        actualizarResumenMultiple(id);
+        return;
+    }
+    select.innerHTML = `<option value="">${placeholder}</option>`;
+    valores.forEach(valor => {
+        const option = document.createElement('option');
+        option.value = valor;
+        option.textContent = formatter(valor);
+        if (seleccionados.includes(valor)) option.selected = true;
+        select.appendChild(option);
+    });
+}
+
+function toggleListaMultiple(panelId) {
+    document.getElementById(panelId).classList.toggle('hidden');
+}
+
+function toggleTodosMultiple(id, checked) {
+    document.querySelectorAll(`#${id} input[type="checkbox"]:not([data-todos])`).forEach(input => {
+        input.checked = checked;
+    });
+    actualizarResumenMultiple(id);
+    onFiltroMultipleChange();
+}
+
+function actualizarTodosMultiple(id) {
+    const control = document.getElementById(id);
+    const todos = control.querySelector('input[data-todos="true"]');
+    const opciones = Array.from(control.querySelectorAll('input[type="checkbox"]:not([data-todos])'));
+    if (todos) todos.checked = opciones.length > 0 && opciones.every(input => input.checked);
+}
+
+function actualizarResumenMultiple(id) {
+    const control = document.getElementById(id);
+    const resumen = document.getElementById(control.dataset.resumen);
+    if (!resumen) return;
+    const seleccionados = getSelectedValues(id);
+    if (!seleccionados.length) {
+        resumen.textContent = control.dataset.placeholder;
+    } else if (seleccionados.length === control.querySelectorAll('input[type="checkbox"]:not([data-todos])').length) {
+        resumen.textContent = control.dataset.placeholder;
+    } else if (seleccionados.length === 1) {
+        resumen.textContent = seleccionados[0];
+    } else {
+        resumen.textContent = `${seleccionados.length} seleccionados`;
+    }
+}
+
+function getSelectedValues(id) {
+    const control = document.getElementById(id);
+    if (control.dataset.listaMultiple === 'true') {
+        return Array.from(control.querySelectorAll('input[type="checkbox"]:not([data-todos]):checked')).map(input => input.value);
+    }
+    return Array.from(control.selectedOptions).map(option => option.value).filter(Boolean);
+}
+
+function agregarParam(params, nombre, valor) {
+    if (Array.isArray(valor)) {
+        valor.forEach(item => params.append(nombre, item));
+    } else if (valor) {
+        params.set(nombre, valor);
+    }
+}
+
+function filtrarOpciones(selectId, texto) {
+    const filtro = texto.trim().toLowerCase();
+    const control = document.getElementById(selectId);
+    if (control.dataset.listaMultiple === 'true') {
+        Array.from(control.querySelectorAll('[data-opcion-texto]')).forEach(option => {
+            option.classList.toggle('hidden', Boolean(filtro) && !option.dataset.opcionTexto.includes(filtro));
+        });
+        return;
+    }
+    Array.from(control.options).forEach(option => option.hidden = filtro && !option.textContent.toLowerCase().includes(filtro));
+}
+
+async function cargarDashboard() {
+    const query = buildQuery();
+
+    try {
+        const [kpisResponse, graficoResponse, resumenResponse, clientesResponse, alertasResponse] = await Promise.all([
+            fetch('/api/kpis' + query),
+            fetch('/api/grafico' + query),
+            fetch('/api/resumen' + query),
+            fetch('/api/por-cliente' + query),
+            fetch('/api/alertas' + query)
+        ]);
+
+        const kpisData = await kpisResponse.json();
+        const graficoData = await graficoResponse.json();
+        const resumenData = await resumenResponse.json();
+        const clientesData = await clientesResponse.json();
+        const alertasData = await alertasResponse.json();
+
+        if (kpisData.success) actualizarKPIs(kpisData.kpis);
+        if (graficoData.success) actualizarGrafico(graficoData.datos);
+        if (resumenData.success) actualizarTablaResumen(resumenData.resumen);
+        if (clientesData.success) {
+            actualizarTablaClientes(clientesData.clientes);
+            actualizarGraficoClientes(clientesData.clientes);
+        }
+        if (alertasData.success) actualizarAlertas(alertasData.alertas);
+    } catch (error) {
+        console.error('Error cargando dashboard:', error);
+    }
+}
+
+function actualizarKPIs(kpis) {
+    document.getElementById('kpiTotalFacturado').textContent = formatCurrency(kpis.total_facturado || kpis.total_real || 0);
+    document.getElementById('kpiTotalTeorico').textContent = formatCurrency(kpis.total_teorico || 0);
+    document.getElementById('kpiDesvio').textContent = formatCurrency(kpis.desvio || 0);
+    document.getElementById('kpiDesvio').className = `text-2xl font-bold ${(kpis.desvio || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`;
+    document.getElementById('kpiCumplimiento').textContent = (kpis.porcentaje_cumplimiento || 0).toFixed(1) + '%';
+    document.getElementById('kpiCumplimiento').className = `text-2xl font-bold ${(kpis.porcentaje_cumplimiento || 0) >= 100 ? 'text-green-600' : 'text-red-600'}`;
+}
+
+function actualizarAlertas(alertas) {
+    const container = document.getElementById('alertasDashboard');
+    const styles = {
+        success: 'border-green-500 bg-green-50 text-green-800',
+        warning: 'border-yellow-500 bg-yellow-50 text-yellow-800',
+        danger: 'border-red-500 bg-red-50 text-red-800',
+        info: 'border-blue-500 bg-blue-50 text-blue-800'
+    };
+    const icons = {
+        success: 'fa-circle-check',
+        warning: 'fa-triangle-exclamation',
+        danger: 'fa-circle-exclamation',
+        info: 'fa-circle-info'
+    };
+
+    container.innerHTML = alertas.map(alerta => `
+        <div class="border-l-4 rounded bg-white shadow p-4 ${styles[alerta.tipo] || styles.info}">
+            <div class="flex gap-3">
+                <i class="fas ${icons[alerta.tipo] || icons.info} mt-1"></i>
+                <div>
+                    <p class="font-semibold">${alerta.titulo}</p>
+                    <p class="text-sm mt-1">${alerta.detalle}</p>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function actualizarGrafico(datos) {
+    const ctx = document.getElementById('graficoEvolucion').getContext('2d');
+    if (chartEvolucion) chartEvolucion.destroy();
+
+    chartEvolucion = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: datos.map(d => formatMes(d.mes)),
+            datasets: [
+                {
+                    label: 'Total Real',
+                    data: datos.map(d => d.total_real),
+                    backgroundColor: 'rgba(37, 99, 235, 0.8)',
+                    borderColor: 'rgb(37, 99, 235)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Total Teorico',
+                    data: datos.map(d => d.total_teorico),
+                    backgroundColor: 'rgba(107, 114, 128, 0.45)',
+                    borderColor: 'rgb(107, 114, 128)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: chartOptions()
+    });
+}
+
+function actualizarGraficoClientes(clientes) {
+    const ctx = document.getElementById('graficoClientes').getContext('2d');
+    if (chartClientes) chartClientes.destroy();
+
+    chartClientes = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: clientes.map(c => c.cliente),
+            datasets: [{
+                label: 'Total Real',
+                data: clientes.map(c => c.total_real),
+                backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                borderColor: 'rgb(5, 150, 105)',
+                borderWidth: 1
+            }]
+        },
+        options: chartOptions()
+    });
+}
+
+function chartOptions() {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: { callback: value => '$' + value.toLocaleString('es-AR') }
+            }
+        }
+    };
+}
+
+function actualizarTablaClientes(clientes) {
+    const tbody = document.getElementById('tablaClientes');
+    if (clientes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">No hay datos disponibles</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = clientes.map(c => `
+        <tr class="border-b hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium">${c.cliente}</td>
+            <td class="px-4 py-3">${c.gerente || '-'}</td>
+            <td class="px-4 py-3">${c.jefe_site || '-'}</td>
+            <td class="px-4 py-3 text-right">${c.registros}</td>
+            <td class="px-4 py-3 text-right">${c.horas_objetivo.toFixed(1)}</td>
+            <td class="px-4 py-3 text-right">${c.horas_facturadas.toFixed(1)}</td>
+            <td class="px-4 py-3 text-right font-semibold">${formatCurrency(c.total_real)}</td>
+            <td class="px-4 py-3 text-right">${formatCurrency(c.total_teorico)}</td>
+            <td class="px-4 py-3 text-right font-semibold ${c.desvio >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(c.desvio)}</td>
+            <td class="px-4 py-3 text-right font-semibold ${c.porcentaje_cumplimiento >= 100 ? 'text-green-600' : 'text-red-600'}">${c.porcentaje_cumplimiento.toFixed(1)}%</td>
+        </tr>
+    `).join('');
+}
+
+function actualizarTablaResumen(resumen) {
+    const tbody = document.getElementById('tablaResumen');
+    if (resumen.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">No hay datos disponibles</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = resumen.map(r => `
+        <tr class="border-b hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium">${formatMes(r.mes)}</td>
+            <td class="px-4 py-3 text-right">${r.horas_objetivo.toFixed(1)}</td>
+            <td class="px-4 py-3 text-right">${r.horas_facturadas.toFixed(1)}</td>
+            <td class="px-4 py-3 text-right text-green-600">+${r.bonos.toFixed(0)}</td>
+            <td class="px-4 py-3 text-right text-red-600">-${r.penalizaciones.toFixed(0)}</td>
+            <td class="px-4 py-3 text-right font-semibold">${formatCurrency(r.total_real)}</td>
+            <td class="px-4 py-3 text-right">${formatCurrency(r.total_teorico)}</td>
+            <td class="px-4 py-3 text-right font-semibold ${r.desvio >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(r.desvio)}</td>
+            <td class="px-4 py-3 text-right font-semibold ${r.porcentaje_cumplimiento >= 100 ? 'text-green-600' : 'text-red-600'}">${r.porcentaje_cumplimiento.toFixed(1)}%</td>
+        </tr>
+    `).join('');
+}
+
+function limpiarFiltros() {
+    ['filtroMes', 'filtroCliente', 'filtroGerente', 'filtroJefeSite', 'filtroCampania', 'filtroSubcampania'].forEach(id => {
+        document.querySelectorAll(`#${id} input[type="checkbox"]`).forEach(input => input.checked = false);
+        actualizarResumenMultiple(id);
+    });
+    ['buscarMes', 'buscarCliente', 'buscarGerente', 'buscarJefeSite', 'buscarCampania', 'buscarSubcampania'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.value = '';
+    });
+    onFiltroChange();
+}
+
+function exportarExcel() {
+    window.location.href = window.apiUrl('/api/exportar_excel' + buildQuery());
+}
+
+function formatCurrency(value) {
+    return '$' + value.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatMes(mes) {
+    if (!mes) return '';
+    const [year, month] = mes.split('-');
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return `${meses[parseInt(month) - 1]} ${year}`;
+}
+</script>
+
+</body>
+</html>
