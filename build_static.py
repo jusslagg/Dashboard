@@ -8,6 +8,7 @@ PAGES = {
     "/cargar": "cargar.html",
     "/catalogos": "catalogos.html",
     "/comparativo": "comparativo.html",
+    "/matriz": "matriz.html",
     "/control": "control.html",
 }
 
@@ -18,6 +19,7 @@ def rewrite_links(html):
         'href="/cargar"': 'href="./cargar.html"',
         'href="/catalogos"': 'href="./catalogos.html"',
         'href="/comparativo"': 'href="./comparativo.html"',
+        'href="/matriz"': 'href="./matriz.html"',
         'href="/control"': 'href="./control.html"',
         'href="/api/template_carga"': 'href="#" onclick="window.location.href = window.apiUrl(\'/api/template_carga\'); return false;"',
         "window.location.href = '/api/exportar_excel' + buildQuery();": "window.location.href = window.apiUrl('/api/exportar_excel' + buildQuery());",
@@ -49,22 +51,32 @@ def main():
     assets_dir.mkdir(parents=True, exist_ok=True)
 
     (assets_dir / "config.js").write_text(
-        "// Cambiar por la URL publica del backend Flask en Render.\n"
+        "// URL publica del backend Flask en Render para GitHub Pages.\n"
         "// Ejemplo: window.API_BASE = 'https://tu-dashboard.onrender.com';\n"
+        "// En Live Server se usa automaticamente http://127.0.0.1:5000.\n"
         "window.API_BASE = window.API_BASE || '';\n",
         encoding="utf-8",
     )
     (assets_dir / "api-client.js").write_text(
         "(function () {\n"
         "  const originalFetch = window.fetch.bind(window);\n"
-        "  const apiBase = (window.API_BASE || '').replace(/\\/$/, '');\n"
+        "  const localHosts = ['localhost', '127.0.0.1', '::1'];\n"
+        "  const isLocalFrontend = localHosts.includes(window.location.hostname);\n"
+        "  const configuredBase = (window.API_BASE || '').replace(/\\/$/, '');\n"
+        "  const apiBase = configuredBase || (isLocalFrontend && window.location.port !== '5000' ? 'http://127.0.0.1:5000' : '');\n"
         "\n"
         "  window.apiUrl = function (path) {\n"
-        "    return path.startsWith('/api/') ? apiBase + path : path;\n"
+        "    if (typeof path !== 'string') return path;\n"
+        "    if (path.startsWith('/api/')) return apiBase + path;\n"
+        "    try {\n"
+        "      const url = new URL(path, window.location.href);\n"
+        "      if (url.pathname.startsWith('/api/')) return apiBase + url.pathname + url.search;\n"
+        "    } catch (error) {}\n"
+        "    return path;\n"
         "  };\n"
         "\n"
         "  window.fetch = function (input, init) {\n"
-        "    if (typeof input === 'string' && input.startsWith('/api/')) {\n"
+        "    if (typeof input === 'string') {\n"
         "      return originalFetch(window.apiUrl(input), init);\n"
         "    }\n"
         "\n"

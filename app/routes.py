@@ -40,6 +40,8 @@ COLUMNAS_IMPORTACION = [
     ('valor_hora_objetivo', 'Valor hora objetivo'),
     ('valor_hora', 'Valor hora facturado'),
     ('tarifacion', 'Tarifacion'),
+    ('importe_fijo', 'Importe fijo facturado'),
+    ('variable_productivo', 'Variable Productivo'),
     ('bonos', 'Bonos'),
     ('penalizaciones', 'Penalizaciones'),
     ('netx_gen', 'NetX Gen'),
@@ -75,6 +77,12 @@ ALIAS_IMPORTACION = {
     'valor hora': 'valor_hora',
     'valor_hora': 'valor_hora',
     'tarifacion': 'tarifacion',
+    'importe fijo': 'importe_fijo',
+    'importe fijo facturado': 'importe_fijo',
+    'tarifa plana': 'importe_fijo',
+    'facturacion fija': 'importe_fijo',
+    'variable productivo': 'variable_productivo',
+    'variable_productivo': 'variable_productivo',
     'tarifación': 'tarifacion',
     'bonos': 'bonos',
     'penalizaciones': 'penalizaciones',
@@ -378,6 +386,8 @@ def crear_registro_facturacion(data):
         valor_hora_objetivo=parse_numero(data.get('valor_hora_objetivo') or data.get('valor_hora')),
         valor_hora=parse_numero(data.get('valor_hora')),
         tarifacion=parse_numero(data.get('tarifacion')) if data.get('tarifacion') not in (None, '') else None,
+        importe_fijo=parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None,
+        variable_productivo=parse_numero(data.get('variable_productivo')),
         bonos=parse_numero(data.get('bonos')),
         penalizaciones=parse_numero(data.get('penalizaciones')),
         netx_gen=parse_numero(data.get('netx_gen')),
@@ -551,6 +561,89 @@ def resumen_registros(registros):
     }
 
 
+MESES_MATRIZ = [
+    ('01', 'ene'),
+    ('02', 'feb'),
+    ('03', 'mar'),
+    ('04', 'abr'),
+    ('05', 'may'),
+    ('06', 'jun'),
+    ('07', 'jul'),
+    ('08', 'ago'),
+    ('09', 'sep'),
+    ('10', 'oct'),
+    ('11', 'nov'),
+    ('12', 'dic'),
+]
+
+
+def metricas_matriz(registros):
+    resumen = resumen_registros(registros)
+    facturado_horas = sum(r.facturado_horas for r in registros)
+    facturado_bono = sum(r.facturado_bono for r in registros)
+    penalizaciones = sum(r.penalizaciones_incumplimientos for r in registros)
+    objetivo_horas = sum(r.objetivo_facturacion_horas for r in registros)
+    objetivo_bono = sum(r.objetivo_facturacion_bono for r in registros)
+    valor_hora_objetivo = (
+        objetivo_horas / resumen['horas_objetivo']
+        if resumen['horas_objetivo'] > 0 else 0
+    )
+    valor_hora_realizado = (
+        facturado_horas / resumen['horas_facturadas']
+        if resumen['horas_facturadas'] > 0 else 0
+    )
+    desvio_horas = resumen['horas_facturadas'] - resumen['horas_objetivo']
+    desvio_variable = facturado_bono - objetivo_bono
+    desvio_penalizaciones = -penalizaciones
+    total_objetivo = resumen['total_teorico']
+    total_real = resumen['total_real']
+    return {
+        **resumen,
+        'valor_hora_objetivo': round(valor_hora_objetivo, 2),
+        'valor_hora_realizado': round(valor_hora_realizado, 2),
+        'porcentaje_cumplimiento_horas': round(
+            (resumen['horas_facturadas'] / resumen['horas_objetivo'] * 100)
+            if resumen['horas_objetivo'] > 0 else 0,
+            2
+        ),
+        'porcentaje_valor_hora': round(
+            (valor_hora_realizado / valor_hora_objetivo * 100)
+            if valor_hora_objetivo > 0 else 0,
+            2
+        ),
+        'desvio_horas': round(desvio_horas, 2),
+        'horas_obj': round(objetivo_horas, 2),
+        'variable_obj': round(objetivo_bono, 2),
+        'total_obj': round(total_objetivo, 2),
+        'horas_real': round(facturado_horas, 2),
+        'variable_real': round(facturado_bono, 2),
+        'penalizaciones_bonos': round(penalizaciones, 2),
+        'desvio_variable': round(desvio_variable, 2),
+        'desvio_penalizaciones_bonos': round(desvio_penalizaciones, 2),
+    }
+
+
+def matriz_grupos(registros, campo, meses):
+    grupos = {}
+    for registro in registros:
+        nombre = getattr(registro, campo) or 'Sin asignar'
+        grupos.setdefault(nombre, []).append(registro)
+
+    salida = []
+    for nombre, registros_grupo in grupos.items():
+        por_mes = {}
+        for mes in meses:
+            registros_mes = [r for r in registros_grupo if r.mes == mes]
+            por_mes[mes] = metricas_matriz(registros_mes) if registros_mes else None
+        salida.append({
+            'nombre': nombre,
+            'total': metricas_matriz(registros_grupo),
+            'meses': por_mes,
+        })
+    salida.sort(key=lambda item: item['nombre'])
+    return salida
+
+
 def validar_payload_facturacion(data):
     errores = []
     for campo, mensaje in [
@@ -571,9 +664,13 @@ def validar_payload_facturacion(data):
         horas_facturadas = parse_numero(data.get('horas_facturadas'))
         valor_hora = parse_numero(data.get('valor_hora'))
         valor_hora_objetivo = parse_numero(data.get('valor_hora_objetivo', valor_hora))
+        importe_fijo = parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None
+        variable_productivo = parse_numero(data.get('variable_productivo'))
     except ValueError:
         errores.append('Hay valores numéricos con formato inválido')
         horas_objetivo = horas_facturadas = valor_hora = valor_hora_objetivo = 0
+        importe_fijo = None
+        variable_productivo = 0
     if horas_objetivo < 0:
         errores.append('Las horas objetivo no pueden ser negativas')
     if horas_facturadas < 0:
@@ -582,6 +679,10 @@ def validar_payload_facturacion(data):
         errores.append('El valor hora debe ser mayor a 0')
     if valor_hora_objetivo <= 0:
         errores.append('El valor hora objetivo debe ser mayor a 0')
+    if importe_fijo is not None and importe_fijo < 0:
+        errores.append('El importe fijo facturado no puede ser negativo')
+    if variable_productivo < 0:
+        errores.append('Variable Productivo no puede ser negativo')
     if data.get('tipo_jornada') and data.get('tipo_jornada') not in TIPOS_VH:
         errores.append('El tipo de VH no es válido')
     if data.get('mes') and not mes_valido(data.get('mes')):
@@ -632,6 +733,12 @@ def comparativo():
     return render_template('comparativo.html')
 
 
+@main_bp.route('/matriz')
+def matriz():
+    """Vista matricial mensual por gerencia y jefe de site."""
+    return render_template('matriz.html')
+
+
 @main_bp.route('/catalogos')
 def catalogos():
     """Vista de alta de datos maestros"""
@@ -679,9 +786,13 @@ def api_cargar():
         horas_facturadas = parse_numero(data.get('horas_facturadas'))
         valor_hora = parse_numero(data.get('valor_hora'))
         valor_hora_objetivo = parse_numero(data.get('valor_hora_objetivo', valor_hora))
+        importe_fijo = parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None
+        variable_productivo = parse_numero(data.get('variable_productivo'))
     except ValueError:
         errores.append('Hay valores numéricos con formato inválido')
         horas_objetivo = horas_facturadas = valor_hora = valor_hora_objetivo = 0
+        importe_fijo = None
+        variable_productivo = 0
     
     if horas_objetivo < 0:
         errores.append('Las horas objetivo no pueden ser negativas')
@@ -691,6 +802,10 @@ def api_cargar():
         errores.append('El valor hora debe ser mayor a 0')
     if valor_hora_objetivo <= 0:
         errores.append('El valor hora objetivo debe ser mayor a 0')
+    if importe_fijo is not None and importe_fijo < 0:
+        errores.append('El importe fijo facturado no puede ser negativo')
+    if variable_productivo < 0:
+        errores.append('Variable Productivo no puede ser negativo')
     if data.get('tipo_jornada') and data.get('tipo_jornada') not in TIPOS_VH:
         errores.append('El tipo de VH no es válido')
     
@@ -750,6 +865,8 @@ def api_actualizar_dato(registro_id):
         registro.valor_hora_objetivo = float(data.get('valor_hora_objetivo') or data.get('valor_hora', 0))
         registro.valor_hora = float(data.get('valor_hora', 0))
         registro.tarifacion = data.get('tarifacion')
+        registro.importe_fijo = parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None
+        registro.variable_productivo = parse_numero(data.get('variable_productivo'))
         registro.bonos = float(data.get('bonos', 0) or 0)
         registro.penalizaciones = float(data.get('penalizaciones', 0) or 0)
         registro.netx_gen = float(data.get('netx_gen', 0) or 0)
@@ -999,6 +1116,33 @@ def api_comparativo():
     })
 
 
+@main_bp.route('/api/matriz', methods=['GET'])
+def api_matriz():
+    """Matriz mensual de cumplimiento por gerencia y apertura por jefe de site."""
+    year = request.args.get('year') or '2026'
+    jefe_site = request.args.get('jefe_site') or ''
+    meses = [f'{year}-{numero}' for numero, _ in MESES_MATRIZ]
+    columnas = [{'key': mes, 'label': f'{label}-{year[-2:]}'} for mes, (_, label) in zip(meses, MESES_MATRIZ)]
+
+    registros_year = Facturacion2026.query.filter(Facturacion2026.mes.in_(meses)).all()
+    jefes_site = sorted({r.jefe_site for r in registros_year if r.jefe_site})
+
+    registros_apertura = [
+        registro for registro in registros_year
+        if not jefe_site or registro.jefe_site == jefe_site
+    ]
+
+    return jsonify({
+        'success': True,
+        'year': year,
+        'columnas': [{'key': 'total', 'label': year}, *columnas],
+        'jefes_site': jefes_site,
+        'total_gerencia': matriz_grupos(registros_year, 'gerente', meses),
+        'apertura_jefe_site': matriz_grupos(registros_apertura, 'jefe_site' if not jefe_site else 'campania', meses),
+        'jefe_site': jefe_site,
+    })
+
+
 @main_bp.route('/api/alertas', methods=['GET'])
 def api_alertas():
     """Alertas automaticas segun los datos filtrados."""
@@ -1077,7 +1221,7 @@ def api_exportar_excel():
 
     headers = [
         'Fecha', 'Mes', 'Cliente', 'Gerente', 'Jefe de Site', 'Campaña', 'Sub campaña', 'Tipo de VH', 'Horas objetivo',
-        'Horas facturadas', 'Valor hora objetivo', 'Valor hora alcanzado',
+        'Horas facturadas', 'Valor hora objetivo', 'Valor hora alcanzado', 'Importe fijo facturado', 'Variable Productivo',
         '% cumplimiento horas',
         'Objetivo facturacion horas', 'Objetivo facturacion bono', 'Facturacion objetivo',
         'Facturado horas', 'Facturado bono', 'Penalizaciones por incumplimientos',
@@ -1091,6 +1235,8 @@ def api_exportar_excel():
             r.horas_objetivo, r.horas_facturadas,
             r.valor_hora_objetivo if r.valor_hora_objetivo else r.valor_hora,
             r.valor_hora_alcanzado,
+            r.importe_fijo if r.importe_fijo is not None else '',
+            r.variable_productivo or 0,
             round(r.porcentaje_cumplimiento_horas, 2),
             round(r.objetivo_facturacion_horas, 2), round(r.objetivo_facturacion_bono, 2),
             round(r.facturacion_objetivo, 2), round(r.facturado_horas, 2),
@@ -1135,6 +1281,7 @@ def api_template_carga():
         'Número',
         'Número',
         'Número',
+        'Opcional',
         'Opcional',
         'Opcional',
         'Opcional',
@@ -1188,6 +1335,8 @@ def api_importar_datos():
             item.setdefault('netx_gen', 0)
             item.setdefault('otros', 0)
             item.setdefault('tarifacion', None)
+            item.setdefault('importe_fijo', None)
+            item.setdefault('variable_productivo', 0)
             item.setdefault('valor_hora_objetivo', item.get('valor_hora'))
 
             errores_fila = validar_payload_facturacion(item)
@@ -1432,6 +1581,8 @@ def api_seed():
                 valor_hora_objetivo=d.get('valor_hora_objetivo', d['valor_hora']),
                 valor_hora=d['valor_hora'],
                 tarifacion=d['tarifacion'],
+                importe_fijo=d.get('importe_fijo'),
+                variable_productivo=d.get('variable_productivo', 0),
                 bonos=d['bonos'],
                 penalizaciones=d['penalizaciones'],
                 netx_gen=d['netx_gen'],

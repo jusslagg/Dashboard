@@ -19,6 +19,8 @@ class Facturacion2026(db.Model):
     valor_hora_objetivo = db.Column(db.Float, nullable=True)
     valor_hora = db.Column(db.Float, nullable=False)
     tarifacion = db.Column(db.Float, nullable=True)
+    importe_fijo = db.Column(db.Float, nullable=True)
+    variable_productivo = db.Column(db.Float, default=0)
     bonos = db.Column(db.Float, default=0)
     penalizaciones = db.Column(db.Float, default=0)
     netx_gen = db.Column(db.Float, default=0)
@@ -34,6 +36,8 @@ class Facturacion2026(db.Model):
 
     @property
     def objetivo_facturacion_horas(self):
+        if self.importe_fijo is not None:
+            return self.importe_fijo
         return self.horas_objetivo * self.valor_hora_objetivo_calculo
 
     @property
@@ -46,11 +50,13 @@ class Facturacion2026(db.Model):
 
     @property
     def facturado_horas(self):
+        if self.importe_fijo is not None:
+            return self.importe_fijo
         return self.horas_facturadas * self.valor_hora_alcanzado
 
     @property
     def facturado_bono(self):
-        return self.bonos or 0
+        return (self.bonos or 0) + (self.variable_productivo or 0)
 
     @property
     def penalizaciones_incumplimientos(self):
@@ -65,6 +71,8 @@ class Facturacion2026(db.Model):
     @property
     def total_real(self):
         """Calcula el total real: horas_facturadas por tarifa real, mas ajustes."""
+        if self.importe_fijo is not None:
+            return self.importe_fijo
         return (
             self.facturado_horas
             + self.facturado_bono
@@ -76,6 +84,8 @@ class Facturacion2026(db.Model):
     @property
     def total_teorico(self):
         """Calcula el total objetivo: horas_objetivo por valor_hora_objetivo."""
+        if self.importe_fijo is not None:
+            return self.importe_fijo
         return self.facturacion_objetivo
 
     @property
@@ -86,6 +96,8 @@ class Facturacion2026(db.Model):
     @property
     def porcentaje_cumplimiento(self):
         """Calcula el porcentaje de cumplimiento: total_real / total_teorico."""
+        if self.importe_fijo is not None:
+            return 100
         if self.total_teorico == 0:
             return 0
         return (self.total_real / self.total_teorico) * 100
@@ -107,6 +119,8 @@ class Facturacion2026(db.Model):
             'valor_hora_alcanzado': self.valor_hora_alcanzado,
             'valor_hora': self.valor_hora,
             'tarifacion': self.tarifacion,
+            'importe_fijo': self.importe_fijo,
+            'variable_productivo': self.variable_productivo,
             'bonos': self.bonos,
             'penalizaciones': self.penalizaciones,
             'netx_gen': self.netx_gen,

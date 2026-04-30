@@ -55,6 +55,8 @@ def ensure_schema():
         'campania': 'ALTER TABLE facturacion_2026 ADD COLUMN campania VARCHAR(100)',
         'subcampania': 'ALTER TABLE facturacion_2026 ADD COLUMN subcampania VARCHAR(100)',
         'valor_hora_objetivo': 'ALTER TABLE facturacion_2026 ADD COLUMN valor_hora_objetivo FLOAT',
+        'importe_fijo': 'ALTER TABLE facturacion_2026 ADD COLUMN importe_fijo FLOAT',
+        'variable_productivo': 'ALTER TABLE facturacion_2026 ADD COLUMN variable_productivo FLOAT DEFAULT 0',
     }
     for column, statement in missing_columns.items():
         if column not in columns:
@@ -78,6 +80,11 @@ def ensure_schema():
         UPDATE facturacion_2026
         SET valor_hora_objetivo = valor_hora
         WHERE valor_hora_objetivo IS NULL
+    """))
+    db.session.execute(text("""
+        UPDATE facturacion_2026
+        SET variable_productivo = 0
+        WHERE variable_productivo IS NULL
     """))
     db.session.execute(text("""
         INSERT INTO asignaciones_comerciales (cliente, gerente, jefe_site, campania, subcampania, activa, creado_en)

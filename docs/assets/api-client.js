@@ -1,13 +1,22 @@
 (function () {
   const originalFetch = window.fetch.bind(window);
-  const apiBase = (window.API_BASE || '').replace(/\/$/, '');
+  const localHosts = ['localhost', '127.0.0.1', '::1'];
+  const isLocalFrontend = localHosts.includes(window.location.hostname);
+  const configuredBase = (window.API_BASE || '').replace(/\/$/, '');
+  const apiBase = configuredBase || (isLocalFrontend && window.location.port !== '5000' ? 'http://127.0.0.1:5000' : '');
 
   window.apiUrl = function (path) {
-    return path.startsWith('/api/') ? apiBase + path : path;
+    if (typeof path !== 'string') return path;
+    if (path.startsWith('/api/')) return apiBase + path;
+    try {
+      const url = new URL(path, window.location.href);
+      if (url.pathname.startsWith('/api/')) return apiBase + url.pathname + url.search;
+    } catch (error) {}
+    return path;
   };
 
   window.fetch = function (input, init) {
-    if (typeof input === 'string' && input.startsWith('/api/')) {
+    if (typeof input === 'string') {
       return originalFetch(window.apiUrl(input), init);
     }
 

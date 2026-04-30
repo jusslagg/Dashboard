@@ -1,0 +1,253 @@
+{% extends "layout.html" %}
+
+{% block title %}Matriz Mensual - Facturacion{% endblock %}
+
+{% block content %}
+<div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Matriz mensual</h1>
+        <p class="text-gray-600 mt-2">Vista de cumplimiento por gerencia y apertura por jefe de site.</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2 w-full lg:w-auto">
+        <select id="yearSelect" onchange="cargarMatriz()" class="border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+            <option value="2026">2026</option>
+        </select>
+        <select id="jefeSiteSelect" onchange="cargarMatriz()" class="border border-gray-300 rounded px-3 py-2 text-sm bg-white min-w-64">
+            <option value="">Todos los jefes de site</option>
+        </select>
+        <select id="modoFilas" onchange="renderDesdeEstado()" class="border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+            <option value="resumen">Vista resumen</option>
+            <option value="detalle">Vista detalle</option>
+        </select>
+        <select id="modoMeses" onchange="renderDesdeEstado()" class="border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+            <option value="conDatos">Meses con datos</option>
+            <option value="todos">Todo el año</option>
+        </select>
+        <input id="buscarGrupo" oninput="renderDesdeEstado()" type="search" placeholder="Buscar grupo..." class="border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+    </div>
+</div>
+
+<div class="mb-4 bg-white rounded-lg shadow p-2 flex flex-col sm:flex-row gap-2">
+    <button id="tabGerencia" type="button" onclick="cambiarTabla('gerencia')" class="px-4 py-2 rounded text-sm font-medium bg-slate-800 text-white">
+        Total por gerencia
+    </button>
+    <button id="tabApertura" type="button" onclick="cambiarTabla('apertura')" class="px-4 py-2 rounded text-sm font-medium bg-white text-slate-700 hover:bg-gray-100">
+        Apertura por jefe de site
+    </button>
+</div>
+
+<section class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-200 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h2 id="tituloMatriz" class="font-semibold text-gray-800">Total por gerencia</h2>
+            <p id="subtituloMatriz" class="text-xs text-gray-500 mt-1">Resumen de indicadores principales.</p>
+        </div>
+        <span id="estadoMatriz" class="text-sm text-gray-500">Cargando...</span>
+    </div>
+    <div class="overflow-auto max-h-[72vh]">
+        <table class="w-full text-xs border-collapse">
+            <thead id="theadMatriz" class="sticky top-0 z-10 bg-slate-200 text-slate-900"></thead>
+            <tbody id="tbodyMatriz"></tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const filasMatriz = [
+    { key: 'valor_hora_objetivo', label: 'VH Objetivo', type: 'currency', empty: '-' },
+    { key: 'valor_hora_realizado', label: 'VH Realizado', type: 'currency', empty: '-' },
+    { key: 'porcentaje_cumplimiento_horas', label: '% Cumplimiento Horas', type: 'percent', heat: true, empty: '-' },
+    { key: 'porcentaje_valor_hora', label: '% Valor hora', type: 'percent', heat: true, empty: '-' },
+    { key: 'porcentaje_cumplimiento', label: '% Cumplimiento Facturacion', type: 'percent', heat: true, empty: '-' },
+    { key: 'horas_objetivo', label: 'Horas Objetivo', type: 'number' },
+    { key: 'horas_facturadas', label: 'Horas Realizadas', type: 'number' },
+    { key: 'desvio_horas', label: 'Dif Horas vs obj', type: 'number', signed: true, band: true },
+    { key: 'horas_obj', label: 'Horas Obj', type: 'money' },
+    { key: 'variable_obj', label: 'Variable Obj', type: 'money' },
+    { key: 'total_obj', label: 'Total Obj', type: 'money', band: true },
+    { key: 'horas_real', label: 'Horas Real', type: 'money' },
+    { key: 'variable_real', label: 'Variable Real', type: 'money' },
+    { key: 'penalizaciones_bonos', label: 'Penalizaciones / Bonos', type: 'money', negativeDisplay: true },
+    { key: 'total_real', label: 'Total Real', type: 'money', band: true },
+    { key: 'desvio_horas', label: 'Desvio (+/-) Horas', type: 'moneyFromHours', signed: true },
+    { key: 'desvio_variable', label: 'Desvio (+/-) Variable', type: 'money', signed: true },
+    { key: 'desvio_penalizaciones_bonos', label: 'Desvio (+/-) Penalizaciones / Bonos', type: 'money', signed: true },
+    { key: 'desvio', label: 'Total Desvio (+/-)', type: 'money', signed: true, band: true },
+];
+
+const filasResumen = [
+    'valor_hora_objetivo',
+    'valor_hora_realizado',
+    'porcentaje_cumplimiento_horas',
+    'porcentaje_valor_hora',
+    'porcentaje_cumplimiento',
+    'horas_objetivo',
+    'horas_facturadas',
+    'desvio_horas',
+    'total_obj',
+    'total_real',
+    'desvio',
+];
+
+let matrizData = null;
+let tablaActiva = 'gerencia';
+
+document.addEventListener('DOMContentLoaded', cargarMatriz);
+
+async function cargarMatriz() {
+    const year = document.getElementById('yearSelect').value;
+    const jefeSite = document.getElementById('jefeSiteSelect').value;
+    const params = new URLSearchParams({ year });
+    if (jefeSite) params.set('jefe_site', jefeSite);
+
+    setEstado('Cargando...');
+    try {
+        const response = await fetch('/api/matriz?' + params.toString());
+        const data = await response.json();
+        if (!data.success) throw new Error('Respuesta invalida');
+
+        matrizData = data;
+        popularJefes(data.jefes_site, data.jefe_site);
+        renderDesdeEstado();
+    } catch (error) {
+        console.error('Error cargando matriz:', error);
+        setEstado('No se pudo cargar');
+    }
+}
+
+function cambiarTabla(tabla) {
+    tablaActiva = tabla;
+    document.getElementById('tabGerencia').className = tabla === 'gerencia'
+        ? 'px-4 py-2 rounded text-sm font-medium bg-slate-800 text-white'
+        : 'px-4 py-2 rounded text-sm font-medium bg-white text-slate-700 hover:bg-gray-100';
+    document.getElementById('tabApertura').className = tabla === 'apertura'
+        ? 'px-4 py-2 rounded text-sm font-medium bg-slate-800 text-white'
+        : 'px-4 py-2 rounded text-sm font-medium bg-white text-slate-700 hover:bg-gray-100';
+    renderDesdeEstado();
+}
+
+function renderDesdeEstado() {
+    if (!matrizData) return;
+    const gruposBase = tablaActiva === 'gerencia' ? matrizData.total_gerencia : matrizData.apertura_jefe_site;
+    const busqueda = document.getElementById('buscarGrupo').value.trim().toLowerCase();
+    const grupos = busqueda
+        ? gruposBase.filter(grupo => grupo.nombre.toLowerCase().includes(busqueda))
+        : gruposBase;
+    const columnas = columnasVisibles(matrizData.columnas, grupos);
+    const filas = filasVisibles();
+
+    renderMatriz('theadMatriz', 'tbodyMatriz', columnas, grupos, filas);
+    const tituloApertura = matrizData.jefe_site
+        ? `Apertura de ${matrizData.jefe_site} por campaña`
+        : 'Apertura por jefe de site';
+    document.getElementById('tituloMatriz').textContent = tablaActiva === 'gerencia'
+        ? 'Total por gerencia'
+        : tituloApertura;
+    document.getElementById('subtituloMatriz').textContent = document.getElementById('modoFilas').value === 'resumen'
+        ? 'Indicadores principales para lectura rapida.'
+        : 'Detalle completo de importes, horas y desvios.';
+    document.getElementById('estadoMatriz').textContent = `${grupos.length} grupo(s), ${columnas.length} columna(s)`;
+}
+
+function filasVisibles() {
+    if (document.getElementById('modoFilas').value === 'detalle') return filasMatriz;
+    return filasMatriz.filter(fila => filasResumen.includes(fila.key));
+}
+
+function columnasVisibles(columnas, grupos) {
+    if (document.getElementById('modoMeses').value === 'todos') return columnas;
+    return columnas.filter(col => {
+        if (col.key === 'total') return true;
+        return grupos.some(grupo => Boolean(grupo.meses[col.key]));
+    });
+}
+
+function popularJefes(jefes, seleccionado) {
+    const select = document.getElementById('jefeSiteSelect');
+    const actual = seleccionado || select.value;
+    select.innerHTML = '<option value="">Todos los jefes de site</option>' + jefes.map(jefe =>
+        `<option value="${escapeHtml(jefe)}" ${jefe === actual ? 'selected' : ''}>${escapeHtml(jefe)}</option>`
+    ).join('');
+}
+
+function renderMatriz(theadId, tbodyId, columnas, grupos, filas) {
+    const thead = document.getElementById(theadId);
+    const tbody = document.getElementById(tbodyId);
+    thead.innerHTML = `
+        <tr>
+            <th class="w-36 px-2 py-2 border border-slate-300 text-left">Grupo</th>
+            <th class="w-44 px-2 py-2 border border-slate-300 text-left">Indicador</th>
+            ${columnas.map(col => `<th class="px-2 py-2 border border-slate-300 text-center min-w-24">${escapeHtml(col.label)}</th>`).join('')}
+        </tr>
+    `;
+
+    if (!grupos.length) {
+        tbody.innerHTML = `<tr><td colspan="${columnas.length + 2}" class="px-4 py-8 text-center text-gray-500">No hay datos cargados</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = grupos.map(grupo => {
+        return filas.map((fila, index) => `
+            <tr class="${fila.band ? 'bg-blue-50 font-semibold' : 'bg-white'}">
+                ${index === 0 ? `<td rowspan="${filas.length}" class="sticky left-0 z-[1] bg-slate-700 text-white border border-slate-500 px-2 py-2 font-bold align-middle">${escapeHtml(grupo.nombre)}</td>` : ''}
+                <td class="sticky left-36 z-[1] bg-white border border-gray-200 px-2 py-1 ${fila.band ? 'font-semibold' : ''}">${fila.label}</td>
+                ${columnas.map(col => celdaMatriz(fila, col.key === 'total' ? grupo.total : grupo.meses[col.key])).join('')}
+            </tr>
+        `).join('');
+    }).join('');
+}
+
+function celdaMatriz(fila, datos) {
+    const value = datos ? datos[fila.key] : null;
+    const texto = datos ? formatearValor(value, fila, datos) : (fila.empty || formatearValor(0, fila, datos));
+    const color = claseCelda(value, fila, Boolean(datos));
+    return `<td class="border border-gray-200 px-2 py-1 text-center whitespace-nowrap ${color}">${texto}</td>`;
+}
+
+function formatearValor(value, fila, datos) {
+    const numero = Number(value || 0);
+    if (fila.type === 'percent') return `${numero.toFixed(1).replace('.', ',')}%`;
+    if (fila.type === 'currency') return `$ ${numero.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (fila.type === 'moneyFromHours') {
+        const valorHora = datos ? Number(datos.valor_hora_objetivo || 0) : 0;
+        return formatMoney(numero * valorHora, fila);
+    }
+    if (fila.type === 'money') return formatMoney(fila.negativeDisplay ? -Math.abs(numero) : numero, fila);
+    return numero.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+}
+
+function formatMoney(value, fila) {
+    const sign = value < 0 ? '-$' : '$';
+    const absValue = Math.abs(value);
+    return `${sign} ${absValue.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
+}
+
+function claseCelda(value, fila, tieneDatos) {
+    if (!tieneDatos) return fila.type === 'money' || fila.type === 'number' ? 'text-gray-900' : 'bg-green-100 text-gray-700';
+    const numero = Number(value || 0);
+    if (fila.heat) {
+        if (numero >= 100) return 'bg-green-100 text-green-800';
+        if (numero >= 97) return 'bg-yellow-100 text-yellow-800';
+        return 'bg-red-100 text-red-700';
+    }
+    if (fila.signed || numero < 0) return numero < 0 ? 'text-red-600 font-semibold' : 'text-gray-900 font-semibold';
+    return '';
+}
+
+function setEstado(texto) {
+    document.getElementById('estadoMatriz').textContent = texto;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+</script>
+{% endblock %}

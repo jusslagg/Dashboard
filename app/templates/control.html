@@ -212,8 +212,16 @@
                 <input type="number" id="editTarifacion" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Importe fijo facturado</label>
+                <input type="number" id="editImporteFijo" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Bonos</label>
                 <input type="number" id="editBonos" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Variable Productivo</label>
+                <input type="number" id="editVariableProductivo" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Penalizaciones</label>
@@ -518,7 +526,9 @@ function abrirEditar(d) {
     document.getElementById('editValorHoraObjetivo').value = d.valor_hora_objetivo || d.valor_hora;
     document.getElementById('editValorHora').value = d.valor_hora;
     document.getElementById('editTarifacion').value = d.tarifacion || '';
+    document.getElementById('editImporteFijo').value = d.importe_fijo ?? '';
     document.getElementById('editBonos').value = d.bonos || 0;
+    document.getElementById('editVariableProductivo').value = d.variable_productivo || 0;
     document.getElementById('editPenalizaciones').value = d.penalizaciones || 0;
     document.getElementById('editNetxGen').value = d.netx_gen || 0;
     document.getElementById('editOtros').value = d.otros || 0;
@@ -550,7 +560,9 @@ async function guardarEdicion(event) {
         valor_hora_objetivo: parseFloat(document.getElementById('editValorHoraObjetivo').value),
         valor_hora: parseFloat(document.getElementById('editValorHora').value),
         tarifacion: parseFloat(document.getElementById('editTarifacion').value) || null,
+        importe_fijo: document.getElementById('editImporteFijo').value === '' ? null : parseFloat(document.getElementById('editImporteFijo').value),
         bonos: parseFloat(document.getElementById('editBonos').value) || 0,
+        variable_productivo: parseFloat(document.getElementById('editVariableProductivo').value) || 0,
         penalizaciones: parseFloat(document.getElementById('editPenalizaciones').value) || 0,
         netx_gen: parseFloat(document.getElementById('editNetxGen').value) || 0,
         otros: parseFloat(document.getElementById('editOtros').value) || 0
