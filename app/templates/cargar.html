@@ -101,13 +101,19 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Horas Objetivo *</label>
-                <input type="number" id="horas_objetivo" name="horas_objetivo" required min="0" step="0.5" placeholder="0"
+                <input type="number" id="horas_objetivo" name="horas_objetivo" required min="0" step="0.01" placeholder="0"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Horas Facturadas *</label>
-                <input type="number" id="horas_facturadas" name="horas_facturadas" required min="0" step="0.5" placeholder="0"
+                <input type="number" id="horas_facturadas" name="horas_facturadas" required min="0" step="0.01" placeholder="0"
+                    class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Horas Penalizacion ADH</label>
+                <input type="number" id="horas_penalizadas" name="horas_penalizadas" min="0" step="0.01" value="0" placeholder="0"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
@@ -124,14 +130,20 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tarifacion (Opcional)</label>
-                <input type="number" id="tarifacion" name="tarifacion" min="0" step="0.01" placeholder="Si es diferente al valor hora"
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tarifacion adicional</label>
+                <input type="number" id="tarifacion" name="tarifacion" min="0" step="0.01" placeholder="Importe adicional"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Importe fijo facturado</label>
                 <input type="number" id="importe_fijo" name="importe_fijo" min="0" step="0.01" placeholder="Opcional para tarifa plana"
+                    class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Variable Objetivo</label>
+                <input type="number" id="variable_objetivo" name="variable_objetivo" min="0" step="0.01" value="0" placeholder="0"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
@@ -163,6 +175,65 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Otros</label>
                 <input type="number" id="otros" name="otros" min="0" step="0.01" value="0" placeholder="0"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+        </div>
+
+        <div class="mt-5 p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h3 class="font-semibold text-gray-800">Justificaciones de ajustes</h3>
+                    <p class="text-sm text-gray-500 mt-1">Detalle obligatorio para bonos, penalizaciones u otros ajustes.</p>
+                </div>
+                <button type="button" onclick="agregarJustificacion()" class="inline-flex items-center justify-center bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded text-sm font-medium">
+                    <i class="fas fa-plus mr-2"></i>Agregar item
+                </button>
+            </div>
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-white text-gray-700">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Tipo</th>
+                            <th class="px-3 py-2 text-right">Cantidad</th>
+                            <th class="px-3 py-2 text-right">Precio</th>
+                            <th class="px-3 py-2 text-right">Importe</th>
+                            <th class="px-3 py-2 text-left">Descripcion</th>
+                            <th class="px-3 py-2 text-center">Accion</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaJustificaciones"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-5 p-4 bg-white rounded-lg border border-blue-100 shadow-sm">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h3 class="font-semibold text-gray-800">Items del mismo cliente</h3>
+                    <p class="text-sm text-gray-500 mt-1">Agregue varias lineas de VH y guardelas juntas con la misma cabecera.</p>
+                </div>
+                <button type="button" onclick="agregarLineaActual()" class="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium">
+                    <i class="fas fa-layer-group mr-2"></i>Agregar linea al lote
+                </button>
+            </div>
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-blue-50 text-blue-900">
+                        <tr>
+                            <th class="px-3 py-2 text-left">#</th>
+                            <th class="px-3 py-2 text-left">Tipo VH</th>
+                            <th class="px-3 py-2 text-right">Hs Obj</th>
+                            <th class="px-3 py-2 text-right">Hs Real</th>
+                            <th class="px-3 py-2 text-right">Hs Penal.</th>
+                            <th class="px-3 py-2 text-right">VH Obj</th>
+                            <th class="px-3 py-2 text-right">VH Alc.</th>
+                            <th class="px-3 py-2 text-right">Total Real</th>
+                            <th class="px-3 py-2 text-center">Accion</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaLineasPendientes">
+                        <tr><td colspan="9" class="px-3 py-6 text-center text-gray-500">Todavia no hay lineas agregadas</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -198,19 +269,43 @@
                     <span id="previewCumplimientoHoras" class="font-semibold ml-2">0%</span>
                 </div>
                 <div>
+                    <span class="text-gray-500">Horas Penalizacion ADH:</span>
+                    <span id="previewHorasPenalizadas" class="font-semibold ml-2">0</span>
+                </div>
+                <div>
                     <span class="text-gray-500">Fact. Bono:</span>
                     <span id="previewFacturadoBono" class="font-semibold ml-2">$0.00</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Variable Productivo:</span>
+                    <span id="previewVariableProductivo" class="font-semibold ml-2">$0.00</span>
                 </div>
                 <div>
                     <span class="text-gray-500">Penalizaciones:</span>
                     <span id="previewPenalizaciones" class="font-semibold ml-2">$0.00</span>
                 </div>
                 <div>
+                    <span class="text-gray-500">NetX Gen:</span>
+                    <span id="previewNetxGen" class="font-semibold ml-2">$0.00</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Otros:</span>
+                    <span id="previewOtros" class="font-semibold ml-2">$0.00</span>
+                </div>
+                <div>
                     <span class="text-gray-500">Total Facturado:</span>
                     <span id="previewTotalReal" class="font-semibold ml-2">$0.00</span>
                 </div>
                 <div>
-                    <span class="text-gray-500">Desvío:</span>
+                    <span class="text-gray-500">Monto Final c/ Tarifacion:</span>
+                    <span id="previewMontoFinalTarifacion" class="font-semibold ml-2">$0.00</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Desvio:</span>
+                    <span id="previewDesvioHoras" class="font-semibold ml-2">$0.00</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Desvio Total c/ Ajustes:</span>
                     <span id="previewDesvio" class="font-semibold ml-2">$0.00</span>
                 </div>
                 <div>
@@ -241,6 +336,25 @@
 {% block scripts %}
 <script>
 let asignaciones = [];
+let justificacionIndex = 0;
+let lineasPendientes = [];
+
+const camposLinea = [
+    'tipo_jornada',
+    'horas_objetivo',
+    'horas_facturadas',
+    'horas_penalizadas',
+    'valor_hora_objetivo',
+    'valor_hora',
+    'tarifacion',
+    'importe_fijo',
+    'variable_objetivo',
+    'variable_productivo',
+    'bonos',
+    'penalizaciones',
+    'netx_gen',
+    'otros'
+];
 
 const camposAsociacion = ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania'];
 const labelsCampo = {
@@ -255,6 +369,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     completarFechasIniciales();
     document.getElementById('formImportar').addEventListener('submit', importarDatos);
     await cargarAsignaciones();
+    agregarJustificacion();
     document.querySelectorAll('#formCargar input, #formCargar select').forEach(input => {
         input.addEventListener('input', calcularPreview);
     });
@@ -340,29 +455,260 @@ function obtenerAsignacionSeleccionada() {
     );
 }
 
-function calcularPreview() {
-    const horasFacturadas = parseFloat(document.getElementById('horas_facturadas').value) || 0;
-    const horasObjetivo = parseFloat(document.getElementById('horas_objetivo').value) || 0;
-    const valorHoraObjetivo = parseFloat(document.getElementById('valor_hora_objetivo').value) || 0;
-    const valorHora = parseFloat(document.getElementById('valor_hora').value) || 0;
-    const tarifacion = parseFloat(document.getElementById('tarifacion').value) || 0;
-    const importeFijoInput = document.getElementById('importe_fijo').value;
-    const importeFijo = importeFijoInput === '' ? null : parseFloat(importeFijoInput);
-    const bonos = parseFloat(document.getElementById('bonos').value) || 0;
-    const variableProductivo = parseFloat(document.getElementById('variable_productivo').value) || 0;
-    const penalizaciones = parseFloat(document.getElementById('penalizaciones').value) || 0;
-    const netxGen = parseFloat(document.getElementById('netx_gen').value) || 0;
-    const otros = parseFloat(document.getElementById('otros').value) || 0;
+function parseNumeroCampo(id) {
+    const valor = document.getElementById(id).value;
+    return parseFloat(String(valor).replace(',', '.')) || 0;
+}
 
-    const valorHoraAlcanzado = tarifacion > 0 ? tarifacion : valorHora;
+function agregarJustificacion(item = {}) {
+    const tbody = document.getElementById('tablaJustificaciones');
+    const id = justificacionIndex++;
+    const row = document.createElement('tr');
+    row.className = 'border-t border-slate-200 bg-white';
+    row.dataset.id = id;
+    row.innerHTML = `
+        <td class="px-3 py-2 min-w-44">
+            <select data-campo="tipo" onchange="actualizarTotalesJustificaciones()" class="w-full border border-gray-300 rounded px-2 py-2">
+                <option value="">Seleccionar...</option>
+                <option value="bonos" ${item.tipo === 'bonos' ? 'selected' : ''}>Bono</option>
+                <option value="penalizaciones" ${item.tipo === 'penalizaciones' ? 'selected' : ''}>Penalizacion</option>
+                <option value="otros" ${item.tipo === 'otros' ? 'selected' : ''}>Otros</option>
+            </select>
+        </td>
+        <td class="px-3 py-2 min-w-36">
+            <input data-campo="cantidad" type="number" min="0" step="0.01" value="${item.cantidad || ''}" oninput="actualizarImporteJustificacion(${id})" class="w-full border border-gray-300 rounded px-2 py-2 text-right">
+        </td>
+        <td class="px-3 py-2 min-w-36">
+            <input data-campo="precio" type="number" min="0" step="0.01" value="${item.precio || ''}" oninput="actualizarImporteJustificacion(${id})" class="w-full border border-gray-300 rounded px-2 py-2 text-right">
+        </td>
+        <td class="px-3 py-2 min-w-36">
+            <input data-campo="importe" type="number" min="0" step="0.01" value="${item.importe || ''}" readonly class="w-full border border-gray-200 rounded px-2 py-2 text-right bg-gray-50 font-semibold">
+        </td>
+        <td class="px-3 py-2 min-w-72">
+            <input data-campo="descripcion" type="text" value="${escapeHtml(item.descripcion || '')}" class="w-full border border-gray-300 rounded px-2 py-2" placeholder="Detalle del motivo">
+        </td>
+        <td class="px-3 py-2 text-center">
+            <button type="button" onclick="eliminarJustificacion(${id})" class="inline-flex h-9 w-9 items-center justify-center rounded bg-red-50 text-red-600 hover:bg-red-100" title="Eliminar item">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(row);
+    actualizarImporteJustificacion(id);
+}
+
+function actualizarImporteJustificacion(id) {
+    const row = [...document.querySelectorAll('#tablaJustificaciones tr')].find(item => Number(item.dataset.id) === id);
+    if (!row) return;
+    const cantidad = parseFloat(String(row.querySelector('[data-campo="cantidad"]').value).replace(',', '.')) || 0;
+    const precio = parseFloat(String(row.querySelector('[data-campo="precio"]').value).replace(',', '.')) || 0;
+    row.querySelector('[data-campo="importe"]').value = (cantidad * precio).toFixed(2);
+    actualizarTotalesJustificaciones();
+}
+
+function eliminarJustificacion(id) {
+    const row = [...document.querySelectorAll('#tablaJustificaciones tr')].find(item => Number(item.dataset.id) === id);
+    if (row) row.remove();
+    actualizarTotalesJustificaciones();
+}
+
+function obtenerJustificaciones() {
+    return [...document.querySelectorAll('#tablaJustificaciones tr')].map(row => ({
+        tipo: row.querySelector('[data-campo="tipo"]').value,
+        cantidad: parseFloat(String(row.querySelector('[data-campo="cantidad"]').value).replace(',', '.')) || 0,
+        precio: parseFloat(String(row.querySelector('[data-campo="precio"]').value).replace(',', '.')) || 0,
+        importe: parseFloat(String(row.querySelector('[data-campo="importe"]').value).replace(',', '.')) || 0,
+        descripcion: row.querySelector('[data-campo="descripcion"]').value.trim()
+    })).filter(item => item.tipo || item.cantidad > 0 || item.precio > 0 || item.importe > 0 || item.descripcion);
+}
+
+function actualizarTotalesJustificaciones() {
+    const totales = { bonos: 0, penalizaciones: 0, otros: 0 };
+    obtenerJustificaciones().forEach(item => {
+        if (Object.prototype.hasOwnProperty.call(totales, item.tipo)) {
+            totales[item.tipo] += item.importe;
+        }
+    });
+    document.getElementById('bonos').value = totales.bonos.toFixed(2);
+    document.getElementById('penalizaciones').value = totales.penalizaciones.toFixed(2);
+    document.getElementById('otros').value = totales.otros.toFixed(2);
+    calcularPreview();
+}
+
+function validarJustificacionesFrontend(data) {
+    const errores = [];
+    const totales = { bonos: 0, penalizaciones: 0, otros: 0 };
+    data.justificaciones.forEach((item, index) => {
+        if (!item.tipo) errores.push(`Justificacion ${index + 1}: seleccione tipo`);
+        if (item.cantidad <= 0) errores.push(`Justificacion ${index + 1}: indique una cantidad mayor a 0`);
+        if (item.precio <= 0) errores.push(`Justificacion ${index + 1}: indique un precio mayor a 0`);
+        if (item.importe <= 0) errores.push(`Justificacion ${index + 1}: indique un importe mayor a 0`);
+        if (Math.abs(item.importe - (item.cantidad * item.precio)) > 0.01) errores.push(`Justificacion ${index + 1}: el importe debe coincidir con cantidad por precio`);
+        if (!item.descripcion) errores.push(`Justificacion ${index + 1}: agregue una descripcion`);
+        if (Object.prototype.hasOwnProperty.call(totales, item.tipo)) {
+            totales[item.tipo] += item.importe;
+        }
+    });
+    ['bonos', 'penalizaciones', 'otros'].forEach(tipo => {
+        if (data[tipo] > 0 && totales[tipo] === 0) {
+            errores.push(`${tipo} requiere una justificacion`);
+        }
+        if (Math.abs((totales[tipo] || 0) - (data[tipo] || 0)) > 0.01) {
+            errores.push(`La suma de justificaciones de ${tipo} debe coincidir con el importe cargado`);
+        }
+    });
+    return errores;
+}
+
+function capturarLineaActual() {
+    return {
+        tipo_jornada: document.getElementById('tipo_jornada').value,
+        horas_objetivo: parseNumeroCampo('horas_objetivo'),
+        horas_facturadas: parseNumeroCampo('horas_facturadas'),
+        horas_penalizadas: parseNumeroCampo('horas_penalizadas'),
+        valor_hora_objetivo: parseNumeroCampo('valor_hora_objetivo'),
+        valor_hora: parseNumeroCampo('valor_hora'),
+        tarifacion: parseNumeroCampo('tarifacion') || null,
+        importe_fijo: document.getElementById('importe_fijo').value === '' ? null : parseNumeroCampo('importe_fijo'),
+        variable_objetivo: parseNumeroCampo('variable_objetivo'),
+        variable_productivo: parseNumeroCampo('variable_productivo'),
+        bonos: parseNumeroCampo('bonos'),
+        penalizaciones: parseNumeroCampo('penalizaciones'),
+        netx_gen: parseNumeroCampo('netx_gen'),
+        otros: parseNumeroCampo('otros'),
+        justificaciones: obtenerJustificaciones()
+    };
+}
+
+function lineaTieneDatos(linea) {
+    return Boolean(linea.tipo_jornada)
+        || linea.horas_objetivo > 0
+        || linea.horas_facturadas > 0
+        || linea.horas_penalizadas > 0
+        || linea.valor_hora_objetivo > 0
+        || linea.valor_hora > 0
+        || linea.variable_objetivo > 0
+        || linea.variable_productivo > 0
+        || linea.bonos > 0
+        || linea.penalizaciones > 0
+        || linea.netx_gen > 0
+        || linea.otros > 0
+        || linea.justificaciones.length > 0;
+}
+
+function validarLinea(linea, indice = 1) {
+    const prefijo = `Linea ${indice}: `;
+    const errores = [];
+    if (!linea.tipo_jornada) errores.push(prefijo + 'el tipo de VH es obligatorio');
+    if (linea.horas_objetivo < 0 || linea.horas_facturadas < 0 || linea.horas_penalizadas < 0) {
+        errores.push(prefijo + 'las horas no pueden ser negativas');
+    }
+    if (linea.horas_penalizadas > linea.horas_facturadas) {
+        errores.push(prefijo + 'las horas penalizadas no pueden superar las horas facturadas');
+    }
+    if (linea.valor_hora_objetivo <= 0 || linea.valor_hora <= 0) {
+        errores.push(prefijo + 'los valores hora deben ser mayores a 0');
+    }
+    validarJustificacionesFrontend(linea).forEach(error => errores.push(prefijo + error));
+    return errores;
+}
+
+function agregarLineaActual() {
+    const linea = capturarLineaActual();
+    const errores = validarLinea(linea, lineasPendientes.length + 1);
+    if (errores.length) {
+        mostrarMensaje(errores.join(', '), 'error');
+        return;
+    }
+    lineasPendientes.push(linea);
+    renderLineasPendientes();
+    limpiarCamposLinea();
+    mostrarMensaje('Linea agregada al lote', 'success');
+}
+
+function eliminarLineaPendiente(index) {
+    lineasPendientes.splice(index, 1);
+    renderLineasPendientes();
+}
+
+function renderLineasPendientes() {
+    const tbody = document.getElementById('tablaLineasPendientes');
+    if (!lineasPendientes.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="px-3 py-6 text-center text-gray-500">Todavia no hay lineas agregadas</td></tr>';
+        return;
+    }
+    tbody.innerHTML = lineasPendientes.map((linea, index) => {
+        const valorHoraAlcanzado = linea.valor_hora;
+        const horasNetas = Math.max(linea.horas_facturadas - linea.horas_penalizadas, 0);
+        const facturadoHoras = linea.importe_fijo !== null ? linea.importe_fijo : horasNetas * valorHoraAlcanzado;
+        const totalReal = linea.importe_fijo !== null
+            ? linea.importe_fijo + linea.bonos - linea.penalizaciones
+            : facturadoHoras + linea.bonos - linea.penalizaciones;
+        return `
+            <tr class="border-t hover:bg-blue-50/40">
+                <td class="px-3 py-2 font-semibold">${index + 1}</td>
+                <td class="px-3 py-2">${escapeHtml(linea.tipo_jornada)}</td>
+                <td class="px-3 py-2 text-right">${formatNumber(linea.horas_objetivo)}</td>
+                <td class="px-3 py-2 text-right">${formatNumber(linea.horas_facturadas)}</td>
+                <td class="px-3 py-2 text-right">${formatNumber(linea.horas_penalizadas)}</td>
+                <td class="px-3 py-2 text-right">${formatCurrency(linea.valor_hora_objetivo)}</td>
+                <td class="px-3 py-2 text-right">${formatCurrency(valorHoraAlcanzado)}</td>
+                <td class="px-3 py-2 text-right font-semibold">${formatCurrency(totalReal)}</td>
+                <td class="px-3 py-2 text-center">
+                    <button type="button" onclick="eliminarLineaPendiente(${index})" class="inline-flex h-8 w-8 items-center justify-center rounded bg-red-50 text-red-600 hover:bg-red-100" title="Eliminar linea">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function limpiarCamposLinea() {
+    camposLinea.forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        if (input.tagName === 'SELECT') {
+            input.value = '';
+        } else if (['horas_penalizadas', 'variable_objetivo', 'variable_productivo', 'bonos', 'penalizaciones', 'netx_gen', 'otros'].includes(id)) {
+            input.value = '0';
+        } else {
+            input.value = '';
+        }
+    });
+    document.getElementById('tablaJustificaciones').innerHTML = '';
+    agregarJustificacion();
+    calcularPreview();
+}
+
+function calcularPreview() {
+    const horasFacturadas = parseNumeroCampo('horas_facturadas');
+    const horasObjetivo = parseNumeroCampo('horas_objetivo');
+    const horasPenalizadas = parseNumeroCampo('horas_penalizadas');
+    const valorHoraObjetivo = parseNumeroCampo('valor_hora_objetivo');
+    const valorHora = parseNumeroCampo('valor_hora');
+    const tarifacion = parseNumeroCampo('tarifacion');
+    const importeFijoInput = document.getElementById('importe_fijo').value;
+    const importeFijo = importeFijoInput === '' ? null : parseFloat(String(importeFijoInput).replace(',', '.'));
+    const variableObjetivo = parseNumeroCampo('variable_objetivo');
+    const bonos = parseNumeroCampo('bonos');
+    const variableProductivo = parseNumeroCampo('variable_productivo');
+    const penalizaciones = parseNumeroCampo('penalizaciones');
+    const netxGen = parseNumeroCampo('netx_gen');
+    const otros = parseNumeroCampo('otros');
+
+    const valorHoraAlcanzado = valorHora;
+    const horasNetas = Math.max(horasFacturadas - horasPenalizadas, 0);
     const usaImporteFijo = importeFijo !== null && !Number.isNaN(importeFijo);
     const objetivoHoras = usaImporteFijo ? importeFijo : horasObjetivo * valorHoraObjetivo;
-    const objetivoBono = 0;
+    const objetivoBono = variableObjetivo;
     const facturacionObjetivo = objetivoHoras + objetivoBono;
-    const facturadoHoras = usaImporteFijo ? importeFijo : horasFacturadas * valorHoraAlcanzado;
-    const facturadoBono = bonos + variableProductivo;
-    const totalReal = usaImporteFijo ? importeFijo : facturadoHoras + facturadoBono - penalizaciones + netxGen + otros;
+    const facturadoHoras = usaImporteFijo ? importeFijo : horasNetas * valorHoraAlcanzado;
+    const facturadoBono = bonos;
+    const totalReal = usaImporteFijo ? importeFijo + facturadoBono - penalizaciones : facturadoHoras + facturadoBono - penalizaciones;
+    const montoFinalTarifacion = totalReal + tarifacion + variableProductivo + netxGen + otros;
     const totalTeorico = facturacionObjetivo;
+    const desvioHoras = facturadoHoras - objetivoHoras;
     const desvio = totalReal - totalTeorico;
     const cumplimientoHoras = horasObjetivo > 0 ? (horasFacturadas / horasObjetivo) * 100 : 0;
     const cumplimiento = totalTeorico > 0 ? (totalReal / totalTeorico) * 100 : 0;
@@ -375,10 +721,17 @@ function calcularPreview() {
     document.getElementById('previewFacturadoHoras').textContent = formatCurrency(facturadoHoras);
     document.getElementById('previewCumplimientoHoras').textContent = cumplimientoHoras.toFixed(1) + '%';
     document.getElementById('previewCumplimientoHoras').className = `font-semibold ml-2 ${cumplimientoHoras >= 100 ? 'text-green-600' : 'text-red-600'}`;
+    document.getElementById('previewHorasPenalizadas').textContent = horasPenalizadas.toLocaleString('es-AR', { maximumFractionDigits: 1 });
     document.getElementById('previewFacturadoBono').textContent = formatCurrency(facturadoBono);
+    document.getElementById('previewVariableProductivo').textContent = formatCurrency(variableProductivo);
     document.getElementById('previewPenalizaciones').textContent = formatCurrency(penalizaciones);
+    document.getElementById('previewNetxGen').textContent = formatCurrency(netxGen);
+    document.getElementById('previewOtros').textContent = formatCurrency(otros);
     document.getElementById('previewTotalReal').textContent = formatCurrency(totalReal);
+    document.getElementById('previewMontoFinalTarifacion').textContent = formatCurrency(montoFinalTarifacion);
     document.getElementById('previewTotalTeorico').textContent = formatCurrency(totalTeorico);
+    document.getElementById('previewDesvioHoras').textContent = formatCurrency(desvioHoras);
+    document.getElementById('previewDesvioHoras').className = `font-semibold ml-2 ${desvioHoras >= 0 ? 'text-green-600' : 'text-red-600'}`;
     document.getElementById('previewDesvio').textContent = formatCurrency(desvio);
     document.getElementById('previewDesvio').className = `font-semibold ml-2 ${desvio >= 0 ? 'text-green-600' : 'text-red-600'}`;
     document.getElementById('previewCumplimiento').textContent = cumplimiento.toFixed(1) + '%';
@@ -395,7 +748,7 @@ async function guardarDatos(event) {
     }
 
     const seleccion = valoresSeleccionados();
-    const data = {
+    const cabecera = {
         fecha: document.getElementById('fecha').value,
         mes: document.getElementById('mes').value,
         cliente: seleccion.cliente,
@@ -403,43 +756,39 @@ async function guardarDatos(event) {
         jefe_site: seleccion.jefe_site,
         campania: seleccion.campania,
         subcampania: seleccion.subcampania,
-        tipo_jornada: document.getElementById('tipo_jornada').value,
-        horas_objetivo: parseFloat(document.getElementById('horas_objetivo').value),
-        horas_facturadas: parseFloat(document.getElementById('horas_facturadas').value),
-        valor_hora_objetivo: parseFloat(document.getElementById('valor_hora_objetivo').value),
-        valor_hora: parseFloat(document.getElementById('valor_hora').value),
-        tarifacion: parseFloat(document.getElementById('tarifacion').value) || null,
-        importe_fijo: document.getElementById('importe_fijo').value === '' ? null : parseFloat(document.getElementById('importe_fijo').value),
-        variable_productivo: parseFloat(document.getElementById('variable_productivo').value) || 0,
-        bonos: parseFloat(document.getElementById('bonos').value) || 0,
-        penalizaciones: parseFloat(document.getElementById('penalizaciones').value) || 0,
-        netx_gen: parseFloat(document.getElementById('netx_gen').value) || 0,
-        otros: parseFloat(document.getElementById('otros').value) || 0
     };
 
-    if (data.horas_objetivo < 0 || data.horas_facturadas < 0) {
-        mostrarMensaje('Las horas no pueden ser negativas', 'error');
+    const lineaActual = capturarLineaActual();
+    const lineasAGuardar = [...lineasPendientes];
+    if (lineaTieneDatos(lineaActual)) {
+        lineasAGuardar.push(lineaActual);
+    }
+    if (!lineasAGuardar.length) {
+        mostrarMensaje('Agregue al menos una linea para guardar', 'error');
         return;
     }
-    if (data.valor_hora_objetivo <= 0 || data.valor_hora <= 0) {
-        mostrarMensaje('Los valores hora deben ser mayores a 0', 'error');
+
+    const erroresLineas = lineasAGuardar.flatMap((linea, index) => validarLinea(linea, index + 1));
+    if (erroresLineas.length) {
+        mostrarMensaje(erroresLineas.join(', '), 'error');
         return;
     }
 
     try {
-        const response = await fetch('/api/cargar', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-        if (result.success) {
-            mostrarMensaje('Datos guardados correctamente', 'success');
-            limpiarFormulario();
-        } else {
-            mostrarMensaje(result.errores.join(', '), 'error');
+        for (let index = 0; index < lineasAGuardar.length; index += 1) {
+            const response = await fetch('/api/cargar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...cabecera, ...lineasAGuardar[index] })
+            });
+            const result = await response.json();
+            if (!result.success) {
+                mostrarMensaje(`Linea ${index + 1}: ${(result.errores || ['Error al guardar']).join(', ')}`, 'error');
+                return;
+            }
         }
+        mostrarMensaje(`${lineasAGuardar.length} linea(s) guardadas correctamente`, 'success');
+        limpiarFormulario();
     } catch (error) {
         mostrarMensaje('Error al guardar los datos', 'error');
     }
@@ -485,6 +834,10 @@ function limpiarFormulario() {
     document.getElementById('formCargar').reset();
     completarFechasIniciales();
     camposAsociacion.forEach(campo => popularSelect(campo, opcionesDisponibles(campo), `Seleccionar ${labelsCampo[campo]}...`));
+    document.getElementById('tablaJustificaciones').innerHTML = '';
+    agregarJustificacion();
+    lineasPendientes = [];
+    renderLineasPendientes();
     calcularPreview();
 }
 
@@ -516,6 +869,20 @@ function mostrarMensajeImportar(mensaje, tipo, autoOcultar = true) {
 
 function formatCurrency(value) {
     return '$' + value.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatNumber(value) {
+    return Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
 }
 </script>
 {% endblock %}

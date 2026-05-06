@@ -1,9 +1,9 @@
 # filepath: app/routes.py
 from flask import Blueprint, Response, render_template, request, jsonify
 from app import db
-from app.models import AsignacionComercial, Facturacion2026
+from app.models import AsignacionComercial, Facturacion2026, JustificacionAjuste
 from datetime import datetime, timedelta
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from html import escape
 from html.parser import HTMLParser
 import csv
@@ -37,10 +37,12 @@ COLUMNAS_IMPORTACION = [
     ('tipo_jornada', 'Tipo de VH'),
     ('horas_objetivo', 'Horas objetivo'),
     ('horas_facturadas', 'Horas facturadas'),
+    ('horas_penalizadas', 'Horas Penalizacion ADH'),
     ('valor_hora_objetivo', 'Valor hora objetivo'),
     ('valor_hora', 'Valor hora facturado'),
-    ('tarifacion', 'Tarifacion'),
+    ('tarifacion', 'Tarifacion adicional'),
     ('importe_fijo', 'Importe fijo facturado'),
+    ('variable_objetivo', 'Variable Objetivo'),
     ('variable_productivo', 'Variable Productivo'),
     ('bonos', 'Bonos'),
     ('penalizaciones', 'Penalizaciones'),
@@ -71,6 +73,12 @@ ALIAS_IMPORTACION = {
     'horas_objetivo': 'horas_objetivo',
     'horas facturadas': 'horas_facturadas',
     'horas_facturadas': 'horas_facturadas',
+    'horas penalizadas': 'horas_penalizadas',
+    'horas penalizacion adh': 'horas_penalizadas',
+    'horas penalización adh': 'horas_penalizadas',
+    'penalizacion adh horas': 'horas_penalizadas',
+    'penalización adh horas': 'horas_penalizadas',
+    'horas_penalizadas': 'horas_penalizadas',
     'valor hora objetivo': 'valor_hora_objetivo',
     'valor_hora_objetivo': 'valor_hora_objetivo',
     'valor hora facturado': 'valor_hora',
@@ -81,6 +89,9 @@ ALIAS_IMPORTACION = {
     'importe fijo facturado': 'importe_fijo',
     'tarifa plana': 'importe_fijo',
     'facturacion fija': 'importe_fijo',
+    'variable objetivo': 'variable_objetivo',
+    'variable_objetivo': 'variable_objetivo',
+    'bono objetivo': 'variable_objetivo',
     'variable productivo': 'variable_productivo',
     'variable_productivo': 'variable_productivo',
     'tarifación': 'tarifacion',
@@ -185,6 +196,12 @@ def validar_clave(data):
     return (data or {}).get('clave') == ADMIN_KEY
 
 
+def filtrar_valores_exactos(query, columna, valores):
+    if isinstance(valores, list):
+        return query.filter(columna.in_(valores))
+    return query.filter(columna == valores)
+
+
 def aplicar_filtros(
     query,
     mes=None,
@@ -204,30 +221,15 @@ def aplicar_filtros(
         else:
             query = query.filter(Facturacion2026.mes == mes)
     if cliente:
-        if isinstance(cliente, list):
-            query = query.filter(or_(*[Facturacion2026.cliente.ilike(f'%{valor}%') for valor in cliente]))
-        else:
-            query = query.filter(Facturacion2026.cliente.ilike(f'%{cliente}%'))
+        query = filtrar_valores_exactos(query, Facturacion2026.cliente, cliente)
     if gerente:
-        if isinstance(gerente, list):
-            query = query.filter(or_(*[Facturacion2026.gerente.ilike(f'%{valor}%') for valor in gerente]))
-        else:
-            query = query.filter(Facturacion2026.gerente.ilike(f'%{gerente}%'))
+        query = filtrar_valores_exactos(query, Facturacion2026.gerente, gerente)
     if jefe_site:
-        if isinstance(jefe_site, list):
-            query = query.filter(or_(*[Facturacion2026.jefe_site.ilike(f'%{valor}%') for valor in jefe_site]))
-        else:
-            query = query.filter(Facturacion2026.jefe_site.ilike(f'%{jefe_site}%'))
+        query = filtrar_valores_exactos(query, Facturacion2026.jefe_site, jefe_site)
     if campania:
-        if isinstance(campania, list):
-            query = query.filter(or_(*[Facturacion2026.campania.ilike(f'%{valor}%') for valor in campania]))
-        else:
-            query = query.filter(Facturacion2026.campania.ilike(f'%{campania}%'))
+        query = filtrar_valores_exactos(query, Facturacion2026.campania, campania)
     if subcampania:
-        if isinstance(subcampania, list):
-            query = query.filter(or_(*[Facturacion2026.subcampania.ilike(f'%{valor}%') for valor in subcampania]))
-        else:
-            query = query.filter(Facturacion2026.subcampania.ilike(f'%{subcampania}%'))
+        query = filtrar_valores_exactos(query, Facturacion2026.subcampania, subcampania)
     if horas_objetivo_min is not None:
         query = query.filter(Facturacion2026.horas_objetivo >= horas_objetivo_min)
     if horas_objetivo_max is not None:
@@ -383,10 +385,12 @@ def crear_registro_facturacion(data):
         tipo_jornada=data['tipo_jornada'],
         horas_objetivo=parse_numero(data.get('horas_objetivo')),
         horas_facturadas=parse_numero(data.get('horas_facturadas')),
+        horas_penalizadas=parse_numero(data.get('horas_penalizadas')),
         valor_hora_objetivo=parse_numero(data.get('valor_hora_objetivo') or data.get('valor_hora')),
         valor_hora=parse_numero(data.get('valor_hora')),
         tarifacion=parse_numero(data.get('tarifacion')) if data.get('tarifacion') not in (None, '') else None,
         importe_fijo=parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None,
+        variable_objetivo=parse_numero(data.get('variable_objetivo')),
         variable_productivo=parse_numero(data.get('variable_productivo')),
         bonos=parse_numero(data.get('bonos')),
         penalizaciones=parse_numero(data.get('penalizaciones')),
@@ -394,6 +398,7 @@ def crear_registro_facturacion(data):
         otros=parse_numero(data.get('otros')),
     )
     db.session.add(registro)
+    guardar_justificaciones(registro, data)
     asegurar_asignacion_desde_registro(registro)
     return registro
 
@@ -513,6 +518,17 @@ def filtros_request():
     }
 
 
+def opciones_filtro(filtros, campo):
+    filtros_base = dict(filtros)
+    filtros_base[campo] = None
+    registros = aplicar_filtros(Facturacion2026.query, **filtros_base).all()
+    return sorted({
+        getattr(registro, campo)
+        for registro in registros
+        if getattr(registro, campo, None)
+    })
+
+
 def filtros_comparativo_request():
     return {
         **filtros_request(),
@@ -542,22 +558,120 @@ def query_por_asignacion(asignacion):
     return Facturacion2026.query.filter_by(**filtros_asignacion(asignacion))
 
 
+TIPOS_JUSTIFICACION = {
+    'bonos': 'Bonos',
+    'penalizaciones': 'Penalizaciones',
+    'otros': 'Otros',
+}
+
+
+def normalizar_justificaciones(data):
+    items = data.get('justificaciones') or []
+    salida = []
+    for item in items:
+        tipo = str(item.get('tipo', '')).strip()
+        descripcion = str(item.get('descripcion', '')).strip()
+        cantidad = parse_numero(item.get('cantidad')) if item.get('cantidad') not in (None, '') else 0
+        precio = parse_numero(item.get('precio')) if item.get('precio') not in (None, '') else 0
+        importe = parse_numero(item.get('importe')) if item.get('importe') not in (None, '') else cantidad * precio
+        if not tipo and not descripcion and cantidad == 0 and precio == 0 and importe == 0:
+            continue
+        salida.append({
+            'tipo': tipo,
+            'descripcion': descripcion,
+            'cantidad': cantidad,
+            'precio': precio,
+            'importe': importe,
+        })
+    return salida
+
+
+def validar_justificaciones(data):
+    errores = []
+    items = normalizar_justificaciones(data)
+    totales = {tipo: 0 for tipo in TIPOS_JUSTIFICACION}
+
+    for indice, item in enumerate(items, start=1):
+        if item['tipo'] not in TIPOS_JUSTIFICACION:
+            errores.append(f'Justificacion {indice}: tipo invalido')
+            continue
+        if item['cantidad'] <= 0:
+            errores.append(f'Justificacion {indice}: la cantidad debe ser mayor a 0')
+        if item['precio'] <= 0:
+            errores.append(f'Justificacion {indice}: el precio debe ser mayor a 0')
+        if item['importe'] <= 0:
+            errores.append(f'Justificacion {indice}: el importe debe ser mayor a 0')
+        if abs(item['importe'] - (item['cantidad'] * item['precio'])) > 0.01:
+            errores.append(f'Justificacion {indice}: el importe debe coincidir con cantidad por precio')
+        if not item['descripcion']:
+            errores.append(f'Justificacion {indice}: la descripcion es obligatoria')
+        totales[item['tipo']] += item['importe']
+
+    for tipo, label in TIPOS_JUSTIFICACION.items():
+        valor_campo = parse_numero(data.get(tipo))
+        if valor_campo > 0 and totales[tipo] == 0:
+            errores.append(f'{label} requiere al menos una justificacion')
+        if abs(totales[tipo] - valor_campo) > 0.01:
+            errores.append(f'La suma de justificaciones de {label} debe coincidir con el importe cargado')
+
+    return errores
+
+
+def guardar_justificaciones(registro, data):
+    registro.justificaciones.clear()
+    for item in normalizar_justificaciones(data):
+        registro.justificaciones.append(JustificacionAjuste(
+            tipo=item['tipo'],
+            cantidad=item['cantidad'],
+            precio=item['precio'],
+            importe=item['importe'],
+            descripcion=item['descripcion'],
+        ))
+
+
 def resumen_registros(registros):
     total_real = sum(r.total_real for r in registros)
     total_teorico = sum(r.total_teorico for r in registros)
+    facturado_horas = sum(r.facturado_horas for r in registros)
+    objetivo_horas = sum(r.objetivo_facturacion_horas for r in registros)
+    desvio_facturacion = facturado_horas - objetivo_horas
     desvio = total_real - total_teorico
     porcentaje = (total_real / total_teorico * 100) if total_teorico > 0 else 0
+    porcentaje_facturacion = (facturado_horas / objetivo_horas * 100) if objetivo_horas > 0 else 0
     return {
         'horas_objetivo': round(sum(r.horas_objetivo for r in registros), 2),
         'horas_facturadas': round(sum(r.horas_facturadas for r in registros), 2),
+        'horas_penalizadas': round(sum(r.horas_penalizadas or 0 for r in registros), 2),
         'bonos': round(sum(r.bonos or 0 for r in registros), 2),
+        'variable_objetivo': round(sum(r.variable_objetivo or 0 for r in registros), 2),
+        'variable_productivo': round(sum(r.variable_productivo_calculo for r in registros), 2),
         'penalizaciones': round(sum(r.penalizaciones or 0 for r in registros), 2),
         'netx_gen': round(sum(r.netx_gen or 0 for r in registros), 2),
         'otros': round(sum(r.otros or 0 for r in registros), 2),
+        'facturado_horas': round(facturado_horas, 2),
+        'objetivo_facturacion_horas': round(objetivo_horas, 2),
+        'desvio_facturacion': round(desvio_facturacion, 2),
+        'porcentaje_cumplimiento_facturacion': round(porcentaje_facturacion, 2),
         'total_real': round(total_real, 2),
         'total_teorico': round(total_teorico, 2),
         'desvio': round(desvio, 2),
         'porcentaje_cumplimiento': round(porcentaje, 2)
+    }
+
+
+def resumen_dashboard(registros):
+    resumen = resumen_registros(registros)
+    total_facturado = sum(r.total_dashboard for r in registros)
+    total_teorico = sum(r.total_teorico for r in registros)
+    desvio = total_facturado - total_teorico
+    porcentaje = (total_facturado / total_teorico * 100) if total_teorico > 0 else 0
+    return {
+        **resumen,
+        'total_facturado': round(total_facturado, 2),
+        'total_real': round(total_facturado, 2),
+        'total_teorico': round(total_teorico, 2),
+        'desvio': round(desvio, 2),
+        'porcentaje_cumplimiento': round(porcentaje, 2),
     }
 
 
@@ -581,19 +695,30 @@ def metricas_matriz(registros):
     resumen = resumen_registros(registros)
     facturado_horas = sum(r.facturado_horas for r in registros)
     facturado_bono = sum(r.facturado_bono for r in registros)
+    variable_productivo = sum(r.variable_productivo_calculo for r in registros)
+    variable_real = facturado_bono
     penalizaciones = sum(r.penalizaciones_incumplimientos for r in registros)
     objetivo_horas = sum(r.objetivo_facturacion_horas for r in registros)
     objetivo_bono = sum(r.objetivo_facturacion_bono for r in registros)
+    horas_netas_facturadas = max(resumen['horas_facturadas'] - resumen['horas_penalizadas'], 0)
+    horas_objetivo_tarifadas = sum(r.horas_objetivo for r in registros if (r.horas_objetivo or 0) > 0)
+    horas_netas_tarifadas = sum(
+        max((r.horas_facturadas or 0) - (r.horas_penalizadas or 0), 0)
+        for r in registros
+        if max((r.horas_facturadas or 0) - (r.horas_penalizadas or 0), 0) > 0
+    )
     valor_hora_objetivo = (
-        objetivo_horas / resumen['horas_objetivo']
-        if resumen['horas_objetivo'] > 0 else 0
+        sum((r.valor_hora_objetivo_calculo or 0) * (r.horas_objetivo or 0) for r in registros) / horas_objetivo_tarifadas
+        if horas_objetivo_tarifadas > 0 else 0
     )
     valor_hora_realizado = (
-        facturado_horas / resumen['horas_facturadas']
-        if resumen['horas_facturadas'] > 0 else 0
+        sum((r.valor_hora_alcanzado or 0) * max((r.horas_facturadas or 0) - (r.horas_penalizadas or 0), 0) for r in registros) / horas_netas_tarifadas
+        if horas_netas_tarifadas > 0 else 0
     )
+    horas_con_penalidad_adh = horas_netas_facturadas
     desvio_horas = resumen['horas_facturadas'] - resumen['horas_objetivo']
-    desvio_variable = facturado_bono - objetivo_bono
+    desvio_horas_monto = facturado_horas - objetivo_horas
+    desvio_variable = variable_real - objetivo_bono
     desvio_penalizaciones = -penalizaciones
     total_objetivo = resumen['total_teorico']
     total_real = resumen['total_real']
@@ -606,17 +731,34 @@ def metricas_matriz(registros):
             if resumen['horas_objetivo'] > 0 else 0,
             2
         ),
+        'porcentaje_cumplimiento_logueo': round(
+            (resumen['horas_facturadas'] / resumen['horas_objetivo'] * 100)
+            if resumen['horas_objetivo'] > 0 else 0,
+            2
+        ),
+        'porcentaje_cumplimiento_horas_adh': round(
+            (horas_con_penalidad_adh / resumen['horas_objetivo'] * 100)
+            if resumen['horas_objetivo'] > 0 else 0,
+            2
+        ),
         'porcentaje_valor_hora': round(
             (valor_hora_realizado / valor_hora_objetivo * 100)
             if valor_hora_objetivo > 0 else 0,
             2
         ),
+        'porcentaje_bono': round(
+            (variable_real / objetivo_bono * 100)
+            if objetivo_bono > 0 else 0,
+            2
+        ),
         'desvio_horas': round(desvio_horas, 2),
+        'desvio_horas_monto': round(desvio_horas_monto, 2),
         'horas_obj': round(objetivo_horas, 2),
         'variable_obj': round(objetivo_bono, 2),
         'total_obj': round(total_objetivo, 2),
         'horas_real': round(facturado_horas, 2),
-        'variable_real': round(facturado_bono, 2),
+        'variable_real': round(variable_real, 2),
+        'variable_productivo': round(variable_productivo, 2),
         'penalizaciones_bonos': round(penalizaciones, 2),
         'desvio_variable': round(desvio_variable, 2),
         'desvio_penalizaciones_bonos': round(desvio_penalizaciones, 2),
@@ -662,25 +804,34 @@ def validar_payload_facturacion(data):
     try:
         horas_objetivo = parse_numero(data.get('horas_objetivo'))
         horas_facturadas = parse_numero(data.get('horas_facturadas'))
+        horas_penalizadas = parse_numero(data.get('horas_penalizadas'))
         valor_hora = parse_numero(data.get('valor_hora'))
         valor_hora_objetivo = parse_numero(data.get('valor_hora_objetivo', valor_hora))
         importe_fijo = parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None
+        variable_objetivo = parse_numero(data.get('variable_objetivo'))
         variable_productivo = parse_numero(data.get('variable_productivo'))
     except ValueError:
         errores.append('Hay valores numéricos con formato inválido')
-        horas_objetivo = horas_facturadas = valor_hora = valor_hora_objetivo = 0
+        horas_objetivo = horas_facturadas = horas_penalizadas = valor_hora = valor_hora_objetivo = 0
         importe_fijo = None
+        variable_objetivo = 0
         variable_productivo = 0
     if horas_objetivo < 0:
         errores.append('Las horas objetivo no pueden ser negativas')
     if horas_facturadas < 0:
         errores.append('Las horas facturadas no pueden ser negativas')
+    if horas_penalizadas < 0:
+        errores.append('Las horas penalizadas no pueden ser negativas')
+    if horas_penalizadas > horas_facturadas:
+        errores.append('Las horas penalizadas no pueden superar las horas facturadas')
     if valor_hora <= 0:
         errores.append('El valor hora debe ser mayor a 0')
     if valor_hora_objetivo <= 0:
         errores.append('El valor hora objetivo debe ser mayor a 0')
     if importe_fijo is not None and importe_fijo < 0:
         errores.append('El importe fijo facturado no puede ser negativo')
+    if variable_objetivo < 0:
+        errores.append('Variable Objetivo no puede ser negativo')
     if variable_productivo < 0:
         errores.append('Variable Productivo no puede ser negativo')
     if data.get('tipo_jornada') and data.get('tipo_jornada') not in TIPOS_VH:
@@ -725,6 +876,12 @@ def cargar():
 def control():
     """Vista de control de datos"""
     return render_template('control.html')
+
+
+@main_bp.route('/justificaciones')
+def justificaciones():
+    """Vista de control de justificaciones de ajustes."""
+    return render_template('justificaciones.html')
 
 
 @main_bp.route('/comparativo')
@@ -784,31 +941,42 @@ def api_cargar():
     try:
         horas_objetivo = parse_numero(data.get('horas_objetivo'))
         horas_facturadas = parse_numero(data.get('horas_facturadas'))
+        horas_penalizadas = parse_numero(data.get('horas_penalizadas'))
         valor_hora = parse_numero(data.get('valor_hora'))
         valor_hora_objetivo = parse_numero(data.get('valor_hora_objetivo', valor_hora))
         importe_fijo = parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None
+        variable_objetivo = parse_numero(data.get('variable_objetivo'))
         variable_productivo = parse_numero(data.get('variable_productivo'))
     except ValueError:
         errores.append('Hay valores numéricos con formato inválido')
-        horas_objetivo = horas_facturadas = valor_hora = valor_hora_objetivo = 0
+        horas_objetivo = horas_facturadas = horas_penalizadas = valor_hora = valor_hora_objetivo = 0
         importe_fijo = None
+        variable_objetivo = 0
         variable_productivo = 0
     
     if horas_objetivo < 0:
         errores.append('Las horas objetivo no pueden ser negativas')
     if horas_facturadas < 0:
         errores.append('Las horas facturadas no pueden ser negativas')
+    if horas_penalizadas < 0:
+        errores.append('Las horas penalizadas no pueden ser negativas')
+    if horas_penalizadas > horas_facturadas:
+        errores.append('Las horas penalizadas no pueden superar las horas facturadas')
     if valor_hora <= 0:
         errores.append('El valor hora debe ser mayor a 0')
     if valor_hora_objetivo <= 0:
         errores.append('El valor hora objetivo debe ser mayor a 0')
     if importe_fijo is not None and importe_fijo < 0:
         errores.append('El importe fijo facturado no puede ser negativo')
+    if variable_objetivo < 0:
+        errores.append('Variable Objetivo no puede ser negativo')
     if variable_productivo < 0:
         errores.append('Variable Productivo no puede ser negativo')
     if data.get('tipo_jornada') and data.get('tipo_jornada') not in TIPOS_VH:
         errores.append('El tipo de VH no es válido')
     
+    errores.extend(validar_justificaciones(data))
+
     if errores:
         return jsonify({'success': False, 'errores': errores}), 400
     
@@ -839,6 +1007,33 @@ def api_datos():
     })
 
 
+@main_bp.route('/api/justificaciones', methods=['GET'])
+def api_justificaciones():
+    """Listado de justificaciones de bonos, penalizaciones y otros."""
+    registros = aplicar_filtros(
+        Facturacion2026.query,
+        **filtros_request()
+    ).order_by(Facturacion2026.fecha.desc()).all()
+
+    items = []
+    for registro in registros:
+        for justificacion in registro.justificaciones:
+            item = justificacion.to_dict()
+            item.update({
+                'fecha': registro.fecha.isoformat() if registro.fecha else None,
+                'mes': registro.mes,
+                'cliente': registro.cliente,
+                'gerente': registro.gerente,
+                'jefe_site': registro.jefe_site,
+                'campania': registro.campania,
+                'subcampania': registro.subcampania,
+                'tipo_jornada': registro.tipo_jornada,
+            })
+            items.append(item)
+
+    return jsonify({'success': True, 'data': items})
+
+
 @main_bp.route('/api/datos/<int:registro_id>', methods=['PUT'])
 def api_actualizar_dato(registro_id):
     data = request.get_json() or {}
@@ -862,10 +1057,12 @@ def api_actualizar_dato(registro_id):
         registro.tipo_jornada = data['tipo_jornada']
         registro.horas_objetivo = float(data.get('horas_objetivo', 0))
         registro.horas_facturadas = float(data.get('horas_facturadas', 0))
+        registro.horas_penalizadas = float(data.get('horas_penalizadas', 0) or 0)
         registro.valor_hora_objetivo = float(data.get('valor_hora_objetivo') or data.get('valor_hora', 0))
         registro.valor_hora = float(data.get('valor_hora', 0))
         registro.tarifacion = data.get('tarifacion')
         registro.importe_fijo = parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None
+        registro.variable_objetivo = parse_numero(data.get('variable_objetivo'))
         registro.variable_productivo = parse_numero(data.get('variable_productivo'))
         registro.bonos = float(data.get('bonos', 0) or 0)
         registro.penalizaciones = float(data.get('penalizaciones', 0) or 0)
@@ -923,7 +1120,7 @@ def api_resumen():
             subcampania=filtros['subcampania']
         ).all()
         
-        resumen_mes = resumen_registros(registros_mes)
+        resumen_mes = resumen_dashboard(registros_mes)
         
         resumen.append({
             'mes': r.mes,
@@ -951,12 +1148,14 @@ def api_kpis():
                 'desvio': 0,
                 'porcentaje_cumplimiento': 0,
                 'horas_objetivo': 0,
-                'horas_facturadas': 0
+                'horas_facturadas': 0,
+                'bonos': 0,
+                'variable_productivo': 0,
+                'penalizaciones': 0
             }
         })
 
-    kpis = resumen_registros(registros)
-    kpis['total_facturado'] = kpis['total_real']
+    kpis = resumen_dashboard(registros)
     
     return jsonify({
         'success': True,
@@ -989,7 +1188,7 @@ def api_grafico():
             campania=filtros['campania'],
             subcampania=filtros['subcampania']
         ).all()
-        total_real = sum(reg.total_real for reg in registros_mes)
+        total_real = sum(reg.total_dashboard for reg in registros_mes)
         total_teorico = sum(reg.total_teorico for reg in registros_mes)
         
         datos.append({
@@ -1008,16 +1207,15 @@ def api_grafico():
 def api_filtros():
     """Opciones dinamicas disponibles para los filtros del dashboard."""
     filtros = filtros_request()
-    registros = aplicar_filtros(Facturacion2026.query, **filtros).all()
     return jsonify({
         'success': True,
         'filtros': {
-            'meses': sorted({r.mes for r in registros if r.mes}),
-            'clientes': sorted({r.cliente for r in registros if r.cliente}),
-            'gerentes': sorted({r.gerente for r in registros if r.gerente}),
-            'jefes_site': sorted({r.jefe_site for r in registros if r.jefe_site}),
-            'campanias': sorted({r.campania for r in registros if r.campania}),
-            'subcampanias': sorted({r.subcampania for r in registros if r.subcampania}),
+            'meses': opciones_filtro(filtros, 'mes'),
+            'clientes': opciones_filtro(filtros, 'cliente'),
+            'gerentes': opciones_filtro(filtros, 'gerente'),
+            'jefes_site': opciones_filtro(filtros, 'jefe_site'),
+            'campanias': opciones_filtro(filtros, 'campania'),
+            'subcampanias': opciones_filtro(filtros, 'subcampania'),
         }
     })
 
@@ -1032,7 +1230,7 @@ def api_por_cliente():
 
     datos = []
     for cliente, registros_cliente in grupos.items():
-        resumen = resumen_registros(registros_cliente)
+        resumen = resumen_dashboard(registros_cliente)
         datos.append({
             'cliente': cliente,
             'gerente': registros_cliente[0].gerente,
@@ -1221,10 +1419,10 @@ def api_exportar_excel():
 
     headers = [
         'Fecha', 'Mes', 'Cliente', 'Gerente', 'Jefe de Site', 'Campaña', 'Sub campaña', 'Tipo de VH', 'Horas objetivo',
-        'Horas facturadas', 'Valor hora objetivo', 'Valor hora alcanzado', 'Importe fijo facturado', 'Variable Productivo',
+        'Horas facturadas', 'Horas Penalizacion ADH', 'Valor hora objetivo', 'Valor hora alcanzado', 'Tarifacion adicional', 'Importe fijo facturado', 'Variable Objetivo', 'Variable Productivo',
         '% cumplimiento horas',
         'Objetivo facturacion horas', 'Objetivo facturacion bono', 'Facturacion objetivo',
-        'Facturado horas', 'Facturado bono', 'Penalizaciones por incumplimientos',
+        'Facturado horas', 'Facturado bono', 'Variable Productivo', 'Penalizaciones por incumplimientos',
         'NetX Gen', 'Otros', 'Total facturado', 'Desvio', '% cumplimiento'
     ]
     rows = []
@@ -1232,15 +1430,17 @@ def api_exportar_excel():
         rows.append([
             r.fecha.isoformat(), r.mes, r.cliente, r.gerente or '', r.jefe_site or '',
             r.campania or '', r.subcampania or '', r.tipo_jornada,
-            r.horas_objetivo, r.horas_facturadas,
+            r.horas_objetivo, r.horas_facturadas, r.horas_penalizadas or 0,
             r.valor_hora_objetivo if r.valor_hora_objetivo else r.valor_hora,
             r.valor_hora_alcanzado,
+            r.tarifacion or 0,
             r.importe_fijo if r.importe_fijo is not None else '',
+            r.variable_objetivo or 0,
             r.variable_productivo or 0,
             round(r.porcentaje_cumplimiento_horas, 2),
             round(r.objetivo_facturacion_horas, 2), round(r.objetivo_facturacion_bono, 2),
             round(r.facturacion_objetivo, 2), round(r.facturado_horas, 2),
-            round(r.facturado_bono, 2), round(r.penalizaciones_incumplimientos, 2),
+            round(r.facturado_bono, 2), round(r.variable_productivo_calculo, 2), round(r.penalizaciones_incumplimientos, 2),
             r.netx_gen or 0, r.otros or 0,
             round(r.total_real, 2),
             round(r.desvio, 2), round(r.porcentaje_cumplimiento, 2)
@@ -1288,6 +1488,9 @@ def api_template_carga():
         'Opcional',
         'Opcional',
     ]
+    ayuda.insert(10, 'Opcional')
+    while len(ayuda) < len(headers):
+        ayuda.append('Opcional')
     contenido = crear_xlsx(headers, [ayuda])
     return Response(
         contenido,
@@ -1331,11 +1534,13 @@ def api_importar_datos():
                 continue
 
             item.setdefault('bonos', 0)
+            item.setdefault('horas_penalizadas', 0)
             item.setdefault('penalizaciones', 0)
             item.setdefault('netx_gen', 0)
             item.setdefault('otros', 0)
             item.setdefault('tarifacion', None)
             item.setdefault('importe_fijo', None)
+            item.setdefault('variable_objetivo', 0)
             item.setdefault('variable_productivo', 0)
             item.setdefault('valor_hora_objetivo', item.get('valor_hora'))
 

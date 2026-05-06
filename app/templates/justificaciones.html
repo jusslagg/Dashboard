@@ -1,0 +1,120 @@
+{% extends "layout.html" %}
+
+{% block title %}Justificaciones - Facturacion{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">Justificaciones</h1>
+        <p class="text-gray-600 mt-2">Control de bonos, penalizaciones y otros ajustes cargados.</p>
+    </div>
+    <button type="button" onclick="cargarJustificaciones()" class="inline-flex items-center justify-center bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded text-sm font-medium">
+        <i class="fas fa-rotate mr-2"></i>Actualizar
+    </button>
+</div>
+
+<section class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+        <h2 class="font-semibold text-gray-800">Detalle de ajustes</h2>
+        <span id="estadoJustificaciones" class="text-sm text-gray-500">Cargando...</span>
+    </div>
+    <div class="overflow-auto max-h-[72vh]">
+        <table class="w-full text-sm">
+            <thead class="sticky top-0 bg-slate-100 text-slate-800">
+                <tr>
+                    <th class="px-4 py-3 text-left">Fecha</th>
+                    <th class="px-4 py-3 text-left">Mes</th>
+                    <th class="px-4 py-3 text-left">Cliente</th>
+                    <th class="px-4 py-3 text-left">Gerente</th>
+                    <th class="px-4 py-3 text-left">Jefe Site</th>
+                    <th class="px-4 py-3 text-left">Campana</th>
+                    <th class="px-4 py-3 text-left">Tipo</th>
+                    <th class="px-4 py-3 text-right">Cantidad</th>
+                    <th class="px-4 py-3 text-right">Precio</th>
+                    <th class="px-4 py-3 text-right">Importe</th>
+                    <th class="px-4 py-3 text-left">Descripcion</th>
+                </tr>
+            </thead>
+            <tbody id="tablaJustificaciones"></tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', cargarJustificaciones);
+
+async function cargarJustificaciones() {
+    const estado = document.getElementById('estadoJustificaciones');
+    const tbody = document.getElementById('tablaJustificaciones');
+    estado.textContent = 'Cargando...';
+    try {
+        const response = await fetch('/api/justificaciones');
+        const data = await response.json();
+        if (!data.success) throw new Error('Respuesta invalida');
+        renderJustificaciones(data.data || []);
+        estado.textContent = `${(data.data || []).length} item(s)`;
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="11" class="px-4 py-8 text-center text-red-600">No se pudieron cargar las justificaciones</td></tr>';
+        estado.textContent = 'Error';
+    }
+}
+
+function renderJustificaciones(items) {
+    const tbody = document.getElementById('tablaJustificaciones');
+    if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="11" class="px-4 py-8 text-center text-gray-500">No hay justificaciones cargadas</td></tr>';
+        return;
+    }
+    tbody.innerHTML = items.map(item => `
+        <tr class="border-b hover:bg-gray-50">
+            <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(item.fecha || '-')}</td>
+            <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(formatMes(item.mes))}</td>
+            <td class="px-4 py-3 font-medium">${escapeHtml(item.cliente || '-')}</td>
+            <td class="px-4 py-3">${escapeHtml(item.gerente || '-')}</td>
+            <td class="px-4 py-3">${escapeHtml(item.jefe_site || '-')}</td>
+            <td class="px-4 py-3">${escapeHtml(item.campania || '-')}</td>
+            <td class="px-4 py-3">${escapeHtml(labelTipo(item.tipo))}</td>
+            <td class="px-4 py-3 text-right">${formatNumber(item.cantidad || 0)}</td>
+            <td class="px-4 py-3 text-right">${formatCurrency(item.precio || 0)}</td>
+            <td class="px-4 py-3 text-right font-semibold">${formatCurrency(item.importe || 0)}</td>
+            <td class="px-4 py-3 min-w-80">${escapeHtml(item.descripcion || '-')}</td>
+        </tr>
+    `).join('');
+}
+
+function labelTipo(tipo) {
+    return {
+        bonos: 'Bono',
+        penalizaciones: 'Penalizacion',
+        otros: 'Otros'
+    }[tipo] || tipo;
+}
+
+function formatCurrency(value) {
+    return '$' + Number(value || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatNumber(value) {
+    return Number(value || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatMes(mes) {
+    if (!mes) return '-';
+    const [year, month] = mes.split('-');
+    const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    return `${meses[Number(month) - 1] || month}-${String(year).slice(-2)}`;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+</script>
+{% endblock %}

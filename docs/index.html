@@ -265,13 +265,14 @@
 <div class="bg-white rounded-lg shadow p-6">
     <h2 class="text-xl font-bold text-gray-800 mb-4">Resumen por Mes</h2>
     <div class="overflow-x-auto">
-        <table class="w-full min-w-[860px] text-sm">
+        <table class="w-full min-w-[940px] text-sm">
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-4 py-3 text-left font-semibold text-gray-600">Mes</th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-600">Horas Obj.</th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-600">Horas Fact.</th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-600">Bonos</th>
+                    <th class="px-4 py-3 text-right font-semibold text-gray-600">Var. Productivo</th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-600">Penaliz.</th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-600">Total Real</th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-600">Total Teorico</th>
@@ -281,7 +282,7 @@
             </thead>
             <tbody id="tablaResumen">
                 <tr>
-                    <td colspan="9" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                    <td colspan="10" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
                 </tr>
             </tbody>
         </table>
@@ -367,6 +368,7 @@ async function onFiltroChange() {
 }
 
 async function onFiltroMultipleChange() {
+    await cargarFiltrosDashboard(true);
     await cargarDashboard();
 }
 
@@ -636,7 +638,7 @@ function actualizarTablaClientes(clientes) {
 function actualizarTablaResumen(resumen) {
     const tbody = document.getElementById('tablaResumen');
     if (resumen.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">No hay datos disponibles</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">No hay datos disponibles</td></tr>';
         return;
     }
 
@@ -646,6 +648,7 @@ function actualizarTablaResumen(resumen) {
             <td class="px-4 py-3 text-right">${r.horas_objetivo.toFixed(1)}</td>
             <td class="px-4 py-3 text-right">${r.horas_facturadas.toFixed(1)}</td>
             <td class="px-4 py-3 text-right text-green-600">+${r.bonos.toFixed(0)}</td>
+            <td class="px-4 py-3 text-right text-green-600">${formatCurrency(r.variable_productivo || 0)}</td>
             <td class="px-4 py-3 text-right text-red-600">-${r.penalizaciones.toFixed(0)}</td>
             <td class="px-4 py-3 text-right font-semibold">${formatCurrency(r.total_real)}</td>
             <td class="px-4 py-3 text-right">${formatCurrency(r.total_teorico)}</td>

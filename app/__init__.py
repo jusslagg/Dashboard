@@ -47,6 +47,22 @@ def ensure_schema():
             SET jefe_site = 'Sin asignar'
             WHERE jefe_site IS NULL OR jefe_site = ''
         """))
+    if inspector.has_table('justificaciones_ajustes'):
+        justificacion_columns = {column['name'] for column in inspector.get_columns('justificaciones_ajustes')}
+        if 'cantidad' not in justificacion_columns:
+            db.session.execute(text("ALTER TABLE justificaciones_ajustes ADD COLUMN cantidad FLOAT DEFAULT 1"))
+        if 'precio' not in justificacion_columns:
+            db.session.execute(text("ALTER TABLE justificaciones_ajustes ADD COLUMN precio FLOAT DEFAULT 0"))
+        db.session.execute(text("""
+            UPDATE justificaciones_ajustes
+            SET cantidad = 1
+            WHERE cantidad IS NULL OR cantidad = 0
+        """))
+        db.session.execute(text("""
+            UPDATE justificaciones_ajustes
+            SET precio = importe
+            WHERE precio IS NULL OR precio = 0
+        """))
 
     columns = {column['name'] for column in inspector.get_columns('facturacion_2026')}
     missing_columns = {
@@ -54,8 +70,10 @@ def ensure_schema():
         'jefe_site': 'ALTER TABLE facturacion_2026 ADD COLUMN jefe_site VARCHAR(100)',
         'campania': 'ALTER TABLE facturacion_2026 ADD COLUMN campania VARCHAR(100)',
         'subcampania': 'ALTER TABLE facturacion_2026 ADD COLUMN subcampania VARCHAR(100)',
+        'horas_penalizadas': 'ALTER TABLE facturacion_2026 ADD COLUMN horas_penalizadas FLOAT DEFAULT 0',
         'valor_hora_objetivo': 'ALTER TABLE facturacion_2026 ADD COLUMN valor_hora_objetivo FLOAT',
         'importe_fijo': 'ALTER TABLE facturacion_2026 ADD COLUMN importe_fijo FLOAT',
+        'variable_objetivo': 'ALTER TABLE facturacion_2026 ADD COLUMN variable_objetivo FLOAT DEFAULT 0',
         'variable_productivo': 'ALTER TABLE facturacion_2026 ADD COLUMN variable_productivo FLOAT DEFAULT 0',
     }
     for column, statement in missing_columns.items():
@@ -83,8 +101,18 @@ def ensure_schema():
     """))
     db.session.execute(text("""
         UPDATE facturacion_2026
+        SET horas_penalizadas = 0
+        WHERE horas_penalizadas IS NULL
+    """))
+    db.session.execute(text("""
+        UPDATE facturacion_2026
         SET variable_productivo = 0
         WHERE variable_productivo IS NULL
+    """))
+    db.session.execute(text("""
+        UPDATE facturacion_2026
+        SET variable_objetivo = 0
+        WHERE variable_objetivo IS NULL
     """))
     db.session.execute(text("""
         INSERT INTO asignaciones_comerciales (cliente, gerente, jefe_site, campania, subcampania, activa, creado_en)

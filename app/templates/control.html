@@ -124,6 +124,7 @@
                     <th class="px-4 py-3 text-right">Fact. Objetivo</th>
                     <th class="px-4 py-3 text-right">Fact. Horas</th>
                     <th class="px-4 py-3 text-right">Fact. Bono</th>
+                    <th class="px-4 py-3 text-right">Var. Productivo</th>
                     <th class="px-4 py-3 text-right">Penaliz.</th>
                     <th class="px-4 py-3 text-right">NetX Gen</th>
                     <th class="px-4 py-3 text-right">Otros</th>
@@ -193,11 +194,15 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Horas objetivo</label>
-                <input type="number" id="editHorasObjetivo" min="0" step="0.5" required class="w-full border border-gray-300 rounded px-3 py-2">
+                <input type="number" id="editHorasObjetivo" min="0" step="0.01" required class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Horas facturadas</label>
-                <input type="number" id="editHorasFacturadas" min="0" step="0.5" required class="w-full border border-gray-300 rounded px-3 py-2">
+                <input type="number" id="editHorasFacturadas" min="0" step="0.01" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Horas Penalizacion ADH</label>
+                <input type="number" id="editHorasPenalizadas" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Valor hora objetivo</label>
@@ -208,12 +213,16 @@
                 <input type="number" id="editValorHora" min="0.01" step="0.01" required class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Tarifacion</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tarifacion adicional</label>
                 <input type="number" id="editTarifacion" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Importe fijo facturado</label>
                 <input type="number" id="editImporteFijo" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Variable Objetivo</label>
+                <input type="number" id="editVariableObjetivo" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Bonos</label>
@@ -278,31 +287,32 @@ document.addEventListener('click', function(event) {
     });
 });
 
-async function cargarFiltros() {
+async function cargarFiltros(mantenerSeleccion = false) {
     try {
-        const filtrosResponse = await fetch('/api/filtros');
+        const seleccion = getFiltrosControl();
+        const filtrosResponse = await fetch('/api/filtros' + (mantenerSeleccion ? buildQuery(seleccion) : ''));
         const filtrosData = await filtrosResponse.json();
         if (filtrosData.success) {
-            popularSelect('filtroMes', filtrosData.filtros.meses, 'Todos', formatMes);
-            popularSelect('filtroCliente', filtrosData.filtros.clientes, 'Todos', value => value);
-            popularSelect('filtroGerente', filtrosData.filtros.gerentes, 'Todos', value => value);
-            popularSelect('filtroJefeSite', filtrosData.filtros.jefes_site, 'Todos', value => value);
-            popularSelect('filtroCampania', filtrosData.filtros.campanias, 'Todos', value => value);
-            popularSelect('filtroSubcampania', filtrosData.filtros.subcampanias, 'Todos', value => value);
+            popularSelect('filtroMes', filtrosData.filtros.meses, 'Todos', formatMes, seleccion.mes);
+            popularSelect('filtroCliente', filtrosData.filtros.clientes, 'Todos', value => value, seleccion.cliente);
+            popularSelect('filtroGerente', filtrosData.filtros.gerentes, 'Todos', value => value, seleccion.gerente);
+            popularSelect('filtroJefeSite', filtrosData.filtros.jefes_site, 'Todos', value => value, seleccion.jefe_site);
+            popularSelect('filtroCampania', filtrosData.filtros.campanias, 'Todos', value => value, seleccion.campania);
+            popularSelect('filtroSubcampania', filtrosData.filtros.subcampanias, 'Todos', value => value, seleccion.subcampania);
         }
     } catch (error) {
         console.error('Error cargando filtros:', error);
     }
 }
 
-function popularSelect(id, valores, placeholder, formatter) {
+function popularSelect(id, valores, placeholder, formatter, seleccionado) {
     const select = document.getElementById(id);
-    const seleccionados = getSelectedValues(id);
+    const seleccionados = Array.isArray(seleccionado) ? seleccionado : (seleccionado ? [seleccionado] : []);
     if (select.dataset.listaMultiple === 'true') {
         const todosSeleccionados = valores.length > 0 && valores.every(valor => seleccionados.includes(valor));
         const opcionesHtml = valores.map(valor => `
             <label class="flex items-center gap-2 py-1 cursor-pointer" data-opcion-texto="${formatter(valor).toLowerCase()}">
-                <input type="checkbox" value="${valor}" ${seleccionados.includes(valor) ? 'checked' : ''} onchange="actualizarTodosMultiple('${id}'); actualizarResumenMultiple('${id}'); cargarDatos()" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <input type="checkbox" value="${valor}" ${seleccionados.includes(valor) ? 'checked' : ''} onchange="actualizarTodosMultiple('${id}'); actualizarResumenMultiple('${id}'); onFiltroMultipleChange()" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                 <span>${formatter(valor)}</span>
             </label>
         `).join('');
@@ -335,7 +345,7 @@ function toggleTodosMultiple(id, checked) {
         input.checked = checked;
     });
     actualizarResumenMultiple(id);
-    cargarDatos();
+    onFiltroMultipleChange();
 }
 
 function actualizarTodosMultiple(id) {
@@ -362,21 +372,7 @@ function actualizarResumenMultiple(id) {
 }
 
 async function cargarDatos() {
-    const mes = getSelectedValues('filtroMes');
-    const cliente = getSelectedValues('filtroCliente');
-    const gerente = getSelectedValues('filtroGerente');
-    const jefeSite = getSelectedValues('filtroJefeSite');
-    const campania = getSelectedValues('filtroCampania');
-    const subcampania = getSelectedValues('filtroSubcampania');
-
-    const params = new URLSearchParams();
-    agregarParam(params, 'mes', mes);
-    agregarParam(params, 'cliente', cliente);
-    agregarParam(params, 'gerente', gerente);
-    agregarParam(params, 'jefe_site', jefeSite);
-    agregarParam(params, 'campania', campania);
-    agregarParam(params, 'subcampania', subcampania);
-    const url = '/api/datos' + (params.toString() ? `?${params.toString()}` : '');
+    const url = '/api/datos' + buildQuery(getFiltrosControl());
 
     try {
         const response = await fetch(url);
@@ -388,6 +384,11 @@ async function cargarDatos() {
     } catch (error) {
         console.error('Error cargando datos:', error);
     }
+}
+
+async function onFiltroMultipleChange() {
+    await cargarFiltros(true);
+    await cargarDatos();
 }
 
 function actualizarTabla(datos) {
@@ -430,6 +431,7 @@ function actualizarTabla(datos) {
                 <td class="px-4 py-3 text-right font-semibold">${formatCurrency(d.facturacion_objetivo || d.total_teorico)}</td>
                 <td class="px-4 py-3 text-right">${formatCurrency(d.facturado_horas || 0)}</td>
                 <td class="px-4 py-3 text-right text-green-600">${formatCurrency(d.facturado_bono || 0)}</td>
+                <td class="px-4 py-3 text-right text-green-600">${formatCurrency(d.variable_productivo_calculo || d.variable_productivo || 0)}</td>
                 <td class="px-4 py-3 text-right text-red-600">-${formatCurrency(d.penalizaciones_incumplimientos || 0)}</td>
                 <td class="px-4 py-3 text-right">${d.netx_gen.toFixed(0)}</td>
                 <td class="px-4 py-3 text-right">${d.otros.toFixed(0)}</td>
@@ -459,21 +461,25 @@ function formatCurrency(value) {
 }
 
 function exportarExcel() {
+    window.location.href = '/api/exportar_excel' + buildQuery(getFiltrosControl());
+}
+
+function getFiltrosControl() {
+    return {
+        mes: getSelectedValues('filtroMes'),
+        cliente: getSelectedValues('filtroCliente'),
+        gerente: getSelectedValues('filtroGerente'),
+        jefe_site: getSelectedValues('filtroJefeSite'),
+        campania: getSelectedValues('filtroCampania'),
+        subcampania: getSelectedValues('filtroSubcampania')
+    };
+}
+
+function buildQuery(filtros) {
     const params = new URLSearchParams();
-    const mes = getSelectedValues('filtroMes');
-    const cliente = getSelectedValues('filtroCliente');
-    const gerente = getSelectedValues('filtroGerente');
-    const jefeSite = getSelectedValues('filtroJefeSite');
-    const campania = getSelectedValues('filtroCampania');
-    const subcampania = getSelectedValues('filtroSubcampania');
-    agregarParam(params, 'mes', mes);
-    agregarParam(params, 'cliente', cliente);
-    agregarParam(params, 'gerente', gerente);
-    agregarParam(params, 'jefe_site', jefeSite);
-    agregarParam(params, 'campania', campania);
-    agregarParam(params, 'subcampania', subcampania);
+    Object.entries(filtros).forEach(([nombre, valor]) => agregarParam(params, nombre, valor));
     const query = params.toString();
-    window.location.href = '/api/exportar_excel' + (query ? `?${query}` : '');
+    return query ? `?${query}` : '';
 }
 
 function getSelectedValues(id) {
@@ -505,6 +511,7 @@ function filtrarOpciones(selectId, texto) {
 }
 
 function abrirEditar(d) {
+    window.justificacionesEdicion = d.justificaciones || [];
     document.getElementById('editId').value = d.id;
     document.getElementById('editFecha').value = d.fecha;
     document.getElementById('editMes').value = d.mes;
@@ -523,10 +530,12 @@ function abrirEditar(d) {
     tipoSelect.value = d.tipo_jornada;
     document.getElementById('editHorasObjetivo').value = d.horas_objetivo;
     document.getElementById('editHorasFacturadas').value = d.horas_facturadas;
+    document.getElementById('editHorasPenalizadas').value = d.horas_penalizadas || 0;
     document.getElementById('editValorHoraObjetivo').value = d.valor_hora_objetivo || d.valor_hora;
     document.getElementById('editValorHora').value = d.valor_hora;
     document.getElementById('editTarifacion').value = d.tarifacion || '';
     document.getElementById('editImporteFijo').value = d.importe_fijo ?? '';
+    document.getElementById('editVariableObjetivo').value = d.variable_objetivo || 0;
     document.getElementById('editBonos').value = d.bonos || 0;
     document.getElementById('editVariableProductivo').value = d.variable_productivo || 0;
     document.getElementById('editPenalizaciones').value = d.penalizaciones || 0;
@@ -542,6 +551,11 @@ function cerrarModal() {
     document.getElementById('modalEditar').classList.remove('flex');
 }
 
+function parseNumeroCampo(id) {
+    const valor = document.getElementById(id).value;
+    return parseFloat(String(valor).replace(',', '.')) || 0;
+}
+
 async function guardarEdicion(event) {
     event.preventDefault();
     const id = document.getElementById('editId').value;
@@ -555,17 +569,20 @@ async function guardarEdicion(event) {
         campania: document.getElementById('editCampania').value,
         subcampania: document.getElementById('editSubcampania').value,
         tipo_jornada: document.getElementById('editTipoJornada').value,
-        horas_objetivo: parseFloat(document.getElementById('editHorasObjetivo').value),
-        horas_facturadas: parseFloat(document.getElementById('editHorasFacturadas').value),
-        valor_hora_objetivo: parseFloat(document.getElementById('editValorHoraObjetivo').value),
-        valor_hora: parseFloat(document.getElementById('editValorHora').value),
-        tarifacion: parseFloat(document.getElementById('editTarifacion').value) || null,
-        importe_fijo: document.getElementById('editImporteFijo').value === '' ? null : parseFloat(document.getElementById('editImporteFijo').value),
-        bonos: parseFloat(document.getElementById('editBonos').value) || 0,
-        variable_productivo: parseFloat(document.getElementById('editVariableProductivo').value) || 0,
-        penalizaciones: parseFloat(document.getElementById('editPenalizaciones').value) || 0,
-        netx_gen: parseFloat(document.getElementById('editNetxGen').value) || 0,
-        otros: parseFloat(document.getElementById('editOtros').value) || 0
+        horas_objetivo: parseNumeroCampo('editHorasObjetivo'),
+        horas_facturadas: parseNumeroCampo('editHorasFacturadas'),
+        horas_penalizadas: parseNumeroCampo('editHorasPenalizadas'),
+        valor_hora_objetivo: parseNumeroCampo('editValorHoraObjetivo'),
+        valor_hora: parseNumeroCampo('editValorHora'),
+        tarifacion: parseNumeroCampo('editTarifacion') || null,
+        importe_fijo: document.getElementById('editImporteFijo').value === '' ? null : parseNumeroCampo('editImporteFijo'),
+        variable_objetivo: parseNumeroCampo('editVariableObjetivo'),
+        bonos: parseNumeroCampo('editBonos'),
+        variable_productivo: parseNumeroCampo('editVariableProductivo'),
+        penalizaciones: parseNumeroCampo('editPenalizaciones'),
+        netx_gen: parseNumeroCampo('editNetxGen'),
+        otros: parseNumeroCampo('editOtros'),
+        justificaciones: window.justificacionesEdicion || []
     };
     const response = await fetch(`/api/datos/${id}`, {
         method: 'PUT',
