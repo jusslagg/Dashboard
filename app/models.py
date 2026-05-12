@@ -1,5 +1,111 @@
 from app import db
 from datetime import datetime
+import json
+from werkzeug.security import check_password_hash, generate_password_hash
+
+
+ROLES_USUARIO = ('administrador', 'usuario', 'superusuario')
+
+
+class Usuario(db.Model):
+    __tablename__ = 'usuarios'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(160), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    rol = db.Column(db.String(30), nullable=False, default='usuario')
+    activo = db.Column(db.Boolean, default=True, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    @property
+    def es_administrador(self):
+        return self.rol == 'administrador'
+
+    @property
+    def es_superusuario(self):
+        return self.rol == 'superusuario'
+
+    @property
+    def puede_editar(self):
+        return self.rol in ('administrador', 'superusuario')
+
+    @property
+    def puede_eliminar(self):
+        return self.rol == 'administrador'
+
+    @property
+    def puede_ver_carga(self):
+        return self.rol in ('administrador', 'superusuario')
+
+    @property
+    def puede_ver_catalogos(self):
+        return self.rol in ('administrador', 'superusuario')
+
+    @property
+    def puede_administrar_usuarios(self):
+        return self.rol in ('administrador', 'superusuario')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'email': self.email,
+            'rol': self.rol,
+            'activo': self.activo,
+            'creado_en': self.creado_en.isoformat() if self.creado_en else None,
+            'actualizado_en': self.actualizado_en.isoformat() if self.actualizado_en else None,
+        }
+
+
+class HistorialCambio(db.Model):
+    __tablename__ = 'historial_cambios'
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
+    usuario_nombre = db.Column(db.String(120), nullable=True)
+    usuario_email = db.Column(db.String(160), nullable=True)
+    accion = db.Column(db.String(30), nullable=False)
+    entidad = db.Column(db.String(80), nullable=False)
+    entidad_id = db.Column(db.String(50), nullable=True)
+    resumen = db.Column(db.String(255), nullable=False)
+    detalle = db.Column(db.Text, nullable=True)
+    antes = db.Column(db.Text, nullable=True)
+    despues = db.Column(db.Text, nullable=True)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    usuario = db.relationship('Usuario', lazy=True)
+
+    def _json(self, value):
+        if not value:
+            return None
+        try:
+            return json.loads(value)
+        except (TypeError, json.JSONDecodeError):
+            return value
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'usuario_id': self.usuario_id,
+            'usuario_nombre': self.usuario_nombre,
+            'usuario_email': self.usuario_email,
+            'accion': self.accion,
+            'entidad': self.entidad,
+            'entidad_id': self.entidad_id,
+            'resumen': self.resumen,
+            'detalle': self.detalle,
+            'antes': self._json(self.antes),
+            'despues': self._json(self.despues),
+            'creado_en': self.creado_en.isoformat() if self.creado_en else None,
+        }
 
 
 class Facturacion2026(db.Model):
@@ -13,6 +119,7 @@ class Facturacion2026(db.Model):
     jefe_site = db.Column(db.String(100), nullable=True)
     campania = db.Column(db.String(100), nullable=True)
     subcampania = db.Column(db.String(100), nullable=True)
+    tipo_negocio = db.Column(db.String(100), nullable=True)
     tipo_jornada = db.Column(db.String(50), nullable=False)
     horas_objetivo = db.Column(db.Float, nullable=False)
     horas_facturadas = db.Column(db.Float, nullable=False)
@@ -155,6 +262,7 @@ class Facturacion2026(db.Model):
             'jefe_site': self.jefe_site,
             'campania': self.campania,
             'subcampania': self.subcampania,
+            'tipo_negocio': self.tipo_negocio,
             'tipo_jornada': self.tipo_jornada,
             'horas_objetivo': self.horas_objetivo,
             'horas_facturadas': self.horas_facturadas,
@@ -223,8 +331,16 @@ class AsignacionComercial(db.Model):
     jefe_site = db.Column(db.String(100), nullable=False)
     campania = db.Column(db.String(100), nullable=False)
     subcampania = db.Column(db.String(100), nullable=False)
+    tipo_negocio = db.Column(db.String(100), nullable=True)
     activa = db.Column(db.Boolean, default=True, nullable=False)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    @property
+    def label(self):
+        partes = [self.cliente, self.gerente, self.jefe_site, self.campania, self.subcampania]
+        if self.tipo_negocio:
+            partes.append(self.tipo_negocio)
+        return ' / '.join(partes)
 
     def to_dict(self):
         return {
@@ -234,6 +350,30 @@ class AsignacionComercial(db.Model):
             'jefe_site': self.jefe_site,
             'campania': self.campania,
             'subcampania': self.subcampania,
+            'tipo_negocio': self.tipo_negocio,
             'activa': self.activa,
-            'label': f'{self.cliente} / {self.gerente} / {self.jefe_site} / {self.campania} / {self.subcampania}'
+            'label': self.label
+        }
+
+
+class BajaOperativa(db.Model):
+    __tablename__ = 'bajas_operativas'
+
+    id = db.Column(db.Integer, primary_key=True)
+    year = db.Column(db.String(4), nullable=False, index=True)
+    mes_baja = db.Column(db.String(20), nullable=False, index=True)
+    campania = db.Column(db.String(100), nullable=False, index=True)
+    motivo_baja = db.Column(db.String(120), nullable=False, index=True)
+    cantidad = db.Column(db.Integer, default=1, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'year': self.year,
+            'mes_baja': self.mes_baja,
+            'campania': self.campania,
+            'motivo_baja': self.motivo_baja,
+            'cantidad': self.cantidad or 0,
+            'creado_en': self.creado_en.isoformat() if self.creado_en else None,
         }

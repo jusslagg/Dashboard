@@ -10,7 +10,7 @@
 
 <!-- Filtros -->
 <div class="bg-white rounded-lg shadow p-4 mb-6">
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-4 items-end">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-8 gap-4 items-end">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Mes</label>
             <div class="relative" data-dropdown-multiple="true">
@@ -89,6 +89,19 @@
                 </div>
             </div>
         </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de negocio</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelTipoNegocio')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenTipoNegocio">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelTipoNegocio" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarTipoNegocio" type="text" oninput="filtrarOpciones('filtroTipoNegocio', this.value)" placeholder="Buscar tipo..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroTipoNegocio" data-lista-multiple="true" data-resumen="resumenTipoNegocio" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
         <div class="flex items-end gap-2">
             <button onclick="cargarDatos()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
                 <i class="fas fa-filter mr-2"></i>Filtrar
@@ -100,10 +113,29 @@
     </div>
 </div>
 
+<div id="mensajeControl" class="mb-4 hidden rounded px-4 py-3 text-sm"></div>
+
 <!-- Tabla de Datos -->
 <div class="bg-white rounded-lg shadow overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="w-full min-w-[2220px] text-sm">
+    <div class="border-b border-gray-200 bg-slate-50 px-4 py-3">
+        <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
+            <div class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <i class="fas fa-arrows-alt-h text-blue-600"></i>
+                <span>Desplazamiento horizontal</span>
+            </div>
+            <div class="flex flex-1 items-center gap-2">
+                <button type="button" onclick="moverTabla('inicio')" class="h-9 w-9 rounded border border-slate-300 bg-white text-slate-700 hover:bg-slate-100" title="Ir al inicio">
+                    <i class="fas fa-angle-double-left"></i>
+                </button>
+                <input id="tablaScrollRange" type="range" min="0" max="100" value="0" oninput="scrollTablaDesdeBarra(this.value)" class="w-full accent-blue-600">
+                <button type="button" onclick="moverTabla('acciones')" class="h-9 rounded border border-blue-200 bg-blue-50 px-3 text-sm font-semibold text-blue-700 hover:bg-blue-100" title="Ir a acciones">
+                    Acciones <i class="fas fa-angle-double-right ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="tablaControlScroll" class="overflow-x-auto">
+        <table class="w-full min-w-[2320px] text-sm">
             <thead class="bg-gray-800 text-white">
                 <tr>
                     <th class="px-4 py-3 text-left">Fecha</th>
@@ -113,6 +145,7 @@
                     <th class="px-4 py-3 text-left">Jefe Site</th>
                     <th class="px-4 py-3 text-left">Campaña</th>
                     <th class="px-4 py-3 text-left">Sub campaña</th>
+                    <th class="px-4 py-3 text-left">Tipo negocio</th>
                     <th class="px-4 py-3 text-left">Tipo VH</th>
                     <th class="px-4 py-3 text-right">H.Obj.</th>
                     <th class="px-4 py-3 text-right">H.Fact.</th>
@@ -131,7 +164,7 @@
                     <th class="px-4 py-3 text-right">Total Facturado</th>
                     <th class="px-4 py-3 text-right">Desvío</th>
                     <th class="px-4 py-3 text-center">% Cump.</th>
-                    <th class="px-4 py-3 text-center">Acciones</th>
+                    <th class="sticky right-0 z-20 bg-gray-800 px-4 py-3 text-center shadow-[-10px_0_18px_-14px_rgba(15,23,42,0.85)]">Acciones</th>
                 </tr>
             </thead>
             <tbody id="tablaDatos">
@@ -178,6 +211,10 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Sub campaña</label>
                 <input type="text" id="editSubcampania" required class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de negocio</label>
+                <input type="text" id="editTipoNegocio" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Opcional">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de VH</label>
@@ -244,9 +281,35 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Otros</label>
                 <input type="number" id="editOtros" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
+            <div class="md:col-span-3 rounded border border-slate-200 bg-slate-50 p-4">
+                <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h3 class="font-semibold text-gray-800">Justificaciones</h3>
+                        <p class="text-xs text-gray-500">Edita el detalle de bonos, penalizaciones y otros antes de confirmar.</p>
+                    </div>
+                    <button type="button" onclick="agregarJustificacionEdicion()" class="inline-flex items-center justify-center rounded bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800">
+                        <i class="fas fa-plus mr-2"></i>Agregar
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[760px] text-sm">
+                        <thead class="bg-white text-gray-700">
+                            <tr>
+                                <th class="px-2 py-2 text-left">Tipo</th>
+                                <th class="px-2 py-2 text-right">Cantidad</th>
+                                <th class="px-2 py-2 text-right">Precio</th>
+                                <th class="px-2 py-2 text-right">Importe</th>
+                                <th class="px-2 py-2 text-left">Descripcion</th>
+                                <th class="px-2 py-2 text-center">Accion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaJustificacionesEdicion"></tbody>
+                    </table>
+                </div>
+            </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Clave</label>
-                <input type="password" id="editClave" required class="w-full border border-gray-300 rounded px-3 py-2" placeholder="CAT2026">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar con contrasena</label>
+                <input type="password" id="editClave" required class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Contrasena de tu cuenta o PRUEBA2026">
             </div>
             <div class="md:col-span-3 flex justify-end gap-2 mt-2">
                 <button type="button" onclick="cerrarModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Cancelar</button>
@@ -274,9 +337,13 @@
 
 {% block scripts %}
 <script>
+const puedeEditar = {{ 'true' if usuario_actual and usuario_actual.puede_editar else 'false' }};
+const puedeEliminar = {{ 'true' if usuario_actual and usuario_actual.puede_eliminar else 'false' }};
+
 document.addEventListener('DOMContentLoaded', function() {
     cargarFiltros();
     cargarDatos();
+    configurarScrollTabla();
 });
 
 document.addEventListener('click', function(event) {
@@ -286,6 +353,43 @@ document.addEventListener('click', function(event) {
         }
     });
 });
+
+function configurarScrollTabla() {
+    const scroller = document.getElementById('tablaControlScroll');
+    if (!scroller) return;
+    scroller.addEventListener('scroll', actualizarBarraTabla);
+    window.addEventListener('resize', actualizarBarraTabla);
+    actualizarBarraTabla();
+}
+
+function maxScrollTabla() {
+    const scroller = document.getElementById('tablaControlScroll');
+    return scroller ? Math.max(scroller.scrollWidth - scroller.clientWidth, 0) : 0;
+}
+
+function actualizarBarraTabla() {
+    const scroller = document.getElementById('tablaControlScroll');
+    const barra = document.getElementById('tablaScrollRange');
+    if (!scroller || !barra) return;
+    const max = maxScrollTabla();
+    barra.value = max ? Math.round((scroller.scrollLeft / max) * 100) : 0;
+    barra.disabled = max === 0;
+}
+
+function scrollTablaDesdeBarra(valor) {
+    const scroller = document.getElementById('tablaControlScroll');
+    if (!scroller) return;
+    scroller.scrollLeft = maxScrollTabla() * (Number(valor) / 100);
+}
+
+function moverTabla(destino) {
+    const scroller = document.getElementById('tablaControlScroll');
+    if (!scroller) return;
+    scroller.scrollTo({
+        left: destino === 'acciones' ? maxScrollTabla() : 0,
+        behavior: 'smooth'
+    });
+}
 
 async function cargarFiltros(mantenerSeleccion = false) {
     try {
@@ -299,6 +403,7 @@ async function cargarFiltros(mantenerSeleccion = false) {
             popularSelect('filtroJefeSite', filtrosData.filtros.jefes_site, 'Todos', value => value, seleccion.jefe_site);
             popularSelect('filtroCampania', filtrosData.filtros.campanias, 'Todos', value => value, seleccion.campania);
             popularSelect('filtroSubcampania', filtrosData.filtros.subcampanias, 'Todos', value => value, seleccion.subcampania);
+            popularSelect('filtroTipoNegocio', filtrosData.filtros.tipos_negocio, 'Todos', value => value, seleccion.tipo_negocio);
         }
     } catch (error) {
         console.error('Error cargando filtros:', error);
@@ -372,10 +477,10 @@ function actualizarResumenMultiple(id) {
 }
 
 async function cargarDatos() {
-    const url = '/api/datos' + buildQuery(getFiltrosControl());
+    const url = '/api/datos' + buildQuery({ ...getFiltrosControl(), _ts: Date.now() });
 
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, { cache: 'no-store' });
         const data = await response.json();
 
         if (data.success) {
@@ -395,7 +500,7 @@ function actualizarTabla(datos) {
     const tbody = document.getElementById('tablaDatos');
 
     if (datos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="26" class="px-4 py-8 text-center text-gray-500">No hay datos disponibles</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="27" class="px-4 py-8 text-center text-gray-500">No hay datos disponibles</td></tr>';
         return;
     }
 
@@ -417,6 +522,7 @@ function actualizarTabla(datos) {
                 <td class="px-4 py-3">${d.jefe_site || '-'}</td>
                 <td class="px-4 py-3">${d.campania || '-'}</td>
                 <td class="px-4 py-3">${d.subcampania || '-'}</td>
+                <td class="px-4 py-3">${d.tipo_negocio || '-'}</td>
                 <td class="px-4 py-3">${d.tipo_jornada}</td>
                 <td class="px-4 py-3 text-right">${d.horas_objetivo.toFixed(1)}</td>
                 <td class="px-4 py-3 text-right ${alertaHoras ? 'font-bold text-yellow-700' : ''}">
@@ -447,13 +553,22 @@ function actualizarTabla(datos) {
                         ${d.porcentaje_cumplimiento.toFixed(1)}%
                     </span>
                 </td>
-                <td class="px-4 py-3 text-center whitespace-nowrap">
-                    <button onclick='abrirEditar(${JSON.stringify(d)})' class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Editar</button>
-                    <button onclick="eliminarRegistro(${d.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs ml-1">Eliminar</button>
-                </td>
+                <td class="sticky right-0 z-10 whitespace-nowrap bg-white px-4 py-3 text-center shadow-[-10px_0_18px_-14px_rgba(15,23,42,0.85)]">${accionesRegistro(d)}</td>
             </tr>
         `;
     }).join('');
+    actualizarBarraTabla();
+}
+
+function accionesRegistro(d) {
+    const acciones = [];
+    if (puedeEditar) {
+        acciones.push(`<button onclick='abrirEditar(${JSON.stringify(d)})' class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Editar</button>`);
+    }
+    if (puedeEliminar) {
+        acciones.push(`<button onclick="eliminarRegistro(${d.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs ml-1">Eliminar</button>`);
+    }
+    return acciones.length ? acciones.join('') : '<span class="text-xs text-gray-400">Solo lectura</span>';
 }
 
 function formatCurrency(value) {
@@ -471,7 +586,8 @@ function getFiltrosControl() {
         gerente: getSelectedValues('filtroGerente'),
         jefe_site: getSelectedValues('filtroJefeSite'),
         campania: getSelectedValues('filtroCampania'),
-        subcampania: getSelectedValues('filtroSubcampania')
+        subcampania: getSelectedValues('filtroSubcampania'),
+        tipo_negocio: getSelectedValues('filtroTipoNegocio')
     };
 }
 
@@ -493,7 +609,7 @@ function getSelectedValues(id) {
 function agregarParam(params, nombre, valor) {
     if (Array.isArray(valor)) {
         valor.forEach(item => params.append(nombre, item));
-    } else if (valor) {
+    } else if (valor !== undefined && valor !== null && valor !== '') {
         params.set(nombre, valor);
     }
 }
@@ -520,6 +636,7 @@ function abrirEditar(d) {
     document.getElementById('editJefeSite').value = d.jefe_site || '';
     document.getElementById('editCampania').value = d.campania || '';
     document.getElementById('editSubcampania').value = d.subcampania || '';
+    document.getElementById('editTipoNegocio').value = d.tipo_negocio || '';
     const tipoSelect = document.getElementById('editTipoJornada');
     if (![...tipoSelect.options].some(option => option.value === d.tipo_jornada)) {
         const option = document.createElement('option');
@@ -541,6 +658,7 @@ function abrirEditar(d) {
     document.getElementById('editPenalizaciones').value = d.penalizaciones || 0;
     document.getElementById('editNetxGen').value = d.netx_gen || 0;
     document.getElementById('editOtros').value = d.otros || 0;
+    renderJustificacionesEdicion();
     document.getElementById('editClave').value = '';
     document.getElementById('modalEditar').classList.remove('hidden');
     document.getElementById('modalEditar').classList.add('flex');
@@ -556,10 +674,128 @@ function parseNumeroCampo(id) {
     return parseFloat(String(valor).replace(',', '.')) || 0;
 }
 
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+
+function renderJustificacionesEdicion() {
+    const tbody = document.getElementById('tablaJustificacionesEdicion');
+    const items = Array.isArray(window.justificacionesEdicion) ? window.justificacionesEdicion : [];
+    if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-3 py-5 text-center text-gray-500">No hay justificaciones cargadas</td></tr>';
+        return;
+    }
+    tbody.innerHTML = items.map((item, index) => `
+        <tr class="border-t border-slate-200 bg-white">
+            <td class="px-2 py-2">
+                <select data-jus-campo="tipo" data-index="${index}" onchange="actualizarJustificacionEdicion(${index})" class="w-full rounded border border-gray-300 px-2 py-2">
+                    <option value="">Seleccionar...</option>
+                    <option value="bonos" ${item.tipo === 'bonos' ? 'selected' : ''}>Bono</option>
+                    <option value="penalizaciones" ${item.tipo === 'penalizaciones' ? 'selected' : ''}>Penalizacion</option>
+                    <option value="otros" ${item.tipo === 'otros' ? 'selected' : ''}>Otros</option>
+                </select>
+            </td>
+            <td class="px-2 py-2"><input data-jus-campo="cantidad" data-index="${index}" type="number" min="0" step="0.01" value="${Number(item.cantidad || 1)}" oninput="actualizarJustificacionEdicion(${index}, true)" class="w-full rounded border border-gray-300 px-2 py-2 text-right"></td>
+            <td class="px-2 py-2"><input data-jus-campo="precio" data-index="${index}" type="number" min="0" step="0.01" value="${Number(item.precio || item.importe || 0)}" oninput="actualizarJustificacionEdicion(${index}, true)" class="w-full rounded border border-gray-300 px-2 py-2 text-right"></td>
+            <td class="px-2 py-2"><input data-jus-campo="importe" data-index="${index}" type="number" min="0" step="0.01" value="${Number(item.importe || 0)}" readonly class="w-full rounded border border-gray-200 bg-gray-50 px-2 py-2 text-right font-semibold"></td>
+            <td class="px-2 py-2"><input data-jus-campo="descripcion" data-index="${index}" type="text" value="${escapeHtml(item.descripcion || '')}" oninput="actualizarJustificacionEdicion(${index})" class="w-full rounded border border-gray-300 px-2 py-2"></td>
+            <td class="px-2 py-2 text-center">
+                <button type="button" onclick="eliminarJustificacionEdicion(${index})" class="inline-flex h-9 w-9 items-center justify-center rounded bg-red-50 text-red-600 hover:bg-red-100" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function actualizarJustificacionEdicion(index, recalcularImporte = false) {
+    const items = Array.isArray(window.justificacionesEdicion) ? window.justificacionesEdicion : [];
+    const item = items[index];
+    if (!item) return;
+    const rowInputs = document.querySelectorAll(`[data-index="${index}"][data-jus-campo]`);
+    rowInputs.forEach(input => {
+        const campo = input.dataset.jusCampo;
+        item[campo] = ['cantidad', 'precio', 'importe'].includes(campo)
+            ? (parseFloat(String(input.value).replace(',', '.')) || 0)
+            : input.value;
+    });
+    if (recalcularImporte) {
+        item.importe = (Number(item.cantidad || 0) * Number(item.precio || 0));
+        const importeInput = document.querySelector(`[data-index="${index}"][data-jus-campo="importe"]`);
+        if (importeInput) importeInput.value = item.importe.toFixed(2);
+    }
+    sincronizarImportesDesdeJustificaciones();
+}
+
+function agregarJustificacionEdicion(item = {}) {
+    if (!Array.isArray(window.justificacionesEdicion)) window.justificacionesEdicion = [];
+    window.justificacionesEdicion.push({
+        tipo: item.tipo || '',
+        cantidad: Number(item.cantidad || 1),
+        precio: Number(item.precio || item.importe || 0),
+        importe: Number(item.importe || item.precio || 0),
+        descripcion: item.descripcion || ''
+    });
+    renderJustificacionesEdicion();
+}
+
+function eliminarJustificacionEdicion(index) {
+    if (!Array.isArray(window.justificacionesEdicion)) return;
+    window.justificacionesEdicion.splice(index, 1);
+    renderJustificacionesEdicion();
+    sincronizarImportesDesdeJustificaciones();
+}
+
+function sincronizarImportesDesdeJustificaciones() {
+    const totales = { bonos: 0, penalizaciones: 0, otros: 0 };
+    (window.justificacionesEdicion || []).forEach(item => {
+        if (Object.prototype.hasOwnProperty.call(totales, item.tipo)) {
+            totales[item.tipo] += Number(item.importe || 0);
+        }
+    });
+    document.getElementById('editBonos').value = totales.bonos.toFixed(2);
+    document.getElementById('editPenalizaciones').value = totales.penalizaciones.toFixed(2);
+    document.getElementById('editOtros').value = totales.otros.toFixed(2);
+}
+
+function justificacionesDesdeImportes(payload) {
+    const items = Array.isArray(window.justificacionesEdicion) ? window.justificacionesEdicion : [];
+    const salida = items
+        .map(item => ({
+            tipo: item.tipo,
+            cantidad: Number(item.cantidad || 0),
+            precio: Number(item.precio || 0),
+            importe: Number(item.importe || 0),
+            descripcion: String(item.descripcion || '').trim()
+        }))
+        .filter(item => item.tipo || item.cantidad > 0 || item.precio > 0 || item.importe > 0 || item.descripcion);
+    const tiposConImporte = new Set(salida.map(item => item.tipo));
+    ['bonos', 'penalizaciones', 'otros'].forEach(tipo => {
+        const importe = Number(payload[tipo] || 0);
+        if (importe > 0 && !tiposConImporte.has(tipo)) {
+            salida.push({
+                tipo,
+                cantidad: 1,
+                precio: importe,
+                importe,
+                descripcion: `Ajuste cargado desde Control - ${tipo}`
+            });
+        }
+    });
+    return salida;
+}
+
 async function guardarEdicion(event) {
     event.preventDefault();
     const id = document.getElementById('editId').value;
     const payload = {
+        password_confirmacion: document.getElementById('editClave').value,
         clave: document.getElementById('editClave').value,
         fecha: document.getElementById('editFecha').value,
         mes: document.getElementById('editMes').value,
@@ -568,6 +804,7 @@ async function guardarEdicion(event) {
         jefe_site: document.getElementById('editJefeSite').value,
         campania: document.getElementById('editCampania').value,
         subcampania: document.getElementById('editSubcampania').value,
+        tipo_negocio: document.getElementById('editTipoNegocio').value,
         tipo_jornada: document.getElementById('editTipoJornada').value,
         horas_objetivo: parseNumeroCampo('editHorasObjetivo'),
         horas_facturadas: parseNumeroCampo('editHorasFacturadas'),
@@ -582,8 +819,9 @@ async function guardarEdicion(event) {
         penalizaciones: parseNumeroCampo('editPenalizaciones'),
         netx_gen: parseNumeroCampo('editNetxGen'),
         otros: parseNumeroCampo('editOtros'),
-        justificaciones: window.justificacionesEdicion || []
+        justificaciones: []
     };
+    payload.justificaciones = justificacionesDesdeImportes(payload);
     const response = await fetch(`/api/datos/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -591,6 +829,7 @@ async function guardarEdicion(event) {
     });
     const data = await response.json();
     if (data.success) {
+        mostrarMensajeControl(data.mensaje || 'Registro actualizado correctamente', 'success');
         cerrarModal();
         cargarDatos();
         cargarFiltros();
@@ -600,16 +839,17 @@ async function guardarEdicion(event) {
 }
 
 async function eliminarRegistro(id) {
-    const clave = prompt('Ingrese clave de autorizacion');
-    if (!clave) return;
     if (!confirm('Eliminar este registro?')) return;
+    const confirmacion = prompt('Confirme con su contrasena de cuenta. En pruebas locales puede usar PRUEBA2026.');
+    if (!confirmacion) return;
     const response = await fetch(`/api/datos/${id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave })
+        body: JSON.stringify({ password_confirmacion: confirmacion, clave: confirmacion })
     });
     const data = await response.json();
     if (data.success) {
+        mostrarMensajeControl(data.mensaje || 'Registro eliminado correctamente', 'success');
         cargarDatos();
         cargarFiltros();
     } else {
@@ -622,6 +862,13 @@ function formatMes(mes) {
     const [year, month] = mes.split('-');
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     return `${meses[parseInt(month) - 1]} ${year}`;
+}
+
+function mostrarMensajeControl(mensaje, tipo) {
+    const div = document.getElementById('mensajeControl');
+    div.className = `mb-4 rounded px-4 py-3 text-sm ${tipo === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+    div.textContent = mensaje;
+    div.classList.remove('hidden');
 }
 </script>
 {% endblock %}

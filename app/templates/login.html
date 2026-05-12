@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+
+{% block title %}Ingreso - Facturacion{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-md">
+    <section class="rounded-lg bg-white p-6 shadow">
+        <div class="mb-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Acceso</p>
+            <h1 id="tituloLogin" class="mt-1 text-2xl font-bold text-gray-900">
+                {% if requiere_setup %}Crear administrador{% else %}Ingresar{% endif %}
+            </h1>
+            <p class="mt-2 text-sm text-gray-600">
+                {% if requiere_setup %}
+                No hay usuarios creados. Este primer perfil queda como administrador.
+                {% else %}
+                Ingresa con tu email y contrasena.
+                {% endif %}
+            </p>
+        </div>
+
+        <div id="alertaLogin" class="mb-4 hidden rounded border px-3 py-2 text-sm"></div>
+
+        <form id="formLogin" class="space-y-4">
+            {% if requiere_setup %}
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Nombre</label>
+                <input id="nombre" type="text" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" autocomplete="name">
+            </div>
+            {% endif %}
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Email</label>
+                <input id="email" type="email" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" autocomplete="email" required>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Contrasena</label>
+                <input id="password" type="password" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" autocomplete="{% if requiere_setup %}new-password{% else %}current-password{% endif %}" required>
+            </div>
+            <button type="submit" class="flex h-10 w-full items-center justify-center gap-2 rounded bg-slate-800 px-4 text-sm font-semibold text-white hover:bg-slate-700">
+                <i class="fas fa-right-to-bracket"></i>
+                {% if requiere_setup %}Crear y entrar{% else %}Ingresar{% endif %}
+            </button>
+        </form>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const requiereSetup = {{ 'true' if requiere_setup else 'false' }};
+
+document.getElementById('formLogin').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const payload = {
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+    };
+    if (requiereSetup) {
+        payload.nombre = document.getElementById('nombre').value;
+    }
+
+    const endpoint = requiereSetup ? '/api/usuarios/setup' : '/api/auth/login';
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!data.success) {
+        mostrarAlerta((data.errores || ['No se pudo ingresar']).join('. '), false);
+        return;
+    }
+    window.location.href = '/';
+});
+
+function mostrarAlerta(texto, ok) {
+    const alerta = document.getElementById('alertaLogin');
+    alerta.className = ok
+        ? 'mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800'
+        : 'mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800';
+    alerta.textContent = texto;
+}
+</script>
+{% endblock %}

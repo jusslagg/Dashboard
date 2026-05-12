@@ -3,54 +3,98 @@
 {% block title %}Matriz Mensual - Facturacion{% endblock %}
 
 {% block content %}
-<div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+<div class="mb-5 flex flex-col gap-4">
     <div>
-        <h1 class="text-3xl font-bold text-gray-800">Matriz mensual</h1>
-        <p class="text-gray-600 mt-2">Vista de cumplimiento por gerencia y apertura por jefe de site.</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Control ejecutivo</p>
+        <h1 class="text-3xl font-bold text-gray-900">Matriz mensual</h1>
+        <p class="mt-2 max-w-3xl text-sm text-gray-600">Lectura rapida de cumplimiento, desvios y meses que necesitan seguimiento.</p>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2 w-full lg:w-auto">
-        <select id="yearSelect" onchange="cargarMatriz()" class="border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+    <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[110px_150px_minmax(190px,1fr)_minmax(190px,1fr)_170px_minmax(170px,1fr)]">
+        <select id="yearSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="2026">2026</option>
         </select>
-        <select id="jefeSiteSelect" onchange="cargarMatriz()" class="border border-gray-300 rounded px-3 py-2 text-sm bg-white min-w-64">
+        <select id="mesFiltro" onchange="renderDesdeEstado()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+            <option value="">Todos los meses</option>
+        </select>
+        <select id="jefeSiteSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todos los jefes de site</option>
         </select>
-        <select id="modoFilas" onchange="renderDesdeEstado()" class="border border-gray-300 rounded px-3 py-2 text-sm bg-white">
-            <option value="resumen">Vista resumen</option>
-            <option value="detalle">Vista detalle</option>
+        <select id="tipoNegocioSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+            <option value="">Todos los tipos de negocio</option>
         </select>
-        <select id="modoMeses" onchange="renderDesdeEstado()" class="border border-gray-300 rounded px-3 py-2 text-sm bg-white">
-            <option value="conDatos">Meses con datos</option>
-            <option value="todos">Todo el año</option>
+        <select id="modoFilas" onchange="renderDesdeEstado()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+            <option value="ejecutiva">Vista ejecutiva</option>
+            <option value="resumen">Indicadores clave</option>
+            <option value="detalle">Detalle completo</option>
         </select>
-        <input id="buscarGrupo" oninput="renderDesdeEstado()" type="search" placeholder="Buscar grupo..." class="border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+        <div class="relative min-w-0">
+            <i class="fas fa-search pointer-events-none absolute left-3 top-3 text-xs text-gray-400"></i>
+            <input id="buscarGrupo" oninput="renderDesdeEstado()" type="search" placeholder="Buscar grupo..." class="h-10 w-full rounded border border-gray-300 bg-white pl-9 pr-3 text-sm">
+        </div>
     </div>
 </div>
 
-<div class="mb-4 bg-white rounded-lg shadow p-2 flex flex-col sm:flex-row gap-2">
-    <button id="tabGerencia" type="button" onclick="cambiarTabla('gerencia')" class="px-4 py-2 rounded text-sm font-medium bg-slate-800 text-white">
+<div class="mb-5 flex flex-col gap-2 rounded-lg bg-white p-2 shadow sm:flex-row">
+    <button id="tabGerencia" type="button" onclick="cambiarTabla('gerencia')" class="flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium bg-slate-800 text-white">
+        <i class="fas fa-user-tie"></i>
         Total por gerencia
     </button>
-    <button id="tabApertura" type="button" onclick="cambiarTabla('apertura')" class="px-4 py-2 rounded text-sm font-medium bg-white text-slate-700 hover:bg-gray-100">
-        Apertura por jefe de site
+    <button id="tabApertura" type="button" onclick="cambiarTabla('apertura')" class="flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium bg-white text-slate-700 hover:bg-gray-100">
+        <i class="fas fa-sitemap"></i>
+        Apertura operativa
     </button>
 </div>
 
-<section class="bg-white rounded-lg shadow overflow-hidden">
-    <div class="px-4 py-3 border-b border-gray-200 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-            <h2 id="tituloMatriz" class="font-semibold text-gray-800">Total por gerencia</h2>
-            <p id="subtituloMatriz" class="text-xs text-gray-500 mt-1">Resumen de indicadores principales.</p>
+<section id="kpiResumen" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"></section>
+
+<section class="mb-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]">
+    <div class="rounded-lg bg-white p-4 shadow">
+        <div class="mb-3 flex items-center justify-between gap-3">
+            <div>
+                <h2 class="font-semibold text-gray-900">Desvio por grupo</h2>
+                <p class="text-xs text-gray-500">Ordenado por impacto sobre el objetivo.</p>
+            </div>
+            <span id="estadoGrafico" class="text-xs text-gray-500">Cargando...</span>
         </div>
-        <span id="estadoMatriz" class="text-sm text-gray-500">Cargando...</span>
+        <div class="h-64">
+            <canvas id="graficoDesvios"></canvas>
+        </div>
+    </div>
+    <div class="rounded-lg bg-white p-4 shadow">
+        <div class="mb-3 flex items-center justify-between gap-3">
+            <div>
+                <h2 class="font-semibold text-gray-900">Focos de atencion</h2>
+                <p class="text-xs text-gray-500">Grupos con mayor brecha negativa.</p>
+            </div>
+            <i class="fas fa-triangle-exclamation text-amber-500"></i>
+        </div>
+        <div id="listaFocos" class="space-y-3"></div>
+    </div>
+</section>
+
+<section id="seccionMatriz" class="overflow-hidden rounded-lg bg-white shadow">
+    <div class="border-b border-gray-200 px-4 py-3">
+        <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h2 id="tituloMatriz" class="font-semibold text-gray-900">Total por gerencia</h2>
+                <p id="subtituloMatriz" class="mt-1 text-xs text-gray-500">Resumen de indicadores principales.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>En objetivo</span>
+                <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>Revisar</span>
+                <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>Critico</span>
+                <span id="estadoMatriz" class="ml-2 font-medium text-slate-700">Cargando...</span>
+            </div>
+        </div>
     </div>
     <div class="overflow-auto max-h-[72vh]">
-        <table class="w-full text-xs border-collapse">
-            <thead id="theadMatriz" class="sticky top-0 z-10 bg-slate-200 text-slate-900"></thead>
+        <table class="w-full border-collapse text-xs">
+            <thead id="theadMatriz" class="sticky top-0 z-20 bg-slate-100 text-slate-900"></thead>
             <tbody id="tbodyMatriz"></tbody>
         </table>
     </div>
 </section>
+
 {% endblock %}
 
 {% block scripts %}
@@ -58,102 +102,109 @@
 const filasMatriz = [
     { key: 'valor_hora_objetivo', label: 'VH Objetivo', type: 'currency', empty: '-' },
     { key: 'valor_hora_realizado', label: 'VH Alcanzado', type: 'currency', empty: '-' },
-    { key: 'porcentaje_cumplimiento_logueo', label: '% Cumplimiento Logueo', type: 'percent', heat: true, empty: '-' },
-    { key: 'porcentaje_cumplimiento_horas_adh', label: '% Cumplimiento Horas + Penalidad ADH', type: 'percent', heat: true, empty: '-' },
-    { key: 'porcentaje_valor_hora', label: '% Valor hora', type: 'percent', heat: true, empty: '-' },
-    { key: 'porcentaje_bono', label: '% Bono', type: 'percent', heat: true, empty: '-' },
-    { key: 'porcentaje_cumplimiento', label: '% Cumplimiento Facturacion', type: 'percent', heat: true, empty: '-' },
-    { key: 'horas_objetivo', label: 'Horas Objetivo', type: 'number' },
-    { key: 'horas_facturadas', label: 'Horas Realizadas', type: 'number' },
-    { key: 'horas_penalizadas', label: 'Horas Penalizacion ADH', type: 'number' },
-    { key: 'horas_obj', label: 'Horas Obj', type: 'money' },
-    { key: 'variable_obj', label: 'Variable Obj', type: 'money' },
-    { key: 'total_obj', label: 'Total Obj', type: 'money', band: true },
-    { key: 'horas_real', label: 'Horas Real', type: 'money' },
-    { key: 'variable_real', label: 'Variable Real', type: 'money' },
-    { key: 'penalizaciones_bonos', label: 'Penalizaciones / Bonos', type: 'money', negativeDisplay: true },
-    { key: 'total_real', label: 'Total Real', type: 'money', band: true },
-    { key: 'desvio_horas_monto', label: 'Desvio (+/-) Horas', type: 'money', signed: true },
-    { key: 'desvio_variable', label: 'Desvio (+/-) Variable', type: 'money', signed: true },
-    { key: 'desvio_penalizaciones_bonos', label: 'Desvio (+/-) Penalizaciones / Bonos', type: 'money', signed: true },
-    { key: 'desvio', label: 'Total Desvio (+/-)', type: 'money', signed: true, band: true },
+    { key: 'horas_obj', label: 'Objetivo facturacion horas', type: 'money' },
+    { key: 'variable_obj', label: 'Objetivo facturacion bono', type: 'money' },
+    { key: 'total_obj', label: 'Facturacion Objetivo', type: 'money', band: true },
+    { key: 'horas_real', label: 'Facturado Horas', type: 'money' },
+    { key: 'bonos_real', label: 'Facturado Bono', type: 'money' },
+    { key: 'penalizaciones_real', label: 'Penalizaciones por incumplimientos', type: 'money', negativeDisplay: true },
+    { key: 'total_real', label: 'Total Facturado', type: 'money', band: true },
+    { key: 'desvio', label: 'Desvio', type: 'money', signed: true },
 ];
 
 const filasResumen = [
     'valor_hora_objetivo',
     'valor_hora_realizado',
-    'porcentaje_cumplimiento_logueo',
-    'porcentaje_cumplimiento_horas_adh',
-    'porcentaje_valor_hora',
-    'porcentaje_bono',
-    'porcentaje_cumplimiento',
-    'horas_objetivo',
-    'horas_facturadas',
-    'horas_penalizadas',
-    'desvio_horas',
+    'horas_obj',
+    'variable_obj',
     'total_obj',
+    'horas_real',
+    'bonos_real',
+    'penalizaciones_real',
     'total_real',
     'desvio',
 ];
 
 let matrizData = null;
 let tablaActiva = 'gerencia';
+let graficoDesvios = null;
 
 document.addEventListener('DOMContentLoaded', cargarMatriz);
 
 async function cargarMatriz() {
     const year = document.getElementById('yearSelect').value;
     const jefeSite = document.getElementById('jefeSiteSelect').value;
-    const params = new URLSearchParams({ year });
+    const tipoNegocio = document.getElementById('tipoNegocioSelect').value;
+    const params = new URLSearchParams({ year, _ts: Date.now() });
     if (jefeSite) params.set('jefe_site', jefeSite);
+    if (tipoNegocio) params.set('tipo_negocio', tipoNegocio);
 
     setEstado('Cargando...');
     try {
-        const response = await fetch('/api/matriz?' + params.toString());
+        const response = await fetch('/api/matriz?' + params.toString(), { cache: 'no-store' });
         const data = await response.json();
         if (!data.success) throw new Error('Respuesta invalida');
 
         matrizData = data;
         popularJefes(data.jefes_site, data.jefe_site);
+        popularTiposNegocio(data.tipos_negocio || [], data.tipo_negocio);
+        popularMeses(data.columnas);
         renderDesdeEstado();
     } catch (error) {
         console.error('Error cargando matriz:', error);
         setEstado('No se pudo cargar');
+        document.getElementById('estadoGrafico').textContent = 'Sin datos';
     }
 }
 
 function cambiarTabla(tabla) {
     tablaActiva = tabla;
-    document.getElementById('tabGerencia').className = tabla === 'gerencia'
-        ? 'px-4 py-2 rounded text-sm font-medium bg-slate-800 text-white'
-        : 'px-4 py-2 rounded text-sm font-medium bg-white text-slate-700 hover:bg-gray-100';
-    document.getElementById('tabApertura').className = tabla === 'apertura'
-        ? 'px-4 py-2 rounded text-sm font-medium bg-slate-800 text-white'
-        : 'px-4 py-2 rounded text-sm font-medium bg-white text-slate-700 hover:bg-gray-100';
+    const activo = 'flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium bg-slate-800 text-white';
+    const inactivo = 'flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium bg-white text-slate-700 hover:bg-gray-100';
+    document.getElementById('tabGerencia').className = tabla === 'gerencia' ? activo : inactivo;
+    document.getElementById('tabApertura').className = tabla === 'apertura' ? activo : inactivo;
+    popularMeses(matrizData.columnas);
     renderDesdeEstado();
 }
 
 function renderDesdeEstado() {
     if (!matrizData) return;
-    const gruposBase = tablaActiva === 'gerencia' ? matrizData.total_gerencia : matrizData.apertura_jefe_site;
+    document.getElementById('seccionMatriz').classList.remove('hidden');
+    const gruposBase = gruposActivosBase();
+    const mesSeleccionado = document.getElementById('mesFiltro').value;
     const busqueda = document.getElementById('buscarGrupo').value.trim().toLowerCase();
-    const grupos = busqueda
+    const gruposBusqueda = busqueda
         ? gruposBase.filter(grupo => grupo.nombre.toLowerCase().includes(busqueda))
         : gruposBase;
-    const columnas = columnasVisibles(matrizData.columnas, grupos);
-    const filas = filasVisibles();
+    const grupos = aplicarFiltroMes(gruposBusqueda, mesSeleccionado);
+    const columnas = columnasVisibles(matrizData.columnas, grupos, mesSeleccionado);
+    const modo = document.getElementById('modoFilas').value;
+    const periodo = etiquetaPeriodo(mesSeleccionado);
 
-    renderMatriz('theadMatriz', 'tbodyMatriz', columnas, grupos, filas);
+    renderKpis(grupos);
+    renderGrafico(grupos);
+    renderFocos(grupos);
+    if (modo === 'ejecutiva') {
+        renderEjecutiva('theadMatriz', 'tbodyMatriz', columnas, grupos);
+    } else {
+        renderMatriz('theadMatriz', 'tbodyMatriz', columnas, grupos, filasVisibles());
+    }
+
     const tituloApertura = matrizData.jefe_site
-        ? `Apertura de ${matrizData.jefe_site} por campaña`
+        ? `Apertura de ${matrizData.jefe_site} por campana`
         : 'Apertura por jefe de site';
     document.getElementById('tituloMatriz').textContent = tablaActiva === 'gerencia'
         ? 'Total por gerencia'
         : tituloApertura;
-    document.getElementById('subtituloMatriz').textContent = document.getElementById('modoFilas').value === 'resumen'
-        ? 'Indicadores principales para lectura rapida.'
-        : 'Detalle completo de importes, horas y desvios.';
-    document.getElementById('estadoMatriz').textContent = `${grupos.length} grupo(s), ${columnas.length} columna(s)`;
+    document.getElementById('subtituloMatriz').textContent = `${subtituloModo(modo)} Periodo: ${periodo}.`;
+    const mesesMostrados = columnas.filter(col => col.key !== 'total').length;
+    document.getElementById('estadoMatriz').textContent = `${grupos.length} grupo(s), ${mesesMostrados} mes(es)`;
+}
+
+function subtituloModo(modo) {
+    if (modo === 'ejecutiva') return 'Una fila por grupo con total anual y cumplimiento mensual.';
+    if (modo === 'resumen') return 'Indicadores clave para lectura rapida.';
+    return 'Detalle completo de importes, horas y desvios.';
 }
 
 function filasVisibles() {
@@ -161,12 +212,27 @@ function filasVisibles() {
     return filasMatriz.filter(fila => filasResumen.includes(fila.key));
 }
 
-function columnasVisibles(columnas, grupos) {
-    if (document.getElementById('modoMeses').value === 'todos') return columnas;
+function columnasVisibles(columnas, grupos, mesSeleccionado) {
+    if (mesSeleccionado) return columnas.filter(col => col.key === mesSeleccionado);
     return columnas.filter(col => {
         if (col.key === 'total') return true;
         return grupos.some(grupo => Boolean(grupo.meses[col.key]));
     });
+}
+
+function aplicarFiltroMes(grupos, mesSeleccionado) {
+    if (!mesSeleccionado) return grupos;
+    return grupos
+        .map(grupo => {
+            const metricasMes = grupo.meses[mesSeleccionado];
+            if (!metricasMes) return null;
+            return {
+                ...grupo,
+                total: metricasMes,
+                meses: { [mesSeleccionado]: metricasMes },
+            };
+        })
+        .filter(Boolean);
 }
 
 function popularJefes(jefes, seleccionado) {
@@ -177,14 +243,193 @@ function popularJefes(jefes, seleccionado) {
     ).join('');
 }
 
+function popularTiposNegocio(tipos, seleccionado) {
+    const select = document.getElementById('tipoNegocioSelect');
+    const actual = seleccionado || select.value;
+    select.innerHTML = '<option value="">Todos los tipos de negocio</option>' + tipos.map(tipo =>
+        `<option value="${escapeHtml(tipo)}" ${tipo === actual ? 'selected' : ''}>${escapeHtml(tipo)}</option>`
+    ).join('');
+}
+
+function popularMeses(columnas) {
+    const select = document.getElementById('mesFiltro');
+    const actual = select.value;
+    const grupos = gruposActivosBase();
+    const meses = columnas.filter(col =>
+        col.key !== 'total' && grupos.some(grupo => Boolean(grupo.meses[col.key]))
+    );
+    const existeActual = meses.some(mes => mes.key === actual);
+    select.innerHTML = '<option value="">Todos los meses</option>' + meses.map(mes =>
+        `<option value="${escapeHtml(mes.key)}" ${mes.key === actual ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`
+    ).join('');
+    if (actual && !existeActual) select.value = '';
+}
+
+function gruposActivosBase() {
+    if (!matrizData) return [];
+    return tablaActiva === 'gerencia' ? matrizData.total_gerencia : matrizData.apertura_jefe_site;
+}
+
+function etiquetaPeriodo(mesSeleccionado) {
+    if (!mesSeleccionado || !matrizData) return matrizData ? matrizData.year : 'Todos los meses';
+    const columna = matrizData.columnas.find(col => col.key === mesSeleccionado);
+    return columna ? columna.label : mesSeleccionado;
+}
+
+function renderKpis(grupos) {
+    const total = sumarTotales(grupos);
+    const cumplimiento = porcentaje(total.total_real, total.total_obj);
+    const desvio = total.total_real - total.total_obj;
+    const horasDesvio = total.horas_facturadas - total.horas_objetivo;
+    const kpis = [
+        { label: 'Cumplimiento', value: formatPercent(cumplimiento), detail: estadoTexto(cumplimiento), tone: tonoCumplimiento(cumplimiento), icon: 'fa-gauge-high' },
+        { label: 'Total real', value: formatMoney(total.total_real), detail: `Objetivo ${formatMoney(total.total_obj)}`, tone: 'slate', icon: 'fa-dollar-sign' },
+        { label: 'Desvio total', value: formatMoney(desvio), detail: desvio >= 0 ? 'Sobre objetivo' : 'Debajo del objetivo', tone: desvio >= 0 ? 'green' : 'red', icon: 'fa-arrow-trend-up' },
+        { label: 'Desvio horas', value: formatNumber(horasDesvio), detail: `${formatNumber(total.horas_facturadas)} realizadas`, tone: horasDesvio >= 0 ? 'green' : 'amber', icon: 'fa-clock' },
+    ];
+    document.getElementById('kpiResumen').innerHTML = kpis.map(kpi => `
+        <article class="rounded-lg bg-white p-4 shadow">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500">${kpi.label}</p>
+                    <p class="mt-2 text-2xl font-bold text-gray-900">${kpi.value}</p>
+                    <p class="mt-1 text-xs ${textoTono(kpi.tone)}">${kpi.detail}</p>
+                </div>
+                <span class="inline-flex h-10 w-10 items-center justify-center rounded ${fondoTono(kpi.tone)}">
+                    <i class="fas ${kpi.icon} ${textoTono(kpi.tone)}"></i>
+                </span>
+            </div>
+        </article>
+    `).join('');
+}
+
+function sumarTotales(grupos) {
+    return grupos.reduce((acc, grupo) => {
+        const total = grupo.total || {};
+        acc.total_real += Number(total.total_real || 0);
+        acc.total_obj += Number(total.total_obj || total.total_teorico || 0);
+        acc.horas_objetivo += Number(total.horas_objetivo || 0);
+        acc.horas_facturadas += Number(total.horas_facturadas || 0);
+        return acc;
+    }, { total_real: 0, total_obj: 0, horas_objetivo: 0, horas_facturadas: 0 });
+}
+
+function renderGrafico(grupos) {
+    const datos = [...grupos]
+        .sort((a, b) => Number(a.total.desvio || 0) - Number(b.total.desvio || 0))
+        .slice(0, 8);
+    document.getElementById('estadoGrafico').textContent = datos.length ? `${datos.length} grupo(s)` : 'Sin datos';
+    const ctx = document.getElementById('graficoDesvios');
+    if (graficoDesvios) graficoDesvios.destroy();
+    graficoDesvios = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: datos.map(grupo => grupo.nombre),
+            datasets: [{
+                data: datos.map(grupo => Number(grupo.total.desvio || 0)),
+                backgroundColor: datos.map(grupo => Number(grupo.total.desvio || 0) < 0 ? '#e11d48' : '#059669'),
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: item => formatMoney(item.raw) } } },
+            scales: {
+                x: { ticks: { callback: value => formatCompactMoney(value) }, grid: { color: '#e5e7eb' } },
+                y: { ticks: { color: '#334155' }, grid: { display: false } },
+            }
+        }
+    });
+}
+
+function renderFocos(grupos) {
+    const focos = [...grupos]
+        .filter(grupo => Number(grupo.total.desvio || 0) < 0 || Number(grupo.total.porcentaje_cumplimiento || 0) < 97)
+        .sort((a, b) => Number(a.total.desvio || 0) - Number(b.total.desvio || 0))
+        .slice(0, 5);
+    const contenedor = document.getElementById('listaFocos');
+    if (!focos.length) {
+        contenedor.innerHTML = '<p class="rounded border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">No hay focos criticos con los filtros actuales.</p>';
+        return;
+    }
+    contenedor.innerHTML = focos.map(grupo => {
+        const cumplimiento = Number(grupo.total.porcentaje_cumplimiento || 0);
+        return `
+            <div class="border-b border-gray-100 pb-3 last:border-b-0 last:pb-0">
+                <div class="flex items-start justify-between gap-3">
+                    <p class="font-medium text-gray-900">${escapeHtml(grupo.nombre)}</p>
+                    <span class="${badgeClase(cumplimiento)}">${formatPercent(cumplimiento)}</span>
+                </div>
+                <div class="mt-2 flex items-center justify-between text-xs text-gray-500">
+                    <span>Desvio</span>
+                    <span class="${Number(grupo.total.desvio || 0) < 0 ? 'font-semibold text-rose-700' : 'font-semibold text-emerald-700'}">${formatMoney(grupo.total.desvio || 0)}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderEjecutiva(theadId, tbodyId, columnas, grupos) {
+    const thead = document.getElementById(theadId);
+    const tbody = document.getElementById(tbodyId);
+    const meses = columnas.filter(col => col.key !== 'total');
+    thead.innerHTML = `
+        <tr>
+            <th class="sticky left-0 z-30 min-w-56 border border-slate-200 bg-slate-100 px-3 py-2 text-left">Grupo</th>
+            <th class="min-w-28 border border-slate-200 px-3 py-2 text-center">Estado</th>
+            <th class="min-w-28 border border-slate-200 px-3 py-2 text-right">Objetivo</th>
+            <th class="min-w-28 border border-slate-200 px-3 py-2 text-right">Real</th>
+            <th class="min-w-28 border border-slate-200 px-3 py-2 text-right">Desvio</th>
+            <th class="min-w-24 border border-slate-200 px-3 py-2 text-center">Cumpl.</th>
+            ${meses.map(col => `<th class="min-w-20 border border-slate-200 px-2 py-2 text-center">${escapeHtml(col.label)}</th>`).join('')}
+        </tr>
+    `;
+
+    if (!grupos.length) {
+        tbody.innerHTML = `<tr><td colspan="${meses.length + 6}" class="px-4 py-8 text-center text-gray-500">No hay datos cargados</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = grupos.map(grupo => {
+        const total = grupo.total || {};
+        const cumplimiento = Number(total.porcentaje_cumplimiento || 0);
+        const desvio = Number(total.desvio || 0);
+        return `
+            <tr class="hover:bg-slate-50">
+                <td class="sticky left-0 z-10 border border-gray-200 bg-white px-3 py-3 font-semibold text-gray-900">${escapeHtml(grupo.nombre)}</td>
+                <td class="border border-gray-200 px-3 py-3 text-center"><span class="${badgeClase(cumplimiento)}">${estadoTexto(cumplimiento)}</span></td>
+                <td class="border border-gray-200 px-3 py-3 text-right font-medium">${formatMoney(total.total_obj || total.total_teorico || 0)}</td>
+                <td class="border border-gray-200 px-3 py-3 text-right font-medium">${formatMoney(total.total_real || 0)}</td>
+                <td class="border border-gray-200 px-3 py-3 text-right ${desvio < 0 ? 'font-semibold text-rose-700' : 'font-semibold text-emerald-700'}">${formatMoney(desvio)}</td>
+                <td class="border border-gray-200 px-3 py-3 text-center font-semibold">${formatPercent(cumplimiento)}</td>
+                ${meses.map(col => celdaMesEjecutiva(grupo.meses[col.key])).join('')}
+            </tr>
+        `;
+    }).join('');
+}
+
+function celdaMesEjecutiva(datos) {
+    if (!datos) return '<td class="border border-gray-200 bg-gray-50 px-2 py-3 text-center text-gray-400">-</td>';
+    const cumplimiento = Number(datos.porcentaje_cumplimiento || 0);
+    const desvio = Number(datos.desvio || 0);
+    return `
+        <td class="border border-gray-200 px-2 py-2 text-center ${heatBg(cumplimiento)}" title="Desvio ${formatMoney(desvio)}">
+            <div class="font-semibold">${formatPercent(cumplimiento)}</div>
+            <div class="mt-1 text-[10px] ${desvio < 0 ? 'text-rose-700' : 'text-emerald-700'}">${formatCompactMoney(desvio)}</div>
+        </td>
+    `;
+}
+
 function renderMatriz(theadId, tbodyId, columnas, grupos, filas) {
     const thead = document.getElementById(theadId);
     const tbody = document.getElementById(tbodyId);
     thead.innerHTML = `
         <tr>
-            <th class="w-36 px-2 py-2 border border-slate-300 text-left">Grupo</th>
-            <th class="w-44 px-2 py-2 border border-slate-300 text-left">Indicador</th>
-            ${columnas.map(col => `<th class="px-2 py-2 border border-slate-300 text-center min-w-24">${escapeHtml(col.label)}</th>`).join('')}
+            <th class="sticky left-0 z-30 w-40 border border-slate-200 bg-slate-100 px-2 py-2 text-left">Grupo</th>
+            <th class="sticky left-40 z-30 w-52 border border-slate-200 bg-slate-100 px-2 py-2 text-left">Indicador</th>
+            ${columnas.map(col => `<th class="min-w-24 border border-slate-200 px-2 py-2 text-center">${escapeHtml(col.label)}</th>`).join('')}
         </tr>
     `;
 
@@ -195,9 +440,9 @@ function renderMatriz(theadId, tbodyId, columnas, grupos, filas) {
 
     tbody.innerHTML = grupos.map(grupo => {
         return filas.map((fila, index) => `
-            <tr class="${fila.band ? 'bg-blue-50 font-semibold' : 'bg-white'}">
-                ${index === 0 ? `<td rowspan="${filas.length}" class="sticky left-0 z-[1] bg-slate-700 text-white border border-slate-500 px-2 py-2 font-bold align-middle">${escapeHtml(grupo.nombre)}</td>` : ''}
-                <td class="sticky left-36 z-[1] bg-white border border-gray-200 px-2 py-1 ${fila.band ? 'font-semibold' : ''}">${fila.label}</td>
+            <tr class="${fila.band ? 'bg-slate-50 font-semibold' : 'bg-white'} hover:bg-slate-50">
+                ${index === 0 ? `<td rowspan="${filas.length}" class="sticky left-0 z-10 border border-slate-300 bg-slate-700 px-2 py-2 align-middle font-bold text-white">${escapeHtml(grupo.nombre)}</td>` : ''}
+                <td class="sticky left-40 z-10 border border-gray-200 bg-white px-2 py-1 ${fila.band ? 'font-semibold' : ''}">${fila.label}</td>
                 ${columnas.map(col => celdaMatriz(fila, col.key === 'total' ? grupo.total : grupo.meses[col.key])).join('')}
             </tr>
         `).join('');
@@ -213,32 +458,83 @@ function celdaMatriz(fila, datos) {
 
 function formatearValor(value, fila, datos) {
     const numero = Number(value || 0);
-    if (fila.type === 'percent') return `${numero.toFixed(1).replace('.', ',')}%`;
+    if (fila.type === 'percent') return formatPercent(numero);
     if (fila.type === 'currency') return `$ ${numero.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (fila.type === 'moneyFromHours') {
-        const valorHora = datos ? Number(datos.valor_hora_objetivo || 0) : 0;
-        return formatMoney(numero * valorHora, fila);
-    }
-    if (fila.type === 'money') return formatMoney(fila.negativeDisplay ? -Math.abs(numero) : numero, fila);
-    return numero.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+    if (fila.type === 'money') return formatMoney(fila.negativeDisplay ? -Math.abs(numero) : numero);
+    return formatNumber(numero);
 }
 
-function formatMoney(value, fila) {
-    const sign = value < 0 ? '-$' : '$';
-    const absValue = Math.abs(value);
-    return `${sign} ${absValue.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
+function formatMoney(value) {
+    const numero = Number(value || 0);
+    const sign = numero < 0 ? '-$' : '$';
+    return `${sign} ${Math.abs(numero).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
+}
+
+function formatCompactMoney(value) {
+    const numero = Number(value || 0);
+    const abs = Math.abs(numero);
+    const sign = numero < 0 ? '-' : '';
+    if (abs >= 1000000) return `${sign}$ ${(abs / 1000000).toLocaleString('es-AR', { maximumFractionDigits: 1 })}M`;
+    if (abs >= 1000) return `${sign}$ ${(abs / 1000).toLocaleString('es-AR', { maximumFractionDigits: 0 })}K`;
+    return `${sign}$ ${abs.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
+}
+
+function formatPercent(value) {
+    return `${Number(value || 0).toFixed(1).replace('.', ',')}%`;
+}
+
+function formatNumber(value) {
+    return Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 });
+}
+
+function porcentaje(real, objetivo) {
+    return objetivo > 0 ? (real / objetivo * 100) : 0;
+}
+
+function estadoTexto(cumplimiento) {
+    if (cumplimiento >= 100) return 'En objetivo';
+    if (cumplimiento >= 97) return 'Revisar';
+    return 'Critico';
+}
+
+function tonoCumplimiento(cumplimiento) {
+    if (cumplimiento >= 100) return 'green';
+    if (cumplimiento >= 97) return 'amber';
+    return 'red';
+}
+
+function badgeClase(cumplimiento) {
+    if (cumplimiento >= 100) return 'inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800';
+    if (cumplimiento >= 97) return 'inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800';
+    return 'inline-flex rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-800';
+}
+
+function heatBg(cumplimiento) {
+    if (cumplimiento >= 100) return 'bg-emerald-50 text-emerald-900';
+    if (cumplimiento >= 97) return 'bg-amber-50 text-amber-900';
+    return 'bg-rose-50 text-rose-900';
 }
 
 function claseCelda(value, fila, tieneDatos) {
-    if (!tieneDatos) return fila.type === 'money' || fila.type === 'number' ? 'text-gray-900' : 'bg-green-100 text-gray-700';
+    if (!tieneDatos) return 'bg-gray-50 text-gray-400';
     const numero = Number(value || 0);
-    if (fila.heat) {
-        if (numero >= 100) return 'bg-green-100 text-green-800';
-        if (numero >= 97) return 'bg-yellow-100 text-yellow-800';
-        return 'bg-red-100 text-red-700';
-    }
-    if (fila.signed || numero < 0) return numero < 0 ? 'text-red-600 font-semibold' : 'text-gray-900 font-semibold';
+    if (fila.heat) return heatBg(numero);
+    if (fila.signed || numero < 0) return numero < 0 ? 'font-semibold text-rose-700' : 'font-semibold text-emerald-700';
     return '';
+}
+
+function textoTono(tone) {
+    if (tone === 'green') return 'text-emerald-700';
+    if (tone === 'amber') return 'text-amber-700';
+    if (tone === 'red') return 'text-rose-700';
+    return 'text-slate-600';
+}
+
+function fondoTono(tone) {
+    if (tone === 'green') return 'bg-emerald-50';
+    if (tone === 'amber') return 'bg-amber-50';
+    if (tone === 'red') return 'bg-rose-50';
+    return 'bg-slate-100';
 }
 
 function setEstado(texto) {

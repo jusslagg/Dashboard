@@ -1,4 +1,4 @@
-ctura{% extends "layout.html" %}
+{% extends "layout.html" %}
 
 {% block title %}Datos Maestros - Facturacion{% endblock %}
 
@@ -10,39 +10,55 @@ ctura{% extends "layout.html" %}
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
     <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Nueva asociacion</h2>
-        <form id="formAsignacion" onsubmit="guardarAsignacion(event)" class="space-y-4">
-            <input type="hidden" id="asignacionId">
+        <div class="mb-4 flex items-start justify-between gap-3">
+            <div>
+                <h2 id="tituloFormulario" class="text-xl font-bold text-gray-800">Nueva asociacion</h2>
+                <p id="subtituloFormulario" class="mt-1 text-xs text-gray-500">Completa los campos para crear una asociacion.</p>
+            </div>
+            <span id="badgeModo" class="hidden rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Editando</span>
+        </div>
+        <form id="formAsignacion" action="/catalogos/crear" method="post" class="space-y-4">
+            <input type="hidden" id="asignacionId" name="asignacion_id">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
-                <input id="cliente" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input id="cliente" name="cliente" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Gerente *</label>
-                <input id="gerente" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input id="gerente" name="gerente" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Jefe de Site *</label>
-                <input id="jefe_site" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input id="jefe_site" name="jefe_site" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Campaña *</label>
-                <input id="campania" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input id="campania" name="campania" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Sub campaña *</label>
-                <input id="subcampania" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input id="subcampania" name="subcampania" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de negocio</label>
+                <input id="tipo_negocio" name="tipo_negocio" type="text" placeholder="Opcional" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div class="flex gap-2">
-                <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium">
-                    <i class="fas fa-save mr-2"></i>Guardar
+                <button id="btnGuardarAsignacion" type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium">
+                    <i class="fas fa-save mr-2"></i><span id="textoGuardarAsignacion">Guardar</span>
                 </button>
                 <button type="button" onclick="limpiarFormulario()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-medium">
                     Limpiar
                 </button>
             </div>
         </form>
-        <div id="mensaje" class="mt-4 hidden"></div>
+        <div id="mensaje" class="mt-4 {% if request.args.get('estado') %}{% else %}hidden{% endif %}">
+            {% if request.args.get('estado') == 'creado' %}
+                Asociación creada correctamente.
+            {% elif request.args.get('estado') == 'error' %}
+                No se pudo crear la asociación. Revisá los datos y volvé a intentar.
+            {% endif %}
+        </div>
     </div>
 
     <div class="xl:col-span-2 bg-white rounded-lg shadow p-6">
@@ -56,13 +72,14 @@ ctura{% extends "layout.html" %}
                         <th class="px-4 py-3 text-left font-semibold text-gray-600">Jefe de Site</th>
                         <th class="px-4 py-3 text-left font-semibold text-gray-600">Campaña</th>
                         <th class="px-4 py-3 text-left font-semibold text-gray-600">Sub campaña</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-600">Tipo negocio</th>
                         <th class="px-4 py-3 text-center font-semibold text-gray-600">Estado</th>
                         <th class="px-4 py-3 text-center font-semibold text-gray-600">Accion</th>
                     </tr>
                 </thead>
                 <tbody id="tablaAsignaciones">
                     <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                        <td colspan="8" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
                     </tr>
                 </tbody>
             </table>
@@ -73,62 +90,130 @@ ctura{% extends "layout.html" %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', cargarAsignaciones);
+const puedeEliminar = {{ 'true' if usuario_actual and usuario_actual.puede_eliminar else 'false' }};
+let asignacionEditando = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('formAsignacion').addEventListener('submit', manejarSubmitAsignacion);
+    cargarAsignaciones();
+});
+document.addEventListener('DOMContentLoaded', inicializarMensajeServidor);
+
+function manejarSubmitAsignacion(event) {
+    if (document.getElementById('asignacionId').value) {
+        event.preventDefault();
+        guardarAsignacion();
+    }
+}
+
+function inicializarMensajeServidor() {
+    const div = document.getElementById('mensaje');
+    const estado = new URLSearchParams(window.location.search).get('estado');
+    if (!estado) return;
+    div.className = `mt-4 p-4 rounded ${estado === 'creado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+}
+
+async function leerRespuestaJson(response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        const data = await response.json();
+        if (!response.ok && !data.success) {
+            throw new Error((data.errores || [`Error ${response.status}`]).join(', '));
+        }
+        return data;
+    }
+    const texto = await response.text();
+    if (response.redirected || texto.includes('<form') || texto.includes('Iniciar')) {
+        throw new Error(`La sesion no autorizo el guardado (${response.status}). Recarga Datos Maestros y vuelve a intentar.`);
+    }
+    throw new Error(`Respuesta inesperada del servidor (${response.status}).`);
+}
 
 async function cargarAsignaciones() {
-    const response = await fetch('/api/asignaciones?activas=0');
+    const response = await fetch('/api/asignaciones?activas=0&_ts=' + Date.now(), { cache: 'no-store' });
     const data = await response.json();
     const tbody = document.getElementById('tablaAsignaciones');
     if (!data.success || data.asignaciones.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">No hay asociaciones cargadas</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No hay asociaciones cargadas</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.asignaciones.map(item => `
-        <tr class="border-b hover:bg-gray-50">
+        <tr id="asignacion-${item.id}" class="border-b hover:bg-gray-50 ${asignacionEditando && Number(asignacionEditando.id) === Number(item.id) ? 'bg-blue-50' : ''}">
             <td class="px-4 py-3 font-medium">${item.cliente}</td>
             <td class="px-4 py-3">${item.gerente}</td>
             <td class="px-4 py-3">${item.jefe_site}</td>
             <td class="px-4 py-3">${item.campania}</td>
             <td class="px-4 py-3">${item.subcampania}</td>
+            <td class="px-4 py-3">${item.tipo_negocio || '-'}</td>
             <td class="px-4 py-3 text-center">
                 <span class="px-2 py-1 rounded text-xs font-semibold ${item.activa ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">
                     ${item.activa ? 'Activa' : 'Inactiva'}
                 </span>
             </td>
-            <td class="px-4 py-3 text-center whitespace-nowrap">
-                <button onclick='editarAsignacion(${JSON.stringify(item)})' class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Editar</button>
-                <button onclick="toggleAsignacion(${item.id}, ${!item.activa})" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1 rounded text-xs ml-1">${item.activa ? 'Desactivar' : 'Activar'}</button>
-                <button onclick="eliminarAsignacion(${item.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs ml-1">Eliminar</button>
-            </td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">${accionesAsignacion(item)}</td>
         </tr>
     `).join('');
 }
 
-async function guardarAsignacion(event) {
-    event.preventDefault();
+function accionesAsignacion(item) {
+    const acciones = [
+        `<button onclick='editarAsignacion(${JSON.stringify(item)})' class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Editar</button>`,
+        `<button onclick="toggleAsignacion(${item.id}, ${!item.activa})" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1 rounded text-xs ml-1">${item.activa ? 'Desactivar' : 'Activar'}</button>`,
+    ];
+    if (puedeEliminar) {
+        acciones.push(`<button onclick="eliminarAsignacion(${item.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs ml-1">Eliminar</button>`);
+    }
+    return acciones.join('');
+}
+
+async function guardarAsignacion() {
+    const form = document.getElementById('formAsignacion');
+    if (!form.reportValidity()) return;
     const id = document.getElementById('asignacionId').value;
     const payload = getPayload();
+    const boton = document.getElementById('btnGuardarAsignacion');
+    boton.disabled = true;
+    boton.classList.add('opacity-60', 'cursor-not-allowed');
 
     if (id) {
-        const clave = pedirClave();
-        if (!clave) return;
-        payload.clave = clave;
+        const confirmacion = pedirConfirmacion();
+        if (!confirmacion) {
+            restaurarBotonGuardar();
+            return;
+        }
+        Object.assign(payload, confirmacion);
     }
 
-    const response = await fetch(id ? `/api/asignaciones/${id}` : '/api/asignaciones', {
-        method: id ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-    const data = await response.json();
-    if (data.success) {
-        const impacto = data.registros_actualizados ? ` (${data.registros_actualizados} carga(s) actualizadas)` : '';
-        mostrarMensaje((id ? 'Asociacion actualizada' : data.mensaje) + impacto, 'success');
-        limpiarFormulario();
-        cargarAsignaciones();
-    } else {
-        mostrarMensaje((data.errores || ['Error']).join(', '), 'error');
+    try {
+        const url = id ? `/api/asignaciones/${id}` : '/api/asignaciones';
+        const response = await fetch(url, {
+            method: id ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            cache: 'no-store',
+            body: JSON.stringify(payload)
+        });
+        const data = await leerRespuestaJson(response);
+        if (data.success) {
+            const verificacion = id ? await verificarAsignacionGuardada(id, payload) : { ok: true, asignacion: data.asignacion };
+            if (!verificacion.ok) {
+                mostrarMensaje(verificacion.mensaje, 'error');
+                return;
+            }
+            const asignacionConfirmada = verificacion.asignacion || data.asignacion;
+            const impacto = data.registros_actualizados ? ` (${data.registros_actualizados} carga(s) actualizadas)` : '';
+            const etiqueta = asignacionConfirmada ? `: ${asignacionConfirmada.cliente} / ${asignacionConfirmada.campania}` : '';
+            mostrarMensaje((data.mensaje || (id ? 'Asociacion actualizada' : 'Asociacion creada')) + etiqueta + impacto, 'success');
+            limpiarFormulario();
+            await cargarAsignaciones();
+        } else {
+            mostrarMensaje((data.errores || ['Error']).join(', '), 'error');
+        }
+    } catch (error) {
+        mostrarMensaje(error.message || 'No se pudo guardar. Revisa la conexion o vuelve a iniciar sesion.', 'error');
+    } finally {
+        restaurarBotonGuardar();
     }
 }
 
@@ -138,38 +223,71 @@ function getPayload() {
         gerente: document.getElementById('gerente').value,
         jefe_site: document.getElementById('jefe_site').value,
         campania: document.getElementById('campania').value,
-        subcampania: document.getElementById('subcampania').value
+        subcampania: document.getElementById('subcampania').value,
+        tipo_negocio: document.getElementById('tipo_negocio').value
     };
 }
 
+async function verificarAsignacionGuardada(id, esperado) {
+    const response = await fetch(`/api/asignaciones/${id}?_ts=${Date.now()}`, { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok || !data.success || !data.asignacion) {
+        return { ok: false, mensaje: 'No pude verificar el cambio guardado en la base.' };
+    }
+
+    const campos = ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio'];
+    const distinto = campos.find(campo => String(data.asignacion[campo] ?? '') !== String(esperado[campo] ?? ''));
+    if (distinto) {
+        return {
+            ok: false,
+            mensaje: `La base no quedo actualizada. ${distinto}: figura "${data.asignacion[distinto]}", no "${esperado[distinto]}".`
+        };
+    }
+    return { ok: true, asignacion: data.asignacion };
+}
+
 function editarAsignacion(item) {
+    asignacionEditando = item;
     document.getElementById('asignacionId').value = item.id;
     document.getElementById('cliente').value = item.cliente;
     document.getElementById('gerente').value = item.gerente;
     document.getElementById('jefe_site').value = item.jefe_site;
     document.getElementById('campania').value = item.campania;
     document.getElementById('subcampania').value = item.subcampania;
+    document.getElementById('tipo_negocio').value = item.tipo_negocio || '';
+    document.getElementById('tituloFormulario').textContent = 'Editar asociacion';
+    document.getElementById('subtituloFormulario').textContent = `Editando ID ${item.id}: ${item.cliente} / ${item.campania}`;
+    document.getElementById('badgeModo').classList.remove('hidden');
+    document.getElementById('textoGuardarAsignacion').textContent = 'Actualizar';
+    document.getElementById('cliente').focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function toggleAsignacion(id, activa) {
-    const clave = pedirClave();
-    if (!clave) return;
-    await fetch(`/api/asignaciones/${id}`, {
-        method: 'PATCH',
+    const confirmacion = pedirConfirmacion();
+    if (!confirmacion) return;
+    const response = await fetch(`/api/asignaciones/${id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activa, clave })
+        body: JSON.stringify({ activa, ...confirmacion })
     });
+    const data = await response.json();
+    if (data.success) {
+        mostrarMensaje(data.mensaje || 'Asociacion actualizada', 'success');
+    } else {
+        mostrarMensaje((data.errores || ['Error']).join(', '), 'error');
+    }
     cargarAsignaciones();
 }
 
 async function eliminarAsignacion(id) {
-    const clave = pedirClave();
-    if (!clave) return;
     if (!confirm('Eliminar esta asociacion tambien borrara todas las cargas vinculadas. Continuar?')) return;
+    const confirmacion = pedirConfirmacion();
+    if (!confirmacion) return;
     const response = await fetch(`/api/asignaciones/${id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave })
+        body: JSON.stringify(confirmacion)
     });
     const data = await response.json();
     if (data.success) {
@@ -180,13 +298,20 @@ async function eliminarAsignacion(id) {
     cargarAsignaciones();
 }
 
-function pedirClave() {
-    return prompt('Ingrese clave de autorizacion');
+function pedirConfirmacion() {
+    const valor = prompt('Confirme con su contrasena de cuenta. En pruebas locales puede usar PRUEBA2026.');
+    if (!valor) return null;
+    return { password_confirmacion: valor, clave: valor };
 }
 
 function limpiarFormulario() {
     document.getElementById('formAsignacion').reset();
     document.getElementById('asignacionId').value = '';
+    asignacionEditando = null;
+    document.getElementById('tituloFormulario').textContent = 'Nueva asociacion';
+    document.getElementById('subtituloFormulario').textContent = 'Completa los campos para crear una asociacion.';
+    document.getElementById('badgeModo').classList.add('hidden');
+    document.getElementById('textoGuardarAsignacion').textContent = 'Guardar';
 }
 
 function mostrarMensaje(mensaje, tipo) {
@@ -194,6 +319,12 @@ function mostrarMensaje(mensaje, tipo) {
     div.className = `mt-4 p-4 rounded ${tipo === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
     div.textContent = mensaje;
     div.classList.remove('hidden');
+}
+
+function restaurarBotonGuardar() {
+    const boton = document.getElementById('btnGuardarAsignacion');
+    boton.disabled = false;
+    boton.classList.remove('opacity-60', 'cursor-not-allowed');
 }
 </script>
 {% endblock %}

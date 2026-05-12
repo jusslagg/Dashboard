@@ -1,1129 +1,630 @@
 WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
  * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:5000
- * Running on http://192.168.1.39:5000
+ * Running on http://10.123.88.68:5000
 Press CTRL+C to quit
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 10:02:10] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 10:02:25] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 10:02:26] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 10:02:26] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 10:02:26] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 10:02:26] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 10:02:26] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 10:02:26] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 10:02:26] "GET /favicon.ico HTTP/1.1" 404 -
-127.0.0.1 - - [04/May/2026 10:36:25] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:55:35] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:55:35] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:55:37] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:55:37] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:56:16] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:56:16] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:56:19] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:56:19] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:57:27] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:57:36] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:57:36] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:57:36] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:03] "DELETE /api/datos/9 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:03] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:03] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:22] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:22] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:22] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:22] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:22] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:22] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:22] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:26] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:26] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:26] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:26] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:26] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 13:58:26] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:00:54] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:00:54] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:01:57] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:01:57] "GET /api/asignaciones HTTP/1.1" 200 -
+ * Debugger PIN: 145-609-751
+127.0.0.1 - - [06/May/2026 10:15:17] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:15:17] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:15:17] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [06/May/2026 10:15:18] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:15:18] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:15:18] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:15:18] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:15:18] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:18] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:19] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:19] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:19] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:19] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:19] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:46] "GET /api/filtros?mes=2026-04&cliente=BICE HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:46] "GET /api/kpis?mes=2026-04&cliente=BICE HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:46] "GET /api/resumen?mes=2026-04&cliente=BICE HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:46] "GET /api/grafico?mes=2026-04&cliente=BICE HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:46] "GET /api/por-cliente?mes=2026-04&cliente=BICE HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:31:46] "GET /api/alertas?mes=2026-04&cliente=BICE HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:32:10] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:32:10] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:32:22] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:32:22] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:32:28] "GET /comparativo HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:32:28] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:32:28] "GET /api/comparativo HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:32:38] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:32:38] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:35:32] "GET /justificaciones HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:35:32] "GET /api/justificaciones HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:36:05] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:36:05] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:36:05] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:36:36] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:36:36] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:36:38] "GET /api/template_carga HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:21] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:22] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:22] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:22] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:22] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:22] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:22] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:24] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:25] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:25] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:25] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:25] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:25] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:29] "GET /api/filtros?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:29] "GET /api/kpis?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:29] "GET /api/alertas?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:29] "GET /api/por-cliente?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:29] "GET /api/resumen?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:29] "GET /api/grafico?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:40] "GET /api/filtros?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:40] "GET /api/kpis?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:40] "GET /api/grafico?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:40] "GET /api/alertas?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:40] "GET /api/por-cliente?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:37:40] "GET /api/resumen?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:38:13] "GET /api/filtros?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=Energía+San+Juan&campania=Energía+San+Juan+TL&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Ban+Comercial&campania=Naturgy+Ban+Comercial+TL&campania=Naturgy+Noa+Backoffice&campania=Naturgy+Noa+Backoffice+TL&campania=Naturgy+Noa+Comercial&campania=Naturgy+Noa+Comercial+TL&campania=Naturgy+Quiero+Gas&campania=River+Plate HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:38:13] "GET /api/kpis?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=Energía+San+Juan&campania=Energía+San+Juan+TL&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Ban+Comercial&campania=Naturgy+Ban+Comercial+TL&campania=Naturgy+Noa+Backoffice&campania=Naturgy+Noa+Backoffice+TL&campania=Naturgy+Noa+Comercial&campania=Naturgy+Noa+Comercial+TL&campania=Naturgy+Quiero+Gas&campania=River+Plate HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:38:13] "GET /api/resumen?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=Energía+San+Juan&campania=Energía+San+Juan+TL&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Ban+Comercial&campania=Naturgy+Ban+Comercial+TL&campania=Naturgy+Noa+Backoffice&campania=Naturgy+Noa+Backoffice+TL&campania=Naturgy+Noa+Comercial&campania=Naturgy+Noa+Comercial+TL&campania=Naturgy+Quiero+Gas&campania=River+Plate HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:38:13] "GET /api/grafico?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=Energía+San+Juan&campania=Energía+San+Juan+TL&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Ban+Comercial&campania=Naturgy+Ban+Comercial+TL&campania=Naturgy+Noa+Backoffice&campania=Naturgy+Noa+Backoffice+TL&campania=Naturgy+Noa+Comercial&campania=Naturgy+Noa+Comercial+TL&campania=Naturgy+Quiero+Gas&campania=River+Plate HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:38:13] "GET /api/por-cliente?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=Energía+San+Juan&campania=Energía+San+Juan+TL&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Ban+Comercial&campania=Naturgy+Ban+Comercial+TL&campania=Naturgy+Noa+Backoffice&campania=Naturgy+Noa+Backoffice+TL&campania=Naturgy+Noa+Comercial&campania=Naturgy+Noa+Comercial+TL&campania=Naturgy+Quiero+Gas&campania=River+Plate HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:38:13] "GET /api/alertas?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=Energía+San+Juan&campania=Energía+San+Juan+TL&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Ban+Comercial&campania=Naturgy+Ban+Comercial+TL&campania=Naturgy+Noa+Backoffice&campania=Naturgy+Noa+Backoffice+TL&campania=Naturgy+Noa+Comercial&campania=Naturgy+Noa+Comercial+TL&campania=Naturgy+Quiero+Gas&campania=River+Plate HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:38:32] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:38:33] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:38:57] "GET /api/matriz?year=2026&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:39:08] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:39:08] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:39:08] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:39:08] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:39:08] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:39:08] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:39:08] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:40:18] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:40:18] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:40:42] "POST /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:40:43] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:40:50] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:40:51] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:38] "POST /api/cargar HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:40] "GET /justificaciones HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:40] "GET /api/justificaciones HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:46] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:46] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:46] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:47] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:47] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:47] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:47] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:49] "GET /api/filtros?cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:49] "GET /api/kpis?cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:49] "GET /api/por-cliente?cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:49] "GET /api/grafico?cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:49] "GET /api/resumen?cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:41:49] "GET /api/alertas?cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:28] "GET /api/filtros?mes=2026-04&cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:28] "GET /api/kpis?mes=2026-04&cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:28] "GET /api/grafico?mes=2026-04&cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:28] "GET /api/alertas?mes=2026-04&cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:28] "GET /api/por-cliente?mes=2026-04&cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:28] "GET /api/resumen?mes=2026-04&cliente=Aylen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:29] "GET /justificaciones HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:30] "GET /api/justificaciones HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:31] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:31] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:31] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:32] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:32] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:33] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:34] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:34] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:34] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:34] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:34] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:34] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:34] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:34] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:49] "DELETE /api/asignaciones/29 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:49] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:51] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:52] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:52] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:52] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:52] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:52] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:44:52] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:45:00] "GET /api/exportar_excel HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:46:22] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:46:22] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:46:22] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:46:25] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:46:25] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:46:25] "GET /comparativo HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:46:26] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [06/May/2026 10:46:26] "GET /api/comparativo HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:00:03] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:00:03] "GET /api/matriz HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:00:03] "GET /api/matriz HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:00:19] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:01:35] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:01:35] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:01:35] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:01:45] "GET /api/filtros?cliente=Supervielle HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:01:45] "GET /api/datos?cliente=Supervielle HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:01:48] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:01:48] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:01:49] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:01:49] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:01:50] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:01:50] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:02:20] "POST /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:02:21] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:02:21] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:02:21] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:03:52] "POST /api/cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:16:54] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:16:54] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:17:16] "POST /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:17:17] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:17:18] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:17:18] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:19:57] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:21:09] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:21:09] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:23:05] "POST /api/cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:23:24] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:23:24] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:25:01] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:25:01] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:26:02] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:27:39] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:27:40] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:27:40] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:27:46] "GET /api/filtros?cliente=Johnson+%26+Johnson HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:27:47] "GET /api/datos?cliente=Johnson+%26+Johnson HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:28:09] "PUT /api/datos/30 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:28:10] "GET /api/datos?cliente=Johnson+%26+Johnson HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 14:28:10] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:00:12] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:00:12] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:00:50] "POST /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:00:51] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:01:05] "POST /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:01:05] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:01:14] "POST /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:01:14] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:01:23] "POST /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:01:23] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:01:24] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:01:24] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:02:41] "POST /api/cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:03:50] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:03:51] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:04:46] "POST /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:04:46] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:04:48] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:04:48] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:13:53] "POST /api/cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:13:54] "POST /api/cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:34:25] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:34:25] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:35:31] "POST /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:35:31] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:35:32] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:35:32] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:38:42] "POST /api/cargar HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:39:50] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:39:50] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:39:50] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:39:53] "GET /api/filtros?cliente=BNA HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:39:53] "GET /api/datos?cliente=BNA HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:40:14] "PUT /api/datos/11 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:40:14] "GET /api/datos?cliente=BNA HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:40:14] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:40:23] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:40:23] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:41:19] "GET /api/matriz?year=2026&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:41:23] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:46:36] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:46:36] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:46:36] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:46:39] "GET /api/filtros?cliente=BNA HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:46:39] "GET /api/datos?cliente=BNA HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:48:31] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:48:31] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:48:34] "GET /api/filtros?cliente=Farmapay HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:48:35] "GET /api/datos?cliente=Farmapay HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:49:06] "PUT /api/datos/29 HTTP/1.1" 403 -
+127.0.0.1 - - [07/May/2026 15:49:13] "PUT /api/datos/29 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:49:14] "GET /api/datos?cliente=Farmapay HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:49:14] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:49:57] "PUT /api/datos/29 HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:49:57] "GET /api/datos?cliente=Farmapay HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:49:57] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:57:54] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:57:54] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:57:54] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:57:55] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:57:55] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:57:55] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:57:55] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:57:56] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [07/May/2026 15:57:57] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:03] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:03] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:03] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:03] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:03] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:03] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:03] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:16] "GET /api/filtros?mes=2026-01 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:16] "GET /api/kpis?mes=2026-01 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:16] "GET /api/por-cliente?mes=2026-01 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:16] "GET /api/resumen?mes=2026-01 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:16] "GET /api/alertas?mes=2026-01 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:16] "GET /api/grafico?mes=2026-01 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:19] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:20] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:20] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:20] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:20] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:20] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:20] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:20] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:20] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:20] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:20] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:13:20] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:45] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:45] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:47] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:47] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:48] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:48] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:48] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:48] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:48] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:49] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:49] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:53] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:14:53] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:17:00] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:17:00] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:17:00] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:08] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:08] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:08] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:08] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:08] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:08] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:08] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:40] "GET /api/filtros?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:40] "GET /api/kpis?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:41] "GET /api/alertas?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:41] "GET /api/grafico?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:41] "GET /api/por-cliente?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:19:41] "GET /api/resumen?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:20] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:20] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:20] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:20] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:20] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:20] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:30] "GET /api/filtros?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:30] "GET /api/kpis?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:30] "GET /api/por-cliente?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:30] "GET /api/grafico?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:30] "GET /api/alertas?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:30] "GET /api/resumen?cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:41] "GET /api/filtros?cliente=BNA&cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:42] "GET /api/kpis?cliente=BNA&cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:42] "GET /api/resumen?cliente=BNA&cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:42] "GET /api/grafico?cliente=BNA&cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:42] "GET /api/por-cliente?cliente=BNA&cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:42] "GET /api/alertas?cliente=BNA&cliente=Santander HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:49] "GET /api/filtros?cliente=BICE&cliente=BNA&cliente=BSF+Carrefour&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Gire&cliente=Johnson+%26+Johnson&cliente=Leiva+Joyas&cliente=Metrogas&cliente=Mirgor&cliente=NATURGY&cliente=Openpay&cliente=RIVER+PLATE&cliente=Santander&cliente=Spazios&cliente=Supervielle&cliente=Supervielle+Seguros&cliente=Yamaha HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:50] "GET /api/kpis?cliente=BICE&cliente=BNA&cliente=BSF+Carrefour&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Gire&cliente=Johnson+%26+Johnson&cliente=Leiva+Joyas&cliente=Metrogas&cliente=Mirgor&cliente=NATURGY&cliente=Openpay&cliente=RIVER+PLATE&cliente=Santander&cliente=Spazios&cliente=Supervielle&cliente=Supervielle+Seguros&cliente=Yamaha HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:50] "GET /api/grafico?cliente=BICE&cliente=BNA&cliente=BSF+Carrefour&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Gire&cliente=Johnson+%26+Johnson&cliente=Leiva+Joyas&cliente=Metrogas&cliente=Mirgor&cliente=NATURGY&cliente=Openpay&cliente=RIVER+PLATE&cliente=Santander&cliente=Spazios&cliente=Supervielle&cliente=Supervielle+Seguros&cliente=Yamaha HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:50] "GET /api/resumen?cliente=BICE&cliente=BNA&cliente=BSF+Carrefour&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Gire&cliente=Johnson+%26+Johnson&cliente=Leiva+Joyas&cliente=Metrogas&cliente=Mirgor&cliente=NATURGY&cliente=Openpay&cliente=RIVER+PLATE&cliente=Santander&cliente=Spazios&cliente=Supervielle&cliente=Supervielle+Seguros&cliente=Yamaha HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:50] "GET /api/alertas?cliente=BICE&cliente=BNA&cliente=BSF+Carrefour&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Gire&cliente=Johnson+%26+Johnson&cliente=Leiva+Joyas&cliente=Metrogas&cliente=Mirgor&cliente=NATURGY&cliente=Openpay&cliente=RIVER+PLATE&cliente=Santander&cliente=Spazios&cliente=Supervielle&cliente=Supervielle+Seguros&cliente=Yamaha HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:50] "GET /api/por-cliente?cliente=BICE&cliente=BNA&cliente=BSF+Carrefour&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Gire&cliente=Johnson+%26+Johnson&cliente=Leiva+Joyas&cliente=Metrogas&cliente=Mirgor&cliente=NATURGY&cliente=Openpay&cliente=RIVER+PLATE&cliente=Santander&cliente=Spazios&cliente=Supervielle&cliente=Supervielle+Seguros&cliente=Yamaha HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:50] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:50] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:50] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:50] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:50] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:50] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:57] "GET /api/filtros?cliente=Mirgor HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:58] "GET /api/kpis?cliente=Mirgor HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:58] "GET /api/alertas?cliente=Mirgor HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:58] "GET /api/por-cliente?cliente=Mirgor HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:58] "GET /api/grafico?cliente=Mirgor HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:20:58] "GET /api/resumen?cliente=Mirgor HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:07] "GET /api/filtros?cliente=Mirgor&subcampania=Samsung+Care+%2B HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:07] "GET /api/kpis?cliente=Mirgor&subcampania=Samsung+Care+%2B HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:07] "GET /api/grafico?cliente=Mirgor&subcampania=Samsung+Care+%2B HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:07] "GET /api/resumen?cliente=Mirgor&subcampania=Samsung+Care+%2B HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:07] "GET /api/por-cliente?cliente=Mirgor&subcampania=Samsung+Care+%2B HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:07] "GET /api/alertas?cliente=Mirgor&subcampania=Samsung+Care+%2B HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:12] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:12] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:12] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:12] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:12] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:12] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:13] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:14] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:14] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:14] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:14] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:14] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:56] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:57] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:57] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:57] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:57] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:21:57] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:25:48] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:25:49] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:25:49] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:25:49] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:25:49] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:25:49] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:25:49] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:25:49] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [08/May/2026 09:25:52] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+127.0.0.1 - - [08/May/2026 09:26:54] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:26:55] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:26:55] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:27:00] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 09:27:01] "GET /api/datos?mes=2026-04 HTTP/1.1" 200 -
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\__init__.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
+ * Debugger PIN: 145-609-751
+ * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\models.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 145-609-751
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
+ * Debugger PIN: 145-609-751
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 14:07:19] "GET /api/matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:07:19] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:07:19] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:11:50] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:11:50] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:12:11] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:12:11] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:12:12] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:12:13] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:17:52] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:18:30] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:18:30] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 14:19:38] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:03:57] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:03] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:03] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:03] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:03] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:03] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:03] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:03] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:09] "GET /api/filtros?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:09] "GET /api/kpis?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:09] "GET /api/por-cliente?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:09] "GET /api/alertas?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:09] "GET /api/resumen?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:09] "GET /api/grafico?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:17] "GET /api/filtros?jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:17] "GET /api/kpis?jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:17] "GET /api/por-cliente?jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:17] "GET /api/alertas?jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:17] "GET /api/grafico?jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:04:17] "GET /api/resumen?jefe_site=Rissi,+Ismael&campania=BNA HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:06:08] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:06:08] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:09:24] "GET /api/matriz?year=2026&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:10:52] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:10:53] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:10:53] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:11:49] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:11:49] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:12:25] "GET /api/matriz?year=2026&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:14:04] "GET /api/matriz?jefe_site=Rissi,%20Ismael HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 15:14:35] "GET /api/matriz?jefe_site=Rissi,%20Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:21:30] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:21:30] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 15:25:59] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:25:59] "GET /api/matriz?jefe_site=Rissi,%20Ismael HTTP/1.1" 200 -
+ * Debugger PIN: 145-609-751
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\__init__.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
+ * Debugger PIN: 145-609-751
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 15:28:48] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:28:48] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:28:52] "GET /api/matriz?jefe_site=Rissi,%20Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:28:52] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:28:52] "GET /cargar HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 15:30:27] "GET /api/matriz?jefe_site=Rissi,%20Ismael HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 15:32:18] "GET /api/matriz?jefe_site=Rissi,%20Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:32:18] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:33:22] "GET /api/matriz?year=2026&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:35:06] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:38:31] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:38:31] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:38:40] "GET /api/matriz?year=2026&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
+ * Debugger PIN: 145-609-751
+127.0.0.1 - - [08/May/2026 10:05:55] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:05:55] "GET /api/auth/me HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:06:12] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:06:12] "GET /api/auth/me HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:28] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:28] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:28] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:29] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:29] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:29] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:29] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:31] "GET /usuarios HTTP/1.1" 302 -
+127.0.0.1 - - [08/May/2026 10:19:31] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:44] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:45] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:46] "GET /usuarios HTTP/1.1" 302 -
+127.0.0.1 - - [08/May/2026 10:19:47] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:48] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:49] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:49] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:49] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:49] "GET /api/grafico HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:49] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:49] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:50] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:19:50] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:21:16] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:21:16] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:21:22] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:21:22] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:21:22] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:21:31] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:21:32] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:37] "GET /comparativo HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:37] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:38] "GET /api/comparativo HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:38] "GET /matriz HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:39] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:42] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:42] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:43] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:44] "GET /justificaciones HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:44] "GET /api/justificaciones HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:47] "GET /control HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:47] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:22:47] "GET /api/datos HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:23:29] "GET /catalogos HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:23:29] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:23:34] "GET /cargar HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:23:34] "GET /api/asignaciones HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:23:40] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:23:41] "GET /api/filtros HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:23:41] "GET /api/kpis HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:23:41] "GET /api/por-cliente HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:23:41] "GET /api/resumen HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:23:41] "GET /api/alertas HTTP/1.1" 200 -
+127.0.0.1 - - [08/May/2026 10:23:41] "GET /api/grafico HTTP/1.1" 200 -
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\models.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
+ * Debugger PIN: 145-609-751
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
+ * Debugger PIN: 145-609-751
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
+ * Debugger PIN: 145-609-751
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
+ * Debugger PIN: 145-609-751
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
+ * Debugger PIN: 145-609-751
+ * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\models.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 145-609-751
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
+ * Debugger PIN: 145-609-751
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
+ * Debugger PIN: 145-609-751
  * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 15:57:08] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:57:08] "GET /justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 15:57:08] "GET /api/justificaciones HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
+ * Debugger PIN: 145-609-751
+127.0.0.1 - - [08/May/2026 10:32:39] "GET /login HTTP/1.1" 200 -
+ * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\models.py', reloading
  * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 15:57:32] "GET /api/justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:05:27] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:05:27] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:09:10] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:09:10] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:09:12] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:09:12] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:09:13] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:09:13] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:11:35] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:11:35] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:11:37] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:11:37] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:17:30] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:25:47] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:26:05] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:26:05] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:28:13] "POST /api/cargar HTTP/1.1" 500 -
 Traceback (most recent call last):
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1478, in __call__
-    return self.wsgi_app(environ, start_response)
-           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1458, in wsgi_app
-    response = self.handle_exception(e)
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_cors\extension.py", line 176, in wrapped_function
-    return cors_after_request(app.make_response(f(*args, **kwargs)))
-                                                ~^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1455, in wsgi_app
-    response = self.full_dispatch_request()
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 869, in full_dispatch_request
-    rv = self.handle_user_exception(e)
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_cors\extension.py", line 176, in wrapped_function
-    return cors_after_request(app.make_response(f(*args, **kwargs)))
-                                                ~^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 867, in full_dispatch_request
-    rv = self.dispatch_request()
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 852, in dispatch_request
-    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
-  File "C:\Users\jegil\Desktop\Dashboard\app\routes.py", line 929, in api_cargar
-    if variable_objetivo < 0:
-       ^^^^^^^^^^^^^^^^^
-UnboundLocalError: cannot access local variable 'variable_objetivo' where it is not associated with a value
-127.0.0.1 - - [04/May/2026 16:28:21] "POST /api/cargar HTTP/1.1" 500 -
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table historial_cambios already exists
+
+The above exception was the direct cause of the following exception:
+
 Traceback (most recent call last):
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1478, in __call__
-    return self.wsgi_app(environ, start_response)
-           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1458, in wsgi_app
-    response = self.handle_exception(e)
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_cors\extension.py", line 176, in wrapped_function
-    return cors_after_request(app.make_response(f(*args, **kwargs)))
-                                                ~^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1455, in wsgi_app
-    response = self.full_dispatch_request()
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 869, in full_dispatch_request
-    rv = self.handle_user_exception(e)
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_cors\extension.py", line 176, in wrapped_function
-    return cors_after_request(app.make_response(f(*args, **kwargs)))
-                                                ~^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 867, in full_dispatch_request
-    rv = self.dispatch_request()
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 852, in dispatch_request
-    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
-  File "C:\Users\jegil\Desktop\Dashboard\app\routes.py", line 929, in api_cargar
-    if variable_objetivo < 0:
-       ^^^^^^^^^^^^^^^^^
-UnboundLocalError: cannot access local variable 'variable_objetivo' where it is not associated with a value
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 16:29:45] "GET /cargar HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 16:30:21] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:30:21] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:31:58] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:32:04] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:32:04] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 16:32:09] "GET /api/matriz?year=2026&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:03:19] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:03:19] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:03:53] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:03:53] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:03:57] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:03:57] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:05:26] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:07:54] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:07:54] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:08:32] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:08:32] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:08:34] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:08:34] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:09:28] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:09:46] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:09:46] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 17:09:50] "GET /api/matriz?year=2026&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:21:37] "GET /comparativo HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:21:38] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:21:38] "GET /api/comparativo HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:21:41] "GET /justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:21:41] "GET /api/justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:02] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:02] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:02] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:11] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:12] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:12] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:12] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:12] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:12] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:12] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:18] "GET /api/filtros?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:18] "GET /api/kpis?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:18] "GET /api/por-cliente?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:18] "GET /api/alertas?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:18] "GET /api/grafico?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:18] "GET /api/resumen?jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:40] "GET /api/filtros?jefe_site=Rissi,+Ismael&campania=NATURGY+SAN+JUAN+BACKOFFICE HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:40] "GET /api/kpis?jefe_site=Rissi,+Ismael&campania=NATURGY+SAN+JUAN+BACKOFFICE HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:40] "GET /api/grafico?jefe_site=Rissi,+Ismael&campania=NATURGY+SAN+JUAN+BACKOFFICE HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:40] "GET /api/resumen?jefe_site=Rissi,+Ismael&campania=NATURGY+SAN+JUAN+BACKOFFICE HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:40] "GET /api/alertas?jefe_site=Rissi,+Ismael&campania=NATURGY+SAN+JUAN+BACKOFFICE HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:40] "GET /api/por-cliente?jefe_site=Rissi,+Ismael&campania=NATURGY+SAN+JUAN+BACKOFFICE HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:48] "GET /api/filtros?jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate&campania=Santander+Chat HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:48] "GET /api/kpis?jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate&campania=Santander+Chat HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:48] "GET /api/grafico?jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate&campania=Santander+Chat HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:48] "GET /api/alertas?jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate&campania=Santander+Chat HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:48] "GET /api/por-cliente?jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate&campania=Santander+Chat HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:22:48] "GET /api/resumen?jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate&campania=Santander+Chat HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:24:31] "GET /api/filtros?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate&campania=Santander+Chat HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:24:31] "GET /api/kpis?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:24:31] "GET /api/grafico?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:24:31] "GET /api/por-cliente?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:24:31] "GET /api/alertas?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:24:31] "GET /api/resumen?mes=2026-04&jefe_site=Rissi,+Ismael&campania=BNA&campania=NATURGY+SAN+JUAN+BACKOFFICE&campania=Naturgy+Quiero+Gas&campania=River+Plate HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [04/May/2026 19:28:14] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:28:14] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:28:42] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:28:42] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:28:42] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:28:42] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:28:42] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:28:42] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [04/May/2026 19:28:42] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:46:41] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:46:42] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:47:14] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:47:14] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:47:17] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:47:17] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:56:50] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:56:50] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:56:57] "GET /justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:56:58] "GET /api/justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:01] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:01] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:01] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:21] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:21] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:21] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:21] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:21] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:21] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:21] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:26] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:26] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:26] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:26] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:26] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:26] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:29] "GET /api/filtros?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:29] "GET /api/kpis?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:29] "GET /api/alertas?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:29] "GET /api/grafico?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:29] "GET /api/por-cliente?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:29] "GET /api/resumen?mes=2026-04&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:32] "GET /api/filtros?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:32] "GET /api/kpis?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:32] "GET /api/grafico?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:32] "GET /api/resumen?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:32] "GET /api/alertas?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:32] "GET /api/por-cliente?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:41] "GET /api/filtros?jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:41] "GET /api/kpis?jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:41] "GET /api/grafico?jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:41] "GET /api/resumen?jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:41] "GET /api/alertas?jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:41] "GET /api/por-cliente?jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:43] "GET /api/filtros?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:43] "GET /api/kpis?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:43] "GET /api/grafico?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:43] "GET /api/alertas?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:43] "GET /api/por-cliente?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:57:43] "GET /api/resumen?mes=2026-04&jefe_site=Rissi,+Ismael&campania=Naturgy+Ban+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:58:19] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:58:19] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:58:21] "GET /comparativo HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:58:21] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:58:21] "GET /api/comparativo HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:58:23] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:58:23] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 09:58:29] "GET /api/matriz?year=2026&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:00:28] "GET /justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:00:28] "GET /api/justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:00:29] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:00:29] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:00:29] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:03:31] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:03:31] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:03:32] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:03:33] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:04:01] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:04:01] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:04:05] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:04:05] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:04:05] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:04:34] "PUT /api/datos/17 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:04:34] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:04:34] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:04:41] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:04:41] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:04:46] "GET /api/matriz?year=2026&jefe_site=Rissi,+Ismael HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:11:22] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:11:23] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:12:12] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:12:12] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:12:40] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:12:40] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:12:45] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:12:45] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:13:53] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:15:35] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:15:35] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:23:42] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:23:42] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:24:35] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:24:35] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:24:49] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:24:49] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:24:51] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:24:51] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:26:46] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:28:04] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:41:22] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:41:22] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:42:01] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:42:01] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:42:03] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:42:03] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:43:53] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:43:53] "POST /api/cargar HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\__init__.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [05/May/2026 10:48:08] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:48:08] "GET /justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:48:08] "GET /api/justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:49:34] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:49:34] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:55:57] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:55:57] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:56:39] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:56:39] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:56:40] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:56:40] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:58:19] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:58:24] "GET /justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 10:58:24] "GET /api/justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:00:06] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:00:06] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:00:06] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:00:25] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:00:25] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:00:25] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:00:31] "GET /api/filtros?cliente=Metrogas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:00:31] "GET /api/datos?cliente=Metrogas HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\models.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [05/May/2026 11:05:37] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:05:38] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:05:38] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:05:53] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:05:53] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:05:53] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:05:57] "GET /api/filtros?cliente=Metrogas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:05:57] "GET /api/datos?cliente=Metrogas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:11:20] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:11:20] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:12:24] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:12:24] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:12:31] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:12:31] "GET /api/asignaciones HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\models.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [05/May/2026 11:16:47] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:16:47] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:16:47] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:18:42] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:18:42] "GET /api/asignaciones HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\models.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [05/May/2026 11:22:16] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:22:16] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:22:48] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:22:48] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:24:43] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:24:56] "GET /comparativo HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:24:56] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:24:56] "GET /api/comparativo HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:24:58] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:24:58] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:25:04] "GET /api/matriz?year=2026&jefe_site=Surace,+Carolina HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:48] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:48] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:48] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:48] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:48] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:48] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:48] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:54] "GET /api/filtros?cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:54] "GET /api/kpis?cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:54] "GET /api/grafico?cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:54] "GET /api/por-cliente?cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:54] "GET /api/resumen?cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:28:54] "GET /api/alertas?cliente=Supervielle HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\models.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [05/May/2026 11:34:06] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:08] "GET /api/kpis HTTP/1.1" 500 -
-Traceback (most recent call last):
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1478, in __call__
-    return self.wsgi_app(environ, start_response)
-           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1458, in wsgi_app
-    response = self.handle_exception(e)
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_cors\extension.py", line 176, in wrapped_function
-    return cors_after_request(app.make_response(f(*args, **kwargs)))
-                                                ~^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1455, in wsgi_app
-    response = self.full_dispatch_request()
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 869, in full_dispatch_request
-    rv = self.handle_user_exception(e)
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_cors\extension.py", line 176, in wrapped_function
-    return cors_after_request(app.make_response(f(*args, **kwargs)))
-                                                ~^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 867, in full_dispatch_request
-    rv = self.dispatch_request()
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 852, in dispatch_request
-    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
-  File "C:\Users\jegil\Desktop\Dashboard\app\routes.py", line 1152, in api_kpis
-    kpis = resumen_dashboard(registros)
-  File "C:\Users\jegil\Desktop\Dashboard\app\routes.py", line 663, in resumen_dashboard
-    resumen = resumen_dashboard(registros)
-  File "C:\Users\jegil\Desktop\Dashboard\app\routes.py", line 663, in resumen_dashboard
-    resumen = resumen_dashboard(registros)
-  File "C:\Users\jegil\Desktop\Dashboard\app\routes.py", line 663, in resumen_dashboard
-    resumen = resumen_dashboard(registros)
-  [Previous line repeated 980 more times]
-RecursionError: maximum recursion depth exceeded
-127.0.0.1 - - [05/May/2026 11:34:08] "GET /api/por-cliente HTTP/1.1" 500 -
-Traceback (most recent call last):
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1478, in __call__
-    return self.wsgi_app(environ, start_response)
-           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1458, in wsgi_app
-    response = self.handle_exception(e)
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_cors\extension.py", line 176, in wrapped_function
-    return cors_after_request(app.make_response(f(*args, **kwargs)))
-                                                ~^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1455, in wsgi_app
-    response = self.full_dispatch_request()
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 869, in full_dispatch_request
-    rv = self.handle_user_exception(e)
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_cors\extension.py", line 176, in wrapped_function
-    return cors_after_request(app.make_response(f(*args, **kwargs)))
-                                                ~^^^^^^^^^^^^^^^^^
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 867, in full_dispatch_request
-    rv = self.dispatch_request()
-  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 852, in dispatch_request
-    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
-  File "C:\Users\jegil\Desktop\Dashboard\app\routes.py", line 1227, in api_por_cliente
-    resumen = resumen_dashboard(registros_cliente)
-  File "C:\Users\jegil\Desktop\Dashboard\app\routes.py", line 663, in resumen_dashboard
-    resumen = resumen_dashboard(registros)
-  File "C:\Users\jegil\Desktop\Dashboard\app\routes.py", line 663, in resumen_dashboard
-    resumen = resumen_dashboard(registros)
-  File "C:\Users\jegil\Desktop\Dashboard\app\routes.py", line 663, in resumen_dashboard
-    resumen = resumen_dashboard(registros)
-  [Previous line repeated 979 more times]
-RecursionError: maximum recursion depth exceeded
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [05/May/2026 11:34:36] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:36] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:36] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:38] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:38] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:38] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:38] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:38] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:38] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:38] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:45] "GET /api/filtros?cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:45] "GET /api/kpis?cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:45] "GET /api/por-cliente?cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:45] "GET /api/resumen?cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:45] "GET /api/grafico?cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:34:45] "GET /api/alertas?cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:35:00] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:35:00] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:35:06] "GET /api/matriz?year=2026&jefe_site=Surace,+Carolina HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:40:42] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:40:42] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:41:12] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:41:12] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:43:13] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:43:13] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:45:50] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:45:57] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:45:57] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 11:46:02] "GET /api/matriz?year=2026&jefe_site=Salvador+Almeira HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:02:01] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:02:01] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:02:04] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:02:04] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:03:40] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:03:40] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:03:42] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:03:42] "GET /api/asignaciones HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\models.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [05/May/2026 12:08:18] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:08:18] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:10:26] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:10:26] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:14:25] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:14:31] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:14:31] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:14:35] "GET /api/matriz?year=2026&jefe_site=Surace,+Carolina HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:15:01] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:15:01] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:15:01] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:15:10] "GET /api/filtros?cliente=Spazios HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:15:10] "GET /api/datos?cliente=Spazios HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:16:07] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:16:07] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:16:09] "GET /comparativo HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:16:09] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:16:09] "GET /api/comparativo HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:16:11] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:16:11] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:16:16] "GET /api/matriz?year=2026&jefe_site=Surace,+Carolina HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:17:27] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:17:28] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:17:28] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:17:33] "GET /api/filtros?cliente=Spazios HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:17:33] "GET /api/datos?cliente=Spazios HTTP/1.1" 200 -
- * Detected change in 'C:\\Users\\jegil\\Desktop\\Dashboard\\app\\routes.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 761-555-717
-127.0.0.1 - - [05/May/2026 12:18:40] "GET /api/matriz?jefe_site=Surace,%20Carolina HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:18:40] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:19:29] "GET /api/matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:19:33] "GET /api/matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:19:37] "GET /api/matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:19:45] "GET /api/matriz?jefe_site=Surace,%20Carolina HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:20:45] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:20:45] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:20:45] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:20:47] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:20:47] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:20:51] "GET /api/matriz?year=2026&jefe_site=Surace,+Carolina HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:23:37] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:23:37] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:25:26] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:25:26] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:25:27] "GET /comparativo HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:25:28] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:25:28] "GET /api/comparativo HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:26:39] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:26:39] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:28:44] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:05] "GET /justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:05] "GET /api/justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:15] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:15] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:15] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:22] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:22] "GET /api/datos?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:38] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:38] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:39] "GET /api/filtros?mes=2026-02 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:39] "GET /api/datos?mes=2026-02 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:55] "DELETE /api/datos/8 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:55] "GET /api/datos?mes=2026-02 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:29:55] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:02] "GET /api/filtros?mes=2026-01 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:02] "GET /api/datos?mes=2026-01 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:25] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:25] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:25] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:25] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:25] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:25] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:25] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:58] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:58] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:58] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:58] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:58] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:30:58] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:34:19] "GET /api/filtros?mes=2026-04&cliente=CACHAMAI HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:34:19] "GET /api/kpis?mes=2026-04&cliente=CACHAMAI HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:34:19] "GET /api/grafico?mes=2026-04&cliente=CACHAMAI HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:34:19] "GET /api/por-cliente?mes=2026-04&cliente=CACHAMAI HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:34:19] "GET /api/resumen?mes=2026-04&cliente=CACHAMAI HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:34:19] "GET /api/alertas?mes=2026-04&cliente=CACHAMAI HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:38:02] "GET /api/filtros?mes=2026-04&cliente=BNA&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Leiva+Joyas&cliente=Metrogas&cliente=NATURGY&cliente=RIVER+PLATE&cliente=Spazios&cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:38:02] "GET /api/kpis?mes=2026-04&cliente=BNA&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Leiva+Joyas&cliente=Metrogas&cliente=NATURGY&cliente=RIVER+PLATE&cliente=Spazios&cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:38:02] "GET /api/grafico?mes=2026-04&cliente=BNA&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Leiva+Joyas&cliente=Metrogas&cliente=NATURGY&cliente=RIVER+PLATE&cliente=Spazios&cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:38:02] "GET /api/resumen?mes=2026-04&cliente=BNA&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Leiva+Joyas&cliente=Metrogas&cliente=NATURGY&cliente=RIVER+PLATE&cliente=Spazios&cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:38:02] "GET /api/por-cliente?mes=2026-04&cliente=BNA&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Leiva+Joyas&cliente=Metrogas&cliente=NATURGY&cliente=RIVER+PLATE&cliente=Spazios&cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:38:02] "GET /api/alertas?mes=2026-04&cliente=BNA&cliente=Banco+Comafi&cliente=CACHAMAI&cliente=Farmapay&cliente=Leiva+Joyas&cliente=Metrogas&cliente=NATURGY&cliente=RIVER+PLATE&cliente=Spazios&cliente=Supervielle HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:41:54] "GET /justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:41:54] "GET /api/justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:41:55] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:41:55] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:41:55] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:41:58] "GET /api/exportar_excel HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:41:59] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:55:08] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:55:08] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:55:54] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:55:54] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:56:08] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:56:08] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 12:58:01] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:23] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:23] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:23] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:23] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:23] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:23] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:23] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:27] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:27] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:27] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:27] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:27] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:01:27] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:07:26] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:07:26] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:07:44] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:07:44] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:08:33] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:08:33] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:08:34] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:08:34] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:25] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:25] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:25] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:25] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:29] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:30] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:30] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:30] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:30] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:30] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:30] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:48] "GET /api/filtros?mes=2026-05 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:48] "GET /api/kpis?mes=2026-05 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:48] "GET /api/grafico?mes=2026-05 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:48] "GET /api/por-cliente?mes=2026-05 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:48] "GET /api/alertas?mes=2026-05 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:12:48] "GET /api/resumen?mes=2026-05 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:02] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:02] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:02] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:13] "GET /api/filtros?cliente=NATURGY HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:13] "GET /api/datos?cliente=NATURGY HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:17] "GET /api/filtros?mes=2026-05&cliente=NATURGY HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:17] "GET /api/datos?mes=2026-05&cliente=NATURGY HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:40] "PUT /api/datos/31 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:40] "GET /api/datos?mes=2026-05&cliente=NATURGY HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:40] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:58] "PUT /api/datos/32 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:58] "GET /api/datos?mes=2026-05&cliente=NATURGY HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:13:58] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:14] "PUT /api/datos/33 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:14] "GET /api/datos?mes=2026-05&cliente=NATURGY HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:14] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:30] "PUT /api/datos/34 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:30] "GET /api/datos?mes=2026-05&cliente=NATURGY HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:30] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:34] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:34] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:34] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:34] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:34] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:34] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:34] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:47] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:47] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:47] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:47] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:47] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:47] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:50] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:50] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:50] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:50] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:50] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:50] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:51] "GET /api/filtros?mes=2026-01 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:51] "GET /api/kpis?mes=2026-01 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:51] "GET /api/grafico?mes=2026-01 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:51] "GET /api/alertas?mes=2026-01 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:51] "GET /api/por-cliente?mes=2026-01 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:51] "GET /api/resumen?mes=2026-01 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:54] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:54] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:54] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:54] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:54] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:54] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:55] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:55] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:55] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:55] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:55] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:55] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:56] "GET /api/filtros?mes=2026-01&mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:56] "GET /api/kpis?mes=2026-01&mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:56] "GET /api/alertas?mes=2026-01&mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:56] "GET /api/por-cliente?mes=2026-01&mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:56] "GET /api/grafico?mes=2026-01&mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:56] "GET /api/resumen?mes=2026-01&mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:57] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:57] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:57] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:57] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:57] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:14:57] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:16:21] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:16:22] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:16:47] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:16:47] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:16:49] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:16:50] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:30] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:33] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:34] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:34] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:34] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:34] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:34] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:34] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:37] "GET /api/filtros?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:37] "GET /api/por-cliente?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:37] "GET /api/grafico?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:37] "GET /api/resumen?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:37] "GET /api/alertas?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:17:37] "GET /api/kpis?mes=2026-04 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:25:08] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:25:08] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:25:08] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:25:43] "PUT /api/datos/16 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:25:43] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:25:43] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:26:28] "PUT /api/datos/17 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:26:28] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:26:28] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:26:55] "GET /api/filtros?subcampania=Naturgy+Noa+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:26:55] "GET /api/datos?subcampania=Naturgy+Noa+Comercial HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:26:56] "GET /api/filtros?subcampania=Naturgy+Noa+Comercial&subcampania=Naturgy+Noa+Comercial+TL HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:26:56] "GET /api/datos?subcampania=Naturgy+Noa+Comercial&subcampania=Naturgy+Noa+Comercial+TL HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:27:24] "PUT /api/datos/18 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:27:24] "GET /api/datos?subcampania=Naturgy+Noa+Comercial&subcampania=Naturgy+Noa+Comercial+TL HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:27:24] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:27:58] "PUT /api/datos/19 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:27:58] "GET /api/datos?subcampania=Naturgy+Noa+Comercial&subcampania=Naturgy+Noa+Comercial+TL HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:27:58] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:37:17] "GET /api/filtros?subcampania=Banco+Comafi&subcampania=Naturgy+Noa+Comercial&subcampania=Naturgy+Noa+Comercial+TL HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:37:17] "GET /api/datos?subcampania=Banco+Comafi&subcampania=Naturgy+Noa+Comercial&subcampania=Naturgy+Noa+Comercial+TL HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:37:20] "GET /api/filtros?subcampania=BNA&subcampania=Banco+Comafi&subcampania=CACHAMAI&subcampania=Energía+San+Juan&subcampania=Energía+San+Juan+TL&subcampania=Farmapay&subcampania=Johnson+%26+Johnson&subcampania=Leiva+Joyas&subcampania=Metrogas&subcampania=NATURGY+SAN+JUAN+BACKOFFICE&subcampania=Naturgy+Ban+Comercial&subcampania=Naturgy+Ban+Comercial+TL&subcampania=Naturgy+Noa+Backoffice&subcampania=Naturgy+Noa+Backoffice+TL&subcampania=Naturgy+Noa+Comercial&subcampania=Naturgy+Noa+Comercial+TL&subcampania=Naturgy+Quiero+Gas&subcampania=River+Plate&subcampania=Santander+Chat&subcampania=Santander+Chat+Redes&subcampania=Santander+Leads&subcampania=Santander+Mixto+Bs+As&subcampania=Santander+Mixto+Bs+As+Ingresos&subcampania=Santander+Mixto+Getnet&subcampania=Spazios&subcampania=Supervielle+Prestamos+Previsional HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:37:20] "GET /api/datos?subcampania=BNA&subcampania=Banco+Comafi&subcampania=CACHAMAI&subcampania=Energía+San+Juan&subcampania=Energía+San+Juan+TL&subcampania=Farmapay&subcampania=Johnson+%26+Johnson&subcampania=Leiva+Joyas&subcampania=Metrogas&subcampania=NATURGY+SAN+JUAN+BACKOFFICE&subcampania=Naturgy+Ban+Comercial&subcampania=Naturgy+Ban+Comercial+TL&subcampania=Naturgy+Noa+Backoffice&subcampania=Naturgy+Noa+Backoffice+TL&subcampania=Naturgy+Noa+Comercial&subcampania=Naturgy+Noa+Comercial+TL&subcampania=Naturgy+Quiero+Gas&subcampania=River+Plate&subcampania=Santander+Chat&subcampania=Santander+Chat+Redes&subcampania=Santander+Leads&subcampania=Santander+Mixto+Bs+As&subcampania=Santander+Mixto+Bs+As+Ingresos&subcampania=Santander+Mixto+Getnet&subcampania=Spazios&subcampania=Supervielle+Prestamos+Previsional HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:37:21] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:37:21] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:37:22] "GET /api/filtros?subcampania=Banco+Comafi HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:37:22] "GET /api/datos?subcampania=Banco+Comafi HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:37:59] "PUT /api/datos/23 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:37:59] "GET /api/datos?subcampania=Banco+Comafi HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:37:59] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:38:30] "PUT /api/datos/24 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:38:30] "GET /api/datos?subcampania=Banco+Comafi HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 13:38:30] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:15:39] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:15:39] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:16:02] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:16:02] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:16:06] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:16:06] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:18:55] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:25:45] "GET /matriz HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:25:45] "GET /api/matriz?year=2026 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:25:47] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:25:47] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:25:47] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:25:58] "GET /api/filtros?cliente=BNA HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:25:58] "GET /api/datos?cliente=BNA HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:26:29] "PUT /api/datos/11 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:26:29] "GET /api/datos?cliente=BNA HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:26:29] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:26:54] "PUT /api/datos/12 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:26:54] "GET /api/datos?cliente=BNA HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:26:54] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:34:39] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:34:39] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:34:50] "POST /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:34:50] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:34:52] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:34:52] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:36:38] "POST /api/cargar HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:49:09] "GET /justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [05/May/2026 17:49:09] "GET /api/justificaciones HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:15:56] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:15:56] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:15:56] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:02] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:02] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:02] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:02] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:02] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:02] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:03] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:03] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:03] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:03] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:03] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:03] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:03] "GET /control HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:03] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:03] "GET /api/datos HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:04] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:04] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:04] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:04] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:04] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:04] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:04] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:05] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:08] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:08] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:08] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:08] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:08] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:08] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:08] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:16:09] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:19] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:19] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:19] "GET /api/kpis HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:19] "GET /api/grafico HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:19] "GET /api/alertas HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:19] "GET /api/por-cliente HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:19] "GET /api/resumen HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:29] "GET /cargar HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:30] "GET /api/asignaciones HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:30] "GET /catalogos HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:30] "GET /api/asignaciones?activas=0 HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:32] "GET /comparativo HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:32] "GET /api/filtros HTTP/1.1" 200 -
-127.0.0.1 - - [06/May/2026 09:19:32] "GET /api/comparativo HTTP/1.1" 200 -
+  File "C:\Users\jegil\Desktop\Dashboard\run.py", line 4, in <module>
+    app = create_app()
+  File "C:\Users\jegil\Desktop\Dashboard\app\__init__.py", line 39, in create_app
+    db.create_all()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_sqlalchemy\extension.py", line 900, in create_all
+    self._call_for_binds(bind_key, "create_all")
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_sqlalchemy\extension.py", line 881, in _call_for_binds
+    getattr(metadata, op_name)(bind=engine)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\sql\schema.py", line 5931, in create_all
+    bind._run_ddl_visitor(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        ddl.SchemaGenerator, self, checkfirst=checkfirst, tables=tables
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\engine\base.py", line 3268, in _run_ddl_visitor
+    conn._run_ddl_visitor(visitorcallable, element, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\engine\base.py", line 2467, in _run_ddl_visitor
+    ).traverse_single(element)
+      ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\sql\visitors.py", line 661, in traverse_single
+    return meth(obj, **kw)
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\sql\ddl.py", line 984, in visit_metadata
+    self.traverse_single(
+    ~~~~~~~~~~~~~~~~~~~~^
+        table,
+        ^^^^^^
+    ...<2 lines>...
+        _is_metadata_operation=True,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\sql\visitors.py", line 661, in traverse_single
+    return meth(obj, **kw)
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\sql\ddl.py", line 1022, in visit_table
+    )._invoke_with(self.connection)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\sql\ddl.py", line 321, in _invoke_with
+    return bind.execute(self)
+           ~~~~~~~~~~~~^^^^^^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\sql\ddl.py", line 187, in _execute_on_connection
+    return connection._execute_ddl(
+           ~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\engine\base.py", line 1530, in _execute_ddl
+    ret = self._execute_context(
+        dialect,
+    ...<4 lines>...
+        compiled,
+    )
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\jegil\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table historial_cambios already exists
+[SQL: 
+CREATE TABLE historial_cambios (
+	id INTEGER NOT NULL, 
+	usuario_id INTEGER, 
+	usuario_nombre VARCHAR(120), 
+	usuario_email VARCHAR(160), 
+	accion VARCHAR(30) NOT NULL, 
+	entidad VARCHAR(80) NOT NULL, 
+	entidad_id VARCHAR(50), 
+	resumen VARCHAR(255) NOT NULL, 
+	detalle TEXT, 
+	antes TEXT, 
+	despues TEXT, 
+	creado_en DATETIME NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(usuario_id) REFERENCES usuarios (id)
+)
+
+]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)

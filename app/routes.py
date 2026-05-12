@@ -1,13 +1,15 @@
 # filepath: app/routes.py
-from flask import Blueprint, Response, render_template, request, jsonify
+from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, session, url_for
 from app import db
-from app.models import AsignacionComercial, Facturacion2026, JustificacionAjuste
+from app.models import AsignacionComercial, BajaOperativa, Facturacion2026, HistorialCambio, JustificacionAjuste, ROLES_USUARIO, Usuario
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from html import escape
 from html.parser import HTMLParser
+from functools import wraps
 import csv
 import io
+import json
 import unicodedata
 import zipfile
 import xml.etree.ElementTree as ET
@@ -15,6 +17,7 @@ from xml.sax.saxutils import escape as xml_escape
 
 main_bp = Blueprint('main', __name__)
 ADMIN_KEY = 'CAT2026'
+CLAVE_PRUEBA_ACCIONES = 'PRUEBA2026'
 TIPOS_VH = [
     'Diurna',
     'Nocturna',
@@ -34,6 +37,7 @@ COLUMNAS_IMPORTACION = [
     ('jefe_site', 'Jefe de Site'),
     ('campania', 'Campaña'),
     ('subcampania', 'Sub campaña'),
+    ('tipo_negocio', 'Tipo de negocio'),
     ('tipo_jornada', 'Tipo de VH'),
     ('horas_objetivo', 'Horas objetivo'),
     ('horas_facturadas', 'Horas facturadas'),
@@ -48,6 +52,14 @@ COLUMNAS_IMPORTACION = [
     ('penalizaciones', 'Penalizaciones'),
     ('netx_gen', 'NetX Gen'),
     ('otros', 'Otros'),
+]
+
+COLUMNAS_BAJAS_IMPORTACION = [
+    ('year', 'Año'),
+    ('mes_baja', 'Mes baja'),
+    ('campania', 'Campaña'),
+    ('motivo_baja', 'Motivo baja'),
+    ('cantidad', 'Cantidad'),
 ]
 
 ALIAS_IMPORTACION = {
@@ -66,6 +78,10 @@ ALIAS_IMPORTACION = {
     'sub campana': 'subcampania',
     'sub campaña': 'subcampania',
     'subcampania': 'subcampania',
+    'tipo negocio': 'tipo_negocio',
+    'tipo de negocio': 'tipo_negocio',
+    'tipo_negocio': 'tipo_negocio',
+    'negocio': 'tipo_negocio',
     'tipo de vh': 'tipo_jornada',
     'tipo vh': 'tipo_jornada',
     'tipo_jornada': 'tipo_jornada',
@@ -100,6 +116,23 @@ ALIAS_IMPORTACION = {
     'netx gen': 'netx_gen',
     'netx_gen': 'netx_gen',
     'otros': 'otros',
+}
+
+ALIAS_BAJAS_IMPORTACION = {
+    'ano': 'year',
+    'año': 'year',
+    'year': 'year',
+    'mes baja': 'mes_baja',
+    'mes de baja': 'mes_baja',
+    'mes_baja': 'mes_baja',
+    'campana': 'campania',
+    'campaña': 'campania',
+    'campania': 'campania',
+    'motivo baja': 'motivo_baja',
+    'motivo de baja': 'motivo_baja',
+    'motivo_baja': 'motivo_baja',
+    'cantidad': 'cantidad',
+    'total': 'cantidad',
 }
 
 
@@ -193,7 +226,176 @@ def crear_xlsx(headers, rows):
 
 
 def validar_clave(data):
-    return (data or {}).get('clave') == ADMIN_KEY
+    return requiere_edicion() or (data or {}).get('clave') == ADMIN_KEY
+
+
+def validar_confirmacion_accion(data):
+    data = data or {}
+    usuario = usuario_actual()
+    password = str(data.get('password_confirmacion') or '')
+    clave = str(data.get('clave') or '')
+    if usuario and password and usuario.check_password(password):
+        return True
+    if current_app.debug and clave == CLAVE_PRUEBA_ACCIONES:
+        return True
+    return False
+
+
+def serializar_json(valor):
+    return json.dumps(valor, ensure_ascii=False, default=str)
+
+
+def snapshot_modelo(modelo):
+    if hasattr(modelo, 'to_dict'):
+        return modelo.to_dict()
+    return {}
+
+
+def cambios_entre(antes, despues):
+    cambios = {}
+    for clave in sorted(set(antes) | set(despues)):
+        if clave == 'justificaciones':
+            continue
+        valor_antes = antes.get(clave)
+        valor_despues = despues.get(clave)
+        if valor_antes != valor_despues:
+            cambios[clave] = {'antes': valor_antes, 'despues': valor_despues}
+    return cambios
+
+
+def registrar_historial(accion, entidad, entidad_id, resumen, antes=None, despues=None, detalle=None):
+    usuario = usuario_actual()
+    item = HistorialCambio(
+        usuario_id=usuario.id if usuario else None,
+        usuario_nombre=usuario.nombre if usuario else 'Sistema',
+        usuario_email=usuario.email if usuario else None,
+        accion=accion,
+        entidad=entidad,
+        entidad_id=str(entidad_id) if entidad_id is not None else None,
+        resumen=resumen,
+        detalle=detalle,
+        antes=serializar_json(antes) if antes is not None else None,
+        despues=serializar_json(despues) if despues is not None else None,
+    )
+    db.session.add(item)
+    return item
+
+
+def usuario_actual():
+    usuario_id = session.get('usuario_id')
+    if not usuario_id:
+        return None
+    return Usuario.query.get(usuario_id)
+
+
+def usuario_actual_dict():
+    usuario = usuario_actual()
+    return usuario.to_dict() if usuario else None
+
+
+def requiere_login():
+    usuario = usuario_actual()
+    return usuario is not None and usuario.activo
+
+
+def requiere_admin():
+    usuario = usuario_actual()
+    return usuario is not None and usuario.activo and usuario.es_administrador
+
+
+def requiere_edicion():
+    usuario = usuario_actual()
+    return usuario is not None and usuario.activo and usuario.puede_editar
+
+
+def requiere_eliminacion():
+    usuario = usuario_actual()
+    return usuario is not None and usuario.activo and usuario.puede_eliminar
+
+
+def respuesta_no_autorizado():
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'errores': ['No autorizado']}), 403
+    if requiere_login():
+        return redirect(url_for('main.index'))
+    return redirect(url_for('main.login'))
+
+
+def login_requerido(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not usuarios_registrados():
+            return respuesta_no_autorizado()
+        if not requiere_login():
+            return respuesta_no_autorizado()
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def permiso_requerido(verificador):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if not usuarios_registrados():
+                return respuesta_no_autorizado()
+            if not verificador():
+                return respuesta_no_autorizado()
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+admin_requerido = permiso_requerido(requiere_admin)
+edicion_requerida = permiso_requerido(requiere_edicion)
+eliminacion_requerida = permiso_requerido(requiere_eliminacion)
+
+
+def usuarios_registrados():
+    return Usuario.query.count() > 0
+
+
+def asegurar_administrador_inicial():
+    """Promueve el primer usuario existente a administrador si aun no hay admin."""
+    if not usuarios_registrados():
+        return None
+    if Usuario.query.filter_by(rol='administrador').first():
+        return None
+    primer_usuario = Usuario.query.order_by(Usuario.creado_en.asc(), Usuario.id.asc()).first()
+    if primer_usuario:
+        rol_anterior = primer_usuario.rol
+        primer_usuario.rol = 'administrador'
+        registrar_historial(
+            'edicion',
+            'usuario',
+            primer_usuario.id,
+            f'Usuario inicial promovido a administrador: {primer_usuario.email}',
+            antes={'rol': rol_anterior},
+            despues={'rol': 'administrador'},
+        )
+        db.session.commit()
+    return primer_usuario
+
+
+def normalizar_email(email):
+    return str(email or '').strip().lower()
+
+
+def validar_usuario_payload(data, require_password=False):
+    errores = []
+    nombre = str(data.get('nombre', '')).strip()
+    email = normalizar_email(data.get('email'))
+    password = str(data.get('password', '') or '')
+    rol = str(data.get('rol', 'usuario')).strip()
+
+    if not nombre:
+        errores.append('El nombre es obligatorio')
+    if not email or '@' not in email:
+        errores.append('El email es obligatorio y debe ser valido')
+    if require_password and len(password) < 8:
+        errores.append('La contrasena debe tener al menos 8 caracteres')
+    if rol not in ROLES_USUARIO:
+        errores.append('El rol no es valido')
+    return errores
 
 
 def filtrar_valores_exactos(query, columna, valores):
@@ -210,6 +412,7 @@ def aplicar_filtros(
     jefe_site=None,
     campania=None,
     subcampania=None,
+    tipo_negocio=None,
     horas_objetivo_min=None,
     horas_objetivo_max=None,
     horas_facturadas_min=None,
@@ -230,6 +433,8 @@ def aplicar_filtros(
         query = filtrar_valores_exactos(query, Facturacion2026.campania, campania)
     if subcampania:
         query = filtrar_valores_exactos(query, Facturacion2026.subcampania, subcampania)
+    if tipo_negocio:
+        query = filtrar_valores_exactos(query, Facturacion2026.tipo_negocio, tipo_negocio)
     if horas_objetivo_min is not None:
         query = query.filter(Facturacion2026.horas_objetivo >= horas_objetivo_min)
     if horas_objetivo_max is not None:
@@ -269,6 +474,45 @@ def mes_valido(valor):
     return None
 
 
+def mes_baja_valido(valor):
+    if valor in (None, ''):
+        return None
+    texto = str(valor).strip()
+    if not texto:
+        return None
+    if texto.replace('.', '', 1).isdigit():
+        numero = int(float(texto))
+        if 1 <= numero <= 12:
+            return str(numero)
+        try:
+            return str(fecha_excel(float(texto)).month)
+        except (OverflowError, ValueError):
+            return None
+    meses_nombre = {
+        'enero': 1, 'ene': 1,
+        'febrero': 2, 'feb': 2,
+        'marzo': 3, 'mar': 3,
+        'abril': 4, 'abr': 4,
+        'mayo': 5, 'may': 5,
+        'junio': 6, 'jun': 6,
+        'julio': 7, 'jul': 7,
+        'agosto': 8, 'ago': 8,
+        'septiembre': 9, 'setiembre': 9, 'sep': 9,
+        'octubre': 10, 'oct': 10,
+        'noviembre': 11, 'nov': 11,
+        'diciembre': 12, 'dic': 12,
+    }
+    normalizado = normalizar_header(texto)
+    if normalizado in meses_nombre:
+        return str(meses_nombre[normalizado])
+    for formato in ('%Y-%m', '%m/%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d'):
+        try:
+            return str(datetime.strptime(texto, formato).month)
+        except ValueError:
+            continue
+    return texto
+
+
 def normalizar_header(valor):
     texto = str(valor or '').strip().lower().replace('_', ' ')
     texto = ''.join(
@@ -289,6 +533,10 @@ def resolver_header(valor):
     if 'jefe' in normalizado and 'site' in normalizado:
         return 'jefe_site'
     return None
+
+
+def resolver_header_bajas(valor):
+    return ALIAS_BAJAS_IMPORTACION.get(normalizar_header(valor))
 
 
 def parse_numero(valor):
@@ -382,6 +630,7 @@ def crear_registro_facturacion(data):
         jefe_site=data.get('jefe_site', '').strip(),
         campania=data.get('campania', '').strip(),
         subcampania=data.get('subcampania', '').strip(),
+        tipo_negocio=str(data.get('tipo_negocio') or '').strip() or None,
         tipo_jornada=data['tipo_jornada'],
         horas_objetivo=parse_numero(data.get('horas_objetivo')),
         horas_facturadas=parse_numero(data.get('horas_facturadas')),
@@ -401,6 +650,37 @@ def crear_registro_facturacion(data):
     guardar_justificaciones(registro, data)
     asegurar_asignacion_desde_registro(registro)
     return registro
+
+
+def crear_baja_operativa(data):
+    year = str(data.get('year') or '2026').strip()
+    mes_baja = mes_baja_valido(data.get('mes_baja'))
+    campania = str(data.get('campania') or '').strip()
+    motivo_baja = str(data.get('motivo_baja') or '').strip()
+    cantidad = int(parse_numero(data.get('cantidad') or 1))
+    errores = []
+    if not year:
+        errores.append('El año es obligatorio')
+    if not mes_baja:
+        errores.append('El mes de baja es obligatorio')
+    if not campania:
+        errores.append('La campaña es obligatoria')
+    if not motivo_baja:
+        errores.append('El motivo de baja es obligatorio')
+    if cantidad <= 0:
+        errores.append('La cantidad debe ser mayor a 0')
+    if errores:
+        raise ValueError('; '.join(errores))
+
+    baja = BajaOperativa(
+        year=year,
+        mes_baja=mes_baja,
+        campania=campania,
+        motivo_baja=motivo_baja,
+        cantidad=cantidad,
+    )
+    db.session.add(baja)
+    return baja
 
 
 def filas_desde_csv(contenido):
@@ -496,6 +776,22 @@ def datos_desde_filas(filas):
     return datos
 
 
+def datos_bajas_desde_filas(filas):
+    if not filas:
+        return []
+    headers = [resolver_header_bajas(header) for header in filas[0]]
+    datos = []
+    for fila in filas[1:]:
+        if not any(str(celda).strip() for celda in fila):
+            continue
+        item = {}
+        for indice, valor in enumerate(fila):
+            if indice < len(headers) and headers[indice]:
+                item[headers[indice]] = valor.strip() if isinstance(valor, str) else valor
+        datos.append(item)
+    return datos
+
+
 def valores_request(nombre):
     valores = request.args.getlist(nombre)
     if not valores:
@@ -515,6 +811,7 @@ def filtros_request():
         'jefe_site': valores_request('jefe_site'),
         'campania': valores_request('campania'),
         'subcampania': valores_request('subcampania'),
+        'tipo_negocio': valores_request('tipo_negocio'),
     }
 
 
@@ -551,6 +848,7 @@ def filtros_asignacion(asignacion):
         'jefe_site': asignacion.jefe_site,
         'campania': asignacion.campania,
         'subcampania': asignacion.subcampania,
+        'tipo_negocio': asignacion.tipo_negocio,
     }
 
 
@@ -695,8 +993,6 @@ def metricas_matriz(registros):
     resumen = resumen_registros(registros)
     facturado_horas = sum(r.facturado_horas for r in registros)
     facturado_bono = sum(r.facturado_bono for r in registros)
-    variable_productivo = sum(r.variable_productivo_calculo for r in registros)
-    variable_real = facturado_bono
     penalizaciones = sum(r.penalizaciones_incumplimientos for r in registros)
     objetivo_horas = sum(r.objetivo_facturacion_horas for r in registros)
     objetivo_bono = sum(r.objetivo_facturacion_bono for r in registros)
@@ -718,12 +1014,20 @@ def metricas_matriz(registros):
     horas_con_penalidad_adh = horas_netas_facturadas
     desvio_horas = resumen['horas_facturadas'] - resumen['horas_objetivo']
     desvio_horas_monto = facturado_horas - objetivo_horas
-    desvio_variable = variable_real - objetivo_bono
+    desvio_bono = facturado_bono - objetivo_bono
     desvio_penalizaciones = -penalizaciones
     total_objetivo = resumen['total_teorico']
-    total_real = resumen['total_real']
+    total_real = facturado_horas + facturado_bono - penalizaciones
     return {
         **resumen,
+        'total_real': round(total_real, 2),
+        'total_facturado': round(total_real, 2),
+        'desvio': round(total_real - total_objetivo, 2),
+        'porcentaje_cumplimiento': round(
+            (total_real / total_objetivo * 100)
+            if total_objetivo > 0 else 0,
+            2
+        ),
         'valor_hora_objetivo': round(valor_hora_objetivo, 2),
         'valor_hora_realizado': round(valor_hora_realizado, 2),
         'porcentaje_cumplimiento_horas': round(
@@ -747,7 +1051,7 @@ def metricas_matriz(registros):
             2
         ),
         'porcentaje_bono': round(
-            (variable_real / objetivo_bono * 100)
+            (facturado_bono / objetivo_bono * 100)
             if objetivo_bono > 0 else 0,
             2
         ),
@@ -757,10 +1061,9 @@ def metricas_matriz(registros):
         'variable_obj': round(objetivo_bono, 2),
         'total_obj': round(total_objetivo, 2),
         'horas_real': round(facturado_horas, 2),
-        'variable_real': round(variable_real, 2),
-        'variable_productivo': round(variable_productivo, 2),
-        'penalizaciones_bonos': round(penalizaciones, 2),
-        'desvio_variable': round(desvio_variable, 2),
+        'bonos_real': round(facturado_bono, 2),
+        'penalizaciones_real': round(penalizaciones, 2),
+        'desvio_bono': round(desvio_bono, 2),
         'desvio_penalizaciones_bonos': round(desvio_penalizaciones, 2),
     }
 
@@ -784,6 +1087,46 @@ def matriz_grupos(registros, campo, meses):
         })
     salida.sort(key=lambda item: item['nombre'])
     return salida
+
+
+def resumen_bajas(registros_baja):
+    meses = sorted(
+        {str(registro.mes_baja) for registro in registros_baja if registro.mes_baja},
+        key=lambda valor: int(valor) if str(valor).isdigit() else 99
+    )
+    motivos = sorted({registro.motivo_baja for registro in registros_baja if registro.motivo_baja})
+    campanias = sorted({registro.campania or 'Sin campania' for registro in registros_baja})
+
+    por_mes = []
+    por_motivo = []
+    total_meses = {mes: 0 for mes in meses}
+    total_motivos = {motivo: 0 for motivo in motivos}
+
+    for campania in campanias:
+        registros_campania = [r for r in registros_baja if (r.campania or 'Sin campania') == campania]
+        fila_mes = {'campania': campania, 'meses': {}, 'total': sum(r.cantidad or 0 for r in registros_campania)}
+        for mes in meses:
+            cantidad = sum(r.cantidad or 0 for r in registros_campania if str(r.mes_baja or '') == mes)
+            fila_mes['meses'][mes] = cantidad
+            total_meses[mes] += cantidad
+        por_mes.append(fila_mes)
+
+        fila_motivo = {'campania': campania, 'motivos': {}, 'total': sum(r.cantidad or 0 for r in registros_campania)}
+        for motivo in motivos:
+            cantidad = sum(r.cantidad or 0 for r in registros_campania if r.motivo_baja == motivo)
+            fila_motivo['motivos'][motivo] = cantidad
+            total_motivos[motivo] += cantidad
+        por_motivo.append(fila_motivo)
+
+    return {
+        'meses': meses,
+        'motivos': motivos,
+        'por_mes': por_mes,
+        'por_motivo': por_motivo,
+        'totales_mes': total_meses,
+        'totales_motivo': total_motivos,
+        'total': sum(registro.cantidad or 0 for registro in registros_baja),
+    }
 
 
 def validar_payload_facturacion(data):
@@ -848,8 +1191,9 @@ def asegurar_asignacion_desde_registro(registro):
         'jefe_site': registro.jefe_site,
         'campania': registro.campania,
         'subcampania': registro.subcampania,
+        'tipo_negocio': registro.tipo_negocio,
     }
-    if not all(campos.values()):
+    if not all(valor for campo, valor in campos.items() if campo != 'tipo_negocio'):
         return None
     existente = AsignacionComercial.query.filter_by(**campos).first()
     if existente:
@@ -861,50 +1205,267 @@ def asegurar_asignacion_desde_registro(registro):
 
 
 @main_bp.route('/')
+@login_requerido
 def index():
     """Dashboard principal"""
     return render_template('index.html')
 
 
 @main_bp.route('/cargar')
+@edicion_requerida
 def cargar():
     """Vista de carga de datos"""
     return render_template('cargar.html')
 
 
 @main_bp.route('/control')
+@login_requerido
 def control():
     """Vista de control de datos"""
     return render_template('control.html')
 
 
 @main_bp.route('/justificaciones')
+@login_requerido
 def justificaciones():
     """Vista de control de justificaciones de ajustes."""
     return render_template('justificaciones.html')
 
 
 @main_bp.route('/comparativo')
+@login_requerido
 def comparativo():
     """Vista comparativa de horas objetivo contra horas facturadas"""
     return render_template('comparativo.html')
 
 
 @main_bp.route('/matriz')
+@login_requerido
 def matriz():
     """Vista matricial mensual por gerencia y jefe de site."""
     return render_template('matriz.html')
 
 
 @main_bp.route('/catalogos')
+@edicion_requerida
 def catalogos():
     """Vista de alta de datos maestros"""
     return render_template('catalogos.html')
 
 
+@main_bp.route('/catalogos/crear', methods=['GET', 'POST'])
+@edicion_requerida
+def catalogos_crear():
+    """Alta simple de datos maestros desde formulario HTML."""
+    if request.method == 'GET':
+        return redirect(url_for('main.catalogos'))
+    respuesta = crear_asignacion_desde_request()
+    status = respuesta[1] if isinstance(respuesta, tuple) and len(respuesta) > 1 else getattr(respuesta, 'status_code', 200)
+    if status >= 400:
+        return redirect(url_for('main.catalogos', estado='error'))
+    return redirect(url_for('main.catalogos', estado='creado'))
+
+
+@main_bp.route('/login')
+def login():
+    """Vista de acceso y primera configuracion."""
+    asegurar_administrador_inicial()
+    if requiere_login():
+        return redirect(url_for('main.index'))
+    return render_template('login.html', requiere_setup=not usuarios_registrados())
+
+
+@main_bp.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('main.login'))
+
+
+@main_bp.route('/usuarios')
+@edicion_requerida
+def usuarios():
+    """Vista de administracion de usuarios."""
+    return render_template('usuarios.html', roles=ROLES_USUARIO)
+
+
+@main_bp.route('/historial')
+@login_requerido
+def historial():
+    """Vista de historial de modificaciones y eliminaciones."""
+    return render_template('historial.html')
+
+
 # ========== ENDPOINTS API ==========
 
+@main_bp.route('/api/auth/me', methods=['GET'])
+def api_auth_me():
+    asegurar_administrador_inicial()
+    return jsonify({
+        'success': True,
+        'usuario': usuario_actual_dict(),
+        'requiere_setup': not usuarios_registrados(),
+    })
+
+
+@main_bp.route('/api/auth/login', methods=['POST'])
+def api_auth_login():
+    data = request.get_json() or {}
+    email = normalizar_email(data.get('email'))
+    password = str(data.get('password', '') or '')
+
+    usuario = Usuario.query.filter_by(email=email).first()
+    if not usuario or not usuario.activo or not usuario.check_password(password):
+        return jsonify({'success': False, 'errores': ['Email o contrasena incorrectos']}), 401
+
+    session.clear()
+    session['usuario_id'] = usuario.id
+    return jsonify({'success': True, 'usuario': usuario.to_dict()})
+
+
+@main_bp.route('/api/auth/logout', methods=['POST'])
+@login_requerido
+def api_auth_logout():
+    session.clear()
+    return jsonify({'success': True})
+
+
+@main_bp.route('/api/usuarios/setup', methods=['POST'])
+def api_usuarios_setup():
+    """Crea el primer administrador cuando la base aun no tiene usuarios."""
+    if usuarios_registrados():
+        return jsonify({'success': False, 'errores': ['La configuracion inicial ya fue realizada']}), 403
+
+    data = request.get_json() or {}
+    data['rol'] = 'administrador'
+    errores = validar_usuario_payload(data, require_password=True)
+    if errores:
+        return jsonify({'success': False, 'errores': errores}), 400
+
+    usuario = Usuario(
+        nombre=data['nombre'].strip(),
+        email=normalizar_email(data['email']),
+        rol='administrador',
+        activo=True,
+    )
+    usuario.set_password(data['password'])
+    db.session.add(usuario)
+    db.session.commit()
+    session.clear()
+    session['usuario_id'] = usuario.id
+    return jsonify({'success': True, 'usuario': usuario.to_dict()})
+
+
+@main_bp.route('/api/usuarios', methods=['GET'])
+@edicion_requerida
+def api_usuarios():
+    usuarios = Usuario.query.order_by(Usuario.creado_en.desc()).all()
+    return jsonify({'success': True, 'usuarios': [usuario.to_dict() for usuario in usuarios]})
+
+
+@main_bp.route('/api/usuarios', methods=['POST'])
+@edicion_requerida
+def api_crear_usuario():
+    data = request.get_json() or {}
+    errores = validar_usuario_payload(data, require_password=True)
+    email = normalizar_email(data.get('email'))
+    if Usuario.query.filter_by(email=email).first():
+        errores.append('Ya existe un usuario con ese email')
+    if errores:
+        return jsonify({'success': False, 'errores': errores}), 400
+
+    usuario = Usuario(
+        nombre=data['nombre'].strip(),
+        email=email,
+        rol=data.get('rol', 'usuario').strip(),
+        activo=bool(data.get('activo', True)),
+    )
+    usuario.set_password(data['password'])
+    db.session.add(usuario)
+    db.session.flush()
+    registrar_historial(
+        'creacion',
+        'usuario',
+        usuario.id,
+        f'Usuario creado: {usuario.email}',
+        despues=usuario.to_dict(),
+    )
+    db.session.commit()
+    return jsonify({'success': True, 'usuario': usuario.to_dict()})
+
+
+@main_bp.route('/api/usuarios/<int:usuario_id>', methods=['PATCH'])
+@edicion_requerida
+def api_actualizar_usuario(usuario_id):
+    usuario = Usuario.query.get_or_404(usuario_id)
+    antes = snapshot_modelo(usuario)
+    data = request.get_json() or {}
+    errores = []
+
+    if 'nombre' in data:
+        nombre = str(data.get('nombre', '')).strip()
+        if not nombre:
+            errores.append('El nombre es obligatorio')
+        else:
+            usuario.nombre = nombre
+    if 'email' in data:
+        email = normalizar_email(data.get('email'))
+        existente = Usuario.query.filter(Usuario.email == email, Usuario.id != usuario.id).first()
+        if not email or '@' not in email:
+            errores.append('El email es obligatorio y debe ser valido')
+        elif existente:
+            errores.append('Ya existe un usuario con ese email')
+        else:
+            usuario.email = email
+    if 'rol' in data:
+        rol = str(data.get('rol', '')).strip()
+        if rol not in ROLES_USUARIO:
+            errores.append('El rol no es valido')
+        else:
+            usuario.rol = rol
+    if 'activo' in data:
+        usuario.activo = bool(data.get('activo'))
+    if data.get('password'):
+        password = str(data.get('password'))
+        if len(password) < 8:
+            errores.append('La contrasena debe tener al menos 8 caracteres')
+        else:
+            usuario.set_password(password)
+
+    if errores:
+        return jsonify({'success': False, 'errores': errores}), 400
+
+    despues = snapshot_modelo(usuario)
+    cambios = cambios_entre(antes, despues)
+    if cambios:
+        registrar_historial(
+            'edicion',
+            'usuario',
+            usuario.id,
+            f'Usuario actualizado: {usuario.email}',
+            antes=antes,
+            despues=despues,
+            detalle=serializar_json(cambios),
+        )
+    db.session.commit()
+    return jsonify({'success': True, 'usuario': usuario.to_dict()})
+
+
+@main_bp.route('/api/historial', methods=['GET'])
+@login_requerido
+def api_historial():
+    query = HistorialCambio.query
+    accion = request.args.get('accion')
+    entidad = request.args.get('entidad')
+    if accion:
+        query = query.filter(HistorialCambio.accion == accion)
+    if entidad:
+        query = query.filter(HistorialCambio.entidad == entidad)
+    limite = min(numero_request('limite') or 100, 300)
+    items = query.order_by(HistorialCambio.creado_en.desc()).limit(int(limite)).all()
+    return jsonify({'success': True, 'historial': [item.to_dict() for item in items]})
+
 @main_bp.route('/api/cargar', methods=['POST'])
+@edicion_requerida
 def api_cargar():
     """Endpoint para cargar datos de facturación"""
     data = request.get_json() or {}
@@ -996,6 +1557,7 @@ def api_cargar():
 
 
 @main_bp.route('/api/datos', methods=['GET'])
+@login_requerido
 def api_datos():
     """Endpoint para obtener datos filtrados por mes, cliente y gerente"""
     query = aplicar_filtros(Facturacion2026.query, **filtros_request())
@@ -1008,6 +1570,7 @@ def api_datos():
 
 
 @main_bp.route('/api/justificaciones', methods=['GET'])
+@login_requerido
 def api_justificaciones():
     """Listado de justificaciones de bonos, penalizaciones y otros."""
     registros = aplicar_filtros(
@@ -1035,12 +1598,14 @@ def api_justificaciones():
 
 
 @main_bp.route('/api/datos/<int:registro_id>', methods=['PUT'])
+@edicion_requerida
 def api_actualizar_dato(registro_id):
     data = request.get_json() or {}
-    if not validar_clave(data):
-        return jsonify({'success': False, 'errores': ['Clave inválida']}), 403
+    if not validar_confirmacion_accion(data):
+        return jsonify({'success': False, 'errores': ['La confirmacion no es valida']}), 403
 
     registro = Facturacion2026.query.get_or_404(registro_id)
+    antes = snapshot_modelo(registro)
     errores = validar_payload_facturacion(data)
     if errores:
         return jsonify({'success': False, 'errores': errores}), 400
@@ -1054,6 +1619,7 @@ def api_actualizar_dato(registro_id):
         registro.jefe_site = data['jefe_site'].strip()
         registro.campania = data['campania'].strip()
         registro.subcampania = data['subcampania'].strip()
+        registro.tipo_negocio = str(data.get('tipo_negocio') or '').strip() or None
         registro.tipo_jornada = data['tipo_jornada']
         registro.horas_objetivo = float(data.get('horas_objetivo', 0))
         registro.horas_facturadas = float(data.get('horas_facturadas', 0))
@@ -1069,6 +1635,18 @@ def api_actualizar_dato(registro_id):
         registro.netx_gen = float(data.get('netx_gen', 0) or 0)
         registro.otros = float(data.get('otros', 0) or 0)
         asegurar_asignacion_desde_registro(registro)
+        despues = snapshot_modelo(registro)
+        cambios = cambios_entre(antes, despues)
+        if cambios:
+            registrar_historial(
+                'edicion',
+                'facturacion',
+                registro.id,
+                f'Facturacion editada: {registro.cliente} / {registro.mes}',
+                antes=antes,
+                despues=despues,
+                detalle=serializar_json(cambios),
+            )
         db.session.commit()
         return jsonify({'success': True, 'mensaje': 'Registro actualizado', 'data': registro.to_dict()})
     except Exception as e:
@@ -1077,18 +1655,29 @@ def api_actualizar_dato(registro_id):
 
 
 @main_bp.route('/api/datos/<int:registro_id>', methods=['DELETE'])
+@eliminacion_requerida
 def api_eliminar_dato(registro_id):
     data = request.get_json() or {}
-    if not validar_clave(data):
-        return jsonify({'success': False, 'errores': ['Clave inválida']}), 403
+    if not validar_confirmacion_accion(data):
+        return jsonify({'success': False, 'errores': ['La confirmacion no es valida']}), 403
 
     registro = Facturacion2026.query.get_or_404(registro_id)
+    antes = snapshot_modelo(registro)
+    registrar_historial(
+        'eliminacion',
+        'facturacion',
+        registro.id,
+        f'Facturacion eliminada: {registro.cliente} / {registro.mes}',
+        antes=antes,
+        detalle=f"Se elimino el registro de {registro.cliente} correspondiente a {registro.mes}.",
+    )
     db.session.delete(registro)
     db.session.commit()
     return jsonify({'success': True, 'mensaje': 'Registro eliminado'})
 
 
 @main_bp.route('/api/resumen', methods=['GET'])
+@login_requerido
 def api_resumen():
     """Endpoint para resumen mensual"""
     filtros = filtros_request()
@@ -1134,6 +1723,7 @@ def api_resumen():
 
 
 @main_bp.route('/api/kpis', methods=['GET'])
+@login_requerido
 def api_kpis():
     """Endpoint para obtener KPIs generales"""
     registros = registros_filtrados()
@@ -1164,6 +1754,7 @@ def api_kpis():
 
 
 @main_bp.route('/api/grafico', methods=['GET'])
+@login_requerido
 def api_grafico():
     """Endpoint para datos del gráfico de evolución mensual"""
     filtros = filtros_request()
@@ -1204,6 +1795,7 @@ def api_grafico():
 
 
 @main_bp.route('/api/filtros', methods=['GET'])
+@login_requerido
 def api_filtros():
     """Opciones dinamicas disponibles para los filtros del dashboard."""
     filtros = filtros_request()
@@ -1216,11 +1808,13 @@ def api_filtros():
             'jefes_site': opciones_filtro(filtros, 'jefe_site'),
             'campanias': opciones_filtro(filtros, 'campania'),
             'subcampanias': opciones_filtro(filtros, 'subcampania'),
+            'tipos_negocio': opciones_filtro(filtros, 'tipo_negocio'),
         }
     })
 
 
 @main_bp.route('/api/por-cliente', methods=['GET'])
+@login_requerido
 def api_por_cliente():
     """Agrupacion ejecutiva por cliente."""
     registros = registros_filtrados()
@@ -1244,6 +1838,7 @@ def api_por_cliente():
 
 
 @main_bp.route('/api/comparativo', methods=['GET'])
+@login_requerido
 def api_comparativo():
     """Comparativo de horas objetivo contra horas facturadas."""
     filtros = filtros_comparativo_request()
@@ -1315,19 +1910,37 @@ def api_comparativo():
 
 
 @main_bp.route('/api/matriz', methods=['GET'])
+@login_requerido
 def api_matriz():
     """Matriz mensual de cumplimiento por gerencia y apertura por jefe de site."""
     year = request.args.get('year') or '2026'
     jefe_site = request.args.get('jefe_site') or ''
+    tipo_negocio = request.args.get('tipo_negocio') or ''
+    mes_baja = request.args.get('mes_baja') or ''
+    motivo_baja = request.args.get('motivo_baja') or ''
     meses = [f'{year}-{numero}' for numero, _ in MESES_MATRIZ]
     columnas = [{'key': mes, 'label': f'{label}-{year[-2:]}'} for mes, (_, label) in zip(meses, MESES_MATRIZ)]
 
-    registros_year = Facturacion2026.query.filter(Facturacion2026.mes.in_(meses)).all()
+    registros_query = Facturacion2026.query.filter(Facturacion2026.mes.in_(meses))
+    if tipo_negocio:
+        registros_query = registros_query.filter(Facturacion2026.tipo_negocio == tipo_negocio)
+    registros_year = registros_query.all()
+    bajas_year = BajaOperativa.query.filter_by(year=year).all()
     jefes_site = sorted({r.jefe_site for r in registros_year if r.jefe_site})
+    meses_baja = sorted(
+        {str(r.mes_baja) for r in bajas_year if r.mes_baja},
+        key=lambda valor: int(valor) if str(valor).isdigit() else 99
+    )
+    motivos_baja = sorted({r.motivo_baja for r in bajas_year if r.motivo_baja})
 
     registros_apertura = [
         registro for registro in registros_year
         if not jefe_site or registro.jefe_site == jefe_site
+    ]
+    registros_baja = [
+        registro for registro in bajas_year
+        if (not mes_baja or str(registro.mes_baja or '') == mes_baja)
+        and (not motivo_baja or registro.motivo_baja == motivo_baja)
     ]
 
     return jsonify({
@@ -1335,6 +1948,13 @@ def api_matriz():
         'year': year,
         'columnas': [{'key': 'total', 'label': year}, *columnas],
         'jefes_site': jefes_site,
+        'tipos_negocio': sorted({r.tipo_negocio for r in Facturacion2026.query.filter(Facturacion2026.mes.in_(meses)).all() if r.tipo_negocio}),
+        'tipo_negocio': tipo_negocio,
+        'meses_baja': meses_baja,
+        'motivos_baja': motivos_baja,
+        'mes_baja': mes_baja,
+        'motivo_baja': motivo_baja,
+        'bajas': resumen_bajas(registros_baja),
         'total_gerencia': matriz_grupos(registros_year, 'gerente', meses),
         'apertura_jefe_site': matriz_grupos(registros_apertura, 'jefe_site' if not jefe_site else 'campania', meses),
         'jefe_site': jefe_site,
@@ -1342,6 +1962,7 @@ def api_matriz():
 
 
 @main_bp.route('/api/alertas', methods=['GET'])
+@login_requerido
 def api_alertas():
     """Alertas automaticas segun los datos filtrados."""
     registros = registros_filtrados()
@@ -1411,6 +2032,7 @@ def api_alertas():
 
 
 @main_bp.route('/api/exportar_excel', methods=['GET'])
+@login_requerido
 def api_exportar_excel():
     """Exporta los registros filtrados en un archivo compatible con Excel."""
     registros = aplicar_filtros(Facturacion2026.query, **filtros_request()).order_by(
@@ -1418,7 +2040,7 @@ def api_exportar_excel():
     ).all()
 
     headers = [
-        'Fecha', 'Mes', 'Cliente', 'Gerente', 'Jefe de Site', 'Campaña', 'Sub campaña', 'Tipo de VH', 'Horas objetivo',
+        'Fecha', 'Mes', 'Cliente', 'Gerente', 'Jefe de Site', 'Campaña', 'Sub campaña', 'Tipo de negocio', 'Tipo de VH', 'Horas objetivo',
         'Horas facturadas', 'Horas Penalizacion ADH', 'Valor hora objetivo', 'Valor hora alcanzado', 'Tarifacion adicional', 'Importe fijo facturado', 'Variable Objetivo', 'Variable Productivo',
         '% cumplimiento horas',
         'Objetivo facturacion horas', 'Objetivo facturacion bono', 'Facturacion objetivo',
@@ -1429,7 +2051,7 @@ def api_exportar_excel():
     for r in registros:
         rows.append([
             r.fecha.isoformat(), r.mes, r.cliente, r.gerente or '', r.jefe_site or '',
-            r.campania or '', r.subcampania or '', r.tipo_jornada,
+            r.campania or '', r.subcampania or '', r.tipo_negocio or '', r.tipo_jornada,
             r.horas_objetivo, r.horas_facturadas, r.horas_penalizadas or 0,
             r.valor_hora_objetivo if r.valor_hora_objetivo else r.valor_hora,
             r.valor_hora_alcanzado,
@@ -1465,41 +2087,107 @@ def api_exportar_excel():
 
 
 @main_bp.route('/api/template_carga', methods=['GET'])
+@edicion_requerida
 def api_template_carga():
     """Descarga una plantilla xlsx para carga masiva."""
     headers = [label for _, label in COLUMNAS_IMPORTACION]
-    ayuda = [
-        'YYYY-MM-DD o DD/MM/YYYY',
-        'YYYY-MM',
-        'Texto',
-        'Texto',
-        'Texto',
-        'Texto',
-        'Texto',
-        'Diurna, Nocturna, Feriado, Capacitación, Diurnas Feriado, Nocturnas Feriado, horas líder o radio',
-        'Número',
-        'Número',
-        'Número',
-        'Número',
-        'Opcional',
-        'Opcional',
-        'Opcional',
-        'Opcional',
-        'Opcional',
-        'Opcional',
-    ]
-    ayuda.insert(10, 'Opcional')
-    while len(ayuda) < len(headers):
-        ayuda.append('Opcional')
+    ayuda_por_campo = {
+        'fecha': 'YYYY-MM-DD o DD/MM/YYYY',
+        'mes': 'YYYY-MM',
+        'cliente': 'Texto',
+        'gerente': 'Texto',
+        'jefe_site': 'Texto',
+        'campania': 'Texto',
+        'subcampania': 'Texto',
+        'tipo_negocio': 'Opcional',
+        'tipo_jornada': 'Diurna, Nocturna, Feriado, Capacitación, Diurnas Feriado, Nocturnas Feriado, horas líder o radio',
+        'horas_objetivo': 'Número',
+        'horas_facturadas': 'Número',
+        'horas_penalizadas': 'Opcional',
+        'valor_hora_objetivo': 'Número',
+        'valor_hora': 'Número',
+    }
+    ayuda = [ayuda_por_campo.get(campo, 'Opcional') for campo, _ in COLUMNAS_IMPORTACION]
     contenido = crear_xlsx(headers, [ayuda])
     return Response(
         contenido,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={'Content-Disposition': 'attachment; filename="plantilla_carga_facturacion.xlsx"'}
+        headers={
+            'Content-Disposition': 'attachment; filename="plantilla_carga_facturacion_tipo_negocio.xlsx"',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+        }
     )
 
 
+@main_bp.route('/api/template_bajas', methods=['GET'])
+@edicion_requerida
+def api_template_bajas():
+    """Descarga una plantilla independiente para bajas."""
+    headers = [label for _, label in COLUMNAS_BAJAS_IMPORTACION]
+    ayuda = ['2026', '3', 'Campaña ejemplo', 'Renuncia', '1']
+    contenido = crear_xlsx(headers, [ayuda])
+    return Response(
+        contenido,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': 'attachment; filename="plantilla_bajas.xlsx"'}
+    )
+
+
+@main_bp.route('/api/importar_bajas', methods=['POST'])
+@edicion_requerida
+def api_importar_bajas():
+    """Importa bajas desde una plantilla separada de facturacion."""
+    archivo = request.files.get('archivo')
+    if not archivo:
+        return jsonify({'success': False, 'errores': ['Debe adjuntar un archivo']}), 400
+
+    try:
+        contenido_bytes = archivo.read()
+        nombre = (archivo.filename or '').lower()
+        if nombre.endswith('.xlsx'):
+            filas = filas_desde_xlsx(contenido_bytes)
+        else:
+            try:
+                contenido = contenido_bytes.decode('utf-8-sig')
+            except UnicodeDecodeError:
+                contenido = contenido_bytes.decode('cp1252')
+            filas = filas_desde_html(contenido) if nombre.endswith('.xls') or '<table' in contenido.lower() else filas_desde_csv(contenido)
+
+        datos = datos_bajas_desde_filas(filas)
+        if not datos:
+            return jsonify({'success': False, 'errores': ['No se encontraron filas de bajas para importar.']}), 400
+
+        creados = 0
+        errores = []
+        for indice, item in enumerate(datos, start=2):
+            if indice == 2 and normalizar_header(item.get('campania')) == 'campana ejemplo':
+                continue
+            try:
+                crear_baja_operativa(item)
+                creados += 1
+            except Exception as exc:
+                errores.append(f'Fila {indice}: {exc}')
+
+        if errores:
+            db.session.rollback()
+            return jsonify({'success': False, 'creados': 0, 'errores': errores[:50]}), 400
+        if creados == 0:
+            db.session.rollback()
+            return jsonify({'success': False, 'creados': 0, 'errores': ['No se importo ninguna baja.']}), 400
+
+        db.session.commit()
+        return jsonify({'success': True, 'creados': creados, 'mensaje': f'Se importaron {creados} baja(s)'})
+    except zipfile.BadZipFile:
+        db.session.rollback()
+        return jsonify({'success': False, 'errores': ['No pude leer el Excel de bajas. Descargue nuevamente el template.']}), 400
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({'success': False, 'errores': [str(exc)]}), 500
+
+
 @main_bp.route('/api/importar_datos', methods=['POST'])
+@edicion_requerida
 def api_importar_datos():
     """Importa registros desde la plantilla Excel/CSV."""
     archivo = request.files.get('archivo')
@@ -1580,6 +2268,7 @@ def api_importar_datos():
 
 
 @main_bp.route('/api/asignaciones', methods=['GET'])
+@edicion_requerida
 def api_asignaciones():
     """Lista de asociaciones predefinidas para carga y filtros."""
     solo_activas = request.args.get('activas', '1') != '0'
@@ -1597,47 +2286,89 @@ def api_asignaciones():
     })
 
 
+@main_bp.route('/api/asignaciones/<int:asignacion_id>', methods=['GET'])
+@edicion_requerida
+def api_obtener_asignacion(asignacion_id):
+    """Obtiene una asociacion puntual desde la base."""
+    asignacion = AsignacionComercial.query.get_or_404(asignacion_id)
+    return jsonify({'success': True, 'asignacion': asignacion.to_dict()})
+
+
 @main_bp.route('/api/asignaciones', methods=['POST'])
+@edicion_requerida
 def api_crear_asignacion():
     """Alta de una asociacion cliente/gerente/campaña/sub campaña."""
-    data = request.get_json() or {}
-    campos = {
-        'cliente': data.get('cliente', '').strip(),
-        'gerente': data.get('gerente', '').strip(),
-        'jefe_site': data.get('jefe_site', '').strip(),
-        'campania': data.get('campania', '').strip(),
-        'subcampania': data.get('subcampania', '').strip(),
-    }
-    errores = [f'{campo} es obligatorio' for campo, valor in campos.items() if not valor]
-    if errores:
-        return jsonify({'success': False, 'errores': errores}), 400
+    return crear_asignacion_desde_request()
 
-    existente = AsignacionComercial.query.filter_by(**campos).first()
-    if existente:
-        existente.activa = True
+
+@main_bp.route('/api/catalogos/asignaciones', methods=['POST'])
+@edicion_requerida
+def api_crear_asignacion_catalogos():
+    """Alta de datos maestros desde la pantalla de catalogos."""
+    return crear_asignacion_desde_request()
+
+
+def crear_asignacion_desde_request():
+    try:
+        data = request.get_json(silent=True) or request.form.to_dict() or {}
+        campos = {
+            'cliente': str(data.get('cliente') or '').strip(),
+            'gerente': str(data.get('gerente') or '').strip(),
+            'jefe_site': str(data.get('jefe_site') or '').strip(),
+            'campania': str(data.get('campania') or '').strip(),
+            'subcampania': str(data.get('subcampania') or '').strip(),
+            'tipo_negocio': str(data.get('tipo_negocio') or '').strip() or None,
+        }
+        errores = [f'{campo} es obligatorio' for campo, valor in campos.items() if campo != 'tipo_negocio' and not valor]
+        if errores:
+            return jsonify({'success': False, 'errores': errores}), 400
+
+        existente = AsignacionComercial.query.filter_by(**campos).first()
+        if existente:
+            existente.activa = True
+            db.session.commit()
+            return jsonify({'success': True, 'mensaje': 'La asociacion ya existia y quedo activa', 'asignacion': existente.to_dict()})
+
+        asignacion = AsignacionComercial(**campos)
+        db.session.add(asignacion)
+        db.session.flush()
+        try:
+            registrar_historial(
+                'creacion',
+                'asignacion',
+                asignacion.id,
+                f'Asociacion creada: {asignacion.label}',
+                despues=asignacion.to_dict(),
+            )
+        except Exception as historial_error:
+            current_app.logger.exception('No se pudo registrar historial de asignacion: %s', historial_error)
         db.session.commit()
-        return jsonify({'success': True, 'mensaje': 'La asociación ya existía y quedó activa', 'asignacion': existente.to_dict()})
+        return jsonify({'success': True, 'mensaje': 'Asociacion creada correctamente', 'asignacion': asignacion.to_dict()})
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception('Error creando asignacion')
+        return jsonify({'success': False, 'errores': [f'No se pudo crear la asociacion: {exc}']}), 500
 
-    asignacion = AsignacionComercial(**campos)
-    db.session.add(asignacion)
-    db.session.commit()
-    return jsonify({'success': True, 'mensaje': 'Asociación creada correctamente', 'asignacion': asignacion.to_dict()})
 
-
-@main_bp.route('/api/asignaciones/<int:asignacion_id>', methods=['PATCH'])
+@main_bp.route('/api/asignaciones/<int:asignacion_id>', methods=['PATCH', 'PUT'])
+@edicion_requerida
 def api_actualizar_asignacion(asignacion_id):
     data = request.get_json() or {}
-    if not validar_clave(data):
-        return jsonify({'success': False, 'errores': ['Clave inválida']}), 403
+    if not validar_confirmacion_accion(data):
+        return jsonify({'success': False, 'errores': ['La confirmacion no es valida']}), 403
 
     asignacion = AsignacionComercial.query.get_or_404(asignacion_id)
+    antes = snapshot_modelo(asignacion)
     valores_anteriores = filtros_asignacion(asignacion)
     nuevos_valores = {}
-    campos_asociacion = ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania']
+    campos_asociacion = ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio']
 
     for campo in campos_asociacion:
         if campo in data:
-            valor = data.get(campo, '').strip()
+            valor = str(data.get(campo) or '').strip()
+            if campo == 'tipo_negocio':
+                nuevos_valores[campo] = valor or None
+                continue
             if not valor:
                 return jsonify({'success': False, 'errores': [f'{campo} es obligatorio']}), 400
             nuevos_valores[campo] = valor
@@ -1661,22 +2392,48 @@ def api_actualizar_asignacion(asignacion_id):
 
     if 'activa' in data:
         asignacion.activa = bool(data['activa'])
+    db.session.flush()
+    despues = snapshot_modelo(asignacion)
+    cambios = cambios_entre(antes, despues)
+    if cambios:
+        registrar_historial(
+            'edicion',
+            'asignacion',
+            asignacion.id,
+            f'Asociacion actualizada: {asignacion.label}',
+            antes=antes,
+            despues=despues,
+            detalle=serializar_json(cambios),
+        )
     db.session.commit()
+    db.session.refresh(asignacion)
     return jsonify({
         'success': True,
+        'mensaje': 'Asociacion actualizada correctamente',
         'asignacion': asignacion.to_dict(),
-        'registros_actualizados': len(registros_asociados)
+        'registros_actualizados': len(registros_asociados),
+        'cambios': cambios,
     })
 
 
 @main_bp.route('/api/asignaciones/<int:asignacion_id>', methods=['DELETE'])
+@eliminacion_requerida
 def api_eliminar_asignacion(asignacion_id):
     data = request.get_json() or {}
-    if not validar_clave(data):
-        return jsonify({'success': False, 'errores': ['Clave inválida']}), 403
+    if not validar_confirmacion_accion(data):
+        return jsonify({'success': False, 'errores': ['La confirmacion no es valida']}), 403
 
     asignacion = AsignacionComercial.query.get_or_404(asignacion_id)
+    antes = snapshot_modelo(asignacion)
     registros_asociados = query_por_asignacion(asignacion).all()
+    registrar_historial(
+        'eliminacion',
+        'asignacion',
+        asignacion.id,
+        f'Asociacion eliminada: {asignacion.label}',
+        antes=antes,
+        detalle=f'Se elimino la asociacion y {len(registros_asociados)} carga(s) vinculadas.',
+    )
     for registro in registros_asociados:
         db.session.delete(registro)
     db.session.delete(asignacion)
@@ -1689,6 +2446,7 @@ def api_eliminar_asignacion(asignacion_id):
 
 
 @main_bp.route('/api/seed', methods=['POST'])
+@admin_requerido
 def api_seed():
     """Endpoint para cargar datos de ejemplo"""
     from app.models import Facturacion2026
@@ -1825,6 +2583,7 @@ def api_seed():
 
 
 @main_bp.route('/api/clientes', methods=['GET'])
+@login_requerido
 def api_clientes():
     """Endpoint para obtener lista de clientes únicos"""
     clientes = db.session.query(Facturacion2026.cliente).distinct().order_by(Facturacion2026.cliente).all()
@@ -1836,6 +2595,7 @@ def api_clientes():
 
 # Endpoint para obtener lista de gerentes únicos
 @main_bp.route('/api/gerentes', methods=['GET'])
+@login_requerido
 def api_gerentes():
     gerentes = db.session.query(Facturacion2026.gerente).distinct().order_by(Facturacion2026.gerente).all()
     return jsonify({
@@ -1845,6 +2605,7 @@ def api_gerentes():
 
 
 @main_bp.route('/api/meses', methods=['GET'])
+@login_requerido
 def api_meses():
     """Endpoint para obtener lista de meses disponibles"""
     meses = db.session.query(Facturacion2026.mes).distinct().order_by(Facturacion2026.mes).all()

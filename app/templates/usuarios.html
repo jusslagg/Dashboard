@@ -1,0 +1,152 @@
+{% extends "layout.html" %}
+
+{% block title %}Usuarios - Facturacion{% endblock %}
+
+{% block content %}
+<div class="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Seguridad</p>
+        <h1 class="text-3xl font-bold text-gray-900">Usuarios</h1>
+        <p class="mt-2 text-sm text-gray-600">Alta y mantenimiento de perfiles base.</p>
+    </div>
+</div>
+
+<section class="mb-5 rounded-lg bg-white p-4 shadow">
+    <h2 class="mb-4 font-semibold text-gray-900">Crear usuario</h2>
+    <div id="alertaUsuarios" class="mb-4 hidden rounded border px-3 py-2 text-sm"></div>
+    <form id="formUsuario" class="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_180px_1fr_auto] lg:items-end">
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Nombre</label>
+            <input id="nombre" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" required>
+        </div>
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Email</label>
+            <input id="email" type="email" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" required>
+        </div>
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Rol</label>
+            <select id="rol" class="h-10 w-full rounded border border-gray-300 px-3 text-sm">
+                {% for rol in roles %}
+                <option value="{{ rol }}">{{ rol }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Contrasena</label>
+            <input id="password" type="password" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" required>
+        </div>
+        <button type="submit" class="h-10 rounded bg-slate-800 px-4 text-sm font-semibold text-white hover:bg-slate-700">
+            <i class="fas fa-plus mr-2"></i>Crear
+        </button>
+    </form>
+</section>
+
+<section class="overflow-hidden rounded-lg bg-white shadow">
+    <div class="border-b border-gray-200 px-4 py-3">
+        <h2 class="font-semibold text-gray-900">Usuarios registrados</h2>
+    </div>
+    <div class="overflow-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-100 text-left text-slate-700">
+                <tr>
+                    <th class="px-4 py-3">Nombre</th>
+                    <th class="px-4 py-3">Email</th>
+                    <th class="px-4 py-3">Rol</th>
+                    <th class="px-4 py-3">Estado</th>
+                    <th class="px-4 py-3 text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaUsuarios"></tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', cargarUsuarios);
+document.getElementById('formUsuario').addEventListener('submit', crearUsuario);
+
+async function cargarUsuarios() {
+    const response = await fetch('/api/usuarios');
+    const data = await response.json();
+    if (!data.success) {
+        mostrarAlerta((data.errores || ['No autorizado']).join('. '), false);
+        return;
+    }
+    const tbody = document.getElementById('tablaUsuarios');
+    if (!data.usuarios.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">No hay usuarios registrados</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.usuarios.map(usuario => `
+        <tr class="border-t border-gray-100">
+            <td class="px-4 py-3 font-medium text-gray-900">${escapeHtml(usuario.nombre)}</td>
+            <td class="px-4 py-3 text-gray-700">${escapeHtml(usuario.email)}</td>
+            <td class="px-4 py-3">${escapeHtml(usuario.rol)}</td>
+            <td class="px-4 py-3">${usuario.activo ? '<span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">Activo</span>' : '<span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">Inactivo</span>'}</td>
+            <td class="px-4 py-3 text-right">
+                <button type="button" onclick="toggleActivo(${usuario.id}, ${usuario.activo ? 'false' : 'true'})" class="rounded border border-gray-300 px-3 py-1 text-xs hover:bg-gray-50">
+                    ${usuario.activo ? 'Desactivar' : 'Activar'}
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function crearUsuario(event) {
+    event.preventDefault();
+    const payload = {
+        nombre: document.getElementById('nombre').value,
+        email: document.getElementById('email').value,
+        rol: document.getElementById('rol').value,
+        password: document.getElementById('password').value,
+    };
+    const response = await fetch('/api/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!data.success) {
+        mostrarAlerta((data.errores || ['No se pudo crear el usuario']).join('. '), false);
+        return;
+    }
+    event.target.reset();
+    mostrarAlerta('Usuario creado correctamente', true);
+    cargarUsuarios();
+}
+
+async function toggleActivo(id, activo) {
+    const response = await fetch(`/api/usuarios/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activo }),
+    });
+    const data = await response.json();
+    if (!data.success) {
+        mostrarAlerta((data.errores || ['No se pudo actualizar']).join('. '), false);
+        return;
+    }
+    cargarUsuarios();
+}
+
+function mostrarAlerta(texto, ok) {
+    const alerta = document.getElementById('alertaUsuarios');
+    alerta.className = ok
+        ? 'mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800'
+        : 'mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800';
+    alerta.textContent = texto;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+</script>
+{% endblock %}

@@ -1,18 +1,20 @@
 # filepath: app/__init__.py
 import os
 
-from flask import Flask
+from flask import Flask, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from dotenv import load_dotenv
 from sqlalchemy import inspect, text
 
 db = SQLAlchemy()
 
 def create_app():
+    load_dotenv()
     app = Flask(__name__)
     
-    app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///facturacion.db'
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///facturacion.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JSON_AS_ASCII'] = False
     app.json.ensure_ascii = False
@@ -25,6 +27,13 @@ def create_app():
     
     from app.routes import main_bp
     app.register_blueprint(main_bp)
+
+    @app.context_processor
+    def inject_usuario_actual():
+        from app.models import Usuario
+        usuario_id = session.get('usuario_id')
+        usuario = Usuario.query.get(usuario_id) if usuario_id else None
+        return {'usuario_actual': usuario}
     
     with app.app_context():
         db.create_all()
@@ -35,12 +44,15 @@ def create_app():
 
 def ensure_schema():
     inspector = inspect(db.engine)
+    asegurar_administrador_inicial_db()
     if not inspector.has_table('facturacion_2026'):
         return
 
     asignacion_columns = {column['name'] for column in inspector.get_columns('asignaciones_comerciales')} if inspector.has_table('asignaciones_comerciales') else set()
     if asignacion_columns and 'jefe_site' not in asignacion_columns:
         db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN jefe_site VARCHAR(100)"))
+    if asignacion_columns and 'tipo_negocio' not in asignacion_columns:
+        db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN tipo_negocio VARCHAR(100)"))
     if inspector.has_table('asignaciones_comerciales'):
         db.session.execute(text("""
             UPDATE asignaciones_comerciales
@@ -70,6 +82,7 @@ def ensure_schema():
         'jefe_site': 'ALTER TABLE facturacion_2026 ADD COLUMN jefe_site VARCHAR(100)',
         'campania': 'ALTER TABLE facturacion_2026 ADD COLUMN campania VARCHAR(100)',
         'subcampania': 'ALTER TABLE facturacion_2026 ADD COLUMN subcampania VARCHAR(100)',
+        'tipo_negocio': 'ALTER TABLE facturacion_2026 ADD COLUMN tipo_negocio VARCHAR(100)',
         'horas_penalizadas': 'ALTER TABLE facturacion_2026 ADD COLUMN horas_penalizadas FLOAT DEFAULT 0',
         'valor_hora_objetivo': 'ALTER TABLE facturacion_2026 ADD COLUMN valor_hora_objetivo FLOAT',
         'importe_fijo': 'ALTER TABLE facturacion_2026 ADD COLUMN importe_fijo FLOAT',
@@ -115,12 +128,44 @@ def ensure_schema():
         WHERE variable_objetivo IS NULL
     """))
     db.session.execute(text("""
-        INSERT INTO asignaciones_comerciales (cliente, gerente, jefe_site, campania, subcampania, activa, creado_en)
-        SELECT DISTINCT cliente, COALESCE(gerente, 'Sin asignar'), COALESCE(jefe_site, 'Sin asignar'), campania, subcampania, 1, CURRENT_TIMESTAMP
+        INSERT INTO asignaciones_comerciales (cliente, gerente, jefe_site, campania, subcampania, tipo_negocio, activa, creado_en)
+        SELECT DISTINCT cliente, COALESCE(gerente, 'Sin asignar'), COALESCE(jefe_site, 'Sin asignar'), campania, subcampania, tipo_negocio, 1, CURRENT_TIMESTAMP
         FROM facturacion_2026
         WHERE cliente IS NOT NULL
           AND campania IS NOT NULL
           AND subcampania IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM asignaciones_comerciales)
     """))
+    db.session.commit()
+
+
+def asegurar_administrador_inicial_db():
+    from app.models import HistorialCambio, Usuario
+
+    inspector = inspect(db.engine)
+    if not inspector.has_table('usuarios'):
+        return
+    if Usuario.query.count() == 0:
+        return
+    if Usuario.query.filter_by(rol='administrador').first():
+        return
+
+    primer_usuario = Usuario.query.order_by(Usuario.creado_en.asc(), Usuario.id.asc()).first()
+    if not primer_usuario:
+        return
+
+    rol_anterior = primer_usuario.rol
+    primer_usuario.rol = 'administrador'
+    if inspector.has_table('historial_cambios'):
+        db.session.add(HistorialCambio(
+            usuario_id=primer_usuario.id,
+            usuario_nombre=primer_usuario.nombre,
+            usuario_email=primer_usuario.email,
+            accion='edicion',
+            entidad='usuario',
+            entidad_id=str(primer_usuario.id),
+            resumen=f'Usuario inicial promovido a administrador: {primer_usuario.email}',
+            antes=f'{{"rol": "{rol_anterior}"}}',
+            despues='{"rol": "administrador"}',
+        ))
     db.session.commit()
