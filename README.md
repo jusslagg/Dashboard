@@ -44,9 +44,14 @@ Dashboard/
    python run.py
    ```
 
+   También puede levantarse con npm:
+   ```bash
+   npm run dev
+   ```
+
 4. **Abrir en el navegador:**
    ```
-   http://localhost:5000
+   http://localhost:8009
    ```
 
 ## Uso

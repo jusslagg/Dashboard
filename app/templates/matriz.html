@@ -107,7 +107,7 @@ const filasMatriz = [
     { key: 'total_obj', label: 'Facturacion Objetivo', type: 'money', band: true },
     { key: 'horas_real', label: 'Facturado Horas', type: 'money' },
     { key: 'bonos_real', label: 'Facturado Bono', type: 'money' },
-    { key: 'penalizaciones_real', label: 'Penalizaciones por incumplimientos', type: 'money', negativeDisplay: true },
+    { key: 'penalizaciones_real', label: 'Penalizaciones por incumplimientos', type: 'money', signed: true },
     { key: 'total_real', label: 'Total Facturado', type: 'money', band: true },
     { key: 'desvio', label: 'Desvio', type: 'money', signed: true },
 ];
@@ -151,9 +151,8 @@ async function cargarMatriz() {
         popularMeses(data.columnas);
         renderDesdeEstado();
     } catch (error) {
-        console.error('Error cargando matriz:', error);
         setEstado('No se pudo cargar');
-        document.getElementById('estadoGrafico').textContent = 'Sin datos';
+        document.getElementById('estadoGrafico').textContent = error.message || 'Sin datos';
     }
 }
 
@@ -319,6 +318,10 @@ function renderGrafico(grupos) {
         .sort((a, b) => Number(a.total.desvio || 0) - Number(b.total.desvio || 0))
         .slice(0, 8);
     document.getElementById('estadoGrafico').textContent = datos.length ? `${datos.length} grupo(s)` : 'Sin datos';
+    if (typeof Chart === 'undefined') {
+        document.getElementById('estadoGrafico').textContent = 'Grafico no disponible';
+        return;
+    }
     const ctx = document.getElementById('graficoDesvios');
     if (graficoDesvios) graficoDesvios.destroy();
     graficoDesvios = new Chart(ctx, {

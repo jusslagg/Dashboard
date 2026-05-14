@@ -1,0 +1,10 @@
+{
+  "name": "dashboard-facturacion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Atajos npm para levantar la app Flask de control de facturacion.",
+  "scripts": {
+    "dev": "python run.py",
+    "start": "python run.py"
+  }
+}

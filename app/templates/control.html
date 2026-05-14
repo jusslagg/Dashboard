@@ -250,7 +250,7 @@
                 <input type="number" id="editValorHora" min="0.01" step="0.01" required class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Tarifacion adicional</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tarificacion</label>
                 <input type="number" id="editTarifacion" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
@@ -263,15 +263,15 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Bonos</label>
-                <input type="number" id="editBonos" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
+                <input type="number" id="editBonos" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Variable Productivo</label>
-                <input type="number" id="editVariableProductivo" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
+                <input type="number" id="editVariableProductivo" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Penalizaciones</label>
-                <input type="number" id="editPenalizaciones" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
+                <input type="number" id="editPenalizaciones" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">NetX Gen</label>
@@ -333,12 +333,17 @@
         </div>
     </div>
 </div>
+<div id="controlConfig"
+     data-puede-editar="{% if usuario_actual and usuario_actual.puede_editar %}true{% else %}false{% endif %}"
+     data-puede-eliminar="{% if usuario_actual and usuario_actual.puede_eliminar %}true{% else %}false{% endif %}"
+     hidden></div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-const puedeEditar = {{ 'true' if usuario_actual and usuario_actual.puede_editar else 'false' }};
-const puedeEliminar = {{ 'true' if usuario_actual and usuario_actual.puede_eliminar else 'false' }};
+const controlConfig = document.getElementById('controlConfig');
+const puedeEditar = controlConfig?.dataset.puedeEditar === 'true';
+const puedeEliminar = controlConfig?.dataset.puedeEliminar === 'true';
 
 document.addEventListener('DOMContentLoaded', function() {
     cargarFiltros();
@@ -395,7 +400,7 @@ async function cargarFiltros(mantenerSeleccion = false) {
     try {
         const seleccion = getFiltrosControl();
         const filtrosResponse = await fetch('/api/filtros' + (mantenerSeleccion ? buildQuery(seleccion) : ''));
-        const filtrosData = await filtrosResponse.json();
+        const filtrosData = await leerJsonSeguro(filtrosResponse);
         if (filtrosData.success) {
             popularSelect('filtroMes', filtrosData.filtros.meses, 'Todos', formatMes, seleccion.mes);
             popularSelect('filtroCliente', filtrosData.filtros.clientes, 'Todos', value => value, seleccion.cliente);
@@ -406,8 +411,20 @@ async function cargarFiltros(mantenerSeleccion = false) {
             popularSelect('filtroTipoNegocio', filtrosData.filtros.tipos_negocio, 'Todos', value => value, seleccion.tipo_negocio);
         }
     } catch (error) {
-        console.error('Error cargando filtros:', error);
+        mostrarMensajeControl(error.message || 'No se pudieron cargar los filtros.', 'error');
     }
+}
+
+async function leerJsonSeguro(response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        throw new Error(response.status === 403 ? 'Sesion expirada o sin permisos.' : `Respuesta inesperada del servidor (${response.status}).`);
+    }
+    const data = await response.json();
+    if (!response.ok || data.success === false) {
+        throw new Error((data.errores || [`Error ${response.status}`]).join(', '));
+    }
+    return data;
 }
 
 function popularSelect(id, valores, placeholder, formatter, seleccionado) {
@@ -481,13 +498,13 @@ async function cargarDatos() {
 
     try {
         const response = await fetch(url, { cache: 'no-store' });
-        const data = await response.json();
+        const data = await leerJsonSeguro(response);
 
         if (data.success) {
             actualizarTabla(data.data);
         }
     } catch (error) {
-        console.error('Error cargando datos:', error);
+        mostrarMensajeControl(error.message || 'No se pudieron cargar los datos.', 'error');
     }
 }
 
@@ -536,9 +553,9 @@ function actualizarTabla(datos) {
                 <td class="px-4 py-3 text-right">${formatCurrency(d.objetivo_facturacion_bono || 0)}</td>
                 <td class="px-4 py-3 text-right font-semibold">${formatCurrency(d.facturacion_objetivo || d.total_teorico)}</td>
                 <td class="px-4 py-3 text-right">${formatCurrency(d.facturado_horas || 0)}</td>
-                <td class="px-4 py-3 text-right text-green-600">${formatCurrency(d.facturado_bono || 0)}</td>
-                <td class="px-4 py-3 text-right text-green-600">${formatCurrency(d.variable_productivo_calculo || d.variable_productivo || 0)}</td>
-                <td class="px-4 py-3 text-right text-red-600">-${formatCurrency(d.penalizaciones_incumplimientos || 0)}</td>
+                <td class="px-4 py-3 text-right ${Number(d.facturado_bono || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(d.facturado_bono || 0)}</td>
+                <td class="px-4 py-3 text-right ${Number(d.variable_productivo_calculo || d.variable_productivo || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(d.variable_productivo_calculo || d.variable_productivo || 0)}</td>
+                <td class="px-4 py-3 text-right ${Number(d.penalizaciones_incumplimientos || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(d.penalizaciones_incumplimientos || 0)}</td>
                 <td class="px-4 py-3 text-right">${d.netx_gen.toFixed(0)}</td>
                 <td class="px-4 py-3 text-right">${d.otros.toFixed(0)}</td>
                 <td class="px-4 py-3 text-right font-semibold ${errorNegativo ? 'text-red-600' : ''}">
@@ -572,7 +589,9 @@ function accionesRegistro(d) {
 }
 
 function formatCurrency(value) {
-    return '$' + value.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const numero = Number(value || 0);
+    const signo = numero < 0 ? '-$' : '$';
+    return signo + Math.abs(numero).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function exportarExcel() {
@@ -827,7 +846,7 @@ async function guardarEdicion(event) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
-    const data = await response.json();
+    const data = await leerJsonSeguro(response).catch(error => ({ success: false, errores: [error.message] }));
     if (data.success) {
         mostrarMensajeControl(data.mensaje || 'Registro actualizado correctamente', 'success');
         cerrarModal();
@@ -847,7 +866,7 @@ async function eliminarRegistro(id) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password_confirmacion: confirmacion, clave: confirmacion })
     });
-    const data = await response.json();
+    const data = await leerJsonSeguro(response).catch(error => ({ success: false, errores: [error.message] }));
     if (data.success) {
         mostrarMensajeControl(data.mensaje || 'Registro eliminado correctamente', 'success');
         cargarDatos();

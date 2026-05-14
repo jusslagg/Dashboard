@@ -143,7 +143,7 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tarifacion adicional</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tarificacion</label>
                 <input type="number" id="tarifacion" name="tarifacion" min="0" step="0.01" placeholder="Importe adicional"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
@@ -162,19 +162,19 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Bonos</label>
-                <input type="number" id="bonos" name="bonos" min="0" step="0.01" value="0" placeholder="0"
+                <input type="number" id="bonos" name="bonos" step="0.01" value="0" placeholder="0"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Variable Productivo</label>
-                <input type="number" id="variable_productivo" name="variable_productivo" min="0" step="0.01" value="0" placeholder="0"
+                <input type="number" id="variable_productivo" name="variable_productivo" step="0.01" value="0" placeholder="0"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Penalizaciones</label>
-                <input type="number" id="penalizaciones" name="penalizaciones" min="0" step="0.01" value="0" placeholder="0"
+                <input type="number" id="penalizaciones" name="penalizaciones" step="0.01" value="0" placeholder="0"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
@@ -311,7 +311,7 @@
                     <span id="previewTotalReal" class="font-semibold ml-2">$0.00</span>
                 </div>
                 <div>
-                    <span class="text-gray-500">Monto Final c/ Tarifacion:</span>
+                    <span class="text-gray-500">Monto Final c/ Tarificacion:</span>
                     <span id="previewMontoFinalTarifacion" class="font-semibold ml-2">$0.00</span>
                 </div>
                 <div>
@@ -558,6 +558,12 @@ function actualizarTotalesJustificaciones() {
 function validarJustificacionesFrontend(data) {
     const errores = [];
     const totales = { bonos: 0, penalizaciones: 0, otros: 0 };
+    if (!data.justificaciones.length) {
+        ['bonos', 'penalizaciones', 'otros'].forEach(tipo => {
+            if (data[tipo] > 0) errores.push(`${tipo} requiere una justificacion`);
+        });
+        return errores;
+    }
     data.justificaciones.forEach((item, index) => {
         if (!item.tipo) errores.push(`Justificacion ${index + 1}: seleccione tipo`);
         if (item.cantidad <= 0) errores.push(`Justificacion ${index + 1}: indique una cantidad mayor a 0`);
@@ -608,9 +614,9 @@ function lineaTieneDatos(linea) {
         || linea.valor_hora_objetivo > 0
         || linea.valor_hora > 0
         || linea.variable_objetivo > 0
-        || linea.variable_productivo > 0
-        || linea.bonos > 0
-        || linea.penalizaciones > 0
+        || linea.variable_productivo !== 0
+        || linea.bonos !== 0
+        || linea.penalizaciones !== 0
         || linea.netx_gen > 0
         || linea.otros > 0
         || linea.justificaciones.length > 0;
@@ -662,8 +668,8 @@ function renderLineasPendientes() {
         const horasNetas = Math.max(linea.horas_facturadas - linea.horas_penalizadas, 0);
         const facturadoHoras = linea.importe_fijo !== null ? linea.importe_fijo : horasNetas * valorHoraAlcanzado;
         const totalReal = linea.importe_fijo !== null
-            ? linea.importe_fijo + linea.bonos - linea.penalizaciones
-            : facturadoHoras + linea.bonos - linea.penalizaciones;
+            ? linea.importe_fijo + linea.bonos + linea.penalizaciones
+            : facturadoHoras + linea.bonos + linea.penalizaciones;
         return `
             <tr class="border-t hover:bg-blue-50/40">
                 <td class="px-3 py-2 font-semibold">${index + 1}</td>
@@ -725,7 +731,7 @@ function calcularPreview() {
     const facturacionObjetivo = objetivoHoras + objetivoBono;
     const facturadoHoras = usaImporteFijo ? importeFijo : horasNetas * valorHoraAlcanzado;
     const facturadoBono = bonos;
-    const totalReal = usaImporteFijo ? importeFijo + facturadoBono - penalizaciones : facturadoHoras + facturadoBono - penalizaciones;
+    const totalReal = usaImporteFijo ? importeFijo + facturadoBono + penalizaciones : facturadoHoras + facturadoBono + penalizaciones;
     const montoFinalTarifacion = totalReal + tarifacion + variableProductivo + netxGen + otros;
     const totalTeorico = facturacionObjetivo;
     const desvioHoras = facturadoHoras - objetivoHoras;
@@ -889,7 +895,9 @@ function mostrarMensajeImportar(mensaje, tipo, autoOcultar = true) {
 }
 
 function formatCurrency(value) {
-    return '$' + value.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const numero = Number(value || 0);
+    const signo = numero < 0 ? '-$' : '$';
+    return signo + Math.abs(numero).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatNumber(value) {

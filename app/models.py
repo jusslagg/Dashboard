@@ -195,12 +195,12 @@ class Facturacion2026(db.Model):
             return (
                 self.importe_fijo
                 + self.facturado_bono
-                - self.penalizaciones_incumplimientos
+                + self.penalizaciones_incumplimientos
             )
         return (
             self.facturado_horas
             + self.facturado_bono
-            - self.penalizaciones_incumplimientos
+            + self.penalizaciones_incumplimientos
         )
 
     @property
@@ -217,7 +217,7 @@ class Facturacion2026(db.Model):
                 + (self.tarifacion or 0)
                 + self.facturado_bono
                 + self.variable_productivo_calculo
-                - self.penalizaciones_incumplimientos
+                + self.penalizaciones_incumplimientos
                 + (self.netx_gen or 0)
                 + (self.otros or 0)
             )
@@ -226,7 +226,7 @@ class Facturacion2026(db.Model):
             + (self.tarifacion or 0)
             + self.facturado_bono
             + self.variable_productivo_calculo
-            - self.penalizaciones_incumplimientos
+            + self.penalizaciones_incumplimientos
             + (self.netx_gen or 0)
             + (self.otros or 0)
         )
@@ -287,13 +287,17 @@ class Facturacion2026(db.Model):
             'variable_productivo_calculo': round(self.variable_productivo_calculo, 2),
             'penalizaciones_incumplimientos': round(self.penalizaciones_incumplimientos, 2),
             'porcentaje_cumplimiento_horas': round(self.porcentaje_cumplimiento_horas, 2),
-            'total_facturado': round(self.total_real, 2),
-            'total_real': round(self.total_real, 2),
+            'total_facturado': round(self.total_dashboard, 2),
+            'total_real': round(self.total_dashboard, 2),
             'monto_final_con_tarifacion': round(self.monto_final_con_tarifacion, 2),
             'total_dashboard': round(self.total_dashboard, 2),
             'total_teorico': round(self.total_teorico, 2),
-            'desvio': round(self.desvio, 2),
-            'porcentaje_cumplimiento': round(self.porcentaje_cumplimiento, 2)
+            'desvio': round(self.total_dashboard - self.total_teorico, 2),
+            'porcentaje_cumplimiento': round(
+                (self.total_dashboard / self.total_teorico * 100)
+                if self.total_teorico > 0 else 0,
+                2
+            )
         }
 
 

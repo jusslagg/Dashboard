@@ -374,7 +374,7 @@ function filtrarOpciones(selectId, texto) {
 async function cargarComparativo() {
     try {
         const response = await fetch('/api/comparativo' + buildQuery(getFiltrosComparativo()));
-        const data = await response.json();
+        const data = await leerJsonSeguro(response);
         if (!data.success) return;
 
         actualizarKPIs(data.kpis);
@@ -384,8 +384,20 @@ async function cargarComparativo() {
         actualizarTablaComparativo(data.por_cliente);
         actualizarTablaDetalle(data.detalle);
     } catch (error) {
-        console.error('Error cargando comparativo:', error);
+        document.getElementById('alertaComparativo').innerHTML = alertaHtml('danger', 'No se pudo cargar comparativo', error.message || 'Error inesperado.');
     }
+}
+
+async function leerJsonSeguro(response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        throw new Error(response.status === 403 ? 'Sesion expirada o sin permisos.' : `Respuesta inesperada del servidor (${response.status}).`);
+    }
+    const data = await response.json();
+    if (!response.ok || data.success === false) {
+        throw new Error((data.errores || [`Error ${response.status}`]).join(', '));
+    }
+    return data;
 }
 
 function actualizarKPIs(kpis) {
@@ -441,6 +453,11 @@ function alertaHtml(tipo, titulo, detalle) {
 }
 
 function actualizarGraficoComparativo(datos) {
+    if (typeof Chart === 'undefined') {
+        const canvas = document.getElementById('graficoComparativo');
+        if (canvas) canvas.parentElement.innerHTML = '<p class="text-sm text-gray-500">Grafico no disponible.</p>';
+        return;
+    }
     const ctx = document.getElementById('graficoComparativo').getContext('2d');
     if (chartComparativo) chartComparativo.destroy();
     chartComparativo = new Chart(ctx, {
@@ -465,6 +482,11 @@ function actualizarGraficoComparativo(datos) {
 }
 
 function actualizarGraficoBrecha(clientes) {
+    if (typeof Chart === 'undefined') {
+        const canvas = document.getElementById('graficoBrecha');
+        if (canvas) canvas.parentElement.innerHTML = '<p class="text-sm text-gray-500">Grafico no disponible.</p>';
+        return;
+    }
     const topClientes = clientes.slice(0, 10);
     const ctx = document.getElementById('graficoBrecha').getContext('2d');
     if (chartBrecha) chartBrecha.destroy();

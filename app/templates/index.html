@@ -399,11 +399,11 @@ async function cargarDashboard() {
             fetch('/api/alertas' + query)
         ]);
 
-        const kpisData = await kpisResponse.json();
-        const graficoData = await graficoResponse.json();
-        const resumenData = await resumenResponse.json();
-        const clientesData = await clientesResponse.json();
-        const alertasData = await alertasResponse.json();
+        const kpisData = await leerJsonSeguro(kpisResponse);
+        const graficoData = await leerJsonSeguro(graficoResponse);
+        const resumenData = await leerJsonSeguro(resumenResponse);
+        const clientesData = await leerJsonSeguro(clientesResponse);
+        const alertasData = await leerJsonSeguro(alertasResponse);
 
         if (kpisData.success) actualizarKPIs(kpisData.kpis);
         if (graficoData.success) actualizarGrafico(graficoData.datos);
@@ -414,8 +414,20 @@ async function cargarDashboard() {
         }
         if (alertasData.success) actualizarAlertas(alertasData.alertas);
     } catch (error) {
-        console.error('Error cargando dashboard:', error);
+        actualizarAlertas([{ tipo: 'danger', titulo: 'No se pudo cargar el dashboard', detalle: error.message }]);
     }
+}
+
+async function leerJsonSeguro(response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        throw new Error(response.status === 403 ? 'Sesion expirada o sin permisos.' : `Respuesta inesperada del servidor (${response.status}).`);
+    }
+    const data = await response.json();
+    if (!response.ok || data.success === false) {
+        throw new Error((data.errores || [`Error ${response.status}`]).join(', '));
+    }
+    return data;
 }
 
 function actualizarKPIs(kpis) {
@@ -456,6 +468,11 @@ function actualizarAlertas(alertas) {
 }
 
 function actualizarGrafico(datos) {
+    if (typeof Chart === 'undefined') {
+        const canvas = document.getElementById('graficoEvolucion');
+        if (canvas) canvas.parentElement.innerHTML = '<p class="text-sm text-gray-500">Grafico no disponible.</p>';
+        return;
+    }
     const ctx = document.getElementById('graficoEvolucion').getContext('2d');
     if (chartEvolucion) chartEvolucion.destroy();
 
@@ -485,6 +502,11 @@ function actualizarGrafico(datos) {
 }
 
 function actualizarGraficoClientes(clientes) {
+    if (typeof Chart === 'undefined') {
+        const canvas = document.getElementById('graficoClientes');
+        if (canvas) canvas.parentElement.innerHTML = '<p class="text-sm text-gray-500">Grafico no disponible.</p>';
+        return;
+    }
     const ctx = document.getElementById('graficoClientes').getContext('2d');
     if (chartClientes) chartClientes.destroy();
 
@@ -553,9 +575,9 @@ function actualizarTablaResumen(resumen) {
             <td class="px-4 py-3 font-medium">${formatMes(r.mes)}</td>
             <td class="px-4 py-3 text-right">${r.horas_objetivo.toFixed(1)}</td>
             <td class="px-4 py-3 text-right">${r.horas_facturadas.toFixed(1)}</td>
-            <td class="px-4 py-3 text-right text-green-600">+${r.bonos.toFixed(0)}</td>
-            <td class="px-4 py-3 text-right text-green-600">${formatCurrency(r.variable_productivo || 0)}</td>
-            <td class="px-4 py-3 text-right text-red-600">-${r.penalizaciones.toFixed(0)}</td>
+            <td class="px-4 py-3 text-right ${Number(r.bonos || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(r.bonos || 0)}</td>
+            <td class="px-4 py-3 text-right ${Number(r.variable_productivo || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(r.variable_productivo || 0)}</td>
+            <td class="px-4 py-3 text-right ${Number(r.penalizaciones || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(r.penalizaciones || 0)}</td>
             <td class="px-4 py-3 text-right font-semibold">${formatCurrency(r.total_real)}</td>
             <td class="px-4 py-3 text-right">${formatCurrency(r.total_teorico)}</td>
             <td class="px-4 py-3 text-right font-semibold ${r.desvio >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(r.desvio)}</td>
@@ -581,7 +603,9 @@ function exportarExcel() {
 }
 
 function formatCurrency(value) {
-    return '$' + value.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const numero = Number(value || 0);
+    const signo = numero < 0 ? '-$' : '$';
+    return signo + Math.abs(numero).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatMes(mes) {
