@@ -5,11 +5,11 @@
 {% block content %}
 <div class="mb-6">
     <h1 class="text-3xl font-bold text-gray-800">Comparativo de Horas</h1>
-    <p class="text-gray-600 mt-2">Analisis de horas objetivo contra horas facturadas con filtros comerciales y rangos de horas</p>
+    <p class="text-gray-600 mt-2">Analisis de horas objetivo contra horas facturadas con filtros comerciales.</p>
 </div>
 
 <div class="bg-white rounded-lg shadow p-4 mb-6">
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Mes</label>
             <div class="relative" data-dropdown-multiple="true">
@@ -88,26 +88,20 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-4 items-end">
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Objetivo desde</label>
-            <input id="horasObjetivoMin" type="number" min="0" step="0.01" oninput="debouncedCargarComparativo()" placeholder="Min." class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de negocio</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelTipoNegocio')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenTipoNegocio">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelTipoNegocio" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarTipoNegocio" type="text" oninput="filtrarOpciones('filtroTipoNegocio', this.value)" placeholder="Buscar tipo..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroTipoNegocio" data-lista-multiple="true" data-resumen="resumenTipoNegocio" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
         </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Objetivo hasta</label>
-            <input id="horasObjetivoMax" type="number" min="0" step="0.01" oninput="debouncedCargarComparativo()" placeholder="Max." class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Facturadas desde</label>
-            <input id="horasFacturadasMin" type="number" min="0" step="0.01" oninput="debouncedCargarComparativo()" placeholder="Min." class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Facturadas hasta</label>
-            <input id="horasFacturadasMax" type="number" min="0" step="0.01" oninput="debouncedCargarComparativo()" placeholder="Max." class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-        <button onclick="limpiarFiltros()" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded text-sm">
+        <button onclick="limpiarFiltros()" class="self-end bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded text-sm">
             <i class="fas fa-rotate-left mr-2"></i>Limpiar filtros
         </button>
     </div>
@@ -228,18 +222,13 @@ function getFiltrosBase() {
         gerente: getSelectedValues('filtroGerente'),
         jefe_site: getSelectedValues('filtroJefeSite'),
         campania: getSelectedValues('filtroCampania'),
-        subcampania: getSelectedValues('filtroSubcampania')
+        subcampania: getSelectedValues('filtroSubcampania'),
+        tipo_negocio: getSelectedValues('filtroTipoNegocio')
     };
 }
 
 function getFiltrosComparativo() {
-    return {
-        ...getFiltrosBase(),
-        horas_objetivo_min: document.getElementById('horasObjetivoMin').value,
-        horas_objetivo_max: document.getElementById('horasObjetivoMax').value,
-        horas_facturadas_min: document.getElementById('horasFacturadasMin').value,
-        horas_facturadas_max: document.getElementById('horasFacturadasMax').value
-    };
+    return getFiltrosBase();
 }
 
 function buildQuery(filtros) {
@@ -283,6 +272,7 @@ async function cargarFiltrosComparativo(mantenerSeleccion = false) {
     popularSelect('filtroJefeSite', data.filtros.jefes_site, 'Todos', value => value, seleccion.jefe_site);
     popularSelect('filtroCampania', data.filtros.campanias, 'Todos', value => value, seleccion.campania);
     popularSelect('filtroSubcampania', data.filtros.subcampanias, 'Todos', value => value, seleccion.subcampania);
+    popularSelect('filtroTipoNegocio', data.filtros.tipos_negocio, 'Todos', value => value, seleccion.tipo_negocio);
 }
 
 function popularSelect(id, valores, placeholder, formatter, seleccionado) {
@@ -564,7 +554,7 @@ function actualizarTablaDetalle(registros) {
 }
 
 function limpiarFiltros() {
-    ['filtroMes', 'filtroCliente', 'filtroGerente', 'filtroJefeSite', 'filtroCampania', 'filtroSubcampania'].forEach(id => {
+    ['filtroMes', 'filtroCliente', 'filtroGerente', 'filtroJefeSite', 'filtroCampania', 'filtroSubcampania', 'filtroTipoNegocio'].forEach(id => {
         const control = document.getElementById(id);
         if (control.dataset.listaMultiple === 'true') {
             control.querySelectorAll('input[type="checkbox"]').forEach(input => input.checked = false);
@@ -574,13 +564,10 @@ function limpiarFiltros() {
             control.value = '';
         }
     });
-    ['horasObjetivoMin', 'horasObjetivoMax', 'horasFacturadasMin', 'horasFacturadasMax'].forEach(id => {
+    ['buscarMes', 'buscarCliente', 'buscarGerente', 'buscarJefeSite', 'buscarCampania', 'buscarSubcampania', 'buscarTipoNegocio'].forEach(id => {
         document.getElementById(id).value = '';
     });
-    ['buscarMes', 'buscarCliente', 'buscarGerente', 'buscarJefeSite', 'buscarCampania', 'buscarSubcampania'].forEach(id => {
-        document.getElementById(id).value = '';
-    });
-    ['filtroMes', 'filtroCliente', 'filtroGerente', 'filtroJefeSite', 'filtroCampania', 'filtroSubcampania'].forEach(id => {
+    ['filtroMes', 'filtroCliente', 'filtroGerente', 'filtroJefeSite', 'filtroCampania', 'filtroSubcampania', 'filtroTipoNegocio'].forEach(id => {
         actualizarResumenMultiple(id);
     });
     onFiltroChange();

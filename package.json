@@ -2,9 +2,11 @@
   "name": "dashboard-facturacion",
   "version": "1.0.0",
   "private": true,
-  "description": "Atajos npm para levantar la app Flask de control de facturacion.",
+  "description": "App Next.js con backend Flask temporal para control de facturacion.",
   "scripts": {
-    "dev": "python run.py",
-    "start": "python run.py"
+    "dev": "node scripts/dev.mjs",
+    "flask:dev": "python run.py",
+    "next:dev": "npm --prefix next-app run dev",
+    "start": "node scripts/dev.mjs"
   }
 }

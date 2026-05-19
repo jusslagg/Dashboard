@@ -6,7 +6,7 @@
 <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
     <div>
         <h1 class="text-3xl font-bold text-gray-800">Dashboard de Facturacion</h1>
-        <p class="text-gray-600 mt-2">Vista ejecutiva por mes, cliente, gerente, jefe de site, campaña y sub campaña</p>
+        <p class="text-gray-600 mt-2">Vista ejecutiva por mes, cliente, gerente, jefe de site, campaña, sub campaña y tipo de negocio</p>
     </div>
     <button onclick="exportarExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-medium">
         <i class="fas fa-file-excel mr-2"></i>Exportar Excel
@@ -15,7 +15,7 @@
 
 <!-- Filtros -->
 <div class="bg-white rounded-lg shadow p-4 mb-6">
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-4 items-end">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-8 gap-4 items-end">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Mes</label>
             <div class="relative" data-dropdown-multiple="true">
@@ -91,6 +91,19 @@
                 <div id="panelSubcampania" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
                     <input id="buscarSubcampania" type="text" oninput="filtrarOpciones('filtroSubcampania', this.value)" placeholder="Buscar sub campaña..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <div id="filtroSubcampania" data-lista-multiple="true" data-resumen="resumenSubcampania" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de negocio</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelTipoNegocio')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenTipoNegocio">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelTipoNegocio" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <input id="buscarTipoNegocio" type="text" oninput="filtrarOpciones('filtroTipoNegocio', this.value)" placeholder="Buscar tipo..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="filtroTipoNegocio" data-lista-multiple="true" data-resumen="resumenTipoNegocio" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
                 </div>
             </div>
         </div>
@@ -251,7 +264,8 @@ function getFiltros() {
         gerente: getSelectedValues('filtroGerente'),
         jefe_site: getSelectedValues('filtroJefeSite'),
         campania: getSelectedValues('filtroCampania'),
-        subcampania: getSelectedValues('filtroSubcampania')
+        subcampania: getSelectedValues('filtroSubcampania'),
+        tipo_negocio: getSelectedValues('filtroTipoNegocio')
     };
 }
 
@@ -264,6 +278,7 @@ function buildQuery() {
     agregarParam(params, 'jefe_site', filtros.jefe_site);
     agregarParam(params, 'campania', filtros.campania);
     agregarParam(params, 'subcampania', filtros.subcampania);
+    agregarParam(params, 'tipo_negocio', filtros.tipo_negocio);
     const query = params.toString();
     return query ? `?${query}` : '';
 }
@@ -290,6 +305,7 @@ async function cargarFiltrosDashboard(mantenerSeleccion = false) {
     popularSelect('filtroJefeSite', data.filtros.jefes_site, 'Todos', value => value, seleccion.jefe_site);
     popularSelect('filtroCampania', data.filtros.campanias, 'Todos', value => value, seleccion.campania);
     popularSelect('filtroSubcampania', data.filtros.subcampanias, 'Todos', value => value, seleccion.subcampania);
+    popularSelect('filtroTipoNegocio', data.filtros.tipos_negocio, 'Todos', value => value, seleccion.tipo_negocio);
     filtrosInicializados = true;
 }
 
@@ -587,11 +603,11 @@ function actualizarTablaResumen(resumen) {
 }
 
 function limpiarFiltros() {
-    ['filtroMes', 'filtroCliente', 'filtroGerente', 'filtroJefeSite', 'filtroCampania', 'filtroSubcampania'].forEach(id => {
+    ['filtroMes', 'filtroCliente', 'filtroGerente', 'filtroJefeSite', 'filtroCampania', 'filtroSubcampania', 'filtroTipoNegocio'].forEach(id => {
         document.querySelectorAll(`#${id} input[type="checkbox"]`).forEach(input => input.checked = false);
         actualizarResumenMultiple(id);
     });
-    ['buscarMes', 'buscarCliente', 'buscarGerente', 'buscarJefeSite', 'buscarCampania', 'buscarSubcampania'].forEach(id => {
+    ['buscarMes', 'buscarCliente', 'buscarGerente', 'buscarJefeSite', 'buscarCampania', 'buscarSubcampania', 'buscarTipoNegocio'].forEach(id => {
         const input = document.getElementById(id);
         if (input) input.value = '';
     });

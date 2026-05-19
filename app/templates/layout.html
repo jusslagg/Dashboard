@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}Dashboard Facturación{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -79,9 +80,12 @@
                     <div class="truncate font-semibold text-white">{{ usuario_actual.nombre }}</div>
                     <div class="truncate">{{ usuario_actual.rol }}</div>
                 </div>
-                <a href="/logout" class="mb-3 block rounded bg-slate-700 px-4 py-2 text-center text-sm hover:bg-slate-600">
-                    <i class="fas fa-right-from-bracket md:mr-2"></i><span class="sidebar-text">Salir</span>
-                </a>
+                <form action="/logout" method="post" class="mb-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="block w-full rounded bg-slate-700 px-4 py-2 text-center text-sm hover:bg-slate-600">
+                        <i class="fas fa-right-from-bracket md:mr-2"></i><span class="sidebar-text">Salir</span>
+                    </button>
+                </form>
                 {% else %}
                 <a href="/login" class="mb-3 block rounded bg-slate-700 px-4 py-2 text-center text-sm hover:bg-slate-600">
                     <i class="fas fa-right-to-bracket md:mr-2"></i><span class="sidebar-text">Ingresar</span>
@@ -102,6 +106,21 @@
     </div>
 
     <script>
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = (input, init = {}) => {
+            const requestUrl = typeof input === 'string' ? input : input?.url || '';
+            const method = String(init.method || (typeof input !== 'string' ? input?.method : 'GET') || 'GET').toUpperCase();
+            const url = requestUrl ? new URL(requestUrl, window.location.origin) : null;
+            const isSameOrigin = !url || url.origin === window.location.origin;
+            if (csrfToken && isSameOrigin && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+                const headers = new Headers(init.headers || (typeof input !== 'string' ? input?.headers : undefined));
+                headers.set('X-CSRF-Token', csrfToken);
+                init = { ...init, headers };
+            }
+            return originalFetch(input, init);
+        };
+
         (function initSidebar() {
             if (localStorage.getItem('sidebarCollapsed') === 'true') {
                 document.body.classList.add('sidebar-collapsed');

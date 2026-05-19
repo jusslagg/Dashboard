@@ -51,7 +51,7 @@ class Usuario(db.Model):
 
     @property
     def puede_administrar_usuarios(self):
-        return self.rol in ('administrador', 'superusuario')
+        return self.rol == 'administrador'
 
     def to_dict(self):
         return {
@@ -150,8 +150,12 @@ class Facturacion2026(db.Model):
         return self.valor_hora_objetivo if self.valor_hora_objetivo else self.valor_hora
 
     @property
+    def usa_importe_fijo(self):
+        return self.importe_fijo is not None and self.importe_fijo > 0
+
+    @property
     def objetivo_facturacion_horas(self):
-        if self.importe_fijo is not None:
+        if self.usa_importe_fijo:
             return self.importe_fijo
         return self.horas_objetivo * self.valor_hora_objetivo_calculo
 
@@ -165,7 +169,7 @@ class Facturacion2026(db.Model):
 
     @property
     def facturado_horas(self):
-        if self.importe_fijo is not None:
+        if self.usa_importe_fijo:
             return self.importe_fijo
         horas_netas = max((self.horas_facturadas or 0) - (self.horas_penalizadas or 0), 0)
         return horas_netas * self.valor_hora_alcanzado
@@ -180,7 +184,8 @@ class Facturacion2026(db.Model):
 
     @property
     def penalizaciones_incumplimientos(self):
-        return self.penalizaciones or 0
+        valor = self.penalizaciones or 0
+        return -abs(valor) if valor else 0
 
     @property
     def porcentaje_cumplimiento_horas(self):
@@ -191,7 +196,7 @@ class Facturacion2026(db.Model):
     @property
     def total_real(self):
         """Calcula el total facturado segun la apertura de control."""
-        if self.importe_fijo is not None:
+        if self.usa_importe_fijo:
             return (
                 self.importe_fijo
                 + self.facturado_bono
@@ -205,13 +210,11 @@ class Facturacion2026(db.Model):
 
     @property
     def monto_final_con_tarifacion(self):
-        if self.importe_fijo is not None:
-            return self.total_real + (self.tarifacion or 0)
         return self.total_real + (self.tarifacion or 0)
 
     @property
     def total_dashboard(self):
-        if self.importe_fijo is not None:
+        if self.usa_importe_fijo:
             return (
                 self.importe_fijo
                 + (self.tarifacion or 0)
@@ -234,7 +237,7 @@ class Facturacion2026(db.Model):
     @property
     def total_teorico(self):
         """Calcula el total objetivo: horas_objetivo por valor_hora_objetivo."""
-        if self.importe_fijo is not None:
+        if self.usa_importe_fijo:
             return self.importe_fijo
         return self.facturacion_objetivo
 
@@ -246,7 +249,7 @@ class Facturacion2026(db.Model):
     @property
     def porcentaje_cumplimiento(self):
         """Calcula el porcentaje de cumplimiento: total_real / total_teorico."""
-        if self.importe_fijo is not None:
+        if self.usa_importe_fijo:
             return 100
         if self.total_teorico == 0:
             return 0
@@ -275,7 +278,7 @@ class Facturacion2026(db.Model):
             'variable_objetivo': self.variable_objetivo,
             'variable_productivo': self.variable_productivo,
             'bonos': self.bonos,
-            'penalizaciones': self.penalizaciones,
+            'penalizaciones': self.penalizaciones_incumplimientos,
             'netx_gen': self.netx_gen,
             'otros': self.otros,
             'justificaciones': [item.to_dict() for item in self.justificaciones],
@@ -313,6 +316,11 @@ class JustificacionAjuste(db.Model):
     descripcion = db.Column(db.Text, nullable=False)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
+    @property
+    def importe_calculo(self):
+        valor = self.importe or 0
+        return -abs(valor) if self.tipo == 'penalizaciones' else valor
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -320,7 +328,7 @@ class JustificacionAjuste(db.Model):
             'tipo': self.tipo,
             'cantidad': self.cantidad or 0,
             'precio': self.precio or 0,
-            'importe': self.importe,
+            'importe': self.importe_calculo,
             'descripcion': self.descripcion,
             'creado_en': self.creado_en.isoformat() if self.creado_en else None,
         }
@@ -357,27 +365,4 @@ class AsignacionComercial(db.Model):
             'tipo_negocio': self.tipo_negocio,
             'activa': self.activa,
             'label': self.label
-        }
-
-
-class BajaOperativa(db.Model):
-    __tablename__ = 'bajas_operativas'
-
-    id = db.Column(db.Integer, primary_key=True)
-    year = db.Column(db.String(4), nullable=False, index=True)
-    mes_baja = db.Column(db.String(20), nullable=False, index=True)
-    campania = db.Column(db.String(100), nullable=False, index=True)
-    motivo_baja = db.Column(db.String(120), nullable=False, index=True)
-    cantidad = db.Column(db.Integer, default=1, nullable=False)
-    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'year': self.year,
-            'mes_baja': self.mes_baja,
-            'campania': self.campania,
-            'motivo_baja': self.motivo_baja,
-            'cantidad': self.cantidad or 0,
-            'creado_en': self.creado_en.isoformat() if self.creado_en else None,
         }

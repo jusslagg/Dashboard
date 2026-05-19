@@ -1,7 +1,7 @@
 # filepath: app/routes.py
 from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, session, url_for
-from app import db
-from app.models import AsignacionComercial, BajaOperativa, Facturacion2026, HistorialCambio, JustificacionAjuste, ROLES_USUARIO, Usuario
+from app import db, get_csrf_token
+from app.models import AsignacionComercial, Facturacion2026, HistorialCambio, JustificacionAjuste, ROLES_USUARIO, Usuario
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from html import escape
@@ -10,14 +10,19 @@ from functools import wraps
 import csv
 import io
 import json
+import os
+import time
 import unicodedata
 import zipfile
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape as xml_escape
 
 main_bp = Blueprint('main', __name__)
-ADMIN_KEY = 'CAT2026'
-CLAVE_PRUEBA_ACCIONES = 'PRUEBA2026'
+ADMIN_KEY = os.getenv('ADMIN_ACTION_KEY')
+CLAVE_PRUEBA_ACCIONES = os.getenv('DEV_ACTION_KEY')
+LOGIN_ATTEMPTS = {}
+LOGIN_WINDOW_SECONDS = int(os.getenv('LOGIN_WINDOW_SECONDS', '900'))
+LOGIN_MAX_ATTEMPTS = int(os.getenv('LOGIN_MAX_ATTEMPTS', '5'))
 TIPOS_VH = [
     'Diurna',
     'Nocturna',
@@ -52,14 +57,6 @@ COLUMNAS_IMPORTACION = [
     ('penalizaciones', 'Penalizaciones'),
     ('netx_gen', 'NetX Gen'),
     ('otros', 'Otros'),
-]
-
-COLUMNAS_BAJAS_IMPORTACION = [
-    ('year', 'Año'),
-    ('mes_baja', 'Mes baja'),
-    ('campania', 'Campaña'),
-    ('motivo_baja', 'Motivo baja'),
-    ('cantidad', 'Cantidad'),
 ]
 
 ALIAS_IMPORTACION = {
@@ -127,24 +124,6 @@ ALIAS_IMPORTACION = {
     'netx_gen': 'netx_gen',
     'otros': 'otros',
 }
-
-ALIAS_BAJAS_IMPORTACION = {
-    'ano': 'year',
-    'año': 'year',
-    'year': 'year',
-    'mes baja': 'mes_baja',
-    'mes de baja': 'mes_baja',
-    'mes_baja': 'mes_baja',
-    'campana': 'campania',
-    'campaña': 'campania',
-    'campania': 'campania',
-    'motivo baja': 'motivo_baja',
-    'motivo de baja': 'motivo_baja',
-    'motivo_baja': 'motivo_baja',
-    'cantidad': 'cantidad',
-    'total': 'cantidad',
-}
-
 
 class TablaHTMLParser(HTMLParser):
     def __init__(self):
@@ -236,7 +215,8 @@ def crear_xlsx(headers, rows):
 
 
 def validar_clave(data):
-    return requiere_edicion() or (data or {}).get('clave') == ADMIN_KEY
+    clave = str((data or {}).get('clave') or '')
+    return requiere_edicion() or (ADMIN_KEY and clave == ADMIN_KEY)
 
 
 def validar_confirmacion_accion(data):
@@ -246,7 +226,7 @@ def validar_confirmacion_accion(data):
     clave = str(data.get('clave') or '')
     if usuario and password and usuario.check_password(password):
         return True
-    if current_app.debug and clave == CLAVE_PRUEBA_ACCIONES:
+    if current_app.debug and CLAVE_PRUEBA_ACCIONES and clave == CLAVE_PRUEBA_ACCIONES:
         return True
     return False
 
@@ -390,6 +370,32 @@ def normalizar_email(email):
     return str(email or '').strip().lower()
 
 
+def login_rate_key(email):
+    forwarded = request.headers.get('X-Forwarded-For', '')
+    ip = forwarded.split(',')[0].strip() or request.remote_addr or 'unknown'
+    return f'{ip}:{normalizar_email(email)}'
+
+
+def login_bloqueado(email):
+    key = login_rate_key(email)
+    now = time.time()
+    attempts = [item for item in LOGIN_ATTEMPTS.get(key, []) if now - item < LOGIN_WINDOW_SECONDS]
+    LOGIN_ATTEMPTS[key] = attempts
+    return len(attempts) >= LOGIN_MAX_ATTEMPTS
+
+
+def registrar_login_fallido(email):
+    key = login_rate_key(email)
+    now = time.time()
+    attempts = [item for item in LOGIN_ATTEMPTS.get(key, []) if now - item < LOGIN_WINDOW_SECONDS]
+    attempts.append(now)
+    LOGIN_ATTEMPTS[key] = attempts
+
+
+def limpiar_login_fallido(email):
+    LOGIN_ATTEMPTS.pop(login_rate_key(email), None)
+
+
 def validar_usuario_payload(data, require_password=False):
     errores = []
     nombre = str(data.get('nombre', '')).strip()
@@ -401,8 +407,14 @@ def validar_usuario_payload(data, require_password=False):
         errores.append('El nombre es obligatorio')
     if not email or '@' not in email:
         errores.append('El email es obligatorio y debe ser valido')
-    if require_password and len(password) < 8:
-        errores.append('La contrasena debe tener al menos 8 caracteres')
+    if require_password and len(password) < 12:
+        errores.append('La contrasena debe tener al menos 12 caracteres')
+    if require_password and password and (
+        password.lower() == password
+        or password.upper() == password
+        or not any(caracter.isdigit() for caracter in password)
+    ):
+        errores.append('La contrasena debe combinar mayusculas, minusculas y numeros')
     if rol not in ROLES_USUARIO:
         errores.append('El rol no es valido')
     return errores
@@ -484,45 +496,6 @@ def mes_valido(valor):
     return None
 
 
-def mes_baja_valido(valor):
-    if valor in (None, ''):
-        return None
-    texto = str(valor).strip()
-    if not texto:
-        return None
-    if texto.replace('.', '', 1).isdigit():
-        numero = int(float(texto))
-        if 1 <= numero <= 12:
-            return str(numero)
-        try:
-            return str(fecha_excel(float(texto)).month)
-        except (OverflowError, ValueError):
-            return None
-    meses_nombre = {
-        'enero': 1, 'ene': 1,
-        'febrero': 2, 'feb': 2,
-        'marzo': 3, 'mar': 3,
-        'abril': 4, 'abr': 4,
-        'mayo': 5, 'may': 5,
-        'junio': 6, 'jun': 6,
-        'julio': 7, 'jul': 7,
-        'agosto': 8, 'ago': 8,
-        'septiembre': 9, 'setiembre': 9, 'sep': 9,
-        'octubre': 10, 'oct': 10,
-        'noviembre': 11, 'nov': 11,
-        'diciembre': 12, 'dic': 12,
-    }
-    normalizado = normalizar_header(texto)
-    if normalizado in meses_nombre:
-        return str(meses_nombre[normalizado])
-    for formato in ('%Y-%m', '%m/%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d'):
-        try:
-            return str(datetime.strptime(texto, formato).month)
-        except ValueError:
-            continue
-    return texto
-
-
 def normalizar_header(valor):
     texto = str(valor or '').strip().lower().replace('_', ' ')
     texto = ''.join(
@@ -543,10 +516,6 @@ def resolver_header(valor):
     if 'jefe' in normalizado and 'site' in normalizado:
         return 'jefe_site'
     return None
-
-
-def resolver_header_bajas(valor):
-    return ALIAS_BAJAS_IMPORTACION.get(normalizar_header(valor))
 
 
 def parse_numero(valor):
@@ -652,7 +621,7 @@ def crear_registro_facturacion(data):
         variable_objetivo=parse_numero(data.get('variable_objetivo')),
         variable_productivo=parse_numero(data.get('variable_productivo')),
         bonos=parse_numero(data.get('bonos')),
-        penalizaciones=parse_numero(data.get('penalizaciones')),
+        penalizaciones=normalizar_importe_ajuste('penalizaciones', data.get('penalizaciones')),
         netx_gen=parse_numero(data.get('netx_gen')),
         otros=parse_numero(data.get('otros')),
     )
@@ -662,35 +631,76 @@ def crear_registro_facturacion(data):
     return registro
 
 
-def crear_baja_operativa(data):
-    year = str(data.get('year') or '2026').strip()
-    mes_baja = mes_baja_valido(data.get('mes_baja'))
-    campania = str(data.get('campania') or '').strip()
-    motivo_baja = str(data.get('motivo_baja') or '').strip()
-    cantidad = int(parse_numero(data.get('cantidad') or 1))
-    errores = []
-    if not year:
-        errores.append('El año es obligatorio')
-    if not mes_baja:
-        errores.append('El mes de baja es obligatorio')
-    if not campania:
-        errores.append('La campaña es obligatoria')
-    if not motivo_baja:
-        errores.append('El motivo de baja es obligatorio')
-    if cantidad <= 0:
-        errores.append('La cantidad debe ser mayor a 0')
-    if errores:
-        raise ValueError('; '.join(errores))
+def actualizar_registro_facturacion(registro, data):
+    fecha = parse_fecha(data['fecha'])
+    mes = mes_valido(data.get('mes'))
+    if not mes:
+        raise ValueError('El mes de facturacion no es valido')
 
-    baja = BajaOperativa(
-        year=year,
-        mes_baja=mes_baja,
-        campania=campania,
-        motivo_baja=motivo_baja,
-        cantidad=cantidad,
+    registro.fecha = fecha
+    registro.mes = mes
+    registro.cliente = data['cliente'].strip()
+    registro.gerente = data.get('gerente', '').strip()
+    registro.jefe_site = data.get('jefe_site', '').strip()
+    registro.campania = data.get('campania', '').strip()
+    registro.subcampania = data.get('subcampania', '').strip()
+    registro.tipo_negocio = str(data.get('tipo_negocio') or '').strip() or None
+    registro.tipo_jornada = data['tipo_jornada']
+    registro.horas_objetivo = parse_numero(data.get('horas_objetivo'))
+    registro.horas_facturadas = parse_numero(data.get('horas_facturadas'))
+    registro.horas_penalizadas = parse_numero(data.get('horas_penalizadas'))
+    registro.valor_hora_objetivo = parse_numero(data.get('valor_hora_objetivo') or data.get('valor_hora'))
+    registro.valor_hora = parse_numero(data.get('valor_hora'))
+    registro.tarifacion = parse_numero(data.get('tarifacion')) if data.get('tarifacion') not in (None, '') else None
+    registro.importe_fijo = parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None
+    registro.variable_objetivo = parse_numero(data.get('variable_objetivo'))
+    registro.variable_productivo = parse_numero(data.get('variable_productivo'))
+    registro.bonos = parse_numero(data.get('bonos'))
+    registro.penalizaciones = normalizar_importe_ajuste('penalizaciones', data.get('penalizaciones'))
+    registro.netx_gen = parse_numero(data.get('netx_gen'))
+    registro.otros = parse_numero(data.get('otros'))
+    guardar_justificaciones(registro, data)
+    asegurar_asignacion_desde_registro(registro)
+    return registro
+
+
+def query_reemplazo_importacion(data):
+    fecha = parse_fecha(data['fecha'])
+    return Facturacion2026.query.filter(
+        Facturacion2026.fecha == fecha,
+        Facturacion2026.cliente == data['cliente'].strip(),
+        Facturacion2026.gerente == data.get('gerente', '').strip(),
+        Facturacion2026.jefe_site == data.get('jefe_site', '').strip(),
+        Facturacion2026.campania == data.get('campania', '').strip(),
+        Facturacion2026.subcampania == data.get('subcampania', '').strip(),
     )
-    db.session.add(baja)
-    return baja
+
+
+def clave_reemplazo_importacion(data):
+    fecha = parse_fecha(data['fecha']).isoformat()
+    return '|'.join([
+        fecha,
+        data['cliente'].strip(),
+        data.get('gerente', '').strip(),
+        data.get('jefe_site', '').strip(),
+        data.get('campania', '').strip(),
+        data.get('subcampania', '').strip(),
+    ])
+
+
+def detalle_conflicto_importacion(indice, item, existentes):
+    return {
+        'fila': indice,
+        'fecha': parse_fecha(item['fecha']).isoformat(),
+        'mes': mes_valido(item.get('mes')),
+        'cliente': item['cliente'].strip(),
+        'gerente': item.get('gerente', '').strip(),
+        'jefe_site': item.get('jefe_site', '').strip(),
+        'campania': item.get('campania', '').strip(),
+        'subcampania': item.get('subcampania', '').strip(),
+        'tipo_negocio': str(item.get('tipo_negocio') or '').strip(),
+        'existentes': [registro.id for registro in existentes],
+    }
 
 
 def filas_desde_csv(contenido):
@@ -786,22 +796,6 @@ def datos_desde_filas(filas):
     return datos
 
 
-def datos_bajas_desde_filas(filas):
-    if not filas:
-        return []
-    headers = [resolver_header_bajas(header) for header in filas[0]]
-    datos = []
-    for fila in filas[1:]:
-        if not any(str(celda).strip() for celda in fila):
-            continue
-        item = {}
-        for indice, valor in enumerate(fila):
-            if indice < len(headers) and headers[indice]:
-                item[headers[indice]] = valor.strip() if isinstance(valor, str) else valor
-        datos.append(item)
-    return datos
-
-
 def valores_request(nombre):
     valores = request.args.getlist(nombre)
     if not valores:
@@ -873,6 +867,13 @@ TIPOS_JUSTIFICACION = {
 }
 
 
+def normalizar_importe_ajuste(tipo, importe):
+    valor = parse_numero(importe)
+    if tipo == 'penalizaciones':
+        return -abs(valor) if valor else 0
+    return valor
+
+
 def normalizar_justificaciones(data):
     items = data.get('justificaciones') or []
     salida = []
@@ -881,7 +882,8 @@ def normalizar_justificaciones(data):
         descripcion = str(item.get('descripcion', '')).strip()
         cantidad = parse_numero(item.get('cantidad')) if item.get('cantidad') not in (None, '') else 0
         precio = parse_numero(item.get('precio')) if item.get('precio') not in (None, '') else 0
-        importe = parse_numero(item.get('importe')) if item.get('importe') not in (None, '') else cantidad * precio
+        importe_base = parse_numero(item.get('importe')) if item.get('importe') not in (None, '') else cantidad * precio
+        importe = normalizar_importe_ajuste(tipo, importe_base)
         if not tipo and not descripcion and cantidad == 0 and precio == 0 and importe == 0:
             continue
         salida.append({
@@ -902,7 +904,7 @@ def validar_justificaciones(data):
     totales = {tipo: 0 for tipo in TIPOS_JUSTIFICACION}
     if not items:
         for tipo, label in TIPOS_JUSTIFICACION.items():
-            if parse_numero(data.get(tipo)) > 0:
+            if abs(normalizar_importe_ajuste(tipo, data.get(tipo))) > 0:
                 errores.append(f'{label} requiere al menos una justificacion')
         return errores
 
@@ -914,17 +916,18 @@ def validar_justificaciones(data):
             errores.append(f'Justificacion {indice}: la cantidad debe ser mayor a 0')
         if item['precio'] <= 0:
             errores.append(f'Justificacion {indice}: el precio debe ser mayor a 0')
-        if item['importe'] <= 0:
+        importe_absoluto = abs(item['importe'])
+        if importe_absoluto <= 0:
             errores.append(f'Justificacion {indice}: el importe debe ser mayor a 0')
-        if abs(item['importe'] - (item['cantidad'] * item['precio'])) > 0.01:
+        if abs(importe_absoluto - (item['cantidad'] * item['precio'])) > 0.01:
             errores.append(f'Justificacion {indice}: el importe debe coincidir con cantidad por precio')
         if not item['descripcion']:
             errores.append(f'Justificacion {indice}: la descripcion es obligatoria')
         totales[item['tipo']] += item['importe']
 
     for tipo, label in TIPOS_JUSTIFICACION.items():
-        valor_campo = parse_numero(data.get(tipo))
-        if valor_campo > 0 and totales[tipo] == 0:
+        valor_campo = normalizar_importe_ajuste(tipo, data.get(tipo))
+        if abs(valor_campo) > 0 and totales[tipo] == 0:
             errores.append(f'{label} requiere al menos una justificacion')
         if abs(totales[tipo] - valor_campo) > 0.01:
             errores.append(f'La suma de justificaciones de {label} debe coincidir con el importe cargado')
@@ -960,7 +963,7 @@ def resumen_registros(registros):
         'bonos': round(sum(r.bonos or 0 for r in registros), 2),
         'variable_objetivo': round(sum(r.variable_objetivo or 0 for r in registros), 2),
         'variable_productivo': round(sum(r.variable_productivo_calculo for r in registros), 2),
-        'penalizaciones': round(sum(r.penalizaciones or 0 for r in registros), 2),
+        'penalizaciones': round(sum(r.penalizaciones_incumplimientos for r in registros), 2),
         'netx_gen': round(sum(r.netx_gen or 0 for r in registros), 2),
         'otros': round(sum(r.otros or 0 for r in registros), 2),
         'tarifacion': round(sum(r.tarifacion or 0 for r in registros), 2),
@@ -1131,46 +1134,6 @@ def matriz_grupos(registros, campo, meses):
     return salida
 
 
-def resumen_bajas(registros_baja):
-    meses = sorted(
-        {str(registro.mes_baja) for registro in registros_baja if registro.mes_baja},
-        key=lambda valor: int(valor) if str(valor).isdigit() else 99
-    )
-    motivos = sorted({registro.motivo_baja for registro in registros_baja if registro.motivo_baja})
-    campanias = sorted({registro.campania or 'Sin campania' for registro in registros_baja})
-
-    por_mes = []
-    por_motivo = []
-    total_meses = {mes: 0 for mes in meses}
-    total_motivos = {motivo: 0 for motivo in motivos}
-
-    for campania in campanias:
-        registros_campania = [r for r in registros_baja if (r.campania or 'Sin campania') == campania]
-        fila_mes = {'campania': campania, 'meses': {}, 'total': sum(r.cantidad or 0 for r in registros_campania)}
-        for mes in meses:
-            cantidad = sum(r.cantidad or 0 for r in registros_campania if str(r.mes_baja or '') == mes)
-            fila_mes['meses'][mes] = cantidad
-            total_meses[mes] += cantidad
-        por_mes.append(fila_mes)
-
-        fila_motivo = {'campania': campania, 'motivos': {}, 'total': sum(r.cantidad or 0 for r in registros_campania)}
-        for motivo in motivos:
-            cantidad = sum(r.cantidad or 0 for r in registros_campania if r.motivo_baja == motivo)
-            fila_motivo['motivos'][motivo] = cantidad
-            total_motivos[motivo] += cantidad
-        por_motivo.append(fila_motivo)
-
-    return {
-        'meses': meses,
-        'motivos': motivos,
-        'por_mes': por_mes,
-        'por_motivo': por_motivo,
-        'totales_mes': total_meses,
-        'totales_motivo': total_motivos,
-        'total': sum(registro.cantidad or 0 for registro in registros_baja),
-    }
-
-
 def validar_payload_facturacion(data):
     errores = []
     for campo, mensaje in [
@@ -1320,21 +1283,22 @@ def login():
     return render_template('login.html', requiere_setup=not usuarios_registrados())
 
 
-@main_bp.route('/logout')
+@main_bp.route('/logout', methods=['POST'])
+@login_requerido
 def logout():
     session.clear()
     return redirect(url_for('main.login'))
 
 
 @main_bp.route('/usuarios')
-@edicion_requerida
+@admin_requerido
 def usuarios():
     """Vista de administracion de usuarios."""
     return render_template('usuarios.html', roles=ROLES_USUARIO)
 
 
 @main_bp.route('/historial')
-@login_requerido
+@admin_requerido
 def historial():
     """Vista de historial de modificaciones y eliminaciones."""
     return render_template('historial.html')
@@ -1349,6 +1313,7 @@ def api_auth_me():
         'success': True,
         'usuario': usuario_actual_dict(),
         'requiere_setup': not usuarios_registrados(),
+        'csrf_token': get_csrf_token(),
     })
 
 
@@ -1358,13 +1323,20 @@ def api_auth_login():
     email = normalizar_email(data.get('email'))
     password = str(data.get('password', '') or '')
 
+    if login_bloqueado(email):
+        return jsonify({'success': False, 'errores': ['Demasiados intentos. Espere unos minutos e intente nuevamente']}), 429
+
     usuario = Usuario.query.filter_by(email=email).first()
     if not usuario or not usuario.activo or not usuario.check_password(password):
+        registrar_login_fallido(email)
         return jsonify({'success': False, 'errores': ['Email o contrasena incorrectos']}), 401
 
     session.clear()
+    session.permanent = True
     session['usuario_id'] = usuario.id
-    return jsonify({'success': True, 'usuario': usuario.to_dict()})
+    csrf_token = get_csrf_token()
+    limpiar_login_fallido(email)
+    return jsonify({'success': True, 'usuario': usuario.to_dict(), 'csrf_token': csrf_token})
 
 
 @main_bp.route('/api/auth/logout', methods=['POST'])
@@ -1396,19 +1368,21 @@ def api_usuarios_setup():
     db.session.add(usuario)
     db.session.commit()
     session.clear()
+    session.permanent = True
     session['usuario_id'] = usuario.id
-    return jsonify({'success': True, 'usuario': usuario.to_dict()})
+    csrf_token = get_csrf_token()
+    return jsonify({'success': True, 'usuario': usuario.to_dict(), 'csrf_token': csrf_token})
 
 
 @main_bp.route('/api/usuarios', methods=['GET'])
-@edicion_requerida
+@admin_requerido
 def api_usuarios():
     usuarios = Usuario.query.order_by(Usuario.creado_en.desc()).all()
     return jsonify({'success': True, 'usuarios': [usuario.to_dict() for usuario in usuarios]})
 
 
 @main_bp.route('/api/usuarios', methods=['POST'])
-@edicion_requerida
+@admin_requerido
 def api_crear_usuario():
     data = request.get_json() or {}
     errores = validar_usuario_payload(data, require_password=True)
@@ -1439,7 +1413,7 @@ def api_crear_usuario():
 
 
 @main_bp.route('/api/usuarios/<int:usuario_id>', methods=['PATCH'])
-@edicion_requerida
+@admin_requerido
 def api_actualizar_usuario(usuario_id):
     usuario = Usuario.query.get_or_404(usuario_id)
     antes = snapshot_modelo(usuario)
@@ -1471,8 +1445,10 @@ def api_actualizar_usuario(usuario_id):
         usuario.activo = bool(data.get('activo'))
     if data.get('password'):
         password = str(data.get('password'))
-        if len(password) < 8:
-            errores.append('La contrasena debe tener al menos 8 caracteres')
+        if len(password) < 12:
+            errores.append('La contrasena debe tener al menos 12 caracteres')
+        elif password.lower() == password or password.upper() == password or not any(caracter.isdigit() for caracter in password):
+            errores.append('La contrasena debe combinar mayusculas, minusculas y numeros')
         else:
             usuario.set_password(password)
 
@@ -1496,7 +1472,7 @@ def api_actualizar_usuario(usuario_id):
 
 
 @main_bp.route('/api/historial', methods=['GET'])
-@login_requerido
+@admin_requerido
 def api_historial():
     query = HistorialCambio.query
     accion = request.args.get('accion')
@@ -1674,7 +1650,7 @@ def api_actualizar_dato(registro_id):
         registro.variable_objetivo = parse_numero(data.get('variable_objetivo'))
         registro.variable_productivo = parse_numero(data.get('variable_productivo'))
         registro.bonos = float(data.get('bonos', 0) or 0)
-        registro.penalizaciones = float(data.get('penalizaciones', 0) or 0)
+        registro.penalizaciones = normalizar_importe_ajuste('penalizaciones', data.get('penalizaciones'))
         registro.netx_gen = float(data.get('netx_gen', 0) or 0)
         registro.otros = float(data.get('otros', 0) or 0)
         asegurar_asignacion_desde_registro(registro)
@@ -1730,7 +1706,6 @@ def api_resumen():
         func.sum(Facturacion2026.horas_objetivo).label('horas_objetivo'),
         func.sum(Facturacion2026.horas_facturadas).label('horas_facturadas'),
         func.sum(Facturacion2026.bonos).label('bonos'),
-        func.sum(Facturacion2026.penalizaciones).label('penalizaciones'),
         func.sum(Facturacion2026.netx_gen).label('netx_gen'),
         func.sum(Facturacion2026.otros).label('otros')
     )
@@ -1967,8 +1942,6 @@ def api_matriz():
     year = request.args.get('year') or '2026'
     jefe_site = request.args.get('jefe_site') or ''
     tipo_negocio = request.args.get('tipo_negocio') or ''
-    mes_baja = request.args.get('mes_baja') or ''
-    motivo_baja = request.args.get('motivo_baja') or ''
     meses = [f'{year}-{numero}' for numero, _ in MESES_MATRIZ]
     columnas = [{'key': mes, 'label': f'{label}-{year[-2:]}'} for mes, (_, label) in zip(meses, MESES_MATRIZ)]
 
@@ -1976,22 +1949,11 @@ def api_matriz():
     if tipo_negocio:
         registros_query = registros_query.filter(Facturacion2026.tipo_negocio == tipo_negocio)
     registros_year = registros_query.all()
-    bajas_year = BajaOperativa.query.filter_by(year=year).all()
     jefes_site = sorted({r.jefe_site for r in registros_year if r.jefe_site})
-    meses_baja = sorted(
-        {str(r.mes_baja) for r in bajas_year if r.mes_baja},
-        key=lambda valor: int(valor) if str(valor).isdigit() else 99
-    )
-    motivos_baja = sorted({r.motivo_baja for r in bajas_year if r.motivo_baja})
 
     registros_apertura = [
         registro for registro in registros_year
         if not jefe_site or registro.jefe_site == jefe_site
-    ]
-    registros_baja = [
-        registro for registro in bajas_year
-        if (not mes_baja or str(registro.mes_baja or '') == mes_baja)
-        and (not motivo_baja or registro.motivo_baja == motivo_baja)
     ]
 
     return jsonify({
@@ -2001,11 +1963,6 @@ def api_matriz():
         'jefes_site': jefes_site,
         'tipos_negocio': sorted({r.tipo_negocio for r in Facturacion2026.query.filter(Facturacion2026.mes.in_(meses)).all() if r.tipo_negocio}),
         'tipo_negocio': tipo_negocio,
-        'meses_baja': meses_baja,
-        'motivos_baja': motivos_baja,
-        'mes_baja': mes_baja,
-        'motivo_baja': motivo_baja,
-        'bajas': resumen_bajas(registros_baja),
         'total_gerencia': matriz_grupos(registros_year, 'gerente', meses),
         'apertura_jefe_site': matriz_grupos(registros_apertura, 'jefe_site' if not jefe_site else 'campania', meses),
         'jefe_site': jefe_site,
@@ -2172,72 +2129,6 @@ def api_template_carga():
     )
 
 
-@main_bp.route('/api/template_bajas', methods=['GET'])
-@edicion_requerida
-def api_template_bajas():
-    """Descarga una plantilla independiente para bajas."""
-    headers = [label for _, label in COLUMNAS_BAJAS_IMPORTACION]
-    ayuda = ['2026', '3', 'Campaña ejemplo', 'Renuncia', '1']
-    contenido = crear_xlsx(headers, [ayuda])
-    return Response(
-        contenido,
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={'Content-Disposition': 'attachment; filename="plantilla_bajas.xlsx"'}
-    )
-
-
-@main_bp.route('/api/importar_bajas', methods=['POST'])
-@edicion_requerida
-def api_importar_bajas():
-    """Importa bajas desde una plantilla separada de facturacion."""
-    archivo = request.files.get('archivo')
-    if not archivo:
-        return jsonify({'success': False, 'errores': ['Debe adjuntar un archivo']}), 400
-
-    try:
-        contenido_bytes = archivo.read()
-        nombre = (archivo.filename or '').lower()
-        if nombre.endswith('.xlsx'):
-            filas = filas_desde_xlsx(contenido_bytes)
-        else:
-            try:
-                contenido = contenido_bytes.decode('utf-8-sig')
-            except UnicodeDecodeError:
-                contenido = contenido_bytes.decode('cp1252')
-            filas = filas_desde_html(contenido) if nombre.endswith('.xls') or '<table' in contenido.lower() else filas_desde_csv(contenido)
-
-        datos = datos_bajas_desde_filas(filas)
-        if not datos:
-            return jsonify({'success': False, 'errores': ['No se encontraron filas de bajas para importar.']}), 400
-
-        creados = 0
-        errores = []
-        for indice, item in enumerate(datos, start=2):
-            if indice == 2 and normalizar_header(item.get('campania')) == 'campana ejemplo':
-                continue
-            try:
-                crear_baja_operativa(item)
-                creados += 1
-            except Exception as exc:
-                errores.append(f'Fila {indice}: {exc}')
-
-        if errores:
-            db.session.rollback()
-            return jsonify({'success': False, 'creados': 0, 'errores': errores[:50]}), 400
-        if creados == 0:
-            db.session.rollback()
-            return jsonify({'success': False, 'creados': 0, 'errores': ['No se importo ninguna baja.']}), 400
-
-        db.session.commit()
-        return jsonify({'success': True, 'creados': creados, 'mensaje': f'Se importaron {creados} baja(s)'})
-    except zipfile.BadZipFile:
-        db.session.rollback()
-        return jsonify({'success': False, 'errores': ['No pude leer el Excel de bajas. Descargue nuevamente el template.']}), 400
-    except Exception as exc:
-        db.session.rollback()
-        return jsonify({'success': False, 'errores': [str(exc)]}), 500
-
-
 @main_bp.route('/api/importar_datos', methods=['POST'])
 @edicion_requerida
 def api_importar_datos():
@@ -2267,15 +2158,19 @@ def api_importar_datos():
         if not datos:
             return jsonify({'success': False, 'errores': ['No se encontraron filas para importar. Revise que el archivo tenga encabezados y datos.']}), 400
 
+        confirmar_reemplazo = request.form.get('confirmar_reemplazo') == '1'
         creados = 0
+        reemplazados = 0
         errores = []
+        items_validos = []
+        conflictos_por_clave = {}
         for indice, item in enumerate(datos, start=2):
             if indice == 2 and str(item.get('fecha', '')).startswith('YYYY'):
                 continue
 
             item.setdefault('bonos', 0)
             item.setdefault('horas_penalizadas', 0)
-            item.setdefault('penalizaciones', 0)
+            item['penalizaciones'] = normalizar_importe_ajuste('penalizaciones', item.get('penalizaciones'))
             item.setdefault('netx_gen', 0)
             item.setdefault('otros', 0)
             item.setdefault('tarifacion', None)
@@ -2288,6 +2183,53 @@ def api_importar_datos():
             if errores_fila:
                 errores.append(f'Fila {indice}: ' + '; '.join(errores_fila))
                 continue
+            try:
+                existentes = query_reemplazo_importacion(item).all()
+                if existentes:
+                    clave = clave_reemplazo_importacion(item)
+                    conflictos_por_clave.setdefault(
+                        clave,
+                        detalle_conflicto_importacion(indice, item, existentes)
+                    )
+                items_validos.append((indice, item, existentes))
+            except Exception as exc:
+                errores.append(f'Fila {indice}: {exc}')
+
+        if errores:
+            db.session.rollback()
+            return jsonify({'success': False, 'creados': 0, 'errores': errores[:50]}), 400
+
+        if conflictos_por_clave and not confirmar_reemplazo:
+            return jsonify({
+                'success': False,
+                'requiere_confirmacion': True,
+                'mensaje': 'La importacion reemplazaria datos existentes. Confirme para continuar.',
+                'conflictos': list(conflictos_por_clave.values()),
+                'errores': ['Hay datos existentes que coinciden por fecha, cliente, gerente, jefe de site, campania y sub campania.']
+            }), 409
+
+        for indice, item, existentes in items_validos:
+            if existentes and confirmar_reemplazo:
+                principal = existentes[0]
+                antes = snapshot_modelo(principal)
+                try:
+                    actualizar_registro_facturacion(principal, item)
+                    for duplicado in existentes[1:]:
+                        db.session.delete(duplicado)
+                    despues = snapshot_modelo(principal)
+                    registrar_historial(
+                        'edicion',
+                        'facturacion',
+                        principal.id,
+                        f'Facturacion reemplazada por importacion: {principal.cliente} / {principal.mes}',
+                        antes=antes,
+                        despues=despues,
+                        detalle=f'Fila {indice}. Coincidencia exacta por fecha y nombres comerciales.',
+                    )
+                    reemplazados += 1
+                except Exception as exc:
+                    errores.append(f'Fila {indice}: {exc}')
+                continue
 
             try:
                 crear_registro_facturacion(item)
@@ -2299,7 +2241,7 @@ def api_importar_datos():
             db.session.rollback()
             return jsonify({'success': False, 'creados': 0, 'errores': errores[:50]}), 400
 
-        if creados == 0:
+        if creados == 0 and reemplazados == 0:
             db.session.rollback()
             return jsonify({
                 'success': False,
@@ -2310,7 +2252,17 @@ def api_importar_datos():
             }), 400
 
         db.session.commit()
-        return jsonify({'success': True, 'creados': creados, 'mensaje': f'Se importaron {creados} registros'})
+        partes_mensaje = []
+        if creados:
+            partes_mensaje.append(f'{creados} creado(s)')
+        if reemplazados:
+            partes_mensaje.append(f'{reemplazados} reemplazado(s)')
+        return jsonify({
+            'success': True,
+            'creados': creados,
+            'reemplazados': reemplazados,
+            'mensaje': 'Importacion completada: ' + ', '.join(partes_mensaje)
+        })
     except zipfile.BadZipFile:
         db.session.rollback()
         return jsonify({'success': False, 'errores': ['No pude leer el Excel. Descargue nuevamente el template .xlsx y vuelva a completarlo.']}), 400

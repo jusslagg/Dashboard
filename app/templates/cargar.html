@@ -499,10 +499,10 @@ function agregarJustificacion(item = {}) {
             <input data-campo="cantidad" type="number" min="0" step="0.01" value="${item.cantidad || ''}" oninput="actualizarImporteJustificacion(${id})" class="w-full border border-gray-300 rounded px-2 py-2 text-right">
         </td>
         <td class="px-3 py-2 min-w-36">
-            <input data-campo="precio" type="number" min="0" step="0.01" value="${item.precio || ''}" oninput="actualizarImporteJustificacion(${id})" class="w-full border border-gray-300 rounded px-2 py-2 text-right">
+            <input data-campo="precio" type="number" min="0" step="0.01" value="${Math.abs(Number(item.precio || item.importe || 0)) || ''}" oninput="actualizarImporteJustificacion(${id})" class="w-full border border-gray-300 rounded px-2 py-2 text-right">
         </td>
         <td class="px-3 py-2 min-w-36">
-            <input data-campo="importe" type="number" min="0" step="0.01" value="${item.importe || ''}" readonly class="w-full border border-gray-200 rounded px-2 py-2 text-right bg-gray-50 font-semibold">
+            <input data-campo="importe" type="number" min="0" step="0.01" value="${Math.abs(Number(item.importe || 0)) || ''}" readonly class="w-full border border-gray-200 rounded px-2 py-2 text-right bg-gray-50 font-semibold">
         </td>
         <td class="px-3 py-2 min-w-72">
             <input data-campo="descripcion" type="text" value="${escapeHtml(item.descripcion || '')}" class="w-full border border-gray-300 rounded px-2 py-2" placeholder="Detalle del motivo">
@@ -546,7 +546,7 @@ function actualizarTotalesJustificaciones() {
     const totales = { bonos: 0, penalizaciones: 0, otros: 0 };
     obtenerJustificaciones().forEach(item => {
         if (Object.prototype.hasOwnProperty.call(totales, item.tipo)) {
-            totales[item.tipo] += item.importe;
+            totales[item.tipo] += item.tipo === 'penalizaciones' ? -Math.abs(item.importe) : item.importe;
         }
     });
     document.getElementById('bonos').value = totales.bonos.toFixed(2);
@@ -560,7 +560,7 @@ function validarJustificacionesFrontend(data) {
     const totales = { bonos: 0, penalizaciones: 0, otros: 0 };
     if (!data.justificaciones.length) {
         ['bonos', 'penalizaciones', 'otros'].forEach(tipo => {
-            if (data[tipo] > 0) errores.push(`${tipo} requiere una justificacion`);
+            if (Math.abs(data[tipo]) > 0) errores.push(`${tipo} requiere una justificacion`);
         });
         return errores;
     }
@@ -568,15 +568,15 @@ function validarJustificacionesFrontend(data) {
         if (!item.tipo) errores.push(`Justificacion ${index + 1}: seleccione tipo`);
         if (item.cantidad <= 0) errores.push(`Justificacion ${index + 1}: indique una cantidad mayor a 0`);
         if (item.precio <= 0) errores.push(`Justificacion ${index + 1}: indique un precio mayor a 0`);
-        if (item.importe <= 0) errores.push(`Justificacion ${index + 1}: indique un importe mayor a 0`);
-        if (Math.abs(item.importe - (item.cantidad * item.precio)) > 0.01) errores.push(`Justificacion ${index + 1}: el importe debe coincidir con cantidad por precio`);
+        if (Math.abs(item.importe) <= 0) errores.push(`Justificacion ${index + 1}: indique un importe mayor a 0`);
+        if (Math.abs(Math.abs(item.importe) - (item.cantidad * item.precio)) > 0.01) errores.push(`Justificacion ${index + 1}: el importe debe coincidir con cantidad por precio`);
         if (!item.descripcion) errores.push(`Justificacion ${index + 1}: agregue una descripcion`);
         if (Object.prototype.hasOwnProperty.call(totales, item.tipo)) {
-            totales[item.tipo] += item.importe;
+            totales[item.tipo] += item.tipo === 'penalizaciones' ? -Math.abs(item.importe) : item.importe;
         }
     });
     ['bonos', 'penalizaciones', 'otros'].forEach(tipo => {
-        if (data[tipo] > 0 && totales[tipo] === 0) {
+        if (Math.abs(data[tipo]) > 0 && totales[tipo] === 0) {
             errores.push(`${tipo} requiere una justificacion`);
         }
         if (Math.abs((totales[tipo] || 0) - (data[tipo] || 0)) > 0.01) {
@@ -823,6 +823,10 @@ async function guardarDatos(event) {
 
 async function importarDatos(event) {
     event.preventDefault();
+    await enviarImportacion(false);
+}
+
+async function enviarImportacion(confirmarReemplazo) {
     const archivo = document.getElementById('archivoImportar').files[0];
     if (!archivo) {
         mostrarMensaje('Seleccione un archivo para importar', 'error');
@@ -831,12 +835,13 @@ async function importarDatos(event) {
 
     const formData = new FormData();
     formData.append('archivo', archivo);
+    if (confirmarReemplazo) formData.append('confirmar_reemplazo', '1');
     const boton = document.getElementById('btnImportar');
 
     try {
         boton.disabled = true;
         boton.classList.add('opacity-60', 'cursor-not-allowed');
-        mostrarMensajeImportar('Importando archivo...', 'info', false);
+        mostrarMensajeImportar(confirmarReemplazo ? 'Reemplazando datos existentes...' : 'Importando archivo...', 'info', false);
         const response = await fetch('/api/importar_datos', {
             method: 'POST',
             body: formData
@@ -847,6 +852,10 @@ async function importarDatos(event) {
             document.getElementById('formImportar').reset();
             await cargarAsignaciones();
         } else {
+            if (result.requiere_confirmacion) {
+                mostrarAlertaReemplazo(result);
+                return;
+            }
             mostrarMensajeImportar((result.errores || ['Error al importar']).join(' | '), 'error', false);
         }
     } catch (error) {
@@ -855,6 +864,27 @@ async function importarDatos(event) {
         boton.disabled = false;
         boton.classList.remove('opacity-60', 'cursor-not-allowed');
     }
+}
+
+function mostrarAlertaReemplazo(result) {
+    const conflictos = result.conflictos || [];
+    const detalle = conflictos.slice(0, 8).map(item =>
+        `Fila ${item.fila}: ${item.fecha} - ${item.cliente} / ${item.gerente} / ${item.jefe_site} / ${item.campania} / ${item.subcampania}`
+    ).join('\n');
+    const extra = conflictos.length > 8 ? `\n...y ${conflictos.length - 8} coincidencia(s) mas.` : '';
+    const mensaje = [
+        'Se encontraron datos ya cargados que coinciden exactamente por fecha y nombres comerciales.',
+        '',
+        detalle + extra,
+        '',
+        'Si continuas, esos registros existentes se reemplazaran por los del archivo importado.'
+    ].join('\n');
+
+    if (confirm(mensaje)) {
+        enviarImportacion(true);
+        return;
+    }
+    mostrarMensajeImportar('Importacion cancelada. No se modificaron los datos existentes.', 'info', false);
 }
 
 function limpiarFormulario() {

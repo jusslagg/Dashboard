@@ -309,7 +309,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar con contrasena</label>
-                <input type="password" id="editClave" required class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Contrasena de tu cuenta o PRUEBA2026">
+                <input type="password" id="editClave" required class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Contrasena de tu cuenta">
             </div>
             <div class="md:col-span-3 flex justify-end gap-2 mt-2">
                 <button type="button" onclick="cerrarModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Cancelar</button>
@@ -721,8 +721,8 @@ function renderJustificacionesEdicion() {
                 </select>
             </td>
             <td class="px-2 py-2"><input data-jus-campo="cantidad" data-index="${index}" type="number" min="0" step="0.01" value="${Number(item.cantidad || 1)}" oninput="actualizarJustificacionEdicion(${index}, true)" class="w-full rounded border border-gray-300 px-2 py-2 text-right"></td>
-            <td class="px-2 py-2"><input data-jus-campo="precio" data-index="${index}" type="number" min="0" step="0.01" value="${Number(item.precio || item.importe || 0)}" oninput="actualizarJustificacionEdicion(${index}, true)" class="w-full rounded border border-gray-300 px-2 py-2 text-right"></td>
-            <td class="px-2 py-2"><input data-jus-campo="importe" data-index="${index}" type="number" min="0" step="0.01" value="${Number(item.importe || 0)}" readonly class="w-full rounded border border-gray-200 bg-gray-50 px-2 py-2 text-right font-semibold"></td>
+            <td class="px-2 py-2"><input data-jus-campo="precio" data-index="${index}" type="number" min="0" step="0.01" value="${Math.abs(Number(item.precio || item.importe || 0))}" oninput="actualizarJustificacionEdicion(${index}, true)" class="w-full rounded border border-gray-300 px-2 py-2 text-right"></td>
+            <td class="px-2 py-2"><input data-jus-campo="importe" data-index="${index}" type="number" min="0" step="0.01" value="${Math.abs(Number(item.importe || 0))}" readonly class="w-full rounded border border-gray-200 bg-gray-50 px-2 py-2 text-right font-semibold"></td>
             <td class="px-2 py-2"><input data-jus-campo="descripcion" data-index="${index}" type="text" value="${escapeHtml(item.descripcion || '')}" oninput="actualizarJustificacionEdicion(${index})" class="w-full rounded border border-gray-300 px-2 py-2"></td>
             <td class="px-2 py-2 text-center">
                 <button type="button" onclick="eliminarJustificacionEdicion(${index})" class="inline-flex h-9 w-9 items-center justify-center rounded bg-red-50 text-red-600 hover:bg-red-100" title="Eliminar">
@@ -757,8 +757,8 @@ function agregarJustificacionEdicion(item = {}) {
     window.justificacionesEdicion.push({
         tipo: item.tipo || '',
         cantidad: Number(item.cantidad || 1),
-        precio: Number(item.precio || item.importe || 0),
-        importe: Number(item.importe || item.precio || 0),
+        precio: Math.abs(Number(item.precio || item.importe || 0)),
+        importe: Math.abs(Number(item.importe || item.precio || 0)),
         descripcion: item.descripcion || ''
     });
     renderJustificacionesEdicion();
@@ -775,7 +775,8 @@ function sincronizarImportesDesdeJustificaciones() {
     const totales = { bonos: 0, penalizaciones: 0, otros: 0 };
     (window.justificacionesEdicion || []).forEach(item => {
         if (Object.prototype.hasOwnProperty.call(totales, item.tipo)) {
-            totales[item.tipo] += Number(item.importe || 0);
+            const importe = Math.abs(Number(item.importe || 0));
+            totales[item.tipo] += item.tipo === 'penalizaciones' ? -importe : importe;
         }
     });
     document.getElementById('editBonos').value = totales.bonos.toFixed(2);
@@ -790,19 +791,19 @@ function justificacionesDesdeImportes(payload) {
             tipo: item.tipo,
             cantidad: Number(item.cantidad || 0),
             precio: Number(item.precio || 0),
-            importe: Number(item.importe || 0),
+            importe: item.tipo === 'penalizaciones' ? -Math.abs(Number(item.importe || 0)) : Number(item.importe || 0),
             descripcion: String(item.descripcion || '').trim()
         }))
-        .filter(item => item.tipo || item.cantidad > 0 || item.precio > 0 || item.importe > 0 || item.descripcion);
+        .filter(item => item.tipo || item.cantidad > 0 || item.precio > 0 || Math.abs(item.importe) > 0 || item.descripcion);
     const tiposConImporte = new Set(salida.map(item => item.tipo));
     ['bonos', 'penalizaciones', 'otros'].forEach(tipo => {
         const importe = Number(payload[tipo] || 0);
-        if (importe > 0 && !tiposConImporte.has(tipo)) {
+        if (Math.abs(importe) > 0 && !tiposConImporte.has(tipo)) {
             salida.push({
                 tipo,
                 cantidad: 1,
-                precio: importe,
-                importe,
+                precio: Math.abs(importe),
+                importe: tipo === 'penalizaciones' ? -Math.abs(importe) : importe,
                 descripcion: `Ajuste cargado desde Control - ${tipo}`
             });
         }
@@ -859,7 +860,7 @@ async function guardarEdicion(event) {
 
 async function eliminarRegistro(id) {
     if (!confirm('Eliminar este registro?')) return;
-    const confirmacion = prompt('Confirme con su contrasena de cuenta. En pruebas locales puede usar PRUEBA2026.');
+    const confirmacion = prompt('Confirme con su contrasena de cuenta.');
     if (!confirmacion) return;
     const response = await fetch(`/api/datos/${id}`, {
         method: 'DELETE',

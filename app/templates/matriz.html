@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+<!--  -->{% extends "layout.html" %}
 
 {% block title %}Matriz Mensual - Facturacion{% endblock %}
 
@@ -9,7 +9,7 @@
         <h1 class="text-3xl font-bold text-gray-900">Matriz mensual</h1>
         <p class="mt-2 max-w-3xl text-sm text-gray-600">Lectura rapida de cumplimiento, desvios y meses que necesitan seguimiento.</p>
     </div>
-    <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[110px_150px_minmax(190px,1fr)_minmax(190px,1fr)_170px_minmax(170px,1fr)]">
+    <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[110px_150px_minmax(190px,1fr)_minmax(170px,1fr)_160px_minmax(170px,1fr)]">
         <select id="yearSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="2026">2026</option>
         </select>
@@ -56,7 +56,7 @@
             </div>
             <span id="estadoGrafico" class="text-xs text-gray-500">Cargando...</span>
         </div>
-        <div class="h-64">
+        <div id="contenedorGraficoDesvios" class="h-64">
             <canvas id="graficoDesvios"></canvas>
         </div>
     </div>
@@ -102,25 +102,49 @@
 const filasMatriz = [
     { key: 'valor_hora_objetivo', label: 'VH Objetivo', type: 'currency', empty: '-' },
     { key: 'valor_hora_realizado', label: 'VH Alcanzado', type: 'currency', empty: '-' },
-    { key: 'horas_obj', label: 'Objetivo facturacion horas', type: 'money' },
-    { key: 'variable_obj', label: 'Objetivo facturacion bono', type: 'money' },
-    { key: 'total_obj', label: 'Facturacion Objetivo', type: 'money', band: true },
-    { key: 'horas_real', label: 'Facturado Horas', type: 'money' },
-    { key: 'bonos_real', label: 'Facturado Bono', type: 'money' },
-    { key: 'penalizaciones_real', label: 'Penalizaciones por incumplimientos', type: 'money', signed: true },
-    { key: 'total_real', label: 'Total Facturado', type: 'money', band: true },
-    { key: 'desvio', label: 'Desvio', type: 'money', signed: true },
+    { key: 'porcentaje_cumplimiento_logueo', label: '% Cumplimiento Logueo', type: 'percent', heat: true, empty: '-' },
+    { key: 'porcentaje_cumplimiento_horas_adh', label: '% Cumplimiento Horas + Penalidad ADH', type: 'percent', heat: true, empty: '-' },
+    { key: 'porcentaje_valor_hora', label: '% Valor hora', type: 'percent', heat: true, empty: '-' },
+    { key: 'porcentaje_bono', label: '% Bono', type: 'percent', heat: true, empty: '-' },
+    { key: 'porcentaje_cumplimiento', label: '% Cumplimiento Facturacion', type: 'percent', heat: true, empty: '-' },
+    { key: 'horas_objetivo', label: 'Horas Objetivo', type: 'number' },
+    { key: 'horas_facturadas', label: 'Horas Realizadas', type: 'number' },
+    { key: 'horas_penalizadas', label: 'Horas Penalizacion ADH', type: 'number' },
+    { key: 'desvio_horas', label: 'Desvio (+/-) Horas', type: 'number', signed: true },
+    { key: 'horas_obj', label: 'Horas Obj', type: 'money' },
+    { key: 'variable_obj', label: 'Variable Obj', type: 'money' },
+    { key: 'total_obj', label: 'Total Obj', type: 'money', band: true },
+    { key: 'horas_real', label: 'Horas Real', type: 'money' },
+    { key: 'variable_real', label: 'Variable Productivo Real', type: 'money' },
+    { key: 'bonos_real', label: 'Bonos', type: 'money' },
+    { key: 'penalizaciones_real', label: 'Penalizaciones', type: 'money', negativeDisplay: true },
+    { key: 'tarifacion_real', label: 'Tarifacion adicional', type: 'money' },
+    { key: 'netx_gen_real', label: 'NetX Gen', type: 'money' },
+    { key: 'otros_real', label: 'Otros', type: 'money' },
+    { key: 'penalizaciones_bonos', label: 'Neto Bonos - Penalizaciones', type: 'money', signed: true },
+    { key: 'otros_ajustes', label: 'Neto otros ajustes', type: 'money', signed: true },
+    { key: 'total_real', label: 'Total Real', type: 'money', band: true },
+    { key: 'desvio_horas_monto', label: 'Desvio (+/-) Horas $', type: 'money', signed: true },
+    { key: 'desvio_variable', label: 'Desvio (+/-) Variable', type: 'money', signed: true },
+    { key: 'desvio_penalizaciones_bonos', label: 'Desvio (+/-) Penalizaciones / Bonos', type: 'money', signed: true },
+    { key: 'desvio_otros_ajustes', label: 'Desvio (+/-) Otros ajustes', type: 'money', signed: true },
+    { key: 'desvio', label: 'Total Desvio (+/-)', type: 'money', signed: true, band: true },
 ];
 
 const filasResumen = [
-    'valor_hora_objetivo',
-    'valor_hora_realizado',
-    'horas_obj',
-    'variable_obj',
+    'porcentaje_cumplimiento',
+    'porcentaje_cumplimiento_horas_adh',
+    'porcentaje_valor_hora',
+    'horas_objetivo',
+    'horas_facturadas',
+    'horas_penalizadas',
+    'desvio_horas',
     'total_obj',
     'horas_real',
+    'variable_real',
     'bonos_real',
     'penalizaciones_real',
+    'otros_real',
     'total_real',
     'desvio',
 ];
@@ -129,19 +153,21 @@ let matrizData = null;
 let tablaActiva = 'gerencia';
 let graficoDesvios = null;
 
-document.addEventListener('DOMContentLoaded', cargarMatriz);
+document.addEventListener('DOMContentLoaded', function() {
+    cargarMatriz();
+});
 
 async function cargarMatriz() {
     const year = document.getElementById('yearSelect').value;
     const jefeSite = document.getElementById('jefeSiteSelect').value;
     const tipoNegocio = document.getElementById('tipoNegocioSelect').value;
-    const params = new URLSearchParams({ year, _ts: Date.now() });
+    const params = new URLSearchParams({ year });
     if (jefeSite) params.set('jefe_site', jefeSite);
     if (tipoNegocio) params.set('tipo_negocio', tipoNegocio);
 
     setEstado('Cargando...');
     try {
-        const response = await fetch('/api/matriz?' + params.toString(), { cache: 'no-store' });
+        const response = await fetch('/api/matriz?' + params.toString());
         const data = await response.json();
         if (!data.success) throw new Error('Respuesta invalida');
 
@@ -151,8 +177,9 @@ async function cargarMatriz() {
         popularMeses(data.columnas);
         renderDesdeEstado();
     } catch (error) {
+        console.error('Error cargando matriz:', error);
         setEstado('No se pudo cargar');
-        document.getElementById('estadoGrafico').textContent = error.message || 'Sin datos';
+        document.getElementById('estadoGrafico').textContent = 'Sin datos';
     }
 }
 
@@ -168,7 +195,6 @@ function cambiarTabla(tabla) {
 
 function renderDesdeEstado() {
     if (!matrizData) return;
-    document.getElementById('seccionMatriz').classList.remove('hidden');
     const gruposBase = gruposActivosBase();
     const mesSeleccionado = document.getElementById('mesFiltro').value;
     const busqueda = document.getElementById('buscarGrupo').value.trim().toLowerCase();
@@ -315,13 +341,9 @@ function sumarTotales(grupos) {
 
 function renderGrafico(grupos) {
     const datos = [...grupos]
-        .sort((a, b) => Number(a.total.desvio || 0) - Number(b.total.desvio || 0))
-        .slice(0, 8);
+        .sort((a, b) => Number(a.total.desvio || 0) - Number(b.total.desvio || 0));
     document.getElementById('estadoGrafico').textContent = datos.length ? `${datos.length} grupo(s)` : 'Sin datos';
-    if (typeof Chart === 'undefined') {
-        document.getElementById('estadoGrafico').textContent = 'Grafico no disponible';
-        return;
-    }
+    document.getElementById('contenedorGraficoDesvios').style.height = `${Math.max(256, datos.length * 34 + 56)}px`;
     const ctx = document.getElementById('graficoDesvios');
     if (graficoDesvios) graficoDesvios.destroy();
     graficoDesvios = new Chart(ctx, {

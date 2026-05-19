@@ -1,5 +1,8 @@
 __pycache__/
 *.py[cod]
+node_modules/
+.next/
+*.log
 instance/*.db
 .env
 .env.local
