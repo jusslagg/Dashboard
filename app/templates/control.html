@@ -159,7 +159,7 @@
                     <th class="px-4 py-3 text-right">Fact. Bono</th>
                     <th class="px-4 py-3 text-right">Var. Productivo</th>
                     <th class="px-4 py-3 text-right">Penaliz.</th>
-                    <th class="px-4 py-3 text-right">NetX Gen</th>
+                    <th class="px-4 py-3 text-right">Next Gen</th>
                     <th class="px-4 py-3 text-right">Otros</th>
                     <th class="px-4 py-3 text-right">Total Facturado</th>
                     <th class="px-4 py-3 text-right">Desvío</th>
@@ -218,7 +218,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de VH</label>
-                <select id="editTipoJornada" required class="w-full border border-gray-300 rounded px-3 py-2">
+                <select id="editTipoJornada" required onchange="actualizarModoTipoVHEdicion()" class="w-full border border-gray-300 rounded px-3 py-2">
                     <option value="Diurna">Diurna</option>
                     <option value="Nocturna">Nocturna</option>
                     <option value="Feriado">Feriado</option>
@@ -227,6 +227,7 @@
                     <option value="Nocturnas Feriado">Nocturnas Feriado</option>
                     <option value="horas líder">horas líder</option>
                     <option value="radio">radio</option>
+                    <option value="Personal Cobranzas">Personal Cobranzas</option>
                 </select>
             </div>
             <div>
@@ -274,7 +275,7 @@
                 <input type="number" id="editPenalizaciones" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">NetX Gen</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Next Gen</label>
                 <input type="number" id="editNetxGen" min="0" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
             <div>
@@ -344,11 +345,13 @@
 const controlConfig = document.getElementById('controlConfig');
 const puedeEditar = controlConfig?.dataset.puedeEditar === 'true';
 const puedeEliminar = controlConfig?.dataset.puedeEliminar === 'true';
+const TIPO_VH_PERSONAL_COBRANZAS = 'Personal Cobranzas';
 
 document.addEventListener('DOMContentLoaded', function() {
     cargarFiltros();
     cargarDatos();
     configurarScrollTabla();
+    actualizarModoTipoVHEdicion();
 });
 
 document.addEventListener('click', function(event) {
@@ -370,6 +373,23 @@ function configurarScrollTabla() {
 function maxScrollTabla() {
     const scroller = document.getElementById('tablaControlScroll');
     return scroller ? Math.max(scroller.scrollWidth - scroller.clientWidth, 0) : 0;
+}
+
+function esPersonalCobranzasEdicion(valor = document.getElementById('editTipoJornada')?.value) {
+    return String(valor || '').trim().toLowerCase() === TIPO_VH_PERSONAL_COBRANZAS.toLowerCase();
+}
+
+function actualizarModoTipoVHEdicion() {
+    const sinHoras = esPersonalCobranzasEdicion();
+    ['editHorasObjetivo', 'editHorasFacturadas', 'editValorHoraObjetivo', 'editValorHora'].forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.required = !sinHoras;
+        input.min = sinHoras ? '0' : (id.includes('ValorHora') ? '0.01' : '0');
+        if (sinHoras && input.value === '') input.value = '0';
+    });
+    const horasPenalizadas = document.getElementById('editHorasPenalizadas');
+    if (sinHoras && horasPenalizadas) horasPenalizadas.value = '0';
 }
 
 function actualizarBarraTabla() {
@@ -677,6 +697,7 @@ function abrirEditar(d) {
     document.getElementById('editPenalizaciones').value = d.penalizaciones || 0;
     document.getElementById('editNetxGen').value = d.netx_gen || 0;
     document.getElementById('editOtros').value = d.otros || 0;
+    actualizarModoTipoVHEdicion();
     renderJustificacionesEdicion();
     document.getElementById('editClave').value = '';
     document.getElementById('modalEditar').classList.remove('hidden');

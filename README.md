@@ -3,6 +3,63 @@
 Aplicacion web para control de facturacion con dashboard ejecutivo, carga de datos,
 datos maestros, control de registros y backend Flask protegido.
 
+## Guia para Usuarios de Finanzas
+
+Esta aplicacion ayuda a controlar la facturacion mensual comparando lo que se
+deberia facturar contra lo que efectivamente se factura. Esta pensada para que
+equipos financieros, de control de gestion o responsables de cuentas puedan ver
+rapidamente si los importes, horas y ajustes de cada cliente o campania estan
+alineados con el objetivo esperado.
+
+En terminos simples, la app responde preguntas como:
+
+- Cuanto se esperaba facturar en un periodo.
+- Cuanto se facturo realmente.
+- Donde estan los desvios positivos o negativos.
+- Que cliente, gerente, jefe de site, campania o tipo de negocio explica esos desvios.
+- Si hay penalizaciones, bonos, ajustes u horas que impactan en el resultado final.
+
+### Que hace la app
+
+La app centraliza registros de facturacion y los convierte en reportes faciles
+de revisar. Permite cargar datos, consultar un tablero ejecutivo, filtrar la
+informacion y exportar resultados para analisis o seguimiento.
+
+Las vistas principales permiten:
+
+- Ver KPIs generales de facturacion, cumplimiento y desvio.
+- Revisar la evolucion mensual.
+- Comparar total objetivo contra total real.
+- Analizar aperturas por cliente, gerencia, jefe de site, campania, sub campania
+  y tipo de negocio.
+- Detectar alertas o diferencias relevantes.
+- Controlar y corregir registros cargados.
+
+### Como funciona en general
+
+1. Se cargan los datos de facturacion, ya sea manualmente o mediante archivo
+   Excel/CSV.
+2. La app valida los campos principales, como fechas, importes, horas y datos
+   comerciales.
+3. Cada registro queda asociado a datos maestros: cliente, gerente, jefe de site,
+   campania, sub campania y tipo de negocio.
+4. Con esa informacion, calcula totales objetivo, totales reales, porcentajes de
+   cumplimiento y desvios.
+5. El usuario puede filtrar, revisar, comparar y exportar la informacion segun
+   el analisis que necesite.
+
+
+### Para que sirve en el trabajo diario
+
+Sirve como una herramienta de seguimiento y control. En vez de revisar archivos
+separados o conciliaciones manuales, el equipo puede consultar una misma fuente,
+filtrar por periodo o responsable, encontrar diferencias y exportar la vista
+necesaria para compartir o profundizar el analisis.
+
+No reemplaza la definicion financiera del negocio ni la validacion final del
+equipo responsable. Su objetivo es ordenar la informacion, aplicar reglas
+consistentes y hacer visibles los desvios para tomar decisiones mas rapido.
+
 El proyecto esta en migracion progresiva a Next.js:
 
 - Next.js sirve la experiencia principal en `http://127.0.0.1:3000`.
@@ -231,6 +288,220 @@ Servir siempre detras de HTTPS.
 | `SECRET_KEY` | Clave de sesion Flask |
 | `CORS_ORIGINS` | Origins permitidos |
 | `SESSION_COOKIE_SECURE` | Cookie segura en HTTPS |
+
+## Despliegue Multiusuario y Base de Datos
+
+Para uso real por varias personas, la app debe funcionar como una instancia
+centralizada:
+
+```text
+Usuarios en sus maquinas
+  |
+  | navegador web
+  v
+Servidor central Linux o Windows
+  |
+  v
+Base de datos central
+```
+
+Cada usuario trabaja desde su navegador. No se debe instalar una base local por
+persona, porque eso genera informacion separada, diferencias entre usuarios y
+perdida de trazabilidad.
+
+La base recomendada para produccion es PostgreSQL. SQLite queda solo para
+desarrollo local o pruebas.
+
+### Configuracion de Base
+
+Linux o Windows con PostgreSQL:
+
+```env
+DATABASE_URL=postgresql+psycopg://dashboard_user:password_seguro@localhost:5432/dashboard_facturacion
+SECRET_KEY=clave_larga_segura
+SESSION_COOKIE_SECURE=1
+FLASK_DEBUG=0
+CORS_ORIGINS=https://tu-dominio.com
+NEXT_PUBLIC_API_BASE=https://tu-dominio.com
+```
+
+Windows local o pruebas con SQLite:
+
+```env
+DATABASE_URL=sqlite:///facturacion.db
+```
+
+En SQLite local, el archivo queda dentro de:
+
+```text
+instance/facturacion.db
+```
+
+### Tabla Principal
+
+Tabla: `facturacion_2026`
+
+```sql
+CREATE TABLE facturacion_2026 (
+    id SERIAL PRIMARY KEY,
+    fecha DATE NOT NULL,
+    mes VARCHAR(20) NOT NULL,
+    cliente VARCHAR(100) NOT NULL,
+    gerente VARCHAR(100),
+    jefe_site VARCHAR(100),
+    campania VARCHAR(100),
+    subcampania VARCHAR(100),
+    tipo_negocio VARCHAR(100),
+    tipo_jornada VARCHAR(50) NOT NULL,
+    horas_objetivo DOUBLE PRECISION NOT NULL,
+    horas_facturadas DOUBLE PRECISION NOT NULL,
+    horas_penalizadas DOUBLE PRECISION DEFAULT 0,
+    valor_hora_objetivo DOUBLE PRECISION,
+    valor_hora DOUBLE PRECISION NOT NULL,
+    tarifacion DOUBLE PRECISION,
+    importe_fijo DOUBLE PRECISION,
+    variable_objetivo DOUBLE PRECISION DEFAULT 0,
+    variable_productivo DOUBLE PRECISION DEFAULT 0,
+    bonos DOUBLE PRECISION DEFAULT 0,
+    penalizaciones DOUBLE PRECISION DEFAULT 0,
+    netx_gen DOUBLE PRECISION DEFAULT 0,
+    otros DOUBLE PRECISION DEFAULT 0
+);
+```
+
+Nota: el campo tecnico se llama `netx_gen` por compatibilidad con la base
+existente, pero en la interfaz y reportes se muestra como `Next Gen`.
+
+### Datos Maestros
+
+Tabla: `asignaciones_comerciales`
+
+```sql
+CREATE TABLE asignaciones_comerciales (
+    id SERIAL PRIMARY KEY,
+    cliente VARCHAR(100) NOT NULL,
+    gerente VARCHAR(100) NOT NULL,
+    jefe_site VARCHAR(100) NOT NULL,
+    campania VARCHAR(100) NOT NULL,
+    subcampania VARCHAR(100) NOT NULL,
+    tipo_negocio VARCHAR(100),
+    activa BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Usuarios
+
+Tabla: `usuarios`
+
+```sql
+CREATE TABLE usuarios (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(120) NOT NULL,
+    email VARCHAR(160) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    rol VARCHAR(30) NOT NULL DEFAULT 'usuario',
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+Roles usados por la app:
+
+```text
+administrador
+superusuario
+usuario
+```
+
+### Justificaciones
+
+Tabla: `justificaciones_ajustes`
+
+```sql
+CREATE TABLE justificaciones_ajustes (
+    id SERIAL PRIMARY KEY,
+    facturacion_id INTEGER NOT NULL REFERENCES facturacion_2026(id),
+    tipo VARCHAR(30) NOT NULL,
+    cantidad DOUBLE PRECISION DEFAULT 1,
+    precio DOUBLE PRECISION DEFAULT 0,
+    importe DOUBLE PRECISION NOT NULL,
+    descripcion TEXT NOT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+Tipos esperados:
+
+```text
+bonos
+penalizaciones
+otros
+```
+
+### Historial
+
+Tabla: `historial_cambios`
+
+```sql
+CREATE TABLE historial_cambios (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES usuarios(id),
+    usuario_nombre VARCHAR(120),
+    usuario_email VARCHAR(160),
+    accion VARCHAR(30) NOT NULL,
+    entidad VARCHAR(80) NOT NULL,
+    entidad_id VARCHAR(50),
+    resumen VARCHAR(255) NOT NULL,
+    detalle TEXT,
+    antes TEXT,
+    despues TEXT,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Headers de Importacion
+
+Para cargar datos por Excel/CSV, la plantilla visible espera:
+
+```text
+Fecha de carga
+Mes facturacion
+Cliente
+Gerente
+Jefe de Site
+Campaña
+Sub campaña
+Tipo de negocio
+Tipo de VH
+Horas objetivo
+Horas facturadas
+Horas Penalizacion ADH
+Valor hora objetivo
+Valor hora facturado
+Tarificacion
+Importe fijo facturado
+Variable Objetivo
+Variable Productivo
+Bonos
+Penalizaciones
+Next Gen
+Otros
+```
+
+Si se arma un CSV con nombres tecnicos, usar:
+
+```text
+fecha,mes,cliente,gerente,jefe_site,campania,subcampania,tipo_negocio,tipo_jornada,horas_objetivo,horas_facturadas,horas_penalizadas,valor_hora_objetivo,valor_hora,tarifacion,importe_fijo,variable_objetivo,variable_productivo,bonos,penalizaciones,netx_gen,otros
+```
+
+### Recomendacion Operativa
+
+La app puede crear tablas al arrancar con `db.create_all()`, pero para un
+entorno productivo conviene administrar cambios de esquema con migraciones
+formales. Mantener PostgreSQL centralizado permite que todos los usuarios vean y
+actualicen la misma informacion desde sus propias maquinas.
 
 ## Produccion
 

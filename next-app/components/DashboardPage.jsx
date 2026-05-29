@@ -92,6 +92,7 @@ export default function DashboardPage() {
               <tr>
                 <th>Cliente</th>
                 <th>Gerente</th>
+                <th>Jefe de Site</th>
                 <th className="num">Horas Obj.</th>
                 <th className="num">Horas Fact.</th>
                 <th className="num">Total Facturado</th>
@@ -102,9 +103,10 @@ export default function DashboardPage() {
             </thead>
             <tbody>
               {data.clientes.map((cliente) => (
-                <tr key={`${cliente.cliente}-${cliente.gerente}`}>
+                <tr key={`${cliente.cliente}-${cliente.gerente}-${cliente.jefe_site}`}>
                   <td>{cliente.cliente}</td>
                   <td>{cliente.gerente || '-'}</td>
+                  <td>{cliente.jefe_site || '-'}</td>
                   <td className="num">{formatNumber(cliente.horas_objetivo)}</td>
                   <td className="num">{formatNumber(cliente.horas_facturadas)}</td>
                   <td className="num">{formatMoney(cliente.total_facturado || cliente.total_real)}</td>

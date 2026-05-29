@@ -9,15 +9,24 @@
         <h1 class="text-3xl font-bold text-gray-900">Matriz mensual</h1>
         <p class="mt-2 max-w-3xl text-sm text-gray-600">Lectura rapida de cumplimiento, desvios y meses que necesitan seguimiento.</p>
     </div>
-    <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[110px_150px_minmax(190px,1fr)_minmax(170px,1fr)_160px_minmax(170px,1fr)]">
+    <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[110px_150px_repeat(5,minmax(150px,1fr))_160px_minmax(170px,1fr)]">
         <select id="yearSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="2026">2026</option>
         </select>
         <select id="mesFiltro" onchange="renderDesdeEstado()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todos los meses</option>
         </select>
+        <select id="clienteSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+            <option value="">Todos los clientes</option>
+        </select>
+        <select id="gerenteSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+            <option value="">Todas las gerencias</option>
+        </select>
         <select id="jefeSiteSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todos los jefes de site</option>
+        </select>
+        <select id="campaniaSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+            <option value="">Todas las campanas</option>
         </select>
         <select id="tipoNegocioSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todos los tipos de negocio</option>
@@ -110,16 +119,17 @@ const filasMatriz = [
     { key: 'horas_objetivo', label: 'Horas Objetivo', type: 'number' },
     { key: 'horas_facturadas', label: 'Horas Realizadas', type: 'number' },
     { key: 'horas_penalizadas', label: 'Horas Penalizacion ADH', type: 'number' },
-    { key: 'desvio_horas', label: 'Desvio (+/-) Horas', type: 'number', signed: true },
-    { key: 'horas_obj', label: 'Horas Obj', type: 'money' },
+    { key: 'horas_netas_facturadas', label: 'Horas Netas Facturables', type: 'number' },
+    { key: 'desvio_horas', label: 'Desvio (+/-) Horas Netas', type: 'number', signed: true },
+    { key: 'horas_obj', label: 'Importe Horas Obj', type: 'money' },
     { key: 'variable_obj', label: 'Variable Obj', type: 'money' },
     { key: 'total_obj', label: 'Total Obj', type: 'money', band: true },
-    { key: 'horas_real', label: 'Horas Real', type: 'money' },
+    { key: 'horas_real', label: 'Importe Horas Real', type: 'money' },
     { key: 'variable_real', label: 'Variable Productivo Real', type: 'money' },
     { key: 'bonos_real', label: 'Bonos', type: 'money' },
     { key: 'penalizaciones_real', label: 'Penalizaciones', type: 'money', negativeDisplay: true },
     { key: 'tarifacion_real', label: 'Tarifacion adicional', type: 'money' },
-    { key: 'netx_gen_real', label: 'NetX Gen', type: 'money' },
+    { key: 'netx_gen_real', label: 'Next Gen', type: 'money' },
     { key: 'otros_real', label: 'Otros', type: 'money' },
     { key: 'penalizaciones_bonos', label: 'Neto Bonos - Penalizaciones', type: 'money', signed: true },
     { key: 'otros_ajustes', label: 'Neto otros ajustes', type: 'money', signed: true },
@@ -138,6 +148,7 @@ const filasResumen = [
     'horas_objetivo',
     'horas_facturadas',
     'horas_penalizadas',
+    'horas_netas_facturadas',
     'desvio_horas',
     'total_obj',
     'horas_real',
@@ -159,10 +170,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function cargarMatriz() {
     const year = document.getElementById('yearSelect').value;
+    const cliente = document.getElementById('clienteSelect').value;
+    const gerente = document.getElementById('gerenteSelect').value;
     const jefeSite = document.getElementById('jefeSiteSelect').value;
+    const campania = document.getElementById('campaniaSelect').value;
     const tipoNegocio = document.getElementById('tipoNegocioSelect').value;
     const params = new URLSearchParams({ year });
+    if (cliente) params.set('cliente', cliente);
+    if (gerente) params.set('gerente', gerente);
     if (jefeSite) params.set('jefe_site', jefeSite);
+    if (campania) params.set('campania', campania);
     if (tipoNegocio) params.set('tipo_negocio', tipoNegocio);
 
     setEstado('Cargando...');
@@ -172,8 +189,11 @@ async function cargarMatriz() {
         if (!data.success) throw new Error('Respuesta invalida');
 
         matrizData = data;
-        popularJefes(data.jefes_site, data.jefe_site);
-        popularTiposNegocio(data.tipos_negocio || [], data.tipo_negocio);
+        popularFiltro('clienteSelect', data.filtros?.clientes || [], 'Todos los clientes', data.seleccion?.cliente);
+        popularFiltro('gerenteSelect', data.filtros?.gerentes || [], 'Todas las gerencias', data.seleccion?.gerente);
+        popularFiltro('jefeSiteSelect', data.filtros?.jefes_site || data.jefes_site || [], 'Todos los jefes de site', data.seleccion?.jefe_site || data.jefe_site);
+        popularFiltro('campaniaSelect', data.filtros?.campanias || [], 'Todas las campanas', data.seleccion?.campania);
+        popularFiltro('tipoNegocioSelect', data.filtros?.tipos_negocio || data.tipos_negocio || [], 'Todos los tipos de negocio', data.seleccion?.tipo_negocio || data.tipo_negocio);
         popularMeses(data.columnas);
         renderDesdeEstado();
     } catch (error) {
@@ -260,19 +280,16 @@ function aplicarFiltroMes(grupos, mesSeleccionado) {
         .filter(Boolean);
 }
 
-function popularJefes(jefes, seleccionado) {
-    const select = document.getElementById('jefeSiteSelect');
-    const actual = seleccionado || select.value;
-    select.innerHTML = '<option value="">Todos los jefes de site</option>' + jefes.map(jefe =>
-        `<option value="${escapeHtml(jefe)}" ${jefe === actual ? 'selected' : ''}>${escapeHtml(jefe)}</option>`
-    ).join('');
+function valorSeleccionado(seleccionado, actual) {
+    if (Array.isArray(seleccionado)) return seleccionado.length === 1 ? seleccionado[0] : '';
+    return seleccionado || actual || '';
 }
 
-function popularTiposNegocio(tipos, seleccionado) {
-    const select = document.getElementById('tipoNegocioSelect');
-    const actual = seleccionado || select.value;
-    select.innerHTML = '<option value="">Todos los tipos de negocio</option>' + tipos.map(tipo =>
-        `<option value="${escapeHtml(tipo)}" ${tipo === actual ? 'selected' : ''}>${escapeHtml(tipo)}</option>`
+function popularFiltro(id, valores, placeholder, seleccionado) {
+    const select = document.getElementById(id);
+    const actual = valorSeleccionado(seleccionado, select.value);
+    select.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>` + valores.map(valor =>
+        `<option value="${escapeHtml(valor)}" ${valor === actual ? 'selected' : ''}>${escapeHtml(valor)}</option>`
     ).join('');
 }
 
@@ -305,12 +322,12 @@ function renderKpis(grupos) {
     const total = sumarTotales(grupos);
     const cumplimiento = porcentaje(total.total_real, total.total_obj);
     const desvio = total.total_real - total.total_obj;
-    const horasDesvio = total.horas_facturadas - total.horas_objetivo;
+    const horasDesvio = total.horas_netas_facturadas - total.horas_objetivo;
     const kpis = [
         { label: 'Cumplimiento', value: formatPercent(cumplimiento), detail: estadoTexto(cumplimiento), tone: tonoCumplimiento(cumplimiento), icon: 'fa-gauge-high' },
         { label: 'Total real', value: formatMoney(total.total_real), detail: `Objetivo ${formatMoney(total.total_obj)}`, tone: 'slate', icon: 'fa-dollar-sign' },
         { label: 'Desvio total', value: formatMoney(desvio), detail: desvio >= 0 ? 'Sobre objetivo' : 'Debajo del objetivo', tone: desvio >= 0 ? 'green' : 'red', icon: 'fa-arrow-trend-up' },
-        { label: 'Desvio horas', value: formatNumber(horasDesvio), detail: `${formatNumber(total.horas_facturadas)} realizadas`, tone: horasDesvio >= 0 ? 'green' : 'amber', icon: 'fa-clock' },
+        { label: 'Desvio horas netas', value: formatNumber(horasDesvio), detail: `${formatNumber(total.horas_netas_facturadas)} netas facturables`, tone: horasDesvio >= 0 ? 'green' : 'amber', icon: 'fa-clock' },
     ];
     document.getElementById('kpiResumen').innerHTML = kpis.map(kpi => `
         <article class="rounded-lg bg-white p-4 shadow">
@@ -335,8 +352,9 @@ function sumarTotales(grupos) {
         acc.total_obj += Number(total.total_obj || total.total_teorico || 0);
         acc.horas_objetivo += Number(total.horas_objetivo || 0);
         acc.horas_facturadas += Number(total.horas_facturadas || 0);
+        acc.horas_netas_facturadas += Number(total.horas_netas_facturadas || 0);
         return acc;
-    }, { total_real: 0, total_obj: 0, horas_objetivo: 0, horas_facturadas: 0 });
+    }, { total_real: 0, total_obj: 0, horas_objetivo: 0, horas_facturadas: 0, horas_netas_facturadas: 0 });
 }
 
 function renderGrafico(grupos) {

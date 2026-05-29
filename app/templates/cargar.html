@@ -98,7 +98,7 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de VH *</label>
-                <select id="tipo_jornada" name="tipo_jornada" required
+                <select id="tipo_jornada" name="tipo_jornada" required onchange="actualizarModoTipoVH()"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Seleccionar...</option>
                     <option value="Diurna">Diurna</option>
@@ -109,6 +109,7 @@
                     <option value="Nocturnas Feriado">Nocturnas Feriado</option>
                     <option value="horas líder">horas líder</option>
                     <option value="radio">radio</option>
+                    <option value="Personal Cobranzas">Personal Cobranzas</option>
                 </select>
             </div>
 
@@ -179,7 +180,7 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">NetX Gen</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Next Gen</label>
                 <input type="number" id="netx_gen" name="netx_gen" min="0" step="0.01" value="0" placeholder="0"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
@@ -299,7 +300,7 @@
                     <span id="previewPenalizaciones" class="font-semibold ml-2">$0.00</span>
                 </div>
                 <div>
-                    <span class="text-gray-500">NetX Gen:</span>
+                    <span class="text-gray-500">Next Gen:</span>
                     <span id="previewNetxGen" class="font-semibold ml-2">$0.00</span>
                 </div>
                 <div>
@@ -352,6 +353,7 @@
 let asignaciones = [];
 let justificacionIndex = 0;
 let lineasPendientes = [];
+const TIPO_VH_PERSONAL_COBRANZAS = 'Personal Cobranzas';
 
 const camposLinea = [
     'tipo_jornada',
@@ -388,7 +390,26 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.querySelectorAll('#formCargar input, #formCargar select').forEach(input => {
         input.addEventListener('input', calcularPreview);
     });
+    actualizarModoTipoVH();
 });
+
+function esPersonalCobranzas(valor = document.getElementById('tipo_jornada').value) {
+    return String(valor || '').trim().toLowerCase() === TIPO_VH_PERSONAL_COBRANZAS.toLowerCase();
+}
+
+function actualizarModoTipoVH() {
+    const sinHoras = esPersonalCobranzas();
+    ['horas_objetivo', 'horas_facturadas', 'valor_hora_objetivo', 'valor_hora'].forEach(id => {
+        const input = document.getElementById(id);
+        input.required = !sinHoras;
+        input.min = sinHoras ? '0' : (id.startsWith('valor_hora') ? '0.01' : '0');
+        if (sinHoras && input.value === '') input.value = '0';
+    });
+    if (sinHoras) {
+        document.getElementById('horas_penalizadas').value = '0';
+    }
+    calcularPreview();
+}
 
 function completarFechasIniciales() {
     const hoy = new Date();
@@ -625,14 +646,15 @@ function lineaTieneDatos(linea) {
 function validarLinea(linea, indice = 1) {
     const prefijo = `Linea ${indice}: `;
     const errores = [];
+    const sinRestriccionHoras = esPersonalCobranzas(linea.tipo_jornada);
     if (!linea.tipo_jornada) errores.push(prefijo + 'el tipo de VH es obligatorio');
     if (linea.horas_objetivo < 0 || linea.horas_facturadas < 0 || linea.horas_penalizadas < 0) {
         errores.push(prefijo + 'las horas no pueden ser negativas');
     }
-    if (linea.horas_penalizadas > linea.horas_facturadas) {
+    if (!sinRestriccionHoras && linea.horas_penalizadas > linea.horas_facturadas) {
         errores.push(prefijo + 'las horas penalizadas no pueden superar las horas facturadas');
     }
-    if (linea.valor_hora_objetivo <= 0 || linea.valor_hora <= 0) {
+    if (!sinRestriccionHoras && (linea.valor_hora_objetivo <= 0 || linea.valor_hora <= 0)) {
         errores.push(prefijo + 'los valores hora deben ser mayores a 0');
     }
     validarJustificacionesFrontend(linea).forEach(error => errores.push(prefijo + error));
@@ -704,6 +726,7 @@ function limpiarCamposLinea() {
     });
     document.getElementById('tablaJustificaciones').innerHTML = '';
     agregarJustificacion();
+    actualizarModoTipoVH();
     calcularPreview();
 }
 
