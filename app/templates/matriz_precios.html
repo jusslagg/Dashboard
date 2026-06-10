@@ -1,0 +1,493 @@
+{% extends "layout.html" %}
+
+{% block title %}Precios - Facturacion{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Planificacion</p>
+        <h1 class="text-3xl font-bold text-gray-900">Precios</h1>
+    </div>
+    <div class="flex flex-col gap-2 sm:flex-row">
+        <select id="yearFiltro" onchange="cargarPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+        <button type="button" onclick="descargarTemplatePrecios()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-emerald-600 px-4 text-sm font-medium text-white hover:bg-emerald-700">
+            <i class="fas fa-download"></i>
+            Template
+        </button>
+        <input id="archivoImportarPrecios" type="file" accept=".xlsx,.csv" class="hidden" onchange="importarTemplatePrecios()">
+        <button type="button" onclick="document.getElementById('archivoImportarPrecios').click()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700">
+            <i class="fas fa-upload"></i>
+            Importar
+        </button>
+        <button type="button" onclick="nuevoAnioPrecio()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-slate-700 px-4 text-sm font-medium text-white hover:bg-slate-800">
+            <i class="fas fa-plus"></i>
+            Nuevo
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+    <section class="rounded-lg bg-white p-5 shadow">
+        <div class="mb-4 flex items-start justify-between gap-3">
+            <div>
+                <h2 id="tituloFormulario" class="font-semibold text-gray-900">Nuevo precio</h2>
+                <p id="subtituloFormulario" class="mt-1 text-xs text-gray-500">Cliente, campania y periodo.</p>
+            </div>
+            <span id="badgeEditando" class="hidden rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Editando</span>
+        </div>
+
+        <form id="formPrecio" class="space-y-4">
+            <input type="hidden" id="precioId">
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Cliente *</label>
+                <select id="cliente" required onchange="actualizarCampanias(); actualizarPrecioPrevio()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Campania *</label>
+                <select id="campania" required onchange="actualizarPrecioPrevio()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Anio *</label>
+                    <input id="year" required type="number" min="2020" max="2100" value="2026" onchange="sincronizarMesesFormulario(); actualizarPrecioPrevio()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Mes *</label>
+                    <select id="mes" required onchange="actualizarPrecioPrevio()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Precio por hora</label>
+                    <input id="precioBase" type="number" min="0" step="0.01" placeholder="0" oninput="actualizarPreview()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Alcance % *</label>
+                    <input id="alcancePorcentaje" required type="number" min="0" step="0.01" value="100" oninput="actualizarPreview()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Pago mensual fijo</label>
+                <input id="importeFijoMensual" type="number" min="0" step="0.01" value="0" oninput="actualizarPreview()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="mt-1 text-xs text-slate-500">Si se carga, se suma en Resumen como "Fijo mensual" y no se multiplica por horas.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="rounded border border-slate-200 bg-slate-50 px-3 py-3">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Precio anterior</div>
+                    <div id="precioPrevioPreview" class="mt-1 text-xl font-bold text-slate-900">$ 0</div>
+                </div>
+                <div class="rounded border border-blue-100 bg-blue-50 px-3 py-3">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-blue-700">Precio final</div>
+                    <div id="precioFinalPreview" class="mt-1 text-xl font-bold text-blue-950">$ 0</div>
+                </div>
+            </div>
+            <div class="rounded border border-slate-200 bg-white px-3 py-3">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="font-medium text-slate-700">Meses afectados</span>
+                    <span id="mesesAfectados" class="font-semibold text-slate-900">0</span>
+                </div>
+                <div class="mt-2 flex items-center justify-between text-sm">
+                    <span class="font-medium text-slate-700">Fijo mensual</span>
+                    <span id="fijoMensualPreview" class="font-semibold text-slate-900">$ 0</span>
+                </div>
+            </div>
+            <div id="mensajePrecio" class="hidden rounded px-3 py-2 text-sm"></div>
+            <button type="submit" class="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700">
+                <i class="fas fa-save"></i>
+                Guardar precio
+            </button>
+            <button type="button" onclick="limpiarFormulario()" class="inline-flex h-10 w-full items-center justify-center gap-2 rounded border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                <i class="fas fa-eraser"></i>
+                Limpiar
+            </button>
+        </form>
+    </section>
+
+    <section class="rounded-lg bg-white shadow">
+        <div class="border-b border-gray-200 px-4 py-3">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <h2 class="font-semibold text-gray-900">Precios cargados</h2>
+                    <p id="contadorPrecios" class="mt-1 text-xs text-gray-500">Cargando...</p>
+                </div>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                    <input id="buscarPrecio" type="search" oninput="renderPrecios()" placeholder="Buscar..." class="h-10 rounded border border-gray-300 px-3 text-sm">
+                    <select id="filtroSite" onchange="renderPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                    <select id="filtroCliente" onchange="actualizarFiltroCampania(); renderPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                    <select id="filtroCampania" onchange="renderPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                </div>
+            </div>
+        </div>
+        <div class="overflow-auto">
+            <table class="w-full min-w-[1160px] border-collapse text-sm">
+                <thead class="bg-slate-100 text-slate-900">
+                    <tr>
+                        <th class="border border-slate-200 px-3 py-2 text-left">Site</th>
+                        <th class="border border-slate-200 px-3 py-2 text-left">Cliente</th>
+                        <th class="border border-slate-200 px-3 py-2 text-left">Campania</th>
+                        <th class="border border-slate-200 px-3 py-2 text-center">Anio</th>
+                        <th class="border border-slate-200 px-3 py-2 text-center">Mes</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">Precio</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">Alcance</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">Precio final</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">Fijo mensual</th>
+                        <th class="border border-slate-200 px-3 py-2 text-center">Accion</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyPrecios">
+                    <tr>
+                        <td colspan="10" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let asociaciones = [];
+let meses = [];
+let precios = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('formPrecio').addEventListener('submit', guardarPrecio);
+    cargarPrecios();
+});
+
+async function nuevoAnioPrecio() {
+    const year = siguienteYear('yearFiltro');
+    if (!confirm(`Estas seguro de que queres proyectar precios para el anio ${year}?`)) return;
+    agregarYear('yearFiltro', year);
+    document.getElementById('year').value = year;
+    await cargarPrecios();
+    limpiarFormulario();
+}
+
+function siguienteYear(selectId) {
+    const select = document.getElementById(selectId);
+    const years = [...select.options].map(option => Number(option.value)).filter(Boolean);
+    return Math.max(...years) + 1;
+}
+
+function agregarYear(selectId, year) {
+    const select = document.getElementById(selectId);
+    if (![...select.options].some(option => Number(option.value) === Number(year))) {
+        select.insertAdjacentHTML('beforeend', `<option value="${year}">${year}</option>`);
+    }
+    select.value = String(year);
+}
+
+function descargarTemplatePrecios() {
+    const year = document.getElementById('yearFiltro').value;
+    window.location.href = `/api/matriz-precios/template?year=${encodeURIComponent(year)}`;
+}
+
+async function importarTemplatePrecios() {
+    const input = document.getElementById('archivoImportarPrecios');
+    const archivo = input.files && input.files[0];
+    if (!archivo) return;
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    try {
+        const response = await fetch('/api/matriz-precios/importar', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
+        if (!data.success) {
+            const mensaje = (data.errores || ['No se pudo importar']).join(' | ');
+            mostrarMensaje(mensaje, 'error');
+            alert(mensaje);
+            return;
+        }
+        (data.years || []).forEach(year => agregarYear('yearFiltro', year));
+        if ((data.years || []).length) {
+            document.getElementById('yearFiltro').value = String(data.years[0]);
+        }
+        const mensaje = data.mensaje || 'Precios importados';
+        mostrarMensaje(mensaje, 'success');
+        alert(mensaje);
+        await cargarPrecios();
+    } catch (error) {
+        mostrarMensaje('Error al importar el archivo', 'error');
+        alert('Error al importar el archivo');
+    } finally {
+        input.value = '';
+    }
+}
+
+async function cargarPrecios() {
+    const year = document.getElementById('yearFiltro').value;
+    document.getElementById('year').value = year;
+    const response = await fetch(`/api/matriz-precios?year=${encodeURIComponent(year)}`);
+    const data = await response.json();
+    if (!data.success) {
+        mostrarMensaje('No se pudieron cargar los precios', 'error');
+        return;
+    }
+    asociaciones = data.asociaciones || [];
+    meses = data.meses || [];
+    precios = data.precios || [];
+    popularClientes();
+    popularFiltros();
+    sincronizarMesesFormulario();
+    actualizarPreview();
+    actualizarPrecioPrevio();
+    renderPrecios();
+}
+
+function popularClientes() {
+    const clientes = [...new Set([
+        ...asociaciones.map(item => item.cliente),
+        ...precios.map(item => item.cliente),
+    ].filter(Boolean))].sort();
+    const actual = document.getElementById('cliente').value;
+    document.getElementById('cliente').innerHTML = '<option value="">Seleccionar cliente</option>' + clientes.map(cliente =>
+        `<option value="${escapeHtml(cliente)}" ${cliente === actual ? 'selected' : ''}>${escapeHtml(cliente)}</option>`
+    ).join('');
+    actualizarCampanias();
+}
+
+function actualizarCampanias() {
+    const cliente = document.getElementById('cliente').value;
+    const actual = document.getElementById('campania').value;
+    const campanias = [...new Set([...asociaciones, ...precios]
+        .filter(item => !cliente || item.cliente === cliente)
+        .map(item => item.campania)
+        .filter(Boolean)
+    )].sort();
+    document.getElementById('campania').innerHTML = '<option value="">Seleccionar campania</option>' + campanias.map(campania =>
+        `<option value="${escapeHtml(campania)}" ${campania === actual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
+    ).join('');
+}
+
+function popularFiltros() {
+    const siteActual = document.getElementById('filtroSite').value;
+    const clienteActual = document.getElementById('filtroCliente').value;
+    const sites = [...new Set([...asociaciones, ...precios].map(item => item.site).filter(Boolean))].sort();
+    const clientes = [...new Set(precios.map(item => item.cliente).filter(Boolean))].sort();
+    document.getElementById('filtroSite').innerHTML = '<option value="">Todos los sites</option>' + sites.map(site =>
+        `<option value="${escapeHtml(site)}" ${site === siteActual ? 'selected' : ''}>${escapeHtml(site)}</option>`
+    ).join('');
+    document.getElementById('filtroCliente').innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(cliente =>
+        `<option value="${escapeHtml(cliente)}" ${cliente === clienteActual ? 'selected' : ''}>${escapeHtml(cliente)}</option>`
+    ).join('');
+    actualizarFiltroCampania();
+}
+
+function actualizarFiltroCampania() {
+    const cliente = document.getElementById('filtroCliente').value;
+    const actual = document.getElementById('filtroCampania').value;
+    const campanias = [...new Set(precios
+        .filter(item => !cliente || item.cliente === cliente)
+        .map(item => item.campania)
+        .filter(Boolean)
+    )].sort();
+    document.getElementById('filtroCampania').innerHTML = '<option value="">Todas las campanias</option>' + campanias.map(campania =>
+        `<option value="${escapeHtml(campania)}" ${campania === actual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
+    ).join('');
+}
+
+function sincronizarMesesFormulario() {
+    const year = document.getElementById('year').value || document.getElementById('yearFiltro').value;
+    if (!meses.some(mes => mes.value.startsWith(`${year}-`))) {
+        meses = generarMeses(year);
+    }
+    const actual = document.getElementById('mes').value;
+    document.getElementById('mes').innerHTML = meses
+        .filter(mes => mes.value.startsWith(`${year}-`))
+        .map(mes => `<option value="${escapeHtml(mes.value)}" ${mes.value === actual ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`)
+        .join('');
+    actualizarPreview();
+}
+
+function generarMeses(year) {
+    const labels = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    return labels.map((label, index) => {
+        const numero = String(index + 1).padStart(2, '0');
+        return { value: `${year}-${numero}`, label: `${label}-${String(year).slice(-2)}` };
+    });
+}
+
+function actualizarPreview() {
+    const precioBase = numero(document.getElementById('precioBase').value);
+    const alcance = numero(document.getElementById('alcancePorcentaje').value);
+    const fijoMensual = numero(document.getElementById('importeFijoMensual').value);
+    document.getElementById('precioFinalPreview').textContent = formatCurrency(precioBase * alcance / 100);
+    document.getElementById('fijoMensualPreview').textContent = formatCurrency(fijoMensual);
+    document.getElementById('mesesAfectados').textContent = String(mesesDesdeSeleccion().length);
+}
+
+function actualizarPrecioPrevio() {
+    const cliente = document.getElementById('cliente').value;
+    const campania = document.getElementById('campania').value;
+    const mes = document.getElementById('mes').value;
+    const previo = precios
+        .filter(item => item.cliente === cliente && item.campania === campania && item.mes < mes)
+        .sort((a, b) => b.mes.localeCompare(a.mes))[0];
+    document.getElementById('precioPrevioPreview').textContent = previo ? formatCurrency(previo.precio_final) : '$ 0';
+    actualizarPreview();
+}
+
+function mesesDesdeSeleccion() {
+    const mes = document.getElementById('mes').value;
+    if (!mes) return [];
+    return meses.filter(item => item.value >= mes && item.value.startsWith(`${mes.slice(0, 4)}-`));
+}
+
+async function guardarPrecio(event) {
+    event.preventDefault();
+    const precioBase = numero(document.getElementById('precioBase').value);
+    const fijoMensual = numero(document.getElementById('importeFijoMensual').value);
+    if (precioBase <= 0 && fijoMensual <= 0) {
+        mostrarMensaje('Carga un precio por hora o un pago mensual fijo.', 'error');
+        return;
+    }
+    const payload = {
+        id: document.getElementById('precioId').value || undefined,
+        cliente: document.getElementById('cliente').value,
+        campania: document.getElementById('campania').value,
+        year: document.getElementById('year').value,
+        mes: document.getElementById('mes').value,
+        precio_base: document.getElementById('precioBase').value || 0,
+        alcance_porcentaje: document.getElementById('alcancePorcentaje').value,
+        importe_fijo_mensual: document.getElementById('importeFijoMensual').value,
+    };
+    const response = await fetch('/api/matriz-precios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!data.success) {
+        mostrarMensaje((data.errores || ['No se pudo guardar']).join(', '), 'error');
+        return;
+    }
+    mostrarMensaje(data.mensaje || 'Precio guardado', 'success');
+    limpiarFormulario(false);
+    await cargarPrecios();
+}
+
+function editarPrecio(id) {
+    const item = precios.find(precio => Number(precio.id) === Number(id));
+    if (!item) return;
+    document.getElementById('precioId').value = item.id;
+    document.getElementById('cliente').value = item.cliente;
+    actualizarCampanias();
+    document.getElementById('campania').value = item.campania;
+    document.getElementById('year').value = item.year;
+    sincronizarMesesFormulario();
+    document.getElementById('mes').value = item.mes;
+    document.getElementById('precioBase').value = item.precio_base;
+    document.getElementById('alcancePorcentaje').value = item.alcance_porcentaje;
+    document.getElementById('importeFijoMensual').value = item.importe_fijo_mensual || 0;
+    document.getElementById('tituloFormulario').textContent = 'Editar precio';
+    document.getElementById('subtituloFormulario').textContent = `${item.cliente} / ${item.campania} / ${item.mes_label}`;
+    document.getElementById('badgeEditando').classList.remove('hidden');
+    actualizarPrecioPrevio();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function eliminarPrecio(id) {
+    if (!confirm('Eliminar este precio?')) return;
+    const response = await fetch(`/api/matriz-precios/${id}`, { method: 'DELETE' });
+    const data = await response.json();
+    if (!data.success) {
+        mostrarMensaje((data.errores || ['No se pudo eliminar']).join(', '), 'error');
+        return;
+    }
+    mostrarMensaje(data.mensaje || 'Precio eliminado', 'success');
+    await cargarPrecios();
+}
+
+function renderPrecios() {
+    const tbody = document.getElementById('tbodyPrecios');
+    const texto = normalizar(document.getElementById('buscarPrecio').value);
+    const site = document.getElementById('filtroSite').value;
+    const cliente = document.getElementById('filtroCliente').value;
+    const campania = document.getElementById('filtroCampania').value;
+    const filtradas = precios.filter(item => {
+        if (site && item.site !== site) return false;
+        if (cliente && item.cliente !== cliente) return false;
+        if (campania && item.campania !== campania) return false;
+        if (!texto) return true;
+        return normalizar(`${item.site} ${item.cliente} ${item.campania} ${item.mes_label}`).includes(texto);
+    });
+    document.getElementById('contadorPrecios').textContent = `${filtradas.length} de ${precios.length} precio(s)`;
+    if (!filtradas.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">No hay precios cargados</td></tr>';
+        return;
+    }
+    tbody.innerHTML = filtradas.map(item => `
+        <tr class="hover:bg-slate-50">
+            <td class="border border-gray-200 px-3 py-2">${escapeHtml(item.site || 'Sin site')}</td>
+            <td class="border border-gray-200 px-3 py-2">${escapeHtml(item.cliente)}</td>
+            <td class="border border-gray-200 px-3 py-2 font-semibold text-gray-900">${escapeHtml(item.campania)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-center">${item.year}</td>
+            <td class="border border-gray-200 px-3 py-2 text-center">${escapeHtml(item.mes_label)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatCurrency(item.precio_base)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatPercent(item.alcance_porcentaje)}</td>
+            <td class="border border-gray-200 bg-blue-50 px-3 py-2 text-right font-semibold text-blue-900">${formatCurrency(item.precio_final)}</td>
+            <td class="border border-gray-200 bg-emerald-50 px-3 py-2 text-right font-semibold text-emerald-900">${formatCurrency(item.importe_fijo_mensual)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-center">
+                <button type="button" onclick="editarPrecio(${item.id})" class="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"><i class="fas fa-pen"></i></button>
+                <button type="button" onclick="eliminarPrecio(${item.id})" class="ml-1 rounded bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-700"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function limpiarFormulario(resetMensaje = true) {
+    document.getElementById('formPrecio').reset();
+    document.getElementById('precioId').value = '';
+    document.getElementById('year').value = document.getElementById('yearFiltro').value;
+    popularClientes();
+    sincronizarMesesFormulario();
+    document.getElementById('alcancePorcentaje').value = 100;
+    document.getElementById('importeFijoMensual').value = 0;
+    document.getElementById('tituloFormulario').textContent = 'Nuevo precio';
+    document.getElementById('subtituloFormulario').textContent = 'Cliente, campania y periodo.';
+    document.getElementById('badgeEditando').classList.add('hidden');
+    if (resetMensaje) document.getElementById('mensajePrecio').classList.add('hidden');
+    actualizarPrecioPrevio();
+}
+
+function mostrarMensaje(mensaje, tipo) {
+    const contenedor = document.getElementById('mensajePrecio');
+    contenedor.className = `rounded px-3 py-2 text-sm ${tipo === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`;
+    contenedor.textContent = mensaje;
+}
+
+function numero(value) {
+    return Number(String(value || 0).replace(',', '.')) || 0;
+}
+
+function formatCurrency(value) {
+    return Number(value || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
+}
+
+function formatPercent(value) {
+    return `${Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })}%`;
+}
+
+function normalizar(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+    }[char]));
+}
+</script>
+{% endblock %}

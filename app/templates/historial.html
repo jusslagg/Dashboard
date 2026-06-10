@@ -20,6 +20,7 @@
             <option value="">Todas las areas</option>
             <option value="facturacion">Facturacion</option>
             <option value="asignacion">Datos maestros</option>
+            <option value="proyeccion_matriz">Proyecciones</option>
             <option value="usuario">Usuarios</option>
         </select>
         <button onclick="cargarHistorial()" class="h-10 rounded bg-slate-800 px-4 text-sm font-semibold text-white hover:bg-slate-700">
@@ -131,6 +132,11 @@ function renderDetalle(id) {
                 <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Resumen</p>
                 <p class="text-gray-900">${escapeHtml(item.resumen)}</p>
             </div>
+            ${puedeDeshacer(item) ? `
+                <button type="button" onclick="deshacerMovimiento(${item.id})" class="inline-flex h-10 items-center justify-center rounded bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-700">
+                    <i class="fas fa-rotate-left mr-2"></i>Deshacer movimiento
+                </button>
+            ` : ''}
             ${filas ? `
                 <div class="overflow-auto rounded border border-gray-200">
                     <table class="w-full text-xs">
@@ -164,17 +170,36 @@ function parseDetalle(detalle) {
 }
 
 function labelAccion(accion) {
-    return { creacion: 'Creacion', edicion: 'Edicion', eliminacion: 'Eliminacion' }[accion] || accion;
+    return { creacion: 'Creacion', edicion: 'Edicion', eliminacion: 'Eliminacion', deshacer: 'Deshacer' }[accion] || accion;
 }
 
 function labelEntidad(entidad) {
-    return { facturacion: 'Facturacion', asignacion: 'Datos maestros', usuario: 'Usuarios' }[entidad] || entidad;
+    return { facturacion: 'Facturacion', asignacion: 'Datos maestros', proyeccion_matriz: 'Proyecciones', usuario: 'Usuarios' }[entidad] || entidad;
 }
 
 function badgeAccion(accion) {
+    if (accion === 'deshacer') return 'rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800';
     if (accion === 'eliminacion') return 'rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-800';
     if (accion === 'edicion') return 'rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800';
     return 'rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800';
+}
+
+function puedeDeshacer(item) {
+    return item && item.entidad === 'proyeccion_matriz' && item.accion !== 'deshacer';
+}
+
+async function deshacerMovimiento(id) {
+    const item = historialActual.find(evento => evento.id === id);
+    if (!item) return;
+    if (!confirm(`¿Deshacer este movimiento?\\n${item.resumen}`)) return;
+    const response = await fetch(`/api/historial/${id}/deshacer`, { method: 'POST' });
+    const data = await response.json();
+    if (!data.success) {
+        alert((data.errores || ['No se pudo deshacer']).join(' | '));
+        return;
+    }
+    alert(data.mensaje || 'Movimiento deshecho');
+    await cargarHistorial();
 }
 
 function labelCampo(campo) {

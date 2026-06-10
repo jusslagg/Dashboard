@@ -173,6 +173,57 @@ def ensure_schema():
             WHERE precio IS NULL OR precio = 0
         """))
 
+    if inspector.has_table('matriz_proyecciones'):
+        proyeccion_columns = {column['name'] for column in inspector.get_columns('matriz_proyecciones')}
+        proyeccion_missing_columns = {
+            'carga_semanal': "ALTER TABLE matriz_proyecciones ADD COLUMN carga_semanal VARCHAR(20) DEFAULT 'L a V'",
+            'carga_horaria': 'ALTER TABLE matriz_proyecciones ADD COLUMN carga_horaria FLOAT DEFAULT 0',
+            'dias_objetivo': 'ALTER TABLE matriz_proyecciones ADD COLUMN dias_objetivo INTEGER DEFAULT 0',
+        }
+        for column, statement in proyeccion_missing_columns.items():
+            if column not in proyeccion_columns:
+                db.session.execute(text(statement))
+        db.session.execute(text("""
+            UPDATE matriz_proyecciones
+            SET carga_semanal = 'L a V'
+            WHERE carga_semanal IS NULL OR carga_semanal = ''
+        """))
+        db.session.execute(text("""
+            UPDATE matriz_proyecciones
+            SET carga_horaria = 0
+            WHERE carga_horaria IS NULL
+        """))
+        db.session.execute(text("""
+            UPDATE matriz_proyecciones
+            SET dias_objetivo = 0
+            WHERE dias_objetivo IS NULL
+        """))
+
+    if inspector.has_table('matriz_precios'):
+        precio_columns = {column['name'] for column in inspector.get_columns('matriz_precios')}
+        if 'site' not in precio_columns:
+            db.session.execute(text("ALTER TABLE matriz_precios ADD COLUMN site VARCHAR(100)"))
+        if 'importe_fijo_mensual' not in precio_columns:
+            db.session.execute(text("ALTER TABLE matriz_precios ADD COLUMN importe_fijo_mensual FLOAT DEFAULT 0"))
+        db.session.execute(text("""
+            UPDATE matriz_precios
+            SET importe_fijo_mensual = 0
+            WHERE importe_fijo_mensual IS NULL
+        """))
+        if inspector.has_table('asignaciones_comerciales'):
+            db.session.execute(text("""
+                UPDATE matriz_precios
+                SET site = (
+                    SELECT COALESCE(a.gerente, a.jefe_site, '')
+                    FROM asignaciones_comerciales a
+                    WHERE a.activa = 1
+                      AND a.cliente = matriz_precios.cliente
+                      AND a.campania = matriz_precios.campania
+                    LIMIT 1
+                )
+                WHERE site IS NULL OR site = ''
+            """))
+
     columns = {column['name'] for column in inspector.get_columns('facturacion_2026')}
     missing_columns = {
         'gerente': 'ALTER TABLE facturacion_2026 ADD COLUMN gerente VARCHAR(100)',

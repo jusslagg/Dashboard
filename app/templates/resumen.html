@@ -1,0 +1,520 @@
+{% extends "layout.html" %}
+
+{% block title %}Resumen - Facturación{% endblock %}
+
+{% block content %}
+<div class="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Planificación</p>
+        <h1 class="text-3xl font-bold text-gray-950">Resumen proyectado</h1>
+        <p class="mt-1 text-sm text-slate-500">Lectura anual del cruce entre horas proyectadas y precios cargados.</p>
+    </div>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <select id="yearFiltro" onchange="cargarResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+        <button type="button" onclick="cargarResumen()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
+            <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+            Actualizar
+        </button>
+    </div>
+</div>
+
+<section class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total anual acumulado</p>
+                <p id="kpiTotalAnual" class="mt-2 text-2xl font-bold text-gray-950">$ 0</p>
+                <p id="kpiYear" class="mt-1 text-xs text-slate-500">Año seleccionado</p>
+            </div>
+            <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 text-blue-700">
+                <i data-lucide="badge-dollar-sign" class="h-5 w-5"></i>
+            </span>
+        </div>
+    </article>
+    <article class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Total filtrado</p>
+                <p id="kpiTotalFiltrado" class="mt-2 text-2xl font-bold text-emerald-950">$ 0</p>
+                <p id="kpiFiltro" class="mt-1 text-xs text-emerald-700">Sin filtros</p>
+            </div>
+            <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-white text-emerald-700">
+                <i data-lucide="filter" class="h-5 w-5"></i>
+            </span>
+        </div>
+    </article>
+    <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Promedio mensual</p>
+                <p id="kpiPromedio" class="mt-2 text-2xl font-bold text-gray-950">$ 0</p>
+                <p class="mt-1 text-xs text-slate-500">Total filtrado / meses</p>
+            </div>
+            <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-violet-50 text-violet-700">
+                <i data-lucide="activity" class="h-5 w-5"></i>
+            </span>
+        </div>
+    </article>
+    <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Campañas con cruce</p>
+                <p id="kpiCampanias" class="mt-2 text-2xl font-bold text-gray-950">0</p>
+                <p id="contadorResumen" class="mt-1 text-xs text-slate-500">Cargando...</p>
+            </div>
+            <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-amber-50 text-amber-700">
+                <i data-lucide="git-merge" class="h-5 w-5"></i>
+            </span>
+        </div>
+    </article>
+</section>
+
+<section class="mb-4 rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-200 px-4 py-3">
+        <div class="flex flex-col gap-1">
+            <div class="flex items-center gap-2">
+                <i data-lucide="sliders-horizontal" class="h-4 w-4 text-slate-500"></i>
+                <h2 class="font-semibold text-gray-950">Filtros</h2>
+            </div>
+            <p class="text-xs text-slate-500">Aplican sobre KPIs, evolución mensual, insights y tabla detalle.</p>
+        </div>
+    </div>
+    <div class="space-y-3 p-4">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-[1.2fr_1fr_1fr_1fr_1fr_auto]">
+            <div class="relative">
+                <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"></i>
+                <input id="buscarResumen" type="search" oninput="renderResumen()" placeholder="Buscar site, cliente o campaña..." class="h-10 w-full rounded-md border border-gray-300 pl-9 pr-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            </div>
+            <select id="filtroSite" onchange="actualizarFiltroCampania(); renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+            <select id="filtroCliente" onchange="actualizarFiltroCampania(); renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+            <select id="filtroConcepto" onchange="renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+            <select id="filtroCampania" onchange="renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+            <button type="button" onclick="limpiarFiltros()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+                <i data-lucide="x-circle" class="h-4 w-4"></i>
+                Limpiar filtros
+            </button>
+        </div>
+        <div id="activeFilterChips" class="flex flex-wrap gap-2"></div>
+    </div>
+</section>
+
+<section class="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div class="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="font-semibold text-gray-950">Evolución mensual</h2>
+                <p class="mt-1 text-xs text-slate-500">Importe proyectado por mes según los filtros activos.</p>
+            </div>
+            <div id="monthlyRangeBadges" class="flex flex-wrap gap-2"></div>
+        </div>
+        <div id="monthlyEvolution" class="h-[300px] p-4"></div>
+    </div>
+
+    <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div class="border-b border-slate-200 px-4 py-3">
+            <div class="flex items-center gap-2">
+                <i data-lucide="sparkles" class="h-4 w-4 text-slate-500"></i>
+                <h2 class="font-semibold text-gray-950">Insights rápidos</h2>
+            </div>
+        </div>
+        <div id="insightCards" class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-1"></div>
+    </div>
+</section>
+
+<section class="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h2 class="font-semibold text-gray-950">Detalle de composición</h2>
+            <p id="subtituloTabla" class="mt-1 text-xs text-slate-500">Cargando datos...</p>
+        </div>
+        <span class="inline-flex w-fit items-center gap-2 rounded-md bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+            <i data-lucide="calculator" class="h-3.5 w-3.5"></i>
+            Horas proyectadas x precio
+        </span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[2480px] border-separate border-spacing-0 text-sm">
+            <thead class="sticky top-0 z-20 bg-slate-100 text-slate-900">
+                <tr>
+                    <th class="sticky left-0 z-30 w-[150px] min-w-[150px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Site</th>
+                    <th class="sticky left-[150px] z-30 w-[190px] min-w-[190px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Cliente</th>
+                    <th class="sticky left-[340px] z-30 w-[240px] min-w-[240px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Campaña</th>
+                    <th class="w-[130px] min-w-[130px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Concepto</th>
+                    <th class="w-[150px] min-w-[150px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3 text-right font-semibold">Total anual</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Enero</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Febrero</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Marzo</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Abril</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Mayo</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Junio</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Julio</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Agosto</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Septiembre</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Octubre</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Noviembre</th>
+                    <th class="w-[135px] min-w-[135px] border-b border-slate-200 px-3 py-3 text-right font-semibold">Diciembre</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyResumen">
+                <tr>
+                    <td colspan="17" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>
+let meses = [];
+let filas = [];
+let totalGeneral = { meses: {}, total: 0 };
+
+document.addEventListener('DOMContentLoaded', () => {
+    crearIconos();
+    cargarResumen();
+});
+
+async function cargarResumen() {
+    const year = document.getElementById('yearFiltro').value;
+    setLoadingState();
+    const response = await fetch(`/api/resumen-proyeccion?year=${encodeURIComponent(year)}`);
+    const data = await response.json();
+    if (!data.success) {
+        document.getElementById('contadorResumen').textContent = 'No se pudo cargar el resumen';
+        return;
+    }
+    meses = data.meses || [];
+    filas = data.filas || [];
+    totalGeneral = data.total_general || { meses: {}, total: 0 };
+    popularFiltros();
+    renderResumen();
+    crearIconos();
+}
+
+function setLoadingState() {
+    document.getElementById('contadorResumen').textContent = 'Cargando...';
+    document.getElementById('subtituloTabla').textContent = 'Cargando datos...';
+    document.getElementById('tbodyResumen').innerHTML = '<tr><td colspan="17" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td></tr>';
+    document.getElementById('monthlyEvolution').innerHTML = '<div class="flex h-full items-center justify-center text-sm text-slate-500">Cargando evolución...</div>';
+    document.getElementById('insightCards').innerHTML = '';
+}
+
+function popularFiltros() {
+    const siteActual = document.getElementById('filtroSite').value;
+    const clienteActual = document.getElementById('filtroCliente').value;
+    const conceptoActual = document.getElementById('filtroConcepto').value;
+    const campaniaActual = document.getElementById('filtroCampania').value;
+    const detalles = filas.filter(item => item.tipo !== 'total_site');
+    const sites = [...new Set(detalles.map(item => item.site).filter(Boolean))].sort();
+    const clientes = [...new Set(detalles.map(item => item.cliente).filter(Boolean))].sort();
+    const conceptos = [...new Set(detalles.map(item => item.concepto).filter(Boolean))].sort();
+    document.getElementById('filtroSite').innerHTML = '<option value="">Todos los sites</option>' + sites.map(site =>
+        `<option value="${escapeHtml(site)}" ${site === siteActual ? 'selected' : ''}>${escapeHtml(site)}</option>`
+    ).join('');
+    document.getElementById('filtroCliente').innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(cliente =>
+        `<option value="${escapeHtml(cliente)}" ${cliente === clienteActual ? 'selected' : ''}>${escapeHtml(cliente)}</option>`
+    ).join('');
+    document.getElementById('filtroConcepto').innerHTML = '<option value="">Todos los conceptos</option>' + conceptos.map(concepto =>
+        `<option value="${escapeHtml(concepto)}" ${concepto === conceptoActual ? 'selected' : ''}>${escapeHtml(concepto)}</option>`
+    ).join('');
+    actualizarFiltroCampania(campaniaActual);
+}
+
+function actualizarFiltroCampania(valorActual) {
+    const site = document.getElementById('filtroSite').value;
+    const cliente = document.getElementById('filtroCliente').value;
+    const actual = valorActual === undefined ? document.getElementById('filtroCampania').value : valorActual;
+    const campanias = [...new Set(filas
+        .filter(item => item.tipo !== 'total_site')
+        .filter(item => !site || item.site === site)
+        .filter(item => !cliente || item.cliente === cliente)
+        .map(item => item.campania)
+        .filter(Boolean)
+    )].sort();
+    document.getElementById('filtroCampania').innerHTML = '<option value="">Todas las campañas</option>' + campanias.map(campania =>
+        `<option value="${escapeHtml(campania)}" ${campania === actual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
+    ).join('');
+}
+
+function obtenerFilasFiltradas() {
+    const texto = normalizar(document.getElementById('buscarResumen').value);
+    const site = document.getElementById('filtroSite').value;
+    const cliente = document.getElementById('filtroCliente').value;
+    const concepto = document.getElementById('filtroConcepto').value;
+    const campania = document.getElementById('filtroCampania').value;
+    return filas.filter(item => {
+        if (site && item.site !== site) return false;
+        if (cliente && item.cliente !== cliente) return false;
+        if (concepto && item.concepto !== concepto) return false;
+        if (campania && item.campania !== campania) return false;
+        if (!texto) return true;
+        return normalizar(`${item.site} ${item.cliente} ${item.concepto} ${item.campania}`).includes(texto);
+    });
+}
+
+function calcularTotal(filasBase) {
+    return {
+        total: filasBase.reduce((sum, item) => sum + (item.tipo === 'total_site' ? 0 : Number(item.total || 0)), 0),
+        meses: Object.fromEntries(meses.map(mes => [
+            mes.value,
+            filasBase.reduce((sum, item) => sum + (item.tipo === 'total_site' ? 0 : Number(item.meses[mes.value] || 0)), 0),
+        ])),
+    };
+}
+
+function renderResumen() {
+    const tbody = document.getElementById('tbodyResumen');
+    const filtradas = obtenerFilasFiltradas();
+    const detallesFiltrados = filtradas.filter(item => item.tipo !== 'total_site');
+    const totalFiltrado = calcularTotal(filtradas);
+    const stats = calcularEstadisticasMes(totalFiltrado);
+
+    actualizarKpis(filtradas, detallesFiltrados, totalFiltrado);
+    renderActiveChips();
+    renderMonthlyEvolution(totalFiltrado, stats);
+    renderInsights(totalFiltrado, stats, detallesFiltrados.length);
+
+    if (!filtradas.length) {
+        tbody.innerHTML = '<tr><td colspan="17" class="px-4 py-8 text-center text-gray-500">No hay datos para el resumen</td></tr>';
+        crearIconos();
+        return;
+    }
+
+    const totalRow = `
+        <tr class="bg-blue-100 font-bold text-blue-950">
+            <td class="sticky left-0 z-10 min-w-[150px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3">TOTAL</td>
+            <td class="sticky left-[150px] z-10 min-w-[190px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3"></td>
+            <td class="sticky left-[340px] z-10 min-w-[240px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3">GENERAL</td>
+            <td class="min-w-[130px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3">${badgeConcepto('Acumulado')}</td>
+            <td class="min-w-[150px] border-b border-r border-blue-200 bg-blue-50 px-3 py-3 text-right">${formatCurrency(totalFiltrado.total)}</td>
+            ${meses.map(mes => `<td class="min-w-[135px] border-b border-r border-blue-200 px-3 py-3 text-right">${formatCurrency(totalFiltrado.meses[mes.value])}</td>`).join('')}
+        </tr>
+    `;
+
+    tbody.innerHTML = totalRow + filtradas.map((item, index) => renderFila(item, index)).join('');
+    crearIconos();
+}
+
+function actualizarKpis(filtradas, detallesFiltrados, totalFiltrado) {
+    const year = document.getElementById('yearFiltro').value;
+    const promedio = meses.length ? totalFiltrado.total / meses.length : 0;
+    const tieneFiltros = filtrosActivos().length > 0;
+    document.getElementById('kpiTotalAnual').textContent = formatCurrency(totalGeneral.total);
+    document.getElementById('kpiYear').textContent = `Año ${year}, sin filtros`;
+    document.getElementById('kpiTotalFiltrado').textContent = formatCurrency(totalFiltrado.total);
+    document.getElementById('kpiFiltro').textContent = tieneFiltros ? `${filtrosActivos().length} filtro(s) activo(s)` : 'Sin filtros activos';
+    document.getElementById('kpiCampanias').textContent = detallesFiltrados.length.toLocaleString('es-AR');
+    document.getElementById('kpiPromedio').textContent = formatCurrency(promedio);
+    document.getElementById('contadorResumen').textContent = 'Proyección y precio coinciden';
+    document.getElementById('subtituloTabla').textContent = `${filtradas.length} fila(s), incluye total general y totales por site`;
+}
+
+function calcularEstadisticasMes(totalFiltrado) {
+    const valores = meses.map(mes => ({
+        ...mes,
+        monto: Number(totalFiltrado.meses[mes.value] || 0),
+    }));
+    const conDatos = valores.filter(item => item.monto > 0);
+    const base = conDatos.length ? conDatos : valores;
+    const max = base.reduce((actual, item) => item.monto > actual.monto ? item : actual, base[0] || { label: '-', monto: 0 });
+    const min = base.reduce((actual, item) => item.monto < actual.monto ? item : actual, base[0] || { label: '-', monto: 0 });
+    const promedio = meses.length ? Number(totalFiltrado.total || 0) / meses.length : 0;
+    return { valores, max, min, promedio };
+}
+
+function renderMonthlyEvolution(totalFiltrado, stats) {
+    const maximo = Math.max(...stats.valores.map(item => item.monto), 0);
+    document.getElementById('monthlyRangeBadges').innerHTML = `
+        <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+            <i data-lucide="arrow-up-right" class="h-3.5 w-3.5"></i> Máx. ${escapeHtml(labelMes(stats.max))}
+        </span>
+        <span class="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+            <i data-lucide="arrow-down-right" class="h-3.5 w-3.5"></i> Mín. ${escapeHtml(labelMes(stats.min))}
+        </span>
+    `;
+    document.getElementById('monthlyEvolution').innerHTML = `
+        <div class="flex h-full items-end gap-2">
+            ${stats.valores.map(item => {
+                const height = maximo > 0 ? Math.max(6, (item.monto / maximo) * 100) : 0;
+                const isMax = item.value === stats.max.value && item.monto > 0;
+                const isMin = item.value === stats.min.value && item.monto > 0;
+                const tone = isMax ? 'bg-emerald-600' : isMin ? 'bg-amber-500' : 'bg-blue-600';
+                const labelTone = isMax ? 'text-emerald-700' : isMin ? 'text-amber-700' : 'text-slate-700';
+                return `
+                    <div class="group flex min-w-0 flex-1 flex-col items-center gap-2">
+                        <div class="relative flex h-[210px] w-full items-end rounded-md bg-slate-50 px-1">
+                            <div title="${escapeHtml(labelMes(item))}: ${formatCurrency(item.monto)}" class="w-full rounded-t-md ${tone} transition-all group-hover:opacity-85" style="height: ${height}%"></div>
+                            <div class="pointer-events-none absolute left-1/2 top-2 z-10 hidden w-max -translate-x-1/2 rounded-md bg-gray-950 px-2 py-1 text-xs font-medium text-white shadow-lg group-hover:block">
+                                ${escapeHtml(labelMes(item))}: ${formatCurrency(item.monto)}
+                            </div>
+                        </div>
+                        <div class="w-full text-center">
+                            <p class="truncate text-xs font-semibold uppercase ${labelTone}">${escapeHtml(labelMes(item, true))}</p>
+                            <p class="mt-1 truncate text-[11px] text-slate-500">${formatCurrencyCompact(item.monto)}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function renderInsights(totalFiltrado, stats, cantidadCampanias) {
+    document.getElementById('insightCards').innerHTML = [
+        insightCard('Mes con mayor importe', labelMes(stats.max), formatCurrency(stats.max.monto), 'trending-up', 'emerald'),
+        insightCard('Mes con menor importe', labelMes(stats.min), formatCurrency(stats.min.monto), 'trending-down', 'amber'),
+        insightCard('Promedio mensual', 'Base filtrada', formatCurrency(stats.promedio), 'line-chart', 'blue'),
+        insightCard('Campañas filtradas', 'Con proyección y precio', cantidadCampanias.toLocaleString('es-AR'), 'list-checks', 'violet'),
+    ].join('');
+}
+
+function insightCard(title, subtitle, value, icon, tone) {
+    const tones = {
+        emerald: 'bg-emerald-50 text-emerald-700',
+        amber: 'bg-amber-50 text-amber-700',
+        blue: 'bg-blue-50 text-blue-700',
+        violet: 'bg-violet-50 text-violet-700',
+    };
+    return `
+        <article class="rounded-lg border border-slate-200 bg-white p-3">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">${escapeHtml(title)}</p>
+                    <p class="mt-1 text-sm text-slate-500">${escapeHtml(subtitle)}</p>
+                    <p class="mt-2 text-lg font-bold text-gray-950">${escapeHtml(value)}</p>
+                </div>
+                <span class="inline-flex h-9 w-9 items-center justify-center rounded-md ${tones[tone] || tones.blue}">
+                    <i data-lucide="${icon}" class="h-4 w-4"></i>
+                </span>
+            </div>
+        </article>
+    `;
+}
+
+function renderFila(item, index) {
+    const esTotal = item.tipo === 'total_site';
+    const rowClass = esTotal ? 'bg-slate-100 font-bold text-slate-950' : (index % 2 === 0 ? 'bg-white hover:bg-blue-50/40' : 'bg-slate-50/70 hover:bg-blue-50/40');
+    const stickyClass = esTotal ? 'bg-slate-100' : (index % 2 === 0 ? 'bg-white' : 'bg-slate-50');
+    return `
+        <tr class="${rowClass}">
+            <td class="sticky left-0 z-10 min-w-[150px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2.5 text-left">${escapeHtml(item.site || '')}</td>
+            <td class="sticky left-[150px] z-10 min-w-[190px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2.5 text-left">${escapeHtml(item.cliente || '')}</td>
+            <td class="sticky left-[340px] z-10 min-w-[240px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2.5 text-left font-semibold">${escapeHtml(item.campania)}</td>
+            <td class="min-w-[130px] border-b border-r border-slate-200 px-3 py-2.5 text-left">${badgeConcepto(item.concepto)}</td>
+            <td class="min-w-[150px] border-b border-r border-slate-200 bg-blue-50 px-3 py-2.5 text-right font-semibold tabular-nums">${formatCurrency(item.total)}</td>
+            ${meses.map(mes => `<td class="min-w-[135px] border-b border-r border-slate-200 px-3 py-2.5 text-right tabular-nums">${formatCurrency(item.meses[mes.value])}</td>`).join('')}
+        </tr>
+    `;
+}
+
+function badgeConcepto(concepto) {
+    const label = String(concepto || '');
+    const lower = normalizar(label);
+    const tone = lower.includes('total')
+        ? 'bg-slate-800 text-white'
+        : lower.includes('acumulado')
+            ? 'bg-blue-700 text-white'
+            : 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    return `<span class="inline-flex max-w-full items-center rounded px-1.5 py-0.5 text-[11px] font-semibold leading-5 ${tone}">${escapeHtml(label)}</span>`;
+}
+
+function filtrosActivos() {
+    const filtros = [];
+    const buscar = document.getElementById('buscarResumen').value.trim();
+    const site = document.getElementById('filtroSite').value;
+    const cliente = document.getElementById('filtroCliente').value;
+    const concepto = document.getElementById('filtroConcepto').value;
+    const campania = document.getElementById('filtroCampania').value;
+    if (buscar) filtros.push({ key: 'buscar', label: `Búsqueda: ${buscar}` });
+    if (site) filtros.push({ key: 'site', label: `Site: ${site}` });
+    if (cliente) filtros.push({ key: 'cliente', label: `Cliente: ${cliente}` });
+    if (concepto) filtros.push({ key: 'concepto', label: `Concepto: ${concepto}` });
+    if (campania) filtros.push({ key: 'campania', label: `Campaña: ${campania}` });
+    return filtros;
+}
+
+function renderActiveChips() {
+    const filtros = filtrosActivos();
+    const container = document.getElementById('activeFilterChips');
+    if (!filtros.length) {
+        container.innerHTML = '<span class="text-xs text-slate-500">No hay filtros activos.</span>';
+        return;
+    }
+    container.innerHTML = filtros.map(filtro => `
+        <button type="button" onclick="quitarFiltro('${filtro.key}')" class="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+            ${escapeHtml(filtro.label)}
+            <i data-lucide="x" class="h-3 w-3"></i>
+        </button>
+    `).join('');
+    crearIconos();
+}
+
+function quitarFiltro(key) {
+    const ids = {
+        buscar: 'buscarResumen',
+        site: 'filtroSite',
+        cliente: 'filtroCliente',
+        concepto: 'filtroConcepto',
+        campania: 'filtroCampania',
+    };
+    const element = document.getElementById(ids[key]);
+    if (!element) return;
+    element.value = '';
+    if (key === 'site' || key === 'cliente') actualizarFiltroCampania();
+    renderResumen();
+}
+
+function limpiarFiltros() {
+    ['buscarResumen', 'filtroSite', 'filtroCliente', 'filtroConcepto', 'filtroCampania'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.value = '';
+    });
+    actualizarFiltroCampania();
+    renderResumen();
+}
+
+function labelMes(mes, corto = false) {
+    if (!mes || !mes.label) return '-';
+    const label = String(mes.label).replace('-', ' ');
+    return corto ? label.split(' ')[0] : label;
+}
+
+function formatCurrency(value) {
+    return Number(value || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
+}
+
+function formatCurrencyCompact(value) {
+    const number = Math.abs(Number(value || 0));
+    if (number >= 1000000000) return `$ ${(Number(value || 0) / 1000000000).toLocaleString('es-AR', { maximumFractionDigits: 1 })} MM`;
+    if (number >= 1000000) return `$ ${(Number(value || 0) / 1000000).toLocaleString('es-AR', { maximumFractionDigits: 1 })} M`;
+    return formatCurrency(value);
+}
+
+function normalizar(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+    }[char]));
+}
+
+function crearIconos() {
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+}
+</script>
+{% endblock %}

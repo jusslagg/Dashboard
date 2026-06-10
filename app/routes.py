@@ -1,8 +1,9 @@
-# filepath: app/routes.py
+﻿# filepath: app/routes.py
 from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, session, url_for
 from app import db, get_csrf_token
-from app.models import AsignacionComercial, Facturacion2026, HistorialCambio, JustificacionAjuste, ROLES_USUARIO, Usuario
-from datetime import datetime, timedelta
+from app.models import AsignacionComercial, Facturacion2026, FeriadoOperativo, HistorialCambio, JustificacionAjuste, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, ROLES_USUARIO, Usuario
+from datetime import date, datetime, timedelta
+import calendar
 from sqlalchemy import func
 from html import escape
 from html.parser import HTMLParser
@@ -727,6 +728,15 @@ def filas_desde_csv(contenido):
     return list(csv.reader(io.StringIO(contenido), dialecto))
 
 
+def decodificar_texto_importacion(contenido_bytes):
+    for encoding in ('utf-8-sig', 'cp1252', 'latin-1'):
+        try:
+            return contenido_bytes.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return contenido_bytes.decode('utf-8-sig', errors='replace')
+
+
 def filas_desde_html(contenido):
     parser = TablaHTMLParser()
     parser.feed(contenido)
@@ -1048,6 +1058,266 @@ MESES_MATRIZ = [
 ]
 
 
+MESES_PROYECCION = [
+    ('01', 'ene'),
+    ('02', 'feb'),
+    ('03', 'mar'),
+    ('04', 'abr'),
+    ('05', 'may'),
+    ('06', 'jun'),
+    ('07', 'jul'),
+    ('08', 'ago'),
+    ('09', 'sep'),
+    ('10', 'oct'),
+    ('11', 'nov'),
+    ('12', 'dic'),
+]
+
+
+def opciones_meses_proyeccion(year):
+    return [
+        {
+            'value': f'{year}-{numero}',
+            'label': f'{label}-{str(year)[-2:]}',
+        }
+        for numero, label in MESES_PROYECCION
+    ]
+
+
+def etiqueta_mes_proyeccion(mes):
+    try:
+        year, numero = str(mes).split('-', 1)
+    except ValueError:
+        return str(mes)
+    labels = dict(MESES_PROYECCION)
+    return f"{labels.get(numero, numero)}-{year[-2:]}"
+
+
+def meses_proyeccion_desde(mes):
+    mes_normalizado = mes_valido(mes)
+    if not mes_normalizado:
+        return []
+    year = int(mes_normalizado[:4])
+    mes_inicio = int(mes_normalizado[-2:])
+    return [
+        f'{year}-{numero}'
+        for numero, _ in MESES_PROYECCION
+        if int(numero) >= mes_inicio
+    ]
+
+
+CARGAS_SEMANALES_PROYECCION = (
+    'L a V',
+    'L a V + S',
+    'S + D + F',
+    'S',
+    'D',
+    'F',
+    'L a V +S+D+F',
+)
+
+
+def normalizar_carga_semanal(value):
+    value = ' '.join(str(value or '').strip().split())
+    alias = {
+        'L a V +S': 'L a V + S',
+        'S+D+F': 'S + D + F',
+        'L a V + S+D+F': 'L a V +S+D+F',
+        'L a V + S + D + F': 'L a V +S+D+F',
+    }
+    value = alias.get(value, value)
+    return value if value in CARGAS_SEMANALES_PROYECCION else 'L a V'
+
+
+def fechas_feriadas_activas(year):
+    return {
+        feriado.fecha
+        for feriado in FeriadoOperativo.query.filter_by(year=year, activo=True).all()
+        if feriado.fecha
+    }
+
+
+def calcular_dias_objetivo(year, mes_numero, carga_semanal, feriados=None):
+    carga = normalizar_carga_semanal(carga_semanal)
+    feriados = feriados if feriados is not None else fechas_feriadas_activas(year)
+    _, ultimo_dia = calendar.monthrange(year, mes_numero)
+    dias = 0
+    for dia in range(1, ultimo_dia + 1):
+        fecha = date(year, mes_numero, dia)
+        weekday = fecha.weekday()
+        es_feriado = fecha in feriados
+        cuenta = False
+        if carga == 'L a V':
+            cuenta = weekday < 5 and not es_feriado
+        elif carga == 'L a V + S':
+            cuenta = weekday < 6 and not es_feriado
+        elif carga == 'S + D + F':
+            cuenta = weekday in (5, 6) or es_feriado
+        elif carga == 'S':
+            cuenta = weekday == 5 and not es_feriado
+        elif carga == 'D':
+            cuenta = weekday == 6 and not es_feriado
+        elif carga == 'F':
+            cuenta = es_feriado
+        elif carga == 'L a V +S+D+F':
+            cuenta = True
+        if cuenta:
+            dias += 1
+    return dias
+
+
+def aplicar_calculo_proyeccion(proyeccion, valores, mes, feriados=None):
+    year = int(mes[:4])
+    mes_numero = int(mes[-2:])
+    jornadas = valores.get('jornadas') or [{
+        'dotacion_requerida': valores.get('dotacion_requerida') or 0,
+        'carga_semanal': valores.get('carga_semanal'),
+        'carga_horaria': valores.get('carga_horaria') or 0,
+    }]
+    jornadas_calculadas = []
+    dotacion_total = 0
+    horas_total = 0
+    dias_objetivo_total = 0
+    carga_semanal_resumen = normalizar_carga_semanal(jornadas[0].get('carga_semanal') if jornadas else None)
+    carga_horaria_resumen = jornadas[0].get('carga_horaria') if jornadas else 0
+
+    for jornada in jornadas:
+        dotacion = jornada.get('dotacion_requerida') or 0
+        carga_semanal = normalizar_carga_semanal(jornada.get('carga_semanal'))
+        carga_horaria = jornada.get('carga_horaria') or 0
+        dias_objetivo = calcular_dias_objetivo(year, mes_numero, carga_semanal, feriados)
+        horas_requeridas = dotacion * dias_objetivo * carga_horaria
+        dotacion_total += dotacion
+        horas_total += horas_requeridas
+        dias_objetivo_total = max(dias_objetivo_total, dias_objetivo)
+        jornadas_calculadas.append({
+            'dotacion_requerida': dotacion,
+            'carga_semanal': carga_semanal,
+            'carga_horaria': carga_horaria,
+            'dias_objetivo': dias_objetivo,
+            'horas_requeridas': horas_requeridas,
+        })
+
+    proyeccion.cliente = valores['cliente']
+    proyeccion.campania = valores['campania']
+    proyeccion.year = year
+    proyeccion.mes = mes
+    proyeccion.dotacion_requerida = dotacion_total
+    proyeccion.carga_semanal = carga_semanal_resumen
+    proyeccion.carga_horaria = carga_horaria_resumen or 0
+    proyeccion.dias_objetivo = dias_objetivo_total
+    proyeccion.horas_requeridas = horas_total
+    proyeccion.porcentaje_cumplimiento = valores.get('porcentaje_cumplimiento') or 0
+    proyeccion.jornadas = [
+        ProyeccionMatrizJornada(**jornada)
+        for jornada in jornadas_calculadas
+    ]
+    return proyeccion
+
+
+def recalcular_proyecciones_mes(year, mes_numero):
+    mes = f'{year}-{mes_numero:02d}'
+    feriados = fechas_feriadas_activas(year)
+    proyecciones = ProyeccionMatriz.query.filter_by(mes=mes).all()
+    for proyeccion in proyecciones:
+        jornadas = [jornada.to_dict() for jornada in proyeccion.jornadas]
+        if not jornadas:
+            carga_horaria = proyeccion.carga_horaria or 0
+            if carga_horaria <= 0 and (proyeccion.horas_requeridas or 0) > 0 and (proyeccion.dotacion_requerida or 0) > 0:
+                dias_base = proyeccion.dias_objetivo or calcular_dias_objetivo(year, mes_numero, proyeccion.carga_semanal or 'L a V', feriados)
+                if dias_base > 0:
+                    carga_horaria = proyeccion.horas_requeridas / ((proyeccion.dotacion_requerida or 0) * dias_base)
+            jornadas = [{
+                'dotacion_requerida': proyeccion.dotacion_requerida,
+                'carga_semanal': proyeccion.carga_semanal,
+                'carga_horaria': carga_horaria,
+            }]
+        valores = {
+            'cliente': proyeccion.cliente,
+            'campania': proyeccion.campania,
+            'jornadas': jornadas,
+            'porcentaje_cumplimiento': proyeccion.porcentaje_cumplimiento,
+        }
+        aplicar_calculo_proyeccion(proyeccion, valores, mes, feriados)
+    return len(proyecciones)
+
+
+def snapshot_proyeccion(proyeccion):
+    if not proyeccion:
+        return None
+    return proyeccion.to_dict()
+
+
+def buscar_proyeccion_snapshot(snapshot):
+    if not snapshot:
+        return None
+    proyeccion_id = snapshot.get('id')
+    if proyeccion_id:
+        encontrada = ProyeccionMatriz.query.get(proyeccion_id)
+        if encontrada:
+            return encontrada
+    return ProyeccionMatriz.query.filter_by(
+        cliente=snapshot.get('cliente'),
+        campania=snapshot.get('campania'),
+        mes=snapshot.get('mes'),
+    ).first()
+
+
+def restaurar_proyeccion_snapshot(proyeccion, snapshot):
+    proyeccion.cliente = snapshot.get('cliente') or ''
+    proyeccion.campania = snapshot.get('campania') or ''
+    proyeccion.year = int(snapshot.get('year') or str(snapshot.get('mes', '0'))[:4] or 0)
+    proyeccion.mes = snapshot.get('mes') or ''
+    proyeccion.dotacion_requerida = snapshot.get('dotacion_requerida') or 0
+    proyeccion.carga_semanal = normalizar_carga_semanal(snapshot.get('carga_semanal'))
+    proyeccion.carga_horaria = snapshot.get('carga_horaria') or 0
+    proyeccion.dias_objetivo = snapshot.get('dias_objetivo') or 0
+    proyeccion.horas_requeridas = snapshot.get('horas_requeridas') or 0
+    proyeccion.porcentaje_cumplimiento = snapshot.get('porcentaje_cumplimiento') or 0
+    proyeccion.jornadas = [
+        ProyeccionMatrizJornada(
+            dotacion_requerida=jornada.get('dotacion_requerida') or 0,
+            carga_semanal=normalizar_carga_semanal(jornada.get('carga_semanal')),
+            carga_horaria=jornada.get('carga_horaria') or 0,
+            dias_objetivo=jornada.get('dias_objetivo') or 0,
+            horas_requeridas=jornada.get('horas_requeridas') or 0,
+        )
+        for jornada in snapshot.get('jornadas', [])
+    ]
+
+
+def lista_snapshots_historial(value):
+    if not value:
+        return []
+    if isinstance(value, dict) and isinstance(value.get('proyecciones'), list):
+        return value['proyecciones']
+    if isinstance(value, list):
+        return value
+    return []
+
+
+def historial_movimiento_deshace(historial_id):
+    patron = f'Deshacer movimiento #{historial_id}:%'
+    return HistorialCambio.query.filter(
+        HistorialCambio.accion == 'deshacer',
+        HistorialCambio.resumen.like(patron),
+    ).first() is not None
+
+
+def existe_proyeccion_snapshot(snapshot):
+    if not snapshot:
+        return False
+    query = ProyeccionMatriz.query
+    proyeccion_id = snapshot.get('id')
+    if proyeccion_id and query.filter_by(id=proyeccion_id).first():
+        return True
+    return query.filter_by(
+        cliente=snapshot.get('cliente'),
+        campania=snapshot.get('campania'),
+        mes=snapshot.get('mes'),
+    ).first() is not None
+
+
 def metricas_matriz(registros):
     resumen = resumen_registros(registros)
     facturado_horas = sum(r.facturado_horas for r in registros)
@@ -1079,7 +1349,7 @@ def metricas_matriz(registros):
     desvio_horas_monto = facturado_horas - objetivo_horas
     desvio_variable = variable_real - objetivo_bono
     neto_penalizaciones_bonos = facturado_bono + penalizaciones
-    neto_otros_ajustes = tarifacion + netx_gen + otros
+    neto_otros_ajustes = 0
     total_objetivo = resumen['total_teorico']
     total_real = facturado_horas + variable_real + neto_penalizaciones_bonos + neto_otros_ajustes
     return {
@@ -1281,6 +1551,34 @@ def comparativo():
 def matriz():
     """Vista matricial mensual por gerencia y jefe de site."""
     return render_template('matriz.html')
+
+
+@main_bp.route('/matriz-proyecciones')
+@login_requerido
+def matriz_proyecciones():
+    """Vista de planificación mensual de dotación y horas proyectadas."""
+    return render_template('matriz_proyecciones.html')
+
+
+@main_bp.route('/matriz-precios')
+@login_requerido
+def matriz_precios():
+    """Vista de planificación mensual de precios por campaña."""
+    return render_template('matriz_precios.html')
+
+
+@main_bp.route('/resumen')
+@login_requerido
+def resumen():
+    """Resumen anual de horas proyectadas por precio mensual."""
+    return render_template('resumen.html')
+
+
+@main_bp.route('/calendario-operativo')
+@login_requerido
+def calendario_operativo():
+    """Configuración anual de feriados operativos."""
+    return render_template('calendario_operativo.html')
 
 
 @main_bp.route('/catalogos')
@@ -1513,6 +1811,65 @@ def api_historial():
     limite = min(numero_request('limite') or 100, 300)
     items = query.order_by(HistorialCambio.creado_en.desc()).limit(int(limite)).all()
     return jsonify({'success': True, 'historial': [item.to_dict() for item in items]})
+
+
+@main_bp.route('/api/historial/<int:historial_id>/deshacer', methods=['POST'])
+@admin_requerido
+def api_deshacer_historial(historial_id):
+    item = HistorialCambio.query.get_or_404(historial_id)
+    resultado, status = deshacer_item_historial(item)
+    return jsonify(resultado), status
+
+
+def deshacer_item_historial(item):
+    if item.accion == 'deshacer':
+        return {'success': False, 'errores': ['Este movimiento ya es un deshacer']}, 400
+    if historial_movimiento_deshace(item.id):
+        return {'success': False, 'errores': ['Este movimiento ya fue deshecho']}, 400
+    if item.entidad != 'proyeccion_matriz':
+        return {'success': False, 'errores': ['Por ahora solo se pueden deshacer movimientos de proyecciones']}, 400
+
+    antes = item._json(item.antes) or {}
+    despues = item._json(item.despues) or {}
+    antes_snapshots = lista_snapshots_historial(antes)
+    despues_snapshots = lista_snapshots_historial(despues)
+    cantidad = max(len(antes_snapshots), len(despues_snapshots))
+
+    for indice in range(cantidad):
+        antes_snapshot = antes_snapshots[indice] if indice < len(antes_snapshots) else None
+        despues_snapshot = despues_snapshots[indice] if indice < len(despues_snapshots) else None
+        actual = buscar_proyeccion_snapshot(despues_snapshot) or buscar_proyeccion_snapshot(antes_snapshot)
+        if antes_snapshot:
+            if not actual:
+                actual = ProyeccionMatriz()
+                db.session.add(actual)
+            restaurar_proyeccion_snapshot(actual, antes_snapshot)
+        elif actual:
+            db.session.delete(actual)
+
+    registrar_historial(
+        'deshacer',
+        item.entidad,
+        item.entidad_id,
+        f'Deshacer movimiento #{item.id}: {item.resumen}',
+        antes=despues,
+        despues=antes,
+    )
+    db.session.flush()
+    errores_validacion = []
+    for indice in range(cantidad):
+        antes_snapshot = antes_snapshots[indice] if indice < len(antes_snapshots) else None
+        despues_snapshot = despues_snapshots[indice] if indice < len(despues_snapshots) else None
+        if antes_snapshot and not existe_proyeccion_snapshot(antes_snapshot):
+            errores_validacion.append(f'No se pudo restaurar {antes_snapshot.get("cliente")} / {antes_snapshot.get("campania")} / {antes_snapshot.get("mes")}')
+        if not antes_snapshot and despues_snapshot and existe_proyeccion_snapshot(despues_snapshot):
+            errores_validacion.append(f'No se pudo eliminar {despues_snapshot.get("cliente")} / {despues_snapshot.get("campania")} / {despues_snapshot.get("mes")}')
+    if errores_validacion:
+        db.session.rollback()
+        return {'success': False, 'errores': errores_validacion}, 500
+    db.session.commit()
+    return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho'}, 200
+
 
 @main_bp.route('/api/cargar', methods=['POST'])
 @edicion_requerida
@@ -2000,6 +2357,1159 @@ def api_matriz():
         'total_gerencia': matriz_grupos(registros_year, 'gerente', meses),
         'apertura_jefe_site': matriz_grupos(registros_year, 'jefe_site' if not jefe_site_unico else 'campania', meses),
         'jefe_site': jefe_site_unico,
+    })
+
+
+def payload_proyeccion(data):
+    cliente = str(data.get('cliente') or '').strip()
+    campania = str(data.get('campania') or '').strip()
+    mes = str(data.get('mes') or '').strip()
+    errores = []
+
+    try:
+        year = int(data.get('year') or (mes.split('-')[0] if '-' in mes else datetime.utcnow().year))
+    except (TypeError, ValueError):
+        year = datetime.utcnow().year
+        errores.append('El año no es valido')
+
+    if not cliente:
+        errores.append('El cliente es obligatorio')
+    if not campania:
+        errores.append('La campaña es obligatoria')
+    if not mes_valido(mes):
+        errores.append('El mes no es valido')
+    else:
+        mes = mes_valido(mes)
+        year = int(mes[:4])
+
+    try:
+        porcentaje_cumplimiento = parse_numero(data.get('porcentaje_cumplimiento') if data.get('porcentaje_cumplimiento') not in (None, '') else 100)
+    except ValueError:
+        porcentaje_cumplimiento = 0
+        errores.append('Hay valores numericos con formato invalido')
+
+    jornadas = []
+    raw_jornadas = data.get('jornadas') if isinstance(data.get('jornadas'), list) else []
+    if not raw_jornadas:
+        raw_jornadas = [{
+            'dotacion_requerida': data.get('dotacion_requerida'),
+            'carga_semanal': data.get('carga_semanal'),
+            'carga_horaria': data.get('carga_horaria'),
+        }]
+
+    for index, item in enumerate(raw_jornadas, start=1):
+        try:
+            dotacion = parse_numero(item.get('dotacion_requerida'))
+            carga_horaria = parse_numero(item.get('carga_horaria'))
+        except (AttributeError, ValueError):
+            errores.append(f'La jornada {index} tiene valores numericos invalidos')
+            continue
+        carga_semanal = normalizar_carga_semanal(item.get('carga_semanal'))
+        if dotacion < 0:
+            errores.append(f'La dotacion de la jornada {index} no puede ser negativa')
+        if carga_horaria < 0:
+            errores.append(f'La carga horaria de la jornada {index} no puede ser negativa')
+        if dotacion > 0 or carga_horaria > 0:
+            jornadas.append({
+                'dotacion_requerida': dotacion,
+                'carga_semanal': carga_semanal,
+                'carga_horaria': carga_horaria,
+            })
+
+    if not jornadas:
+        errores.append('Debe cargar al menos una jornada con dotacion y carga horaria')
+    if porcentaje_cumplimiento < 0:
+        errores.append('El porcentaje de cumplimiento no puede ser negativo')
+
+    return {
+        'errores': errores,
+        'valores': {
+            'cliente': cliente,
+            'campania': campania,
+            'year': year,
+            'mes': mes,
+            'jornadas': jornadas,
+            'porcentaje_cumplimiento': porcentaje_cumplimiento,
+        }
+    }
+
+
+def payload_precio(data):
+    cliente = str(data.get('cliente') or '').strip()
+    campania = str(data.get('campania') or '').strip()
+    mes = str(data.get('mes') or '').strip()
+    errores = []
+
+    try:
+        year = int(data.get('year') or (mes.split('-')[0] if '-' in mes else datetime.utcnow().year))
+    except (TypeError, ValueError):
+        year = datetime.utcnow().year
+        errores.append('El año no es valido')
+
+    if not cliente:
+        errores.append('El cliente es obligatorio')
+    if not campania:
+        errores.append('La campaña es obligatoria')
+    if not mes_valido(mes):
+        errores.append('El mes no es valido')
+    else:
+        mes = mes_valido(mes)
+        year = int(mes[:4])
+
+    try:
+        precio_base = parse_numero(data.get('precio_base'))
+        alcance_porcentaje = parse_numero(data.get('alcance_porcentaje') if data.get('alcance_porcentaje') not in (None, '') else 100)
+        importe_fijo_mensual = parse_numero(data.get('importe_fijo_mensual') if data.get('importe_fijo_mensual') not in (None, '') else 0)
+    except ValueError:
+        precio_base = 0
+        alcance_porcentaje = 0
+        importe_fijo_mensual = 0
+        errores.append('Hay valores numericos con formato invalido')
+
+    if precio_base < 0:
+        errores.append('El precio no puede ser negativo')
+    if alcance_porcentaje < 0:
+        errores.append('El alcance no puede ser negativo')
+    if importe_fijo_mensual < 0:
+        errores.append('El pago mensual fijo no puede ser negativo')
+
+    return {
+        'errores': errores,
+        'valores': {
+            'site': str(data.get('site') or '').strip(),
+            'cliente': cliente,
+            'campania': campania,
+            'year': year,
+            'mes': mes,
+            'precio_base': precio_base,
+            'alcance_porcentaje': alcance_porcentaje,
+            'importe_fijo_mensual': importe_fijo_mensual,
+        }
+    }
+
+
+def headers_template_precios(year):
+    meses = [
+        f'{label}-{str(year)[-2:]}'
+        for _, label in MESES_PROYECCION
+    ]
+    fijos = [
+        f'Fijo {label}-{str(year)[-2:]}'
+        for _, label in MESES_PROYECCION
+    ]
+    return ['Site', 'Cliente'] + meses + fijos
+
+
+def header_mes_precio(header):
+    texto = normalizar_header(header)
+    if texto.startswith('fijo '):
+        return None
+    partes = texto.split('-')
+    if len(partes) != 2:
+        return None
+    labels = {label: numero for numero, label in MESES_PROYECCION}
+    mes_numero = labels.get(partes[0])
+    if not mes_numero:
+        return None
+    try:
+        year = int(partes[1])
+    except ValueError:
+        return None
+    year += 2000 if year < 100 else 0
+    return f'{year}-{mes_numero}'
+
+
+def header_mes_fijo_precio(header):
+    texto = normalizar_header(header)
+    if not texto.startswith('fijo '):
+        return None
+    return header_mes_precio(texto.replace('fijo ', '', 1))
+
+
+def resolver_cliente_campania_precio(site, nombre):
+    site_normalizado = normalizar_header(site)
+    nombre_normalizado = normalizar_header(nombre)
+    asignacion = AsignacionComercial.query.filter_by(activa=True).filter(
+        func.lower(AsignacionComercial.gerente) == str(site or '').strip().lower(),
+    ).filter(
+        func.lower(AsignacionComercial.campania) == str(nombre or '').strip().lower(),
+    ).first()
+    if not asignacion:
+        asignaciones = AsignacionComercial.query.filter_by(activa=True).all()
+        for candidata in asignaciones:
+            if site_normalizado and normalizar_header(candidata.gerente) != site_normalizado:
+                continue
+            if normalizar_header(candidata.campania) == nombre_normalizado or normalizar_header(candidata.cliente) == nombre_normalizado:
+                asignacion = candidata
+                break
+    if asignacion:
+        return asignacion.cliente, asignacion.campania
+    return nombre, nombre
+
+
+def sites_por_clave_precio(cliente, campania):
+    asignacion = AsignacionComercial.query.filter_by(
+        activa=True,
+        cliente=cliente,
+        campania=campania,
+    ).first()
+    if asignacion:
+        return asignacion.gerente or asignacion.jefe_site or ''
+    return ''
+
+
+TIPOS_FERIADO = ('Inamovible', 'Trasladable', 'Puente', 'Manual')
+
+
+def payload_feriado(data):
+    errores = []
+    nombre = str(data.get('nombre') or '').strip()
+    tipo = str(data.get('tipo') or 'Manual').strip()
+    activo = bool(data.get('activo', True))
+    fecha_raw = str(data.get('fecha') or '').strip()
+
+    if not nombre:
+        errores.append('El nombre del feriado es obligatorio')
+    if tipo not in TIPOS_FERIADO:
+        errores.append('El tipo de feriado no es valido')
+    try:
+        fecha = datetime.strptime(fecha_raw, '%Y-%m-%d').date()
+    except ValueError:
+        fecha = None
+        errores.append('La fecha del feriado no es valida')
+
+    return {
+        'errores': errores,
+        'valores': {
+            'nombre': nombre,
+            'tipo': tipo,
+            'activo': activo,
+            'fecha': fecha,
+            'year': fecha.year if fecha else None,
+        }
+    }
+
+
+@main_bp.route('/api/calendario-operativo', methods=['GET'])
+@login_requerido
+def api_calendario_operativo():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    feriados = FeriadoOperativo.query.filter_by(year=year).order_by(FeriadoOperativo.fecha).all()
+    return jsonify({
+        'success': True,
+        'year': year,
+        'tipos': list(TIPOS_FERIADO),
+        'feriados': [feriado.to_dict() for feriado in feriados],
+    })
+
+
+@main_bp.route('/api/calendario-operativo', methods=['POST'])
+@login_requerido
+def api_guardar_feriado():
+    data = request.get_json(silent=True) or {}
+    normalizado = payload_feriado(data)
+    if normalizado['errores']:
+        return jsonify({'success': False, 'errores': normalizado['errores']}), 400
+    valores = normalizado['valores']
+    feriado_id = data.get('id')
+
+    if feriado_id:
+        feriado = FeriadoOperativo.query.get_or_404(feriado_id)
+        fecha_anterior = feriado.fecha
+        duplicado = FeriadoOperativo.query.filter_by(fecha=valores['fecha']).filter(FeriadoOperativo.id != feriado.id).first()
+        if duplicado:
+            return jsonify({'success': False, 'errores': ['Ya existe un feriado cargado para esa fecha']}), 400
+    else:
+        feriado = FeriadoOperativo.query.filter_by(fecha=valores['fecha']).first()
+        fecha_anterior = None
+        if not feriado:
+            feriado = FeriadoOperativo()
+            db.session.add(feriado)
+
+    for campo, valor in valores.items():
+        setattr(feriado, campo, valor)
+    db.session.flush()
+    recalculadas = recalcular_proyecciones_mes(feriado.year, feriado.fecha.month)
+    if fecha_anterior and fecha_anterior != feriado.fecha:
+        recalculadas += recalcular_proyecciones_mes(fecha_anterior.year, fecha_anterior.month)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'Feriado guardado. {recalculadas} proyeccion(es) recalculada(s).',
+        'feriado': feriado.to_dict(),
+    })
+
+
+@main_bp.route('/api/calendario-operativo/<int:feriado_id>', methods=['DELETE'])
+@login_requerido
+def api_eliminar_feriado(feriado_id):
+    feriado = FeriadoOperativo.query.get_or_404(feriado_id)
+    year = feriado.year
+    mes_numero = feriado.fecha.month
+    db.session.delete(feriado)
+    db.session.flush()
+    recalculadas = recalcular_proyecciones_mes(year, mes_numero)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'Feriado eliminado. {recalculadas} proyeccion(es) recalculada(s).',
+    })
+
+
+@main_bp.route('/api/matriz-precios', methods=['GET'])
+@login_requerido
+def api_matriz_precios():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    meses = [item['value'] for item in opciones_meses_proyeccion(year)]
+    registros = ProyeccionPrecio.query.filter(ProyeccionPrecio.mes.in_(meses)).order_by(
+        ProyeccionPrecio.cliente,
+        ProyeccionPrecio.campania,
+        ProyeccionPrecio.mes,
+    ).all()
+    asociaciones = AsignacionComercial.query.filter_by(activa=True).order_by(
+        AsignacionComercial.cliente,
+        AsignacionComercial.campania,
+    ).all()
+    pares = []
+    vistos = set()
+    sites_por_clave = {}
+    for asignacion in asociaciones:
+        clave = (asignacion.cliente, asignacion.campania)
+        sites_por_clave.setdefault(clave, asignacion.gerente or asignacion.jefe_site or 'Sin site')
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        pares.append({
+            'cliente': asignacion.cliente,
+            'campania': asignacion.campania,
+            'site': asignacion.gerente or asignacion.jefe_site or 'Sin site',
+        })
+    return jsonify({
+        'success': True,
+        'year': year,
+        'meses': opciones_meses_proyeccion(year),
+        'asociaciones': pares,
+        'precios': [
+            {
+                **registro.to_dict(),
+                'site': registro.site or sites_por_clave.get((registro.cliente, registro.campania), ''),
+                'mes_label': etiqueta_mes_proyeccion(registro.mes),
+            }
+            for registro in registros
+        ],
+    })
+
+
+@main_bp.route('/api/matriz-precios', methods=['POST'])
+@login_requerido
+def api_guardar_matriz_precio():
+    data = request.get_json(silent=True) or {}
+    normalizado = payload_precio(data)
+    if normalizado['errores']:
+        return jsonify({'success': False, 'errores': normalizado['errores']}), 400
+    valores = normalizado['valores']
+    precio_id = data.get('id')
+    if precio_id:
+        precio = ProyeccionPrecio.query.get_or_404(precio_id)
+        if (
+            precio.cliente != valores['cliente']
+            or precio.campania != valores['campania']
+            or precio.mes != valores['mes']
+        ):
+            return jsonify({'success': False, 'errores': ['La edición replica ajustes sobre la misma campaña y mes. Para cambiar cliente, campaña o mes, cree un precio nuevo.']}), 400
+
+    guardados = []
+    antes = []
+    site_asignado = valores.get('site') or sites_por_clave_precio(valores['cliente'], valores['campania']) or ''
+    for mes in meses_proyeccion_desde(valores['mes']):
+        precio = ProyeccionPrecio.query.filter_by(
+            cliente=valores['cliente'],
+            campania=valores['campania'],
+            mes=mes,
+        ).first()
+        antes.append(precio.to_dict() if precio else None)
+        if not precio:
+            precio = ProyeccionPrecio()
+            db.session.add(precio)
+        precio.site = site_asignado or precio.site or ''
+        precio.cliente = valores['cliente']
+        precio.campania = valores['campania']
+        precio.year = int(mes[:4])
+        precio.mes = mes
+        precio.precio_base = valores['precio_base']
+        precio.alcance_porcentaje = valores['alcance_porcentaje']
+        precio.importe_fijo_mensual = valores['importe_fijo_mensual']
+        precio.recalcular()
+        guardados.append(precio)
+
+    db.session.flush()
+    despues = [precio.to_dict() for precio in guardados]
+    registrar_historial(
+        'edicion' if any(antes) else 'creacion',
+        'matriz_precios',
+        valores['mes'],
+        f'Precios guardados: {valores["cliente"]} / {valores["campania"]} desde {valores["mes"]}',
+        antes={'precios': antes},
+        despues={'precios': despues},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'{len(guardados)} precio(s) guardado(s)',
+        'precios': [
+            {**precio.to_dict(), 'mes_label': etiqueta_mes_proyeccion(precio.mes)}
+            for precio in guardados
+        ],
+    })
+
+
+@main_bp.route('/api/matriz-precios/<int:precio_id>', methods=['DELETE'])
+@login_requerido
+def api_eliminar_matriz_precio(precio_id):
+    precio = ProyeccionPrecio.query.get_or_404(precio_id)
+    antes = precio.to_dict()
+    db.session.delete(precio)
+    registrar_historial(
+        'eliminacion',
+        'matriz_precios',
+        precio_id,
+        f'Precio eliminado: {antes.get("cliente")} / {antes.get("campania")} / {antes.get("mes")}',
+        antes={'precios': [antes]},
+        despues={'precios': []},
+    )
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Precio eliminado'})
+
+
+@main_bp.route('/api/matriz-precios/template', methods=['GET'])
+@login_requerido
+def api_template_matriz_precios():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    meses = [item['value'] for item in opciones_meses_proyeccion(year)]
+    registros = ProyeccionPrecio.query.filter(ProyeccionPrecio.mes.in_(meses)).all()
+    asociaciones = AsignacionComercial.query.filter_by(activa=True).order_by(
+        AsignacionComercial.gerente,
+        AsignacionComercial.campania,
+    ).all()
+
+    mapa_precios = {
+        (registro.cliente, registro.campania, registro.mes): registro.precio_base or 0
+        for registro in registros
+    }
+    mapa_fijos = {
+        (registro.cliente, registro.campania, registro.mes): registro.importe_fijo_mensual or ''
+        for registro in registros
+        if registro.importe_fijo_mensual
+    }
+    sites_precios = {
+        (registro.cliente, registro.campania): registro.site or ''
+        for registro in registros
+        if registro.site
+    }
+    filas = []
+    vistos = set()
+    for asignacion in asociaciones:
+        clave = (asignacion.cliente, asignacion.campania)
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        filas.append([
+            sites_precios.get(clave) or asignacion.gerente or asignacion.jefe_site or '',
+            asignacion.campania,
+            *[
+                mapa_precios.get((asignacion.cliente, asignacion.campania, mes), '')
+                for mes in meses
+            ],
+            *[
+                mapa_fijos.get((asignacion.cliente, asignacion.campania, mes), '')
+                for mes in meses
+            ],
+        ])
+
+    for registro in registros:
+        clave = (registro.cliente, registro.campania)
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        filas.append([
+            sites_precios.get(clave, ''),
+            registro.campania or registro.cliente,
+            *[
+                mapa_precios.get((registro.cliente, registro.campania, mes), '')
+                for mes in meses
+            ],
+            *[
+                mapa_fijos.get((registro.cliente, registro.campania, mes), '')
+                for mes in meses
+            ],
+        ])
+
+    if not filas:
+        filas.append(['Ej: Gerencia Multicampaña', 'Ej: Assurant', 13662.53, 13662.53, 13662.53, '', '', '', '', '', '', '', '', '', 250000, 250000, 250000, '', '', '', '', '', '', '', '', ''])
+
+    contenido = crear_xlsx(headers_template_precios(year), filas)
+    return Response(
+        contenido,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename="plantilla_precios_{year}.xlsx"'}
+    )
+
+
+@main_bp.route('/api/matriz-precios/importar', methods=['POST'])
+@login_requerido
+def api_importar_matriz_precios():
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        return jsonify({'success': False, 'errores': ['Seleccione un archivo para importar']}), 400
+
+    nombre = archivo.filename.lower()
+    contenido_bytes = archivo.read()
+    try:
+        if nombre.endswith('.xlsx'):
+            filas = filas_desde_xlsx(contenido_bytes)
+        elif nombre.endswith('.csv'):
+            filas = filas_desde_csv(decodificar_texto_importacion(contenido_bytes))
+        else:
+            return jsonify({'success': False, 'errores': ['Use un archivo .xlsx o .csv con el template de precios']}), 400
+    except Exception:
+        return jsonify({'success': False, 'errores': ['No pude leer el archivo. Descargue nuevamente el template y vuelva a completarlo.']}), 400
+
+    if len(filas) < 2:
+        return jsonify({'success': False, 'errores': ['No se encontraron filas para importar']}), 400
+
+    headers = [normalizar_header(celda) for celda in filas[0]]
+    mapa = {header: index for index, header in enumerate(headers)}
+    site_index = mapa.get('site')
+    cliente_index = mapa.get('cliente')
+    if site_index is None or cliente_index is None:
+        return jsonify({'success': False, 'errores': ['El template debe tener las columnas Site y Cliente']}), 400
+
+    columnas_mes = []
+    columnas_fijo = []
+    for index, header_original in enumerate(filas[0]):
+        mes = header_mes_precio(header_original)
+        if mes:
+            columnas_mes.append((index, mes))
+        mes_fijo = header_mes_fijo_precio(header_original)
+        if mes_fijo:
+            columnas_fijo.append((index, mes_fijo))
+    if not columnas_mes:
+        return jsonify({'success': False, 'errores': ['No encontre columnas de meses con formato ene-26, feb-26, etc.']}), 400
+
+    errores = []
+    guardados = []
+    antes = []
+    for numero_fila, fila in enumerate(filas[1:], start=2):
+        if not any(str(celda or '').strip() for celda in fila):
+            continue
+        site = str(fila[site_index] if site_index < len(fila) else '').strip()
+        nombre_cliente = str(fila[cliente_index] if cliente_index < len(fila) else '').strip()
+        if normalizar_header(site).startswith('ej:') or normalizar_header(nombre_cliente).startswith('ej:'):
+            continue
+        if not nombre_cliente:
+            errores.append(f'Fila {numero_fila}: Cliente es obligatorio')
+            continue
+        cliente, campania = resolver_cliente_campania_precio(site, nombre_cliente)
+        meses_a_importar = sorted({mes for _, mes in columnas_mes} | {mes for _, mes in columnas_fijo})
+        for mes in meses_a_importar:
+            precio_columna = next((index for index, mes_columna in columnas_mes if mes_columna == mes), None)
+            fijo_columna = next((index for index, mes_columna in columnas_fijo if mes_columna == mes), None)
+            fijo_presente = fijo_columna is not None
+            valor = fila[precio_columna] if precio_columna is not None and precio_columna < len(fila) else ''
+            valor_fijo = fila[fijo_columna] if fijo_columna is not None and fijo_columna < len(fila) else ''
+            precio_con_valor = valor not in (None, '') and str(valor).strip() != ''
+            fijo_con_valor = fijo_presente and valor_fijo not in (None, '') and str(valor_fijo).strip() != ''
+            if (
+                not precio_con_valor
+                and not fijo_con_valor
+            ):
+                continue
+            try:
+                precio_base = parse_numero(valor) if precio_con_valor else 0
+                importe_fijo_mensual = parse_numero(valor_fijo) if fijo_con_valor else 0
+            except ValueError:
+                errores.append(f'Fila {numero_fila}, {mes}: precio o fijo invalido')
+                continue
+            registro = ProyeccionPrecio.query.filter_by(
+                cliente=cliente,
+                campania=campania,
+                mes=mes,
+            ).first()
+            antes.append(registro.to_dict() if registro else None)
+            if not registro:
+                registro = ProyeccionPrecio()
+                db.session.add(registro)
+            registro.site = site
+            registro.cliente = cliente
+            registro.campania = campania
+            registro.year = int(mes[:4])
+            registro.mes = mes
+            if precio_con_valor:
+                registro.precio_base = precio_base
+            elif not registro.id:
+                registro.precio_base = 0
+            if precio_con_valor or not registro.id:
+                registro.alcance_porcentaje = 100
+            if fijo_con_valor:
+                registro.importe_fijo_mensual = importe_fijo_mensual
+            elif not registro.id:
+                registro.importe_fijo_mensual = 0
+            registro.recalcular()
+            guardados.append(registro)
+
+    if errores:
+        return jsonify({'success': False, 'errores': errores[:30]}), 400
+    if not guardados:
+        return jsonify({'success': False, 'errores': ['No hay precios validos para importar']}), 400
+
+    db.session.flush()
+    despues = [registro.to_dict() for registro in guardados]
+    registrar_historial(
+        'edicion' if any(antes) else 'creacion',
+        'matriz_precios',
+        ','.join(sorted({str(registro.year) for registro in guardados})),
+        f'Importacion de precios: {len(guardados)} registro(s)',
+        antes={'precios': antes},
+        despues={'precios': despues},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'{len(guardados)} precio(s) importado(s)',
+        'years': sorted({registro.year for registro in guardados}),
+    })
+
+
+@main_bp.route('/api/resumen-proyeccion', methods=['GET'])
+@login_requerido
+def api_resumen_proyeccion():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    meses_info = opciones_meses_proyeccion(year)
+    meses = [item['value'] for item in meses_info]
+
+    asociaciones = AsignacionComercial.query.filter_by(activa=True).all()
+    sites_por_clave = {}
+    sites_por_nombre = {}
+    for asignacion in asociaciones:
+        site_asignado = asignacion.gerente or asignacion.jefe_site or 'Sin site'
+        sites_por_clave.setdefault((asignacion.cliente, asignacion.campania), site_asignado)
+        sites_por_nombre.setdefault(normalizar_header(asignacion.campania), site_asignado)
+        sites_por_nombre.setdefault(normalizar_header(asignacion.cliente), site_asignado)
+
+    proyecciones = ProyeccionMatriz.query.filter(ProyeccionMatriz.mes.in_(meses)).all()
+    precios = ProyeccionPrecio.query.filter(ProyeccionPrecio.mes.in_(meses)).all()
+    precios_por_clave = {}
+    precios_por_nombre = {}
+    for precio in precios:
+        site_precio = (
+            (precio.site or '').strip()
+            or sites_por_clave.get((precio.cliente, precio.campania))
+            or sites_por_nombre.get(normalizar_header(precio.campania))
+            or sites_por_nombre.get(normalizar_header(precio.cliente))
+        )
+        precios_por_clave[(precio.cliente, precio.campania, precio.mes)] = precio
+        precios_por_nombre.setdefault((normalizar_header(precio.campania), precio.mes), precio)
+        precios_por_nombre.setdefault((normalizar_header(precio.cliente), precio.mes), precio)
+
+    filas = []
+    total_general = {mes: 0 for mes in meses}
+    totales_por_site = {}
+
+    for proyeccion in proyecciones:
+        clave = (proyeccion.cliente, proyeccion.campania)
+        precio = (
+            precios_por_clave.get((proyeccion.cliente, proyeccion.campania, proyeccion.mes))
+            or precios_por_nombre.get((normalizar_header(proyeccion.campania), proyeccion.mes))
+            or precios_por_nombre.get((normalizar_header(proyeccion.cliente), proyeccion.mes))
+        )
+        if not precio:
+            continue
+        site = (
+            (precio.site or '').strip()
+            or sites_por_clave.get(clave)
+            or sites_por_nombre.get(normalizar_header(proyeccion.campania))
+            or sites_por_nombre.get(normalizar_header(proyeccion.cliente))
+            or 'Next Gen'
+        )
+        valor = (proyeccion.horas_proyectadas or 0) * (precio.precio_final or 0)
+        fila_clave = (site, proyeccion.cliente, proyeccion.campania, 'Horas')
+        fila = next((item for item in filas if item['clave'] == fila_clave), None)
+        if not fila:
+            fila = {
+                'clave': fila_clave,
+                'site': site,
+                'cliente': proyeccion.cliente,
+                'campania': proyeccion.campania,
+                'concepto': 'Horas',
+                'meses': {mes: 0 for mes in meses},
+                'total': 0,
+            }
+            filas.append(fila)
+        fila['meses'][proyeccion.mes] += valor
+        fila['total'] += valor
+        total_general[proyeccion.mes] += valor
+        totales_por_site.setdefault(site, {mes: 0 for mes in meses})
+        totales_por_site[site][proyeccion.mes] += valor
+
+    for precio in precios:
+        valor = precio.importe_fijo_mensual or 0
+        if valor <= 0:
+            continue
+        clave = (precio.cliente, precio.campania)
+        site = (
+            (precio.site or '').strip()
+            or sites_por_clave.get(clave)
+            or sites_por_nombre.get(normalizar_header(precio.campania))
+            or sites_por_nombre.get(normalizar_header(precio.cliente))
+            or 'Sin site'
+        )
+        fila_clave = (site, precio.cliente, precio.campania, 'Fijo mensual')
+        fila = next((item for item in filas if item['clave'] == fila_clave), None)
+        if not fila:
+            fila = {
+                'clave': fila_clave,
+                'site': site,
+                'cliente': precio.cliente,
+                'campania': precio.campania,
+                'concepto': 'Fijo mensual',
+                'meses': {mes: 0 for mes in meses},
+                'total': 0,
+            }
+            filas.append(fila)
+        fila['meses'][precio.mes] += valor
+        fila['total'] += valor
+        total_general[precio.mes] += valor
+        totales_por_site.setdefault(site, {mes: 0 for mes in meses})
+        totales_por_site[site][precio.mes] += valor
+
+    filas_ordenadas = []
+    for site in sorted({fila['site'] for fila in filas}):
+        grupo = sorted(
+            [fila for fila in filas if fila['site'] == site],
+            key=lambda item: (item['campania'], item['concepto']),
+        )
+        filas_ordenadas.extend(grupo)
+        total_site = totales_por_site.get(site, {mes: 0 for mes in meses})
+        filas_ordenadas.append({
+            'site': site,
+            'cliente': '',
+            'campania': site,
+            'concepto': 'Total',
+            'tipo': 'total_site',
+            'meses': total_site,
+            'total': sum(total_site.values()),
+        })
+
+    return jsonify({
+        'success': True,
+        'year': year,
+        'meses': meses_info,
+        'filas': [
+            {
+                'site': fila['site'],
+                'cliente': fila.get('cliente') or '',
+                'campania': fila['campania'],
+                'concepto': fila['concepto'],
+                'tipo': fila.get('tipo', 'detalle'),
+                'meses': {mes: round(fila['meses'].get(mes, 0), 2) for mes in meses},
+                'total': round(fila.get('total', 0), 2),
+            }
+            for fila in filas_ordenadas
+        ],
+        'total_general': {
+            'meses': {mes: round(total_general.get(mes, 0), 2) for mes in meses},
+            'total': round(sum(total_general.values()), 2),
+        },
+    })
+
+
+@main_bp.route('/api/matriz-proyecciones', methods=['GET'])
+@login_requerido
+def api_matriz_proyecciones():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    meses = [item['value'] for item in opciones_meses_proyeccion(year)]
+    registros = ProyeccionMatriz.query.filter(ProyeccionMatriz.mes.in_(meses)).order_by(
+        ProyeccionMatriz.cliente,
+        ProyeccionMatriz.campania,
+        ProyeccionMatriz.mes,
+    ).all()
+    asociaciones = AsignacionComercial.query.filter_by(activa=True).order_by(
+        AsignacionComercial.cliente,
+        AsignacionComercial.campania,
+    ).all()
+    pares = []
+    vistos = set()
+    for asignacion in asociaciones:
+        clave = (asignacion.cliente, asignacion.campania)
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        pares.append({'cliente': asignacion.cliente, 'campania': asignacion.campania})
+    return jsonify({
+        'success': True,
+        'year': year,
+        'meses': opciones_meses_proyeccion(year),
+        'asociaciones': pares,
+        'feriados': [feriado.to_dict() for feriado in FeriadoOperativo.query.filter_by(year=year, activo=True).all()],
+        'cargas_semanales': list(CARGAS_SEMANALES_PROYECCION),
+        'proyecciones': [
+            {**registro.to_dict(), 'mes_label': etiqueta_mes_proyeccion(registro.mes)}
+            for registro in registros
+        ],
+    })
+
+
+@main_bp.route('/api/matriz-proyecciones', methods=['POST'])
+@login_requerido
+def api_guardar_matriz_proyeccion():
+    data = request.get_json(silent=True) or {}
+    normalizado = payload_proyeccion(data)
+    if normalizado['errores']:
+        return jsonify({'success': False, 'errores': normalizado['errores']}), 400
+    valores = normalizado['valores']
+    proyeccion_id = data.get('id')
+    if proyeccion_id:
+        proyeccion = ProyeccionMatriz.query.get_or_404(proyeccion_id)
+        if (
+            proyeccion.cliente != valores['cliente']
+            or proyeccion.campania != valores['campania']
+            or proyeccion.mes != valores['mes']
+        ):
+            return jsonify({'success': False, 'errores': ['La edición replica ajustes sobre la misma campaña y mes. Para cambiar cliente, campaña o mes, cree una proyección nueva.']}), 400
+
+    proyecciones_guardadas = []
+    feriados = fechas_feriadas_activas(valores['year'])
+    antes_snapshots = []
+
+    for mes in meses_proyeccion_desde(valores['mes']):
+        proyeccion = ProyeccionMatriz.query.filter_by(
+            cliente=valores['cliente'],
+            campania=valores['campania'],
+            mes=mes,
+        ).first()
+        antes_snapshots.append(snapshot_proyeccion(proyeccion))
+        if not proyeccion:
+            proyeccion = ProyeccionMatriz()
+            db.session.add(proyeccion)
+
+        aplicar_calculo_proyeccion(proyeccion, valores, mes, feriados)
+        proyecciones_guardadas.append(proyeccion)
+
+    db.session.flush()
+    despues_snapshots = [snapshot_proyeccion(proyeccion) for proyeccion in proyecciones_guardadas]
+    registrar_historial(
+        'edicion' if any(antes_snapshots) else 'creacion',
+        'proyeccion_matriz',
+        valores['mes'],
+        f'Proyecciones guardadas: {valores["cliente"]} / {valores["campania"]} desde {valores["mes"]}',
+        antes={'proyecciones': antes_snapshots},
+        despues={'proyecciones': despues_snapshots},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'{len(proyecciones_guardadas)} proyeccion(es) guardada(s)',
+        'proyecciones': [
+            {**proyeccion.to_dict(), 'mes_label': etiqueta_mes_proyeccion(proyeccion.mes)}
+            for proyeccion in proyecciones_guardadas
+        ],
+    })
+
+
+@main_bp.route('/api/matriz-proyecciones/<int:proyeccion_id>', methods=['DELETE'])
+@login_requerido
+def api_eliminar_matriz_proyeccion(proyeccion_id):
+    proyeccion = ProyeccionMatriz.query.get_or_404(proyeccion_id)
+    antes = snapshot_proyeccion(proyeccion)
+    db.session.delete(proyeccion)
+    registrar_historial(
+        'eliminacion',
+        'proyeccion_matriz',
+        proyeccion_id,
+        f'Proyeccion eliminada: {antes.get("cliente")} / {antes.get("campania")} / {antes.get("mes")}',
+        antes={'proyecciones': [antes]},
+        despues={'proyecciones': []},
+    )
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Proyección eliminada'})
+
+
+@main_bp.route('/api/matriz-proyecciones/eliminar-todo', methods=['POST'])
+@login_requerido
+def api_eliminar_todas_matriz_proyecciones():
+    data = request.get_json(silent=True) or {}
+    try:
+        year = int(data.get('year') or datetime.utcnow().year)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['El año no es valido']}), 400
+
+    meses = [item['value'] for item in opciones_meses_proyeccion(year)]
+    proyecciones = ProyeccionMatriz.query.filter(ProyeccionMatriz.mes.in_(meses)).order_by(
+        ProyeccionMatriz.cliente,
+        ProyeccionMatriz.campania,
+        ProyeccionMatriz.mes,
+    ).all()
+    if not proyecciones:
+        return jsonify({'success': False, 'errores': [f'No hay proyecciones cargadas para {year}']}), 404
+
+    antes = [snapshot_proyeccion(proyeccion) for proyeccion in proyecciones]
+    for proyeccion in proyecciones:
+        db.session.delete(proyeccion)
+    registrar_historial(
+        'eliminacion',
+        'proyeccion_matriz',
+        year,
+        f'Eliminacion total de proyecciones {year}: {len(proyecciones)} registro(s)',
+        antes={'proyecciones': antes},
+        despues={'proyecciones': []},
+    )
+    db.session.flush()
+    pendientes = [snapshot for snapshot in antes if existe_proyeccion_snapshot(snapshot)]
+    if pendientes:
+        db.session.rollback()
+        return jsonify({'success': False, 'errores': ['No se pudieron eliminar todas las proyecciones']}), 500
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': f'{len(proyecciones)} proyeccion(es) eliminada(s)'})
+
+
+@main_bp.route('/api/matriz-proyecciones/deshacer-ultimo', methods=['POST'])
+@login_requerido
+def api_deshacer_ultima_proyeccion():
+    usuario = usuario_actual()
+    query = HistorialCambio.query.filter(
+        HistorialCambio.entidad == 'proyeccion_matriz',
+        HistorialCambio.accion != 'deshacer',
+    )
+    if usuario and not usuario.es_administrador:
+        query = query.filter(HistorialCambio.usuario_id == usuario.id)
+    item = None
+    for candidato in query.order_by(HistorialCambio.creado_en.desc(), HistorialCambio.id.desc()).limit(50).all():
+        if not historial_movimiento_deshace(candidato.id):
+            item = candidato
+            break
+    if not item:
+        return jsonify({'success': False, 'errores': ['No hay movimientos de proyecciones para deshacer']}), 404
+    resultado, status = deshacer_item_historial(item)
+    return jsonify(resultado), status
+
+
+@main_bp.route('/api/matriz-proyecciones/template', methods=['GET'])
+@login_requerido
+def api_template_matriz_proyecciones():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    meses = [item['value'] for item in opciones_meses_proyeccion(year)]
+    registros = ProyeccionMatriz.query.filter(ProyeccionMatriz.mes.in_(meses)).order_by(
+        ProyeccionMatriz.cliente,
+        ProyeccionMatriz.campania,
+        ProyeccionMatriz.mes,
+    ).all()
+
+    headers = [
+        'Cliente', 'Campaña', 'Año', 'Mes',
+        'Personas', 'Carga semanal', 'Hs diarias', 'Q dias objetivo',
+        'Hs requeridas jornada', 'Dotacion total', 'Hs requeridas total',
+        '% cumplimiento', 'Horas proyectadas total',
+    ]
+    rows = [[
+        'Ej: BNA',
+        'Ej: BNA Mora',
+        year,
+        f'{year}-01',
+        'Ej: 9',
+        'Ej: L a V',
+        'Ej: 6',
+        'Calculado por sistema',
+        'Calculado por sistema',
+        'Calculado por sistema',
+        'Calculado por sistema',
+        'Ej: 100',
+        'Calculado por sistema',
+    ]]
+    for registro in registros:
+        jornadas = registro.jornadas or [ProyeccionMatrizJornada(
+            dotacion_requerida=registro.dotacion_requerida,
+            carga_semanal=registro.carga_semanal,
+            carga_horaria=registro.carga_horaria,
+            dias_objetivo=registro.dias_objetivo,
+            horas_requeridas=registro.horas_requeridas,
+        )]
+        for jornada in jornadas:
+            rows.append([
+                registro.cliente,
+                registro.campania,
+                registro.year,
+                registro.mes,
+                jornada.dotacion_requerida or 0,
+                jornada.carga_semanal or 'L a V',
+                jornada.carga_horaria or 0,
+                jornada.dias_objetivo or 0,
+                round(jornada.horas_requeridas or 0, 2),
+                registro.dotacion_requerida or 0,
+                round(registro.horas_requeridas or 0, 2),
+                registro.porcentaje_cumplimiento or 0,
+                round(registro.horas_proyectadas or 0, 2),
+            ])
+
+    contenido = crear_xlsx(headers, rows)
+    return Response(
+        contenido,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename="plantilla_proyecciones_{year}.xlsx"'}
+    )
+
+
+@main_bp.route('/api/matriz-proyecciones/importar', methods=['POST'])
+@login_requerido
+def api_importar_matriz_proyecciones():
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        return jsonify({'success': False, 'errores': ['Seleccione un archivo para importar']}), 400
+
+    nombre = archivo.filename.lower()
+    contenido_bytes = archivo.read()
+    try:
+        if nombre.endswith('.xlsx'):
+            filas = filas_desde_xlsx(contenido_bytes)
+        elif nombre.endswith('.csv'):
+            filas = filas_desde_csv(decodificar_texto_importacion(contenido_bytes))
+        else:
+            return jsonify({'success': False, 'errores': ['Use un archivo .xlsx o .csv generado desde el template']}), 400
+    except Exception:
+        return jsonify({'success': False, 'errores': ['No pude leer el archivo. Descargue nuevamente el template y vuelva a completarlo.']}), 400
+
+    if len(filas) < 2:
+        return jsonify({'success': False, 'errores': ['No se encontraron filas para importar']}), 400
+
+    headers = [normalizar_header(celda) for celda in filas[0]]
+    mapa = {header: index for index, header in enumerate(headers)}
+    requeridas = {
+        'cliente': 'cliente',
+        'campana': 'campania',
+        'campaña': 'campania',
+        'ano': 'year',
+        'año': 'year',
+        'mes': 'mes',
+        'personas': 'dotacion_requerida',
+        'carga semanal': 'carga_semanal',
+        'hs diarias': 'carga_horaria',
+        '% cumplimiento': 'porcentaje_cumplimiento',
+        'hs requeridas total': 'horas_requeridas_total',
+        'horas requeridas total': 'horas_requeridas_total',
+        'horas proyectadas total': 'horas_proyectadas_total',
+        'horas proyectadas': 'horas_proyectadas_total',
+    }
+    columnas = {}
+    for header, destino in requeridas.items():
+        if header in mapa:
+            columnas[destino] = mapa[header]
+    faltantes = [campo for campo in ('cliente', 'campania', 'year', 'mes', 'dotacion_requerida', 'carga_semanal', 'carga_horaria') if campo not in columnas]
+    if faltantes:
+        return jsonify({'success': False, 'errores': [f'Faltan columnas requeridas: {", ".join(faltantes)}']}), 400
+
+    grupos = {}
+    errores = []
+    for indice, fila in enumerate(filas[1:], start=2):
+        if not any(str(celda or '').strip() for celda in fila):
+            continue
+
+        def celda(campo):
+            posicion = columnas.get(campo)
+            return fila[posicion] if posicion is not None and posicion < len(fila) else ''
+
+        cliente = str(celda('cliente') or '').strip()
+        if normalizar_header(cliente).startswith('ej:'):
+            continue
+        campania = str(celda('campania') or '').strip()
+        mes = mes_valido(celda('mes'))
+        try:
+            year = int(float(str(celda('year')).strip()))
+            dotacion = parse_numero(celda('dotacion_requerida'))
+            carga_horaria = parse_numero(celda('carga_horaria'))
+            porcentaje = parse_numero(celda('porcentaje_cumplimiento')) if 'porcentaje_cumplimiento' in columnas and str(celda('porcentaje_cumplimiento')).strip() else 100
+            horas_requeridas_total = parse_numero(celda('horas_requeridas_total')) if 'horas_requeridas_total' in columnas and str(celda('horas_requeridas_total')).strip() else None
+            horas_proyectadas_total = parse_numero(celda('horas_proyectadas_total')) if 'horas_proyectadas_total' in columnas and str(celda('horas_proyectadas_total')).strip() else None
+        except ValueError:
+            errores.append(f'Fila {indice}: hay valores numericos invalidos')
+            continue
+        if not cliente or not campania or not mes:
+            errores.append(f'Fila {indice}: cliente, campaña y mes son obligatorios')
+            continue
+        carga_semanal = normalizar_carga_semanal(celda('carga_semanal'))
+        clave = (cliente, campania, mes)
+        grupos.setdefault(clave, {
+            'cliente': cliente,
+            'campania': campania,
+            'year': year,
+            'mes': mes,
+            'porcentaje_cumplimiento': porcentaje,
+            'horas_requeridas_total': horas_requeridas_total,
+            'horas_proyectadas_total': horas_proyectadas_total,
+            'jornadas': [],
+        })
+        if horas_requeridas_total is not None:
+            grupos[clave]['horas_requeridas_total'] = horas_requeridas_total
+        if horas_proyectadas_total is not None:
+            grupos[clave]['horas_proyectadas_total'] = horas_proyectadas_total
+        grupos[clave]['jornadas'].append({
+            'dotacion_requerida': dotacion,
+            'carga_semanal': carga_semanal,
+            'carga_horaria': carga_horaria,
+        })
+
+    if errores:
+        return jsonify({'success': False, 'errores': errores[:20]}), 400
+    if not grupos:
+        return jsonify({'success': False, 'errores': ['No hay filas validas para importar']}), 400
+
+    guardadas = []
+    antes_snapshots = []
+    years = set()
+    for valores in grupos.values():
+        normalizado = payload_proyeccion(valores)
+        if normalizado['errores']:
+            errores.extend(normalizado['errores'])
+            continue
+        datos = normalizado['valores']
+        feriados = fechas_feriadas_activas(datos['year'])
+        proyeccion = ProyeccionMatriz.query.filter_by(
+            cliente=datos['cliente'],
+            campania=datos['campania'],
+            mes=datos['mes'],
+        ).first()
+        antes_snapshots.append(snapshot_proyeccion(proyeccion))
+        if not proyeccion:
+            proyeccion = ProyeccionMatriz()
+            db.session.add(proyeccion)
+        aplicar_calculo_proyeccion(proyeccion, datos, datos['mes'], feriados)
+        horas_requeridas_total = valores.get('horas_requeridas_total')
+        horas_proyectadas_total = valores.get('horas_proyectadas_total')
+        if horas_requeridas_total is not None and horas_requeridas_total >= 0:
+            proyeccion.horas_requeridas = horas_requeridas_total
+            if horas_proyectadas_total is not None and horas_requeridas_total > 0:
+                proyeccion.porcentaje_cumplimiento = (horas_proyectadas_total / horas_requeridas_total) * 100
+        elif horas_proyectadas_total is not None and horas_proyectadas_total >= 0:
+            proyeccion.horas_requeridas = horas_proyectadas_total
+            proyeccion.porcentaje_cumplimiento = 100
+        guardadas.append(proyeccion)
+        years.add(datos['year'])
+
+    if errores:
+        return jsonify({'success': False, 'errores': errores[:20]}), 400
+    db.session.flush()
+    despues_snapshots = [snapshot_proyeccion(proyeccion) for proyeccion in guardadas]
+    registrar_historial(
+        'edicion' if any(antes_snapshots) else 'creacion',
+        'proyeccion_matriz',
+        ','.join(str(year) for year in sorted(years)),
+        f'Importacion de proyecciones: {len(guardadas)} registro(s)',
+        antes={'proyecciones': antes_snapshots},
+        despues={'proyecciones': despues_snapshots},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'{len(guardadas)} proyeccion(es) importada(s)',
+        'years': sorted(years),
     })
 
 

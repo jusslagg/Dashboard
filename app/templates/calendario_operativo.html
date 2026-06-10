@@ -1,0 +1,244 @@
+{% extends "layout.html" %}
+
+{% block title %}Calendario operativo - Facturación{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Configuración</p>
+        <h1 class="text-3xl font-bold text-gray-900">Calendario operativo</h1>
+    </div>
+    <div class="flex flex-col gap-2 sm:flex-row">
+        <select id="yearFiltro" onchange="cargarFeriados()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+        <button type="button" onclick="nuevoAnioFeriado()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-slate-700 px-4 text-sm font-medium text-white hover:bg-slate-800">
+            <i class="fas fa-plus"></i>
+            Nuevo
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+    <section class="rounded-lg bg-white p-5 shadow">
+        <div class="mb-4">
+            <h2 id="tituloFormulario" class="font-semibold text-gray-900">Nuevo feriado</h2>
+            <p class="mt-1 text-xs text-gray-500">Fecha exacta por año.</p>
+        </div>
+
+        <form id="formFeriado" class="space-y-4">
+            <input type="hidden" id="feriadoId">
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Nombre *</label>
+                <input id="nombre" required type="text" class="h-10 w-full rounded border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Fecha *</label>
+                <input id="fecha" required type="date" class="h-10 w-full rounded border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Tipo *</label>
+                <select id="tipo" required class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option>Inamovible</option>
+                    <option>Trasladable</option>
+                    <option>Puente</option>
+                    <option selected>Manual</option>
+                </select>
+            </div>
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+                <input id="activo" type="checkbox" checked class="h-4 w-4 rounded border-gray-300">
+                Activo
+            </label>
+            <div id="mensajeFeriado" class="hidden rounded px-3 py-2 text-sm"></div>
+            <button type="submit" class="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700">
+                <i class="fas fa-save"></i>
+                Guardar feriado
+            </button>
+        </form>
+    </section>
+
+    <section class="rounded-lg bg-white shadow">
+        <div class="border-b border-gray-200 px-4 py-3">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <h2 class="font-semibold text-gray-900">Feriados cargados</h2>
+                    <p id="contadorFeriados" class="mt-1 text-xs text-gray-500">Cargando...</p>
+                </div>
+                <input id="buscarFeriado" type="search" oninput="renderFeriados()" placeholder="Buscar..." class="h-10 rounded border border-gray-300 px-3 text-sm">
+            </div>
+        </div>
+        <div class="overflow-auto">
+            <table class="w-full min-w-[760px] border-collapse text-sm">
+                <thead class="bg-slate-100 text-slate-900">
+                    <tr>
+                        <th class="border border-slate-200 px-3 py-2 text-left">Fecha</th>
+                        <th class="border border-slate-200 px-3 py-2 text-left">Nombre</th>
+                        <th class="border border-slate-200 px-3 py-2 text-left">Tipo</th>
+                        <th class="border border-slate-200 px-3 py-2 text-center">Estado</th>
+                        <th class="border border-slate-200 px-3 py-2 text-center">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyFeriados">
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let feriados = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('formFeriado').addEventListener('submit', guardarFeriado);
+    cargarFeriados();
+});
+
+async function nuevoAnioFeriado() {
+    const year = agregarSiguienteYear('yearFiltro');
+    await cargarFeriados();
+    limpiarFormulario();
+    document.getElementById('fecha').value = `${year}-01-01`;
+}
+
+function agregarSiguienteYear(selectId) {
+    const select = document.getElementById(selectId);
+    const years = [...select.options].map(option => Number(option.value)).filter(Boolean);
+    const nextYear = Math.max(...years) + 1;
+    if (![...select.options].some(option => Number(option.value) === nextYear)) {
+        select.insertAdjacentHTML('beforeend', `<option value="${nextYear}">${nextYear}</option>`);
+    }
+    select.value = String(nextYear);
+    return nextYear;
+}
+
+async function cargarFeriados() {
+    const year = document.getElementById('yearFiltro').value;
+    const response = await fetch(`/api/calendario-operativo?year=${encodeURIComponent(year)}`);
+    const data = await response.json();
+    if (!data.success) {
+        mostrarMensaje('No se pudieron cargar los feriados', 'error');
+        return;
+    }
+    feriados = data.feriados || [];
+    renderFeriados();
+}
+
+async function guardarFeriado(event) {
+    event.preventDefault();
+    const payload = {
+        id: document.getElementById('feriadoId').value || undefined,
+        nombre: document.getElementById('nombre').value,
+        fecha: document.getElementById('fecha').value,
+        tipo: document.getElementById('tipo').value,
+        activo: document.getElementById('activo').checked,
+    };
+    const response = await fetch('/api/calendario-operativo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!data.success) {
+        mostrarMensaje((data.errores || ['No se pudo guardar']).join(', '), 'error');
+        return;
+    }
+    mostrarMensaje(data.mensaje || 'Feriado guardado', 'success');
+    const year = payload.fecha.slice(0, 4);
+    document.getElementById('yearFiltro').value = year;
+    limpiarFormulario(false);
+    await cargarFeriados();
+}
+
+function editarFeriado(id) {
+    const item = feriados.find(feriado => Number(feriado.id) === Number(id));
+    if (!item) return;
+    document.getElementById('feriadoId').value = item.id;
+    document.getElementById('nombre').value = item.nombre;
+    document.getElementById('fecha').value = item.fecha;
+    document.getElementById('tipo').value = item.tipo;
+    document.getElementById('activo').checked = Boolean(item.activo);
+    document.getElementById('tituloFormulario').textContent = 'Editar feriado';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function eliminarFeriado(id) {
+    if (!confirm('¿Eliminar este feriado?')) return;
+    const response = await fetch(`/api/calendario-operativo/${id}`, { method: 'DELETE' });
+    const data = await response.json();
+    if (!data.success) {
+        mostrarMensaje((data.errores || ['No se pudo eliminar']).join(', '), 'error');
+        return;
+    }
+    mostrarMensaje(data.mensaje || 'Feriado eliminado', 'success');
+    await cargarFeriados();
+}
+
+function renderFeriados() {
+    const tbody = document.getElementById('tbodyFeriados');
+    const texto = normalizar(document.getElementById('buscarFeriado').value);
+    const filtrados = feriados.filter(item => {
+        if (!texto) return true;
+        return normalizar(`${item.fecha} ${item.nombre} ${item.tipo}`).includes(texto);
+    });
+    document.getElementById('contadorFeriados').textContent = `${filtrados.length} de ${feriados.length} feriado(s)`;
+    if (!filtrados.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No hay feriados cargados</td></tr>';
+        return;
+    }
+    tbody.innerHTML = filtrados.map(item => `
+        <tr class="hover:bg-slate-50">
+            <td class="border border-gray-200 px-3 py-2 font-medium">${formatDate(item.fecha)}</td>
+            <td class="border border-gray-200 px-3 py-2">${escapeHtml(item.nombre)}</td>
+            <td class="border border-gray-200 px-3 py-2">${escapeHtml(item.tipo)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-center">
+                <span class="rounded-full px-2 py-1 text-xs font-semibold ${item.activo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}">${item.activo ? 'Activo' : 'Inactivo'}</span>
+            </td>
+            <td class="border border-gray-200 px-3 py-2 text-center">
+                <button type="button" onclick="editarFeriado(${item.id})" class="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"><i class="fas fa-pen"></i></button>
+                <button type="button" onclick="eliminarFeriado(${item.id})" class="ml-1 rounded bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-700"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function limpiarFormulario(resetMensaje = true) {
+    document.getElementById('formFeriado').reset();
+    document.getElementById('feriadoId').value = '';
+    document.getElementById('activo').checked = true;
+    document.getElementById('tipo').value = 'Manual';
+    document.getElementById('tituloFormulario').textContent = 'Nuevo feriado';
+    if (resetMensaje) document.getElementById('mensajeFeriado').classList.add('hidden');
+}
+
+function mostrarMensaje(mensaje, tipo) {
+    const contenedor = document.getElementById('mensajeFeriado');
+    contenedor.className = `rounded px-3 py-2 text-sm ${tipo === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`;
+    contenedor.textContent = mensaje;
+}
+
+function formatDate(value) {
+    if (!value) return '-';
+    const [year, month, day] = value.split('-');
+    return `${day}/${month}/${year}`;
+}
+
+function normalizar(value) {
+    return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+</script>
+{% endblock %}

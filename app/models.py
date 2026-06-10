@@ -334,6 +334,149 @@ class JustificacionAjuste(db.Model):
         }
 
 
+class ProyeccionMatriz(db.Model):
+    __tablename__ = 'matriz_proyecciones'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente = db.Column(db.String(100), nullable=False)
+    campania = db.Column(db.String(100), nullable=False)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    mes = db.Column(db.String(7), nullable=False, index=True)
+    dotacion_requerida = db.Column(db.Float, default=0, nullable=False)
+    carga_semanal = db.Column(db.String(20), default='L a V', nullable=False)
+    carga_horaria = db.Column(db.Float, default=0, nullable=False)
+    dias_objetivo = db.Column(db.Integer, default=0, nullable=False)
+    horas_requeridas = db.Column(db.Float, default=0, nullable=False)
+    porcentaje_cumplimiento = db.Column(db.Float, default=100, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    jornadas = db.relationship(
+        'ProyeccionMatrizJornada',
+        backref='proyeccion',
+        cascade='all, delete-orphan',
+        lazy=True,
+        order_by='ProyeccionMatrizJornada.id',
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint('cliente', 'campania', 'mes', name='uq_matriz_proyecciones_cliente_campania_mes'),
+    )
+
+    @property
+    def horas_proyectadas(self):
+        return (self.horas_requeridas or 0) * ((self.porcentaje_cumplimiento or 0) / 100)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'cliente': self.cliente,
+            'campania': self.campania,
+            'year': self.year,
+            'mes': self.mes,
+            'dotacion_requerida': self.dotacion_requerida or 0,
+            'carga_semanal': self.carga_semanal or 'L a V',
+            'carga_horaria': self.carga_horaria or 0,
+            'dias_objetivo': self.dias_objetivo or 0,
+            'horas_requeridas': self.horas_requeridas or 0,
+            'porcentaje_cumplimiento': self.porcentaje_cumplimiento or 0,
+            'horas_proyectadas': round(self.horas_proyectadas, 2),
+            'jornadas': [jornada.to_dict() for jornada in self.jornadas],
+            'creado_en': self.creado_en.isoformat() if self.creado_en else None,
+            'actualizado_en': self.actualizado_en.isoformat() if self.actualizado_en else None,
+        }
+
+
+class ProyeccionMatrizJornada(db.Model):
+    __tablename__ = 'matriz_proyecciones_jornadas'
+
+    id = db.Column(db.Integer, primary_key=True)
+    proyeccion_id = db.Column(db.Integer, db.ForeignKey('matriz_proyecciones.id'), nullable=False, index=True)
+    dotacion_requerida = db.Column(db.Float, default=0, nullable=False)
+    carga_semanal = db.Column(db.String(30), default='L a V', nullable=False)
+    carga_horaria = db.Column(db.Float, default=0, nullable=False)
+    dias_objetivo = db.Column(db.Integer, default=0, nullable=False)
+    horas_requeridas = db.Column(db.Float, default=0, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'dotacion_requerida': self.dotacion_requerida or 0,
+            'carga_semanal': self.carga_semanal or 'L a V',
+            'carga_horaria': self.carga_horaria or 0,
+            'dias_objetivo': self.dias_objetivo or 0,
+            'horas_requeridas': round(self.horas_requeridas or 0, 2),
+        }
+
+
+class ProyeccionPrecio(db.Model):
+    __tablename__ = 'matriz_precios'
+
+    id = db.Column(db.Integer, primary_key=True)
+    site = db.Column(db.String(100), nullable=True)
+    cliente = db.Column(db.String(100), nullable=False)
+    campania = db.Column(db.String(100), nullable=False)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    mes = db.Column(db.String(7), nullable=False, index=True)
+    precio_base = db.Column(db.Float, default=0, nullable=False)
+    alcance_porcentaje = db.Column(db.Float, default=100, nullable=False)
+    precio_final = db.Column(db.Float, default=0, nullable=False)
+    importe_fijo_mensual = db.Column(db.Float, default=0, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('cliente', 'campania', 'mes', name='uq_matriz_precios_cliente_campania_mes'),
+    )
+
+    def recalcular(self):
+        self.precio_final = (self.precio_base or 0) * ((self.alcance_porcentaje or 0) / 100)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'site': self.site or '',
+            'cliente': self.cliente,
+            'campania': self.campania,
+            'year': self.year,
+            'mes': self.mes,
+            'precio_base': self.precio_base or 0,
+            'alcance_porcentaje': self.alcance_porcentaje or 0,
+            'precio_final': round(self.precio_final or 0, 2),
+            'importe_fijo_mensual': round(self.importe_fijo_mensual or 0, 2),
+            'creado_en': self.creado_en.isoformat() if self.creado_en else None,
+            'actualizado_en': self.actualizado_en.isoformat() if self.actualizado_en else None,
+        }
+
+
+class FeriadoOperativo(db.Model):
+    __tablename__ = 'feriados_operativos'
+
+    id = db.Column(db.Integer, primary_key=True)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    fecha = db.Column(db.Date, nullable=False, index=True)
+    nombre = db.Column(db.String(160), nullable=False)
+    tipo = db.Column(db.String(30), nullable=False, default='Manual')
+    activo = db.Column(db.Boolean, default=True, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('fecha', name='uq_feriados_operativos_fecha'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'year': self.year,
+            'fecha': self.fecha.isoformat() if self.fecha else None,
+            'nombre': self.nombre,
+            'tipo': self.tipo,
+            'activo': self.activo,
+            'creado_en': self.creado_en.isoformat() if self.creado_en else None,
+            'actualizado_en': self.actualizado_en.isoformat() if self.actualizado_en else None,
+        }
+
+
 class AsignacionComercial(db.Model):
     __tablename__ = 'asignaciones_comerciales'
 

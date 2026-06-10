@@ -225,6 +225,14 @@ fecha + cliente + gerente + jefe de site + campania + sub campania
 - Exportacion a Excel.
 - Penalizaciones tratadas como descuento: aunque se carguen positivas, se restan del total facturado.
 
+### Matriz de Proyecciones
+
+- Proyección mensual por cliente y campaña.
+- Cliente y campaña se toman de datos maestros existentes.
+- El usuario carga año, mes, dotación requerida, horas requeridas y porcentaje de cumplimiento.
+- Las horas proyectadas se calculan como `horas requeridas * porcentaje de cumplimiento / 100`.
+- Este módulo permite acentos y la letra `Ñ/ñ` en los textos visibles y en los valores de cliente/campaña.
+
 ## Seguridad
 
 - Flask escucha solo en `127.0.0.1` por defecto mediante `FLASK_HOST=127.0.0.1`.
@@ -459,6 +467,32 @@ CREATE TABLE historial_cambios (
     despues TEXT,
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+```
+
+### Matriz de Proyecciones
+
+Tabla: `matriz_proyecciones`
+
+```sql
+CREATE TABLE matriz_proyecciones (
+    id SERIAL PRIMARY KEY,
+    cliente VARCHAR(100) NOT NULL,
+    campania VARCHAR(100) NOT NULL,
+    year INTEGER NOT NULL,
+    mes VARCHAR(7) NOT NULL,
+    dotacion_requerida DOUBLE PRECISION NOT NULL DEFAULT 0,
+    horas_requeridas DOUBLE PRECISION NOT NULL DEFAULT 0,
+    porcentaje_cumplimiento DOUBLE PRECISION NOT NULL DEFAULT 100,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_matriz_proyecciones_cliente_campania_mes UNIQUE (cliente, campania, mes)
+);
+```
+
+`horas_proyectadas` no se guarda como columna fisica. La app lo calcula como:
+
+```text
+horas_requeridas * porcentaje_cumplimiento / 100
 ```
 
 ### Headers de Importacion

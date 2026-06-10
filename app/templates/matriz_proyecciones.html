@@ -1,0 +1,643 @@
+﻿{% extends "layout.html" %}
+
+{% block title %}Matriz de Proyecciones - Facturación{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Planificacion</p>
+        <h1 class="text-3xl font-bold text-gray-900">Matriz de proyecciones</h1>
+    </div>
+    <div class="flex flex-col gap-2 sm:flex-row">
+        <select id="yearFiltro" onchange="cargarProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+        <button type="button" onclick="descargarTemplateProyecciones()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-emerald-600 px-4 text-sm font-medium text-white hover:bg-emerald-700">
+            <i class="fas fa-download"></i>
+            Template
+        </button>
+        <input id="archivoImportarProyecciones" type="file" accept=".xlsx,.csv" class="hidden" onchange="importarTemplateProyecciones()">
+        <button type="button" onclick="document.getElementById('archivoImportarProyecciones').click()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700">
+            <i class="fas fa-upload"></i>
+            Importar
+        </button>
+        <button type="button" onclick="deshacerUltimaProyeccion()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-rose-600 px-4 text-sm font-medium text-white hover:bg-rose-700">
+            <i class="fas fa-rotate-left"></i>
+            Deshacer
+        </button>
+        <button type="button" onclick="eliminarTodasProyecciones()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-red-700 px-4 text-sm font-medium text-white hover:bg-red-800">
+            <i class="fas fa-trash"></i>
+            Eliminar todo
+        </button>
+        <button type="button" onclick="nuevoAnioProyeccion()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-slate-700 px-4 text-sm font-medium text-white hover:bg-slate-800">
+            <i class="fas fa-plus"></i>
+            Nuevo
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+    <section class="rounded-lg bg-white p-5 shadow">
+        <div class="mb-4 flex items-start justify-between gap-3">
+            <div>
+                <h2 id="tituloFormulario" class="font-semibold text-gray-900">Nueva proyección</h2>
+                <p id="subtituloFormulario" class="mt-1 text-xs text-gray-500">Cliente, campaña y período.</p>
+            </div>
+            <span id="badgeEditando" class="hidden rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Editando</span>
+        </div>
+
+        <form id="formProyeccion" class="space-y-4">
+            <input type="hidden" id="proyeccionId">
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Cliente *</label>
+                <select id="cliente" required onchange="actualizarCampanias()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Campaña *</label>
+                <select id="campania" required class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Año *</label>
+                    <input id="year" required type="number" min="2020" max="2100" value="2026" onchange="sincronizarMesesFormulario(); actualizarProyectadas()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Mes *</label>
+                    <select id="mes" required onchange="actualizarProyectadas()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+                </div>
+            </div>
+            <div class="rounded border border-slate-200 bg-slate-50 p-3">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-900">Jornadas</h3>
+                        <p class="mt-1 text-xs text-slate-500">Cantidad de personas, carga semanal y horas diarias.</p>
+                    </div>
+                    <button type="button" onclick="agregarJornada()" class="inline-flex h-8 items-center justify-center gap-2 rounded bg-slate-700 px-3 text-xs font-medium text-white hover:bg-slate-800">
+                        <i class="fas fa-plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div id="jornadasContainer" class="space-y-3"></div>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Dotacion total</label>
+                    <input id="dotacionTotal" readonly type="number" class="h-10 w-full rounded border border-gray-300 bg-slate-50 px-3 text-sm text-right text-slate-700">
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Q dias max.</label>
+                    <input id="diasObjetivo" readonly type="number" class="h-10 w-full rounded border border-gray-300 bg-slate-50 px-3 text-sm text-right text-slate-700">
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Hs. requeridas</label>
+                    <input id="horasRequeridas" readonly type="number" min="0" step="0.01" placeholder="" class="h-10 w-full rounded border border-gray-300 bg-slate-50 px-3 text-sm text-right text-slate-700">
+                </div>
+            </div>            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">% cumplimiento *</label>
+                <input id="porcentajeCumplimiento" required type="number" min="0" step="0.01" value="100" oninput="actualizarProyectadas()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="rounded border border-slate-200 bg-slate-50 px-3 py-3">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Horas proyectadas</div>
+                <div id="horasProyectadasPreview" class="mt-1 text-2xl font-bold text-slate-900">0</div>
+            </div>
+            <div id="mensajeProyeccion" class="hidden rounded px-3 py-2 text-sm"></div>
+            <button type="submit" class="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700">
+                <i class="fas fa-save"></i>
+                Guardar proyección
+            </button>
+        </form>
+    </section>
+
+    <section class="rounded-lg bg-white shadow">
+        <div class="border-b border-gray-200 px-4 py-3">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <h2 class="font-semibold text-gray-900">Proyecciones cargadas</h2>
+                    <p id="contadorProyecciones" class="mt-1 text-xs text-gray-500">Cargando...</p>
+                </div>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                    <input id="buscarProyeccion" type="search" oninput="renderProyecciones()" placeholder="Buscar..." class="h-10 rounded border border-gray-300 px-3 text-sm">
+                    <select id="filtroCliente" onchange="actualizarFiltroCampania(); renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                    <select id="filtroCampania" onchange="renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                    <select id="filtroMes" onchange="renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                </div>
+            </div>
+        </div>
+        <div class="overflow-auto">
+            <table class="w-full min-w-[1180px] border-collapse text-sm">
+                <thead class="bg-slate-100 text-slate-900">
+                    <tr>
+                        <th class="border border-slate-200 px-3 py-2 text-left">Cliente</th>
+                        <th class="border border-slate-200 px-3 py-2 text-left">Campaña</th>
+                        <th class="border border-slate-200 px-3 py-2 text-center">Año</th>
+                        <th class="border border-slate-200 px-3 py-2 text-center">Mes</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">Dotación requerida</th>
+                        <th class="border border-slate-200 px-3 py-2 text-center">Carga</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">Hs. jornada</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">Q dias obj.</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">Hs. requeridas</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">Horas proyectadas</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">% cumplimiento</th>
+                        <th class="border border-slate-200 px-3 py-2 text-center">Accion</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyProyecciones">
+                    <tr>
+                        <td colspan="12" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let asociaciones = [];
+let meses = [];
+let proyecciones = [];
+let feriados = [];
+let cargasSemanales = ['L a V', 'L a V + S', 'S + D + F', 'S', 'D', 'F', 'L a V +S+D+F'];
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('formProyeccion').addEventListener('submit', guardarProyeccion);
+    cargarProyecciones();
+});
+
+async function nuevoAnioProyeccion() {
+    const year = siguienteYear('yearFiltro');
+    if (!confirm(`¿Estás seguro de que querés proyectar el año ${year}?`)) return;
+    agregarYear('yearFiltro', year);
+    document.getElementById('year').value = year;
+    await cargarProyecciones();
+    limpiarFormulario();
+}
+
+function siguienteYear(selectId) {
+    const select = document.getElementById(selectId);
+    const years = [...select.options].map(option => Number(option.value)).filter(Boolean);
+    return Math.max(...years) + 1;
+}
+
+function agregarYear(selectId, year) {
+    const select = document.getElementById(selectId);
+    if (![...select.options].some(option => Number(option.value) === Number(year))) {
+        select.insertAdjacentHTML('beforeend', `<option value="${year}">${year}</option>`);
+    }
+    select.value = String(year);
+}
+
+function descargarTemplateProyecciones() {
+    const year = document.getElementById('yearFiltro').value;
+    window.location.href = `/api/matriz-proyecciones/template?year=${encodeURIComponent(year)}`;
+}
+
+async function deshacerUltimaProyeccion() {
+    if (!confirm('¿Deshacer el último movimiento de proyecciones?')) return;
+    const response = await fetch('/api/matriz-proyecciones/deshacer-ultimo', { method: 'POST' });
+    const data = await response.json();
+    if (!data.success) {
+        const mensaje = (data.errores || ['No se pudo deshacer']).join(' | ');
+        mostrarMensaje(mensaje, 'error');
+        alert(mensaje);
+        return;
+    }
+    mostrarMensaje(data.mensaje || 'Movimiento deshecho', 'success');
+    alert(data.mensaje || 'Movimiento deshecho');
+    await cargarProyecciones();
+}
+
+async function eliminarTodasProyecciones() {
+    const year = document.getElementById('yearFiltro').value;
+    if (!confirm(`¿Eliminar todos los registros de proyecciones del año ${year}?\\nEsta acción queda en historial y se puede deshacer.`)) return;
+    const response = await fetch('/api/matriz-proyecciones/eliminar-todo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ year }),
+    });
+    const data = await response.json();
+    if (!data.success) {
+        const mensaje = (data.errores || ['No se pudieron eliminar las proyecciones']).join(' | ');
+        mostrarMensaje(mensaje, 'error');
+        alert(mensaje);
+        return;
+    }
+    mostrarMensaje(data.mensaje || 'Proyecciones eliminadas', 'success');
+    alert(data.mensaje || 'Proyecciones eliminadas');
+    await cargarProyecciones();
+}
+
+async function importarTemplateProyecciones() {
+    const input = document.getElementById('archivoImportarProyecciones');
+    const archivo = input.files && input.files[0];
+    if (!archivo) return;
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    try {
+        const response = await fetch('/api/matriz-proyecciones/importar', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
+        if (!data.success) {
+            const mensaje = (data.errores || ['No se pudo importar']).join(' | ');
+            mostrarMensaje(mensaje, 'error');
+            alert(mensaje);
+            return;
+        }
+        (data.years || []).forEach(year => agregarYear('yearFiltro', year));
+        if ((data.years || []).length) {
+            document.getElementById('yearFiltro').value = String(data.years[0]);
+        }
+        const mensaje = data.mensaje || 'Proyecciones importadas';
+        mostrarMensaje(mensaje, 'success');
+        alert(mensaje);
+        await cargarProyecciones();
+    } catch (error) {
+        mostrarMensaje('Error al importar el archivo', 'error');
+        alert('Error al importar el archivo');
+    } finally {
+        input.value = '';
+    }
+}
+
+async function cargarProyecciones() {
+    const year = document.getElementById('yearFiltro').value;
+    document.getElementById('year').value = year;
+    const response = await fetch(`/api/matriz-proyecciones?year=${encodeURIComponent(year)}`);
+    const data = await response.json();
+    if (!data.success) {
+        mostrarMensaje('No se pudieron cargar las proyecciones', 'error');
+        return;
+    }
+    asociaciones = data.asociaciones || [];
+    meses = data.meses || [];
+    proyecciones = data.proyecciones || [];
+    feriados = data.feriados || [];
+    cargasSemanales = data.cargas_semanales || cargasSemanales;
+    popularClientes();
+    popularFiltros();
+    sincronizarMesesFormulario();
+    if (!document.querySelectorAll('.jornada-row').length) agregarJornada();
+    renderProyecciones();
+}
+
+function popularClientes() {
+    const clientes = [...new Set([
+        ...asociaciones.map(item => item.cliente),
+        ...proyecciones.map(item => item.cliente),
+    ].filter(Boolean))].sort();
+    const actual = document.getElementById('cliente').value;
+    document.getElementById('cliente').innerHTML = '<option value="">Seleccionar cliente</option>' + clientes.map(cliente =>
+        `<option value="${escapeHtml(cliente)}" ${cliente === actual ? 'selected' : ''}>${escapeHtml(cliente)}</option>`
+    ).join('');
+    actualizarCampanias();
+}
+
+function actualizarCampanias() {
+    const cliente = document.getElementById('cliente').value;
+    const actual = document.getElementById('campania').value;
+    const campanias = [...new Set([...asociaciones, ...proyecciones]
+        .filter(item => !cliente || item.cliente === cliente)
+        .map(item => item.campania)
+        .filter(Boolean)
+    )].sort();
+    document.getElementById('campania').innerHTML = '<option value="">Seleccionar campaña</option>' + campanias.map(campania =>
+        `<option value="${escapeHtml(campania)}" ${campania === actual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
+    ).join('');
+}
+
+function popularFiltros() {
+    const clientes = [...new Set(proyecciones.map(item => item.cliente).filter(Boolean))].sort();
+    const clienteActual = document.getElementById('filtroCliente').value;
+    document.getElementById('filtroCliente').innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(cliente =>
+        `<option value="${escapeHtml(cliente)}" ${cliente === clienteActual ? 'selected' : ''}>${escapeHtml(cliente)}</option>`
+    ).join('');
+    popularFiltroMes();
+    actualizarFiltroCampania();
+}
+
+function popularFiltroMes() {
+    const actual = document.getElementById('filtroMes').value;
+    document.getElementById('filtroMes').innerHTML = '<option value="">Todos los meses</option>' + meses.map(mes =>
+        `<option value="${escapeHtml(mes.value)}" ${mes.value === actual ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`
+    ).join('');
+}
+
+function actualizarFiltroCampania() {
+    const cliente = document.getElementById('filtroCliente').value;
+    const actual = document.getElementById('filtroCampania').value;
+    const campanias = [...new Set(proyecciones
+        .filter(item => !cliente || item.cliente === cliente)
+        .map(item => item.campania)
+        .filter(Boolean)
+    )].sort();
+    document.getElementById('filtroCampania').innerHTML = '<option value="">Todas las campañas</option>' + campanias.map(campania =>
+        `<option value="${escapeHtml(campania)}" ${campania === actual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
+    ).join('');
+}
+
+function sincronizarMesesFormulario() {
+    const year = document.getElementById('year').value || document.getElementById('yearFiltro').value;
+    if (!meses.some(mes => mes.value.startsWith(`${year}-`))) {
+        meses = generarMeses(year);
+    }
+    const actual = document.getElementById('mes').value;
+    document.getElementById('mes').innerHTML = meses
+        .filter(mes => mes.value.startsWith(`${year}-`))
+        .map(mes => `<option value="${escapeHtml(mes.value)}" ${mes.value === actual ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`)
+        .join('');
+}
+
+function generarMeses(year) {
+    const labels = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    return labels.map((label, index) => {
+        const numero = String(index + 1).padStart(2, '0');
+        return { value: `${year}-${numero}`, label: `${label}-${String(year).slice(-2)}` };
+    });
+}
+
+function agregarJornada(jornada = {}) {
+    const container = document.getElementById('jornadasContainer');
+    const index = Date.now() + Math.floor(Math.random() * 1000);
+    const opciones = cargasSemanales.map(carga =>
+        `<option value="${escapeHtml(carga)}" ${carga === (jornada.carga_semanal || 'L a V') ? 'selected' : ''}>${escapeHtml(carga)}</option>`
+    ).join('');
+    const row = document.createElement('div');
+    row.className = 'jornada-row rounded border border-slate-200 bg-white p-3';
+    row.innerHTML = `
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <label class="mb-1 block text-xs font-medium text-gray-600">Personas</label>
+                <input data-field="dotacion" type="number" min="0" step="0.01" value="${jornada.dotacion_requerida ?? ''}" oninput="actualizarProyectadas()" class="h-9 w-full rounded border border-gray-300 px-2 text-sm text-right">
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-medium text-gray-600">Hs. diarias</label>
+                <input data-field="horas" type="number" min="0" step="0.01" value="${jornada.carga_horaria ?? ''}" oninput="actualizarProyectadas()" class="h-9 w-full rounded border border-gray-300 px-2 text-sm text-right">
+            </div>
+            <div class="col-span-2">
+                <label class="mb-1 block text-xs font-medium text-gray-600">Carga semanal</label>
+                <select data-field="carga" onchange="actualizarProyectadas()" class="h-9 w-full rounded border border-gray-300 bg-white px-2 text-sm">${opciones}</select>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-medium text-gray-600">Q dias</label>
+                <input data-field="dias" readonly type="number" value="${jornada.dias_objetivo || ''}" class="h-9 w-full rounded border border-gray-300 bg-slate-50 px-2 text-sm text-right text-slate-700">
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-medium text-gray-600">Hs. req.</label>
+                <input data-field="requeridas" readonly type="number" value="${jornada.horas_requeridas || ''}" class="h-9 w-full rounded border border-gray-300 bg-slate-50 px-2 text-sm text-right text-slate-700">
+            </div>
+        </div>
+        <button type="button" onclick="eliminarJornada(this)" class="mt-2 inline-flex h-8 items-center justify-center gap-2 rounded bg-rose-50 px-3 text-xs font-medium text-rose-700 hover:bg-rose-100">
+            <i class="fas fa-trash"></i>
+            Quitar
+        </button>
+    `;
+    row.dataset.index = index;
+    container.appendChild(row);
+    actualizarProyectadas();
+}
+
+function eliminarJornada(button) {
+    const rows = document.querySelectorAll('.jornada-row');
+    if (rows.length <= 1) return;
+    button.closest('.jornada-row').remove();
+    actualizarProyectadas();
+}
+
+function obtenerJornadasFormulario() {
+    return [...document.querySelectorAll('.jornada-row')].map(row => ({
+        dotacion_requerida: numero(row.querySelector('[data-field="dotacion"]').value),
+        carga_semanal: row.querySelector('[data-field="carga"]').value,
+        carga_horaria: numero(row.querySelector('[data-field="horas"]').value),
+    })).filter(jornada => jornada.dotacion_requerida > 0 || jornada.carga_horaria > 0);
+}
+
+function actualizarProyectadas() {
+    let dotacionTotal = 0;
+    let diasMax = 0;
+    let horas = 0;
+    document.querySelectorAll('.jornada-row').forEach(row => {
+        const dotacion = numero(row.querySelector('[data-field="dotacion"]').value);
+        const cargaHoraria = numero(row.querySelector('[data-field="horas"]').value);
+        const carga = row.querySelector('[data-field="carga"]').value;
+        const dias = calcularDiasObjetivo(carga);
+        const requeridas = dotacion * dias * cargaHoraria;
+        dotacionTotal += dotacion;
+        diasMax = Math.max(diasMax, dias);
+        horas += requeridas;
+        row.querySelector('[data-field="dias"]').value = dias;
+        row.querySelector('[data-field="requeridas"]').value = requeridas ? requeridas.toFixed(2) : '';
+    });
+    const porcentaje = numero(document.getElementById('porcentajeCumplimiento').value);
+    document.getElementById('dotacionTotal').value = dotacionTotal ? dotacionTotal.toFixed(2) : '';
+    document.getElementById('diasObjetivo').value = diasMax;
+    document.getElementById('horasRequeridas').value = horas ? horas.toFixed(2) : '';
+    document.getElementById('horasProyectadasPreview').textContent = formatNumber(horas * porcentaje / 100);
+}
+
+function calcularDiasObjetivo(carga) {
+    const mes = document.getElementById('mes').value;
+    if (!mes) return 0;
+    const [yearText, monthText] = mes.split('-');
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const ultimoDia = new Date(year, month, 0).getDate();
+    const feriadosActivos = new Set((feriados || []).filter(item => item.activo).map(item => item.fecha));
+    let dias = 0;
+    for (let day = 1; day <= ultimoDia; day += 1) {
+        const fecha = `${yearText}-${monthText}-${String(day).padStart(2, '0')}`;
+        const weekday = new Date(year, month - 1, day).getDay();
+        const esFeriado = feriadosActivos.has(fecha);
+        if (carga === 'L a V' && weekday >= 1 && weekday <= 5 && !esFeriado) dias += 1;
+        if (carga === 'L a V + S' && weekday >= 1 && weekday <= 6 && !esFeriado) dias += 1;
+        if (carga === 'S + D + F' && (weekday === 0 || weekday === 6 || esFeriado)) dias += 1;
+        if (carga === 'S' && weekday === 6 && !esFeriado) dias += 1;
+        if (carga === 'D' && weekday === 0 && !esFeriado) dias += 1;
+        if (carga === 'F' && esFeriado) dias += 1;
+        if (carga === 'L a V +S+D+F') dias += 1;
+    }
+    return dias;
+}
+
+async function guardarProyeccion(event) {
+    event.preventDefault();
+    const payload = {
+        id: document.getElementById('proyeccionId').value || undefined,
+        cliente: document.getElementById('cliente').value,
+        campania: document.getElementById('campania').value,
+        year: document.getElementById('year').value,
+        mes: document.getElementById('mes').value,
+        jornadas: obtenerJornadasFormulario(),
+        porcentaje_cumplimiento: document.getElementById('porcentajeCumplimiento').value,
+    };
+    const response = await fetch('/api/matriz-proyecciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!data.success) {
+        mostrarMensaje((data.errores || ['No se pudo guardar']).join(', '), 'error');
+        return;
+    }
+    mostrarMensaje(data.mensaje || 'Proyección guardada', 'success');
+    limpiarFormulario(false);
+    await cargarProyecciones();
+}
+
+function editarProyeccion(id) {
+    const item = proyecciones.find(proyeccion => Number(proyeccion.id) === Number(id));
+    if (!item) return;
+    document.getElementById('proyeccionId').value = item.id;
+    document.getElementById('cliente').value = item.cliente;
+    actualizarCampanias();
+    document.getElementById('campania').value = item.campania;
+    document.getElementById('year').value = item.year;
+    sincronizarMesesFormulario();
+    document.getElementById('mes').value = item.mes;
+    document.getElementById('jornadasContainer').innerHTML = '';
+    const jornadas = item.jornadas && item.jornadas.length ? item.jornadas : [{
+        dotacion_requerida: item.dotacion_requerida,
+        carga_semanal: item.carga_semanal || 'L a V',
+        carga_horaria: item.carga_horaria || 0,
+        dias_objetivo: item.dias_objetivo || 0,
+        horas_requeridas: item.horas_requeridas || 0,
+    }];
+    jornadas.forEach(jornada => agregarJornada(jornada));
+    document.getElementById('dotacionTotal').value = item.dotacion_requerida || '';
+    document.getElementById('diasObjetivo').value = item.dias_objetivo || 0;
+    document.getElementById('horasRequeridas').value = item.horas_requeridas;
+    document.getElementById('porcentajeCumplimiento').value = item.porcentaje_cumplimiento;
+    document.getElementById('tituloFormulario').textContent = 'Editar proyección';
+    document.getElementById('subtituloFormulario').textContent = `${item.cliente} / ${item.campania} / ${item.mes_label}`;
+    document.getElementById('badgeEditando').classList.remove('hidden');
+    actualizarProyectadas();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function eliminarProyeccion(id) {
+    if (!confirm('¿Eliminar esta proyección?')) return;
+    const response = await fetch(`/api/matriz-proyecciones/${id}`, { method: 'DELETE' });
+    const data = await response.json();
+    if (!data.success) {
+        mostrarMensaje((data.errores || ['No se pudo eliminar']).join(', '), 'error');
+        return;
+    }
+    await cargarProyecciones();
+}
+
+function renderProyecciones() {
+    const tbody = document.getElementById('tbodyProyecciones');
+    const texto = normalizar(document.getElementById('buscarProyeccion').value);
+    const cliente = document.getElementById('filtroCliente').value;
+    const campania = document.getElementById('filtroCampania').value;
+    const mes = document.getElementById('filtroMes').value;
+    const filtradas = proyecciones.filter(item => {
+        if (cliente && item.cliente !== cliente) return false;
+        if (campania && item.campania !== campania) return false;
+        if (mes && item.mes !== mes) return false;
+        if (!texto) return true;
+        return normalizar(`${item.cliente} ${item.campania} ${item.mes_label}`).includes(texto);
+    });
+    document.getElementById('contadorProyecciones').textContent = `${filtradas.length} de ${proyecciones.length} proyección(es)`;
+    if (!filtradas.length) {
+        tbody.innerHTML = '<tr><td colspan="12" class="px-4 py-8 text-center text-gray-500">No hay proyecciones cargadas</td></tr>';
+        return;
+    }
+    tbody.innerHTML = filtradas.map(item => `
+        <tr class="hover:bg-slate-50">
+            <td class="border border-gray-200 px-3 py-2 font-medium text-gray-900">${escapeHtml(item.cliente)}</td>
+            <td class="border border-gray-200 px-3 py-2">${escapeHtml(item.campania)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-center">${item.year}</td>
+            <td class="border border-gray-200 px-3 py-2 text-center">${escapeHtml(item.mes_label)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatNumber(item.dotacion_requerida)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-center">${formatJornadasCarga(item)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatJornadasHoras(item)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatNumber(item.dias_objetivo)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatNumber(item.horas_requeridas)}</td>
+            <td class="border border-gray-200 bg-blue-50 px-3 py-2 text-right font-semibold text-blue-900">${formatNumber(item.horas_proyectadas)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatPercent(item.porcentaje_cumplimiento)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-center">
+                <button type="button" onclick="editarProyeccion(${item.id})" class="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"><i class="fas fa-pen"></i></button>
+                <button type="button" onclick="eliminarProyeccion(${item.id})" class="ml-1 rounded bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-700"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function limpiarFormulario(resetMensaje = true) {
+    document.getElementById('formProyeccion').reset();
+    document.getElementById('proyeccionId').value = '';
+    document.getElementById('year').value = document.getElementById('yearFiltro').value;
+    popularClientes();
+    sincronizarMesesFormulario();
+    document.getElementById('jornadasContainer').innerHTML = '';
+    agregarJornada();
+    document.getElementById('dotacionTotal').value = '';
+    document.getElementById('diasObjetivo').value = '';
+    document.getElementById('horasRequeridas').value = '';
+    document.getElementById('porcentajeCumplimiento').value = 100;
+    document.getElementById('tituloFormulario').textContent = 'Nueva proyección';
+    document.getElementById('subtituloFormulario').textContent = 'Cliente, campaña y período.';
+    document.getElementById('badgeEditando').classList.add('hidden');
+    if (resetMensaje) document.getElementById('mensajeProyeccion').classList.add('hidden');
+    actualizarProyectadas();
+}
+
+function mostrarMensaje(mensaje, tipo) {
+    const contenedor = document.getElementById('mensajeProyeccion');
+    contenedor.className = `rounded px-3 py-2 text-sm ${tipo === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`;
+    contenedor.textContent = mensaje;
+}
+
+function numero(value) {
+    return Number(String(value || 0).replace(',', '.')) || 0;
+}
+
+function formatNumber(value) {
+    return Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+}
+
+function formatPercent(value) {
+    return `${Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })}%`;
+}
+
+function jornadasDeItem(item) {
+    return item.jornadas && item.jornadas.length ? item.jornadas : [{
+        dotacion_requerida: item.dotacion_requerida,
+        carga_semanal: item.carga_semanal || 'L a V',
+        carga_horaria: item.carga_horaria || 0,
+    }];
+}
+
+function formatJornadasCarga(item) {
+    return jornadasDeItem(item).map(jornada =>
+        `${formatNumber(jornada.dotacion_requerida)} p / ${escapeHtml(jornada.carga_semanal || 'L a V')}`
+    ).join('<br>');
+}
+
+function formatJornadasHoras(item) {
+    return jornadasDeItem(item).map(jornada =>
+        `${formatNumber(jornada.carga_horaria)} h`
+    ).join('<br>');
+}
+
+function normalizar(value) {
+    return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+</script>
+{% endblock %}
