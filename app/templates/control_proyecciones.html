@@ -1,0 +1,220 @@
+{% extends "layout.html" %}
+
+{% block title %}Control proyecciones - Facturación{% endblock %}
+
+{% block content %}
+<div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Proyectados</p>
+        <h1 class="text-3xl font-bold text-gray-950">Control proyecciones</h1>
+        <p class="mt-1 text-sm text-slate-500">Control mensual de horas y dotaciones cargadas en la matriz de proyecciones.</p>
+    </div>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <select id="yearFiltro" onchange="cargarControl()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+        <button type="button" onclick="cargarControl()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
+            <i class="fas fa-rotate-right text-xs"></i>
+            Actualizar
+        </button>
+    </div>
+</div>
+
+<section class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+    <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total horas</p>
+        <p id="kpiHoras" class="mt-2 text-2xl font-bold text-gray-950">0</p>
+    </article>
+    <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total dotaciones</p>
+        <p id="kpiDotaciones" class="mt-2 text-2xl font-bold text-gray-950">0</p>
+    </article>
+    <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Campañas</p>
+        <p id="kpiCampanias" class="mt-2 text-2xl font-bold text-gray-950">0</p>
+    </article>
+</section>
+
+<section class="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-200 px-4 py-3">
+        <div class="flex flex-col gap-4">
+            <div>
+                <div class="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1">
+                    <button id="tabHoras" type="button" onclick="cambiarVista('horas')" class="rounded px-4 py-2 text-sm font-semibold">Horas</button>
+                    <button id="tabDotaciones" type="button" onclick="cambiarVista('dotaciones')" class="rounded px-4 py-2 text-sm font-semibold">Dotaciones</button>
+                </div>
+                <p id="contadorControl" class="mt-2 text-xs text-slate-500">Cargando datos...</p>
+            </div>
+            <div class="grid w-full grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(180px,260px)_minmax(170px,220px)_minmax(170px,220px)_minmax(190px,260px)_auto]">
+                <input id="buscarControl" type="search" oninput="renderControl()" placeholder="Buscar..." class="h-10 rounded-md border border-gray-300 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                <select id="filtroSite" onchange="actualizarFiltrosDependientes(); renderControl()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+                <select id="filtroCliente" onchange="actualizarFiltrosDependientes(); renderControl()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+                <select id="filtroCampania" onchange="renderControl()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+                <button type="button" onclick="limpiarFiltros()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+                    <i class="fas fa-circle-xmark text-xs"></i>
+                    Limpiar
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[1660px] table-fixed border-separate border-spacing-0 text-sm">
+            <colgroup id="colgroupControl"></colgroup>
+            <thead class="sticky top-0 z-20 bg-slate-100 text-slate-900">
+                <tr id="theadControl"></tr>
+            </thead>
+            <tbody id="tbodyControl">
+                <tr><td class="px-4 py-8 text-center text-slate-500">Cargando datos...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let meses = [];
+let filas = [];
+let vistaActual = 'horas';
+
+document.addEventListener('DOMContentLoaded', cargarControl);
+
+async function cargarControl() {
+    const year = document.getElementById('yearFiltro').value;
+    document.getElementById('contadorControl').textContent = 'Cargando datos...';
+    const response = await fetch(`/api/control-proyecciones?year=${encodeURIComponent(year)}`);
+    const data = await response.json();
+    meses = data.meses || [];
+    filas = data.filas || [];
+    popularFiltros();
+    renderControl();
+}
+
+function cambiarVista(vista) {
+    vistaActual = vista;
+    renderControl();
+}
+
+function popularFiltros() {
+    const sites = [...new Set(filas.map(item => item.site).filter(Boolean))].sort();
+    const clientes = [...new Set(filas.map(item => item.cliente).filter(Boolean))].sort();
+    document.getElementById('filtroSite').innerHTML = '<option value="">Todos los sites</option>' + sites.map(site =>
+        `<option value="${escapeHtml(site)}">${escapeHtml(site)}</option>`
+    ).join('');
+    document.getElementById('filtroCliente').innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(cliente =>
+        `<option value="${escapeHtml(cliente)}">${escapeHtml(cliente)}</option>`
+    ).join('');
+    actualizarFiltrosDependientes();
+}
+
+function actualizarFiltrosDependientes() {
+    const site = document.getElementById('filtroSite').value;
+    const cliente = document.getElementById('filtroCliente').value;
+    const actual = document.getElementById('filtroCampania').value;
+    const opciones = filas.filter(item => (!site || item.site === site) && (!cliente || item.cliente === cliente));
+    const campanias = [...new Set(opciones.map(item => item.campania).filter(Boolean))].sort();
+    document.getElementById('filtroCampania').innerHTML = '<option value="">Todas las campañas</option>' + campanias.map(campania =>
+        `<option value="${escapeHtml(campania)}" ${campania === actual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
+    ).join('');
+}
+
+function limpiarFiltros() {
+    document.getElementById('buscarControl').value = '';
+    document.getElementById('filtroSite').value = '';
+    document.getElementById('filtroCliente').value = '';
+    actualizarFiltrosDependientes();
+    document.getElementById('filtroCampania').value = '';
+    renderControl();
+}
+
+function renderControl() {
+    const busqueda = normalizar(document.getElementById('buscarControl').value);
+    const site = document.getElementById('filtroSite').value;
+    const cliente = document.getElementById('filtroCliente').value;
+    const campania = document.getElementById('filtroCampania').value;
+    const campoMeses = vistaActual === 'horas' ? 'horas' : 'dotaciones';
+    const campoTotal = vistaActual === 'horas' ? 'total_horas' : 'total_dotaciones';
+    const tipo = vistaActual === 'horas' ? 'Horas' : 'Dotaciones';
+
+    document.getElementById('tabHoras').className = tabClass(vistaActual === 'horas');
+    document.getElementById('tabDotaciones').className = tabClass(vistaActual === 'dotaciones');
+
+    const visibles = filas.filter(item => {
+        const texto = normalizar(`${item.site} ${item.cliente} ${item.campania}`);
+        return (!busqueda || texto.includes(busqueda))
+            && (!site || item.site === site)
+            && (!cliente || item.cliente === cliente)
+            && (!campania || item.campania === campania);
+    });
+
+    const totalMeses = Object.fromEntries(meses.map(mes => [mes.value, 0]));
+    let total = 0;
+    visibles.forEach(item => {
+        total += Number(item[campoTotal] || 0);
+        meses.forEach(mes => totalMeses[mes.value] += Number((item[campoMeses] || {})[mes.value] || 0));
+    });
+
+    document.getElementById('colgroupControl').innerHTML = `
+        <col class="w-[170px]">
+        <col class="w-[210px]">
+        <col class="w-[260px]">
+        <col class="w-[125px]">
+        ${meses.map(() => '<col class="w-[95px]">').join('')}
+    `;
+    document.getElementById('theadControl').innerHTML = `
+        <th class="border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Site</th>
+        <th class="border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Cliente</th>
+        <th class="border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Campaña</th>
+        <th class="border-b border-r border-blue-200 bg-blue-100 px-3 py-3 text-center font-semibold">Total</th>
+        ${meses.map(mes => `<th class="border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">${escapeHtml(mes.label)}</th>`).join('')}
+    `;
+
+    const totalRow = `
+        <tr class="bg-blue-50 font-bold text-blue-950">
+            <td class="border-b border-r border-blue-100 bg-blue-50 px-3 py-3">TOTAL</td>
+            <td class="border-b border-r border-blue-100 bg-blue-50 px-3 py-3"></td>
+            <td class="border-b border-r border-blue-100 bg-blue-50 px-3 py-3">GENERAL ${tipo.toUpperCase()}</td>
+            <td class="border-b border-r border-blue-100 px-3 py-3 text-center tabular-nums">${formatoNumero(total)}</td>
+            ${meses.map(mes => `<td class="border-b border-r border-blue-100 px-3 py-3 text-center tabular-nums">${formatoNumero(totalMeses[mes.value])}</td>`).join('')}
+        </tr>`;
+
+    const rows = visibles.map(item => `
+        <tr class="hover:bg-slate-50">
+            <td class="border-b border-r border-slate-200 bg-white px-3 py-3 align-middle">${escapeHtml(item.site || '')}</td>
+            <td class="border-b border-r border-slate-200 bg-white px-3 py-3 align-middle">${escapeHtml(item.cliente || '')}</td>
+            <td class="border-b border-r border-slate-200 bg-white px-3 py-3 align-middle font-semibold leading-snug">${escapeHtml(item.campania || '')}</td>
+            <td class="border-b border-r border-slate-200 bg-slate-50 px-3 py-3 text-center font-semibold tabular-nums">${formatoNumero(item[campoTotal] || 0)}</td>
+            ${meses.map(mes => `<td class="border-b border-r border-slate-200 px-3 py-3 text-center tabular-nums">${formatoNumero((item[campoMeses] || {})[mes.value] || 0)}</td>`).join('')}
+        </tr>
+    `).join('');
+
+    document.getElementById('tbodyControl').innerHTML = totalRow + (rows || `<tr><td colspan="${meses.length + 4}" class="px-4 py-8 text-center text-slate-500">Sin resultados para los filtros seleccionados.</td></tr>`);
+    document.getElementById('contadorControl').textContent = `${visibles.length} campaña(s) en ${tipo.toLowerCase()}, total ${formatoNumero(total)}`;
+    document.getElementById('kpiHoras').textContent = formatoNumero(filas.reduce((acc, item) => acc + Number(item.total_horas || 0), 0));
+    document.getElementById('kpiDotaciones').textContent = formatoNumero(filas.reduce((acc, item) => acc + Number(item.total_dotaciones || 0), 0));
+    document.getElementById('kpiCampanias').textContent = filas.length.toLocaleString('es-AR');
+}
+
+function tabClass(activa) {
+    return activa
+        ? 'rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm'
+        : 'rounded px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-white';
+}
+
+function formatoNumero(valor) {
+    return Number(valor || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+}
+
+function normalizar(valor) {
+    return String(valor || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[char]));
+}
+</script>
+{% endblock %}

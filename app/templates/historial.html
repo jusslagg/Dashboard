@@ -21,6 +21,8 @@
             <option value="facturacion">Facturacion</option>
             <option value="asignacion">Datos maestros</option>
             <option value="proyeccion_matriz">Proyecciones</option>
+            <option value="matriz_precios">Precios</option>
+            <option value="variables">Variable</option>
             <option value="usuario">Usuarios</option>
         </select>
         <button onclick="cargarHistorial()" class="h-10 rounded bg-slate-800 px-4 text-sm font-semibold text-white hover:bg-slate-700">
@@ -174,7 +176,7 @@ function labelAccion(accion) {
 }
 
 function labelEntidad(entidad) {
-    return { facturacion: 'Facturacion', asignacion: 'Datos maestros', proyeccion_matriz: 'Proyecciones', usuario: 'Usuarios' }[entidad] || entidad;
+    return { facturacion: 'Facturación', asignacion: 'Datos maestros', proyeccion_matriz: 'Proyecciones', matriz_precios: 'Precios', variables: 'Variable', usuario: 'Usuarios' }[entidad] || entidad;
 }
 
 function badgeAccion(accion) {
@@ -185,7 +187,7 @@ function badgeAccion(accion) {
 }
 
 function puedeDeshacer(item) {
-    return item && item.entidad === 'proyeccion_matriz' && item.accion !== 'deshacer';
+    return item && ['proyeccion_matriz', 'matriz_precios', 'variables'].includes(item.entidad) && item.accion !== 'deshacer';
 }
 
 async function deshacerMovimiento(id) {

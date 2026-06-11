@@ -32,6 +32,28 @@
 
 <div class="grid grid-cols-1 gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
     <section class="rounded-lg bg-white p-5 shadow">
+        <div class="mb-5 border-b border-slate-200 pb-5">
+            <div class="mb-4">
+                <h2 class="font-semibold text-gray-900">Aplicar inflacion</h2>
+                <p class="mt-1 text-xs text-gray-500">Actualiza todos los precios desde el mes elegido.</p>
+            </div>
+            <form id="formInflacion" class="space-y-3">
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Mes desde *</label>
+                    <select id="inflacionMes" required class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Indice de inflacion % *</label>
+                    <input id="indiceInflacionGlobal" required type="number" min="-100" step="0.01" value="0" onfocus="this.select()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div id="mensajeInflacion" class="hidden rounded px-3 py-2 text-sm"></div>
+                <button type="submit" class="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-amber-600 px-4 text-sm font-medium text-white hover:bg-amber-700">
+                    <i class="fas fa-percent"></i>
+                    Aplicar inflacion
+                </button>
+            </form>
+        </div>
+
         <div class="mb-4 flex items-start justify-between gap-3">
             <div>
                 <h2 id="tituloFormulario" class="font-semibold text-gray-900">Nuevo precio</h2>
@@ -157,6 +179,7 @@ let precios = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('formPrecio').addEventListener('submit', guardarPrecio);
+    document.getElementById('formInflacion').addEventListener('submit', aplicarInflacion);
     cargarPrecios();
 });
 
@@ -237,6 +260,7 @@ async function cargarPrecios() {
     popularClientes();
     popularFiltros();
     sincronizarMesesFormulario();
+    sincronizarMesesInflacion();
     actualizarPreview();
     actualizarPrecioPrevio();
     renderPrecios();
@@ -307,6 +331,18 @@ function sincronizarMesesFormulario() {
     actualizarPreview();
 }
 
+function sincronizarMesesInflacion() {
+    const year = document.getElementById('yearFiltro').value;
+    if (!meses.some(mes => mes.value.startsWith(`${year}-`))) {
+        meses = generarMeses(year);
+    }
+    const actual = document.getElementById('inflacionMes').value;
+    document.getElementById('inflacionMes').innerHTML = meses
+        .filter(mes => mes.value.startsWith(`${year}-`))
+        .map(mes => `<option value="${escapeHtml(mes.value)}" ${mes.value === actual ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`)
+        .join('');
+}
+
 function generarMeses(year) {
     const labels = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     return labels.map((label, index) => {
@@ -371,6 +407,31 @@ async function guardarPrecio(event) {
     }
     mostrarMensaje(data.mensaje || 'Precio guardado', 'success');
     limpiarFormulario(false);
+    await cargarPrecios();
+}
+
+async function aplicarInflacion(event) {
+    event.preventDefault();
+    const indiceInflacion = numero(document.getElementById('indiceInflacionGlobal').value);
+    const mes = document.getElementById('inflacionMes').value;
+    if (indiceInflacion < -100) {
+        mostrarMensajeInflacion('El indice no puede ser menor a -100%.', 'error');
+        return;
+    }
+    if (!confirm(`Aplicar ${formatPercent(indiceInflacion)} a todos los precios desde ${mes}?`)) return;
+    const response = await fetch('/api/matriz-precios/inflacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ mes, indice_inflacion: indiceInflacion }),
+    });
+    const data = await response.json();
+    if (!data.success) {
+        mostrarMensajeInflacion((data.errores || ['No se pudo aplicar la inflacion']).join(', '), 'error');
+        return;
+    }
+    mostrarMensajeInflacion(data.mensaje || 'Inflacion aplicada', 'success');
+    document.getElementById('indiceInflacionGlobal').value = 0;
+    document.getElementById('indiceInflacionGlobal').select();
     await cargarPrecios();
 }
 
@@ -460,6 +521,12 @@ function limpiarFormulario(resetMensaje = true) {
 
 function mostrarMensaje(mensaje, tipo) {
     const contenedor = document.getElementById('mensajePrecio');
+    contenedor.className = `rounded px-3 py-2 text-sm ${tipo === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`;
+    contenedor.textContent = mensaje;
+}
+
+function mostrarMensajeInflacion(mensaje, tipo) {
+    const contenedor = document.getElementById('mensajeInflacion');
     contenedor.className = `rounded px-3 py-2 text-sm ${tipo === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`;
     contenedor.textContent = mensaje;
 }

@@ -1,10 +1,15 @@
 from app import db
 from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 import json
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
 ROLES_USUARIO = ('administrador', 'usuario', 'superusuario')
+
+
+def redondear_moneda(valor):
+    return float(Decimal(str(valor or 0)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
 
 
 class Usuario(db.Model):
@@ -429,7 +434,8 @@ class ProyeccionPrecio(db.Model):
     )
 
     def recalcular(self):
-        self.precio_final = (self.precio_base or 0) * ((self.alcance_porcentaje or 0) / 100)
+        total = Decimal(str(self.precio_base or 0)) * (Decimal(str(self.alcance_porcentaje or 0)) / Decimal('100'))
+        self.precio_final = redondear_moneda(total)
 
     def to_dict(self):
         return {
@@ -443,6 +449,37 @@ class ProyeccionPrecio(db.Model):
             'alcance_porcentaje': self.alcance_porcentaje or 0,
             'precio_final': round(self.precio_final or 0, 2),
             'importe_fijo_mensual': round(self.importe_fijo_mensual or 0, 2),
+            'creado_en': self.creado_en.isoformat() if self.creado_en else None,
+            'actualizado_en': self.actualizado_en.isoformat() if self.actualizado_en else None,
+        }
+
+
+class VariableCampania(db.Model):
+    __tablename__ = 'variables_campanias'
+
+    id = db.Column(db.Integer, primary_key=True)
+    site = db.Column(db.String(100), nullable=True)
+    cliente = db.Column(db.String(100), nullable=False)
+    campania = db.Column(db.String(100), nullable=False)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    mes = db.Column(db.String(7), nullable=False, index=True)
+    porcentaje = db.Column(db.Float, default=0, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('cliente', 'campania', 'mes', name='uq_variables_cliente_campania_mes'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'site': self.site or '',
+            'cliente': self.cliente,
+            'campania': self.campania,
+            'year': self.year,
+            'mes': self.mes,
+            'porcentaje': self.porcentaje or 0,
             'creado_en': self.creado_en.isoformat() if self.creado_en else None,
             'actualizado_en': self.actualizado_en.isoformat() if self.actualizado_en else None,
         }

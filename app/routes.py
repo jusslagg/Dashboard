@@ -1,7 +1,7 @@
 ﻿# filepath: app/routes.py
 from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, session, url_for
 from app import db, get_csrf_token
-from app.models import AsignacionComercial, Facturacion2026, FeriadoOperativo, HistorialCambio, JustificacionAjuste, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, ROLES_USUARIO, Usuario
+from app.models import AsignacionComercial, Facturacion2026, FeriadoOperativo, HistorialCambio, JustificacionAjuste, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, ROLES_USUARIO, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
 import calendar
 from sqlalchemy import func
@@ -1286,11 +1286,66 @@ def restaurar_proyeccion_snapshot(proyeccion, snapshot):
     ]
 
 
+def buscar_precio_snapshot(snapshot):
+    if not snapshot:
+        return None
+    precio_id = snapshot.get('id')
+    if precio_id:
+        encontrada = ProyeccionPrecio.query.get(precio_id)
+        if encontrada:
+            return encontrada
+    return ProyeccionPrecio.query.filter_by(
+        cliente=snapshot.get('cliente'),
+        campania=snapshot.get('campania'),
+        mes=snapshot.get('mes'),
+    ).first()
+
+
+def restaurar_precio_snapshot(precio, snapshot):
+    precio.site = snapshot.get('site') or ''
+    precio.cliente = snapshot.get('cliente') or ''
+    precio.campania = snapshot.get('campania') or ''
+    precio.year = int(snapshot.get('year') or str(snapshot.get('mes', '0'))[:4] or 0)
+    precio.mes = snapshot.get('mes') or ''
+    precio.precio_base = redondear_moneda(snapshot.get('precio_base') or 0)
+    precio.alcance_porcentaje = snapshot.get('alcance_porcentaje') or 0
+    precio.importe_fijo_mensual = redondear_moneda(snapshot.get('importe_fijo_mensual') or 0)
+    precio.recalcular()
+
+
+def buscar_variable_snapshot(snapshot):
+    if not snapshot:
+        return None
+    variable_id = snapshot.get('id')
+    if variable_id:
+        encontrada = VariableCampania.query.get(variable_id)
+        if encontrada:
+            return encontrada
+    return VariableCampania.query.filter_by(
+        cliente=snapshot.get('cliente'),
+        campania=snapshot.get('campania'),
+        mes=snapshot.get('mes'),
+    ).first()
+
+
+def restaurar_variable_snapshot(variable, snapshot):
+    variable.site = snapshot.get('site') or ''
+    variable.cliente = snapshot.get('cliente') or ''
+    variable.campania = snapshot.get('campania') or ''
+    variable.year = int(snapshot.get('year') or str(snapshot.get('mes', '0'))[:4] or 0)
+    variable.mes = snapshot.get('mes') or ''
+    variable.porcentaje = snapshot.get('porcentaje') or 0
+
+
 def lista_snapshots_historial(value):
     if not value:
         return []
     if isinstance(value, dict) and isinstance(value.get('proyecciones'), list):
         return value['proyecciones']
+    if isinstance(value, dict) and isinstance(value.get('precios'), list):
+        return value['precios']
+    if isinstance(value, dict) and {'cliente', 'campania', 'mes'}.issubset(value.keys()):
+        return [value]
     if isinstance(value, list):
         return value
     return []
@@ -1310,6 +1365,34 @@ def existe_proyeccion_snapshot(snapshot):
     query = ProyeccionMatriz.query
     proyeccion_id = snapshot.get('id')
     if proyeccion_id and query.filter_by(id=proyeccion_id).first():
+        return True
+    return query.filter_by(
+        cliente=snapshot.get('cliente'),
+        campania=snapshot.get('campania'),
+        mes=snapshot.get('mes'),
+    ).first() is not None
+
+
+def existe_precio_snapshot(snapshot):
+    if not snapshot:
+        return False
+    query = ProyeccionPrecio.query
+    precio_id = snapshot.get('id')
+    if precio_id and query.filter_by(id=precio_id).first():
+        return True
+    return query.filter_by(
+        cliente=snapshot.get('cliente'),
+        campania=snapshot.get('campania'),
+        mes=snapshot.get('mes'),
+    ).first() is not None
+
+
+def existe_variable_snapshot(snapshot):
+    if not snapshot:
+        return False
+    query = VariableCampania.query
+    variable_id = snapshot.get('id')
+    if variable_id and query.filter_by(id=variable_id).first():
         return True
     return query.filter_by(
         cliente=snapshot.get('cliente'),
@@ -1574,6 +1657,20 @@ def resumen():
     return render_template('resumen.html')
 
 
+@main_bp.route('/variable')
+@login_requerido
+def variable():
+    """Vista de variables por campaña sobre facturación horas."""
+    return render_template('variable.html')
+
+
+@main_bp.route('/control-proyecciones')
+@login_requerido
+def control_proyecciones():
+    """Vista de control mensual de horas y dotaciones proyectadas."""
+    return render_template('control_proyecciones.html')
+
+
 @main_bp.route('/calendario-operativo')
 @login_requerido
 def calendario_operativo():
@@ -1826,8 +1923,9 @@ def deshacer_item_historial(item):
         return {'success': False, 'errores': ['Este movimiento ya es un deshacer']}, 400
     if historial_movimiento_deshace(item.id):
         return {'success': False, 'errores': ['Este movimiento ya fue deshecho']}, 400
-    if item.entidad != 'proyeccion_matriz':
-        return {'success': False, 'errores': ['Por ahora solo se pueden deshacer movimientos de proyecciones']}, 400
+    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables')
+    if item.entidad not in entidades_permitidas:
+        return {'success': False, 'errores': ['Por ahora solo se pueden deshacer movimientos de proyecciones, precios y variables']}, 400
 
     antes = item._json(item.antes) or {}
     despues = item._json(item.despues) or {}
@@ -1838,12 +1936,27 @@ def deshacer_item_historial(item):
     for indice in range(cantidad):
         antes_snapshot = antes_snapshots[indice] if indice < len(antes_snapshots) else None
         despues_snapshot = despues_snapshots[indice] if indice < len(despues_snapshots) else None
-        actual = buscar_proyeccion_snapshot(despues_snapshot) or buscar_proyeccion_snapshot(antes_snapshot)
+        if item.entidad == 'matriz_precios':
+            actual = buscar_precio_snapshot(despues_snapshot) or buscar_precio_snapshot(antes_snapshot)
+        elif item.entidad == 'variables':
+            actual = buscar_variable_snapshot(despues_snapshot) or buscar_variable_snapshot(antes_snapshot)
+        else:
+            actual = buscar_proyeccion_snapshot(despues_snapshot) or buscar_proyeccion_snapshot(antes_snapshot)
         if antes_snapshot:
             if not actual:
-                actual = ProyeccionMatriz()
+                if item.entidad == 'matriz_precios':
+                    actual = ProyeccionPrecio()
+                elif item.entidad == 'variables':
+                    actual = VariableCampania()
+                else:
+                    actual = ProyeccionMatriz()
                 db.session.add(actual)
-            restaurar_proyeccion_snapshot(actual, antes_snapshot)
+            if item.entidad == 'matriz_precios':
+                restaurar_precio_snapshot(actual, antes_snapshot)
+            elif item.entidad == 'variables':
+                restaurar_variable_snapshot(actual, antes_snapshot)
+            else:
+                restaurar_proyeccion_snapshot(actual, antes_snapshot)
         elif actual:
             db.session.delete(actual)
 
@@ -1860,9 +1973,18 @@ def deshacer_item_historial(item):
     for indice in range(cantidad):
         antes_snapshot = antes_snapshots[indice] if indice < len(antes_snapshots) else None
         despues_snapshot = despues_snapshots[indice] if indice < len(despues_snapshots) else None
-        if antes_snapshot and not existe_proyeccion_snapshot(antes_snapshot):
+        if item.entidad == 'matriz_precios':
+            existe_antes = existe_precio_snapshot(antes_snapshot)
+            existe_despues = existe_precio_snapshot(despues_snapshot)
+        elif item.entidad == 'variables':
+            existe_antes = existe_variable_snapshot(antes_snapshot)
+            existe_despues = existe_variable_snapshot(despues_snapshot)
+        else:
+            existe_antes = existe_proyeccion_snapshot(antes_snapshot)
+            existe_despues = existe_proyeccion_snapshot(despues_snapshot)
+        if antes_snapshot and not existe_antes:
             errores_validacion.append(f'No se pudo restaurar {antes_snapshot.get("cliente")} / {antes_snapshot.get("campania")} / {antes_snapshot.get("mes")}')
-        if not antes_snapshot and despues_snapshot and existe_proyeccion_snapshot(despues_snapshot):
+        if not antes_snapshot and despues_snapshot and existe_despues:
             errores_validacion.append(f'No se pudo eliminar {despues_snapshot.get("cliente")} / {despues_snapshot.get("campania")} / {despues_snapshot.get("mes")}')
     if errores_validacion:
         db.session.rollback()
@@ -2763,6 +2885,61 @@ def api_guardar_matriz_precio():
     })
 
 
+@main_bp.route('/api/matriz-precios/inflacion', methods=['POST'])
+@login_requerido
+def api_aplicar_inflacion_matriz_precios():
+    data = request.get_json(silent=True) or {}
+    mes = mes_valido(str(data.get('mes') or '').strip())
+    errores = []
+    if not mes:
+        errores.append('El mes no es valido')
+
+    try:
+        indice_inflacion = parse_numero(data.get('indice_inflacion') if data.get('indice_inflacion') not in (None, '') else 0)
+    except ValueError:
+        indice_inflacion = 0
+        errores.append('El indice de inflacion tiene un formato invalido')
+
+    if indice_inflacion < -100:
+        errores.append('El indice de inflacion no puede ser menor a -100%')
+
+    if errores:
+        return jsonify({'success': False, 'errores': errores}), 400
+
+    meses_afectados = meses_proyeccion_desde(mes)
+    precios = ProyeccionPrecio.query.filter(ProyeccionPrecio.mes.in_(meses_afectados)).order_by(
+        ProyeccionPrecio.cliente,
+        ProyeccionPrecio.campania,
+        ProyeccionPrecio.mes,
+    ).all()
+    antes = [precio.to_dict() for precio in precios]
+    factor_inflacion = 1 + (indice_inflacion / 100)
+
+    for precio in precios:
+        precio.precio_base = redondear_moneda(redondear_moneda(precio.precio_base) * factor_inflacion)
+        precio.recalcular()
+
+    db.session.flush()
+    despues = [precio.to_dict() for precio in precios]
+    registrar_historial(
+        'edicion',
+        'matriz_precios',
+        mes,
+        f'Inflacion aplicada: {indice_inflacion}% desde {mes}',
+        antes={'precios': antes, 'indice_inflacion': indice_inflacion},
+        despues={'precios': despues, 'indice_inflacion': indice_inflacion},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'Inflacion aplicada a {len(precios)} precio(s)',
+        'precios': [
+            {**precio.to_dict(), 'mes_label': etiqueta_mes_proyeccion(precio.mes)}
+            for precio in precios
+        ],
+    })
+
+
 @main_bp.route('/api/matriz-precios/<int:precio_id>', methods=['DELETE'])
 @login_requerido
 def api_eliminar_matriz_precio(precio_id):
@@ -2980,10 +3157,7 @@ def api_importar_matriz_precios():
     })
 
 
-@main_bp.route('/api/resumen-proyeccion', methods=['GET'])
-@login_requerido
-def api_resumen_proyeccion():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+def construir_resumen_proyeccion_data(year):
     meses_info = opciones_meses_proyeccion(year)
     meses = [item['value'] for item in meses_info]
 
@@ -3100,7 +3274,7 @@ def api_resumen_proyeccion():
             'total': sum(total_site.values()),
         })
 
-    return jsonify({
+    return {
         'success': True,
         'year': year,
         'meses': meses_info,
@@ -3120,6 +3294,248 @@ def api_resumen_proyeccion():
             'meses': {mes: round(total_general.get(mes, 0), 2) for mes in meses},
             'total': round(sum(total_general.values()), 2),
         },
+    }
+
+
+@main_bp.route('/api/resumen-proyeccion', methods=['GET'])
+@login_requerido
+def api_resumen_proyeccion():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    return jsonify(construir_resumen_proyeccion_data(year))
+
+
+def numero_seguro(valor):
+    try:
+        return float(valor or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def site_por_proyeccion(cliente, campania, sites_por_clave, sites_por_nombre):
+    return (
+        sites_por_clave.get((cliente, campania))
+        or sites_por_nombre.get(normalizar_header(campania))
+        or sites_por_nombre.get(normalizar_header(cliente))
+        or 'Sin site'
+    )
+
+
+def construir_control_proyecciones_data(year):
+    meses_info = opciones_meses_proyeccion(year)
+    meses = [item['value'] for item in meses_info]
+    asociaciones = AsignacionComercial.query.filter_by(activa=True).all()
+    sites_por_clave = {}
+    sites_por_nombre = {}
+    for asignacion in asociaciones:
+        site = asignacion.gerente or asignacion.jefe_site or 'Sin site'
+        sites_por_clave.setdefault((asignacion.cliente, asignacion.campania), site)
+        sites_por_nombre.setdefault(normalizar_header(asignacion.campania), site)
+        sites_por_nombre.setdefault(normalizar_header(asignacion.cliente), site)
+
+    proyecciones = ProyeccionMatriz.query.filter(ProyeccionMatriz.mes.in_(meses)).order_by(
+        ProyeccionMatriz.cliente,
+        ProyeccionMatriz.campania,
+        ProyeccionMatriz.mes,
+    ).all()
+    filas_por_clave = {}
+    for proyeccion in proyecciones:
+        site = site_por_proyeccion(proyeccion.cliente, proyeccion.campania, sites_por_clave, sites_por_nombre)
+        clave = (site, proyeccion.cliente, proyeccion.campania)
+        fila = filas_por_clave.setdefault(clave, {
+            'site': site,
+            'cliente': proyeccion.cliente,
+            'campania': proyeccion.campania,
+            'horas': {mes: 0 for mes in meses},
+            'dotaciones': {mes: 0 for mes in meses},
+            'total_horas': 0,
+            'total_dotaciones': 0,
+        })
+        fila['horas'][proyeccion.mes] += proyeccion.horas_proyectadas or 0
+        fila['dotaciones'][proyeccion.mes] += proyeccion.dotacion_requerida or 0
+
+    filas = []
+    total_horas = {mes: 0 for mes in meses}
+    total_dotaciones = {mes: 0 for mes in meses}
+    for clave in sorted(filas_por_clave):
+        fila = filas_por_clave[clave]
+        fila['horas'] = {mes: round(fila['horas'][mes], 2) for mes in meses}
+        fila['dotaciones'] = {mes: round(fila['dotaciones'][mes], 2) for mes in meses}
+        fila['total_horas'] = round(sum(fila['horas'].values()), 2)
+        fila['total_dotaciones'] = round(sum(fila['dotaciones'].values()), 2)
+        for mes in meses:
+            total_horas[mes] += fila['horas'][mes]
+            total_dotaciones[mes] += fila['dotaciones'][mes]
+        filas.append(fila)
+
+    return {
+        'filas': filas,
+        'total_horas': {
+            'meses': {mes: round(total_horas[mes], 2) for mes in meses},
+            'total': round(sum(total_horas.values()), 2),
+        },
+        'total_dotaciones': {
+            'meses': {mes: round(total_dotaciones[mes], 2) for mes in meses},
+            'total': round(sum(total_dotaciones.values()), 2),
+        },
+    }
+
+
+def construir_variable_data(year):
+    resumen_data = construir_resumen_proyeccion_data(year)
+    meses_info = resumen_data['meses']
+    meses = [item['value'] for item in meses_info]
+    base_por_clave = {}
+
+    for fila in resumen_data['filas']:
+        if fila.get('tipo') == 'total_site':
+            continue
+        clave = (fila.get('site') or '', fila.get('cliente') or '', fila.get('campania') or '')
+        base = base_por_clave.setdefault(clave, {
+            'site': fila.get('site') or '',
+            'cliente': fila.get('cliente') or '',
+            'campania': fila.get('campania') or '',
+            'meses': {mes: 0 for mes in meses},
+            'total_base': 0,
+        })
+        for mes in meses:
+            base['meses'][mes] += numero_seguro(fila.get('meses', {}).get(mes))
+        base['total_base'] += numero_seguro(fila.get('total'))
+
+    variables = VariableCampania.query.filter(VariableCampania.mes.in_(meses)).all()
+    variables_por_clave = {
+        (variable.site or '', variable.cliente, variable.campania, variable.mes): variable
+        for variable in variables
+    }
+
+    filas = []
+    total_general = {mes: 0 for mes in meses}
+    for clave in sorted(base_por_clave):
+        base = base_por_clave[clave]
+        porcentajes = {}
+        importes = {}
+        total = 0
+        for mes in meses:
+            variable = variables_por_clave.get((base['site'], base['cliente'], base['campania'], mes))
+            porcentaje = variable.porcentaje if variable else 0
+            importe = redondear_moneda(base['meses'][mes] * (porcentaje / 100))
+            porcentajes[mes] = round(porcentaje or 0, 2)
+            importes[mes] = importe
+            total += importe
+            total_general[mes] += importe
+        filas.append({
+            'site': base['site'],
+            'cliente': base['cliente'],
+            'campania': base['campania'],
+            'base_meses': {mes: round(base['meses'][mes], 2) for mes in meses},
+            'porcentajes': porcentajes,
+            'meses': importes,
+            'total_base': round(base['total_base'], 2),
+            'total': round(total, 2),
+        })
+
+    return {
+        'success': True,
+        'year': year,
+        'meses': meses_info,
+        'campanias': [
+            {
+                'site': fila['site'],
+                'cliente': fila['cliente'],
+                'campania': fila['campania'],
+                'label': f"{fila['site']} / {fila['cliente']} / {fila['campania']}",
+            }
+            for fila in filas
+        ],
+        'filas': filas,
+        'total_general': {
+            'meses': {mes: round(total_general.get(mes, 0), 2) for mes in meses},
+            'total': round(sum(total_general.values()), 2),
+        },
+    }
+
+
+@main_bp.route('/api/variables', methods=['GET'])
+@login_requerido
+def api_variables():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    return jsonify(construir_variable_data(year))
+
+
+@main_bp.route('/api/control-proyecciones', methods=['GET'])
+@login_requerido
+def api_control_proyecciones():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    meses_info = opciones_meses_proyeccion(year)
+    data = construir_control_proyecciones_data(year)
+    data.update({
+        'success': True,
+        'year': year,
+        'meses': meses_info,
+    })
+    return jsonify(data)
+
+
+@main_bp.route('/api/variables', methods=['POST'])
+@login_requerido
+def api_guardar_variable():
+    data = request.get_json(silent=True) or {}
+    mes = mes_valido(str(data.get('mes') or '').strip())
+    errores = []
+    if not mes:
+        errores.append('El mes no es valido')
+
+    site = str(data.get('site') or '').strip()
+    cliente = str(data.get('cliente') or '').strip()
+    campania = str(data.get('campania') or '').strip()
+    if not cliente:
+        errores.append('El cliente es obligatorio')
+    if not campania:
+        errores.append('La campaña es obligatoria')
+
+    try:
+        porcentaje = parse_numero(data.get('porcentaje') if data.get('porcentaje') not in (None, '') else 0)
+    except ValueError:
+        porcentaje = 0
+        errores.append('El porcentaje tiene un formato invalido')
+
+    if errores:
+        return jsonify({'success': False, 'errores': errores}), 400
+
+    year = int(mes[:4])
+    base_data = construir_variable_data(year)
+    campania_valida = next((
+        item for item in base_data['campanias']
+        if item['site'] == site and item['cliente'] == cliente and item['campania'] == campania
+    ), None)
+    if not campania_valida:
+        return jsonify({'success': False, 'errores': ['La campaña no existe en Facturación horas para el año seleccionado']}), 400
+
+    variable = VariableCampania.query.filter_by(cliente=cliente, campania=campania, mes=mes).first()
+    antes = variable.to_dict() if variable else None
+    if not variable:
+        variable = VariableCampania()
+        db.session.add(variable)
+    variable.site = site
+    variable.cliente = cliente
+    variable.campania = campania
+    variable.year = year
+    variable.mes = mes
+    variable.porcentaje = porcentaje
+    db.session.flush()
+    despues = variable.to_dict()
+    registrar_historial(
+        'edicion' if antes else 'creacion',
+        'variables',
+        mes,
+        f'Variable guardada: {cliente} / {campania} / {mes}',
+        antes=antes,
+        despues=despues,
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': 'Variable guardada',
+        'variable': variable.to_dict(),
     })
 
 

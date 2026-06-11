@@ -1,0 +1,238 @@
+{% extends "layout.html" %}
+
+{% block title %}Variable - Facturación{% endblock %}
+
+{% block content %}
+<div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Proyectados</p>
+        <h1 class="text-3xl font-bold text-gray-950">Variable</h1>
+        <p class="mt-1 text-sm text-slate-500">Porcentaje mensual aplicado sobre Facturación horas por campaña.</p>
+    </div>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <select id="yearFiltro" onchange="cargarVariable()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+        <button type="button" onclick="cargarVariable()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
+            <i class="fas fa-rotate-right text-xs"></i>
+            Actualizar
+        </button>
+    </div>
+</div>
+
+<section class="mb-4 rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-200 px-4 py-3">
+        <div class="flex flex-col gap-1">
+            <h2 class="font-semibold text-gray-950">Cargar porcentaje</h2>
+            <p class="text-xs text-slate-500">Solo aparecen campañas con Facturación horas.</p>
+        </div>
+    </div>
+    <form id="formVariable" class="grid grid-cols-1 gap-3 p-4 lg:grid-cols-[minmax(260px,1.4fr)_180px_150px_auto] lg:items-end" onsubmit="guardarVariable(event)">
+        <label class="block">
+            <span class="mb-1 block text-xs font-semibold text-slate-600">Campaña</span>
+            <select id="campaniaSelect" required class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+        </label>
+        <label class="block">
+            <span class="mb-1 block text-xs font-semibold text-slate-600">Mes</span>
+            <select id="mesSelect" required class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+        </label>
+        <label class="block">
+            <span class="mb-1 block text-xs font-semibold text-slate-600">Variable %</span>
+            <input id="porcentajeInput" type="number" step="0.01" value="0" onclick="this.select()" onfocus="this.select()" required class="h-10 w-full rounded-md border border-gray-300 px-3 text-center text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+        </label>
+        <button type="submit" class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
+            <i class="fas fa-floppy-disk text-xs"></i>
+            Guardar
+        </button>
+    </form>
+    <div id="mensajeVariable" class="hidden mx-4 mb-4 rounded-md px-3 py-2 text-sm"></div>
+</section>
+
+<section class="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-200 px-4 py-3">
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_1fr_1fr]">
+            <div>
+                <h2 class="font-semibold text-gray-950">Resultado variable</h2>
+                <p id="contadorVariable" class="mt-1 text-xs text-slate-500">Cargando datos...</p>
+            </div>
+            <input id="buscarVariable" type="search" oninput="renderVariable()" placeholder="Buscar..." class="h-10 rounded-md border border-gray-300 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            <select id="filtroCliente" onchange="actualizarFiltroCampania(); renderVariable()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+            <select id="filtroCampania" onchange="renderVariable()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[1700px] border-separate border-spacing-0 text-sm">
+            <thead class="sticky top-0 z-20 bg-slate-100 text-slate-900">
+                <tr id="theadVariable"></tr>
+            </thead>
+            <tbody id="tbodyVariable">
+                <tr><td class="px-4 py-8 text-center text-slate-500">Cargando datos...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let meses = [];
+let filas = [];
+let campanias = [];
+
+document.addEventListener('DOMContentLoaded', cargarVariable);
+
+async function cargarVariable() {
+    const year = document.getElementById('yearFiltro').value;
+    document.getElementById('contadorVariable').textContent = 'Cargando datos...';
+    const response = await fetch(`/api/variables?year=${encodeURIComponent(year)}`);
+    const data = await response.json();
+    meses = data.meses || [];
+    filas = data.filas || [];
+    campanias = data.campanias || [];
+    popularFormulario();
+    popularFiltros();
+    renderVariable();
+}
+
+function popularFormulario() {
+    document.getElementById('mesSelect').innerHTML = meses.map(mes =>
+        `<option value="${escapeHtml(mes.value)}">${escapeHtml(mes.label)}</option>`
+    ).join('');
+    document.getElementById('campaniaSelect').innerHTML = '<option value="">Seleccionar campaña</option>' + campanias.map(item =>
+        `<option value="${encodeURIComponent(JSON.stringify(item))}">${escapeHtml(item.label)}</option>`
+    ).join('');
+    document.getElementById('porcentajeInput').value = '0';
+}
+
+function popularFiltros() {
+    const clienteActual = document.getElementById('filtroCliente').value;
+    const campaniaActual = document.getElementById('filtroCampania').value;
+    const clientes = [...new Set(filas.map(item => item.cliente).filter(Boolean))].sort();
+    document.getElementById('filtroCliente').innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(cliente =>
+        `<option value="${escapeHtml(cliente)}" ${cliente === clienteActual ? 'selected' : ''}>${escapeHtml(cliente)}</option>`
+    ).join('');
+    actualizarFiltroCampania(campaniaActual);
+}
+
+function actualizarFiltroCampania(valorActual = document.getElementById('filtroCampania').value) {
+    const cliente = document.getElementById('filtroCliente').value;
+    const opciones = filas.filter(item => !cliente || item.cliente === cliente);
+    const campaniasFiltro = [...new Set(opciones.map(item => item.campania).filter(Boolean))].sort();
+    document.getElementById('filtroCampania').innerHTML = '<option value="">Todas las campañas</option>' + campaniasFiltro.map(campania =>
+        `<option value="${escapeHtml(campania)}" ${campania === valorActual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
+    ).join('');
+}
+
+async function guardarVariable(event) {
+    event.preventDefault();
+    const rawCampania = document.getElementById('campaniaSelect').value;
+    if (!rawCampania) {
+        mostrarMensaje('Seleccioná una campaña.', false);
+        return;
+    }
+    const campania = JSON.parse(decodeURIComponent(rawCampania));
+    const payload = {
+        site: campania.site,
+        cliente: campania.cliente,
+        campania: campania.campania,
+        mes: document.getElementById('mesSelect').value,
+        porcentaje: document.getElementById('porcentajeInput').value,
+    };
+    const response = await fetch('/api/variables', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        mostrarMensaje((data.errores || ['No se pudo guardar la variable']).join(', '), false);
+        return;
+    }
+    mostrarMensaje('Variable guardada. Podés deshacerla desde Historial.', true);
+    await cargarVariable();
+}
+
+function renderVariable() {
+    const busqueda = normalizar(document.getElementById('buscarVariable').value);
+    const cliente = document.getElementById('filtroCliente').value;
+    const campania = document.getElementById('filtroCampania').value;
+    const visibles = filas.filter(item => {
+        const texto = normalizar(`${item.site} ${item.cliente} ${item.campania}`);
+        return (!busqueda || texto.includes(busqueda))
+            && (!cliente || item.cliente === cliente)
+            && (!campania || item.campania === campania);
+    });
+
+    document.getElementById('theadVariable').innerHTML = `
+        <th class="sticky left-0 z-30 w-[160px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Site</th>
+        <th class="sticky left-[160px] z-30 w-[190px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Cliente</th>
+        <th class="sticky left-[350px] z-30 w-[240px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Campaña</th>
+        <th class="w-[130px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3 text-center font-semibold">Total</th>
+        ${meses.map(mes => `<th class="w-[110px] border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">${escapeHtml(mes.label)}</th>`).join('')}
+    `;
+
+    const totalMeses = Object.fromEntries(meses.map(mes => [mes.value, 0]));
+    let total = 0;
+    visibles.forEach(item => {
+        total += Number(item.total || 0);
+        meses.forEach(mes => totalMeses[mes.value] += Number((item.meses || {})[mes.value] || 0));
+    });
+
+    const totalRow = `
+        <tr class="bg-blue-50 font-bold text-blue-950">
+            <td class="sticky left-0 z-10 border-b border-r border-blue-100 bg-blue-50 px-3 py-3">TOTAL</td>
+            <td class="sticky left-[160px] z-10 border-b border-r border-blue-100 bg-blue-50 px-3 py-3"></td>
+            <td class="sticky left-[350px] z-10 border-b border-r border-blue-100 bg-blue-50 px-3 py-3">GENERAL</td>
+            <td class="border-b border-r border-blue-100 px-3 py-3 text-center tabular-nums">${formatoMoneda(total)}</td>
+            ${meses.map(mes => `<td class="border-b border-r border-blue-100 px-3 py-3 text-center tabular-nums">${formatoMoneda(totalMeses[mes.value])}</td>`).join('')}
+        </tr>`;
+
+    const rows = visibles.map(item => `
+        <tr class="hover:bg-slate-50">
+            <td class="sticky left-0 z-10 border-b border-r border-slate-200 bg-white px-3 py-3">${escapeHtml(item.site || '')}</td>
+            <td class="sticky left-[160px] z-10 border-b border-r border-slate-200 bg-white px-3 py-3">${escapeHtml(item.cliente || '')}</td>
+            <td class="sticky left-[350px] z-10 border-b border-r border-slate-200 bg-white px-3 py-3 font-semibold">${escapeHtml(item.campania || '')}</td>
+            <td class="border-b border-r border-slate-200 bg-slate-50 px-3 py-3 text-center font-semibold tabular-nums">${formatoMoneda(item.total || 0)}</td>
+            ${meses.map(mes => `
+                <td class="border-b border-r border-slate-200 px-3 py-2 text-center tabular-nums">
+                    <div class="font-semibold">${formatoMoneda((item.meses || {})[mes.value] || 0)}</div>
+                    <div class="text-xs text-slate-500">${formatoPorcentaje((item.porcentajes || {})[mes.value] || 0)}</div>
+                </td>
+            `).join('')}
+        </tr>
+    `).join('');
+
+    document.getElementById('tbodyVariable').innerHTML = totalRow + (rows || `<tr><td colspan="${meses.length + 4}" class="px-4 py-8 text-center text-slate-500">Sin resultados para los filtros seleccionados.</td></tr>`);
+    document.getElementById('contadorVariable').textContent = `${visibles.length} campaña(s), total ${formatoMoneda(total)}`;
+}
+
+function mostrarMensaje(texto, ok) {
+    const mensaje = document.getElementById('mensajeVariable');
+    mensaje.textContent = texto;
+    mensaje.className = `mx-4 mb-4 rounded-md px-3 py-2 text-sm ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`;
+}
+
+function formatoMoneda(valor) {
+    return '$ ' + Math.round(Number(valor || 0)).toLocaleString('es-AR');
+}
+
+function formatoPorcentaje(valor) {
+    return `${Number(valor || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })}%`;
+}
+
+function normalizar(valor) {
+    return String(valor || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[char]));
+}
+</script>
+{% endblock %}
