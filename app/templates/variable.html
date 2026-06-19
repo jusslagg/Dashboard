@@ -29,7 +29,7 @@
             <p class="text-xs text-slate-500">Solo aparecen campañas con Facturación horas.</p>
         </div>
     </div>
-    <form id="formVariable" class="grid grid-cols-1 gap-3 p-4 lg:grid-cols-[minmax(260px,1.4fr)_180px_150px_auto] lg:items-end" onsubmit="guardarVariable(event)">
+    <form id="formVariable" class="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 xl:grid-cols-[minmax(280px,1fr)_170px_150px_auto] xl:items-end" onsubmit="guardarVariable(event)">
         <label class="block">
             <span class="mb-1 block text-xs font-semibold text-slate-600">Campaña</span>
             <select id="campaniaSelect" required class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
@@ -52,7 +52,7 @@
 
 <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
     <div class="border-b border-slate-200 px-4 py-3">
-        <div class="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_1fr_1fr]">
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(220px,1fr)_minmax(220px,360px)_minmax(220px,360px)_minmax(240px,380px)]">
             <div>
                 <h2 class="font-semibold text-gray-950">Resultado variable</h2>
                 <p id="contadorVariable" class="mt-1 text-xs text-slate-500">Cargando datos...</p>
@@ -63,7 +63,8 @@
         </div>
     </div>
     <div class="overflow-x-auto">
-        <table class="w-full min-w-[1700px] border-separate border-spacing-0 text-sm">
+        <table class="w-full min-w-[1640px] table-fixed border-separate border-spacing-0 text-sm">
+            <colgroup id="colgroupVariable"></colgroup>
             <thead class="sticky top-0 z-20 bg-slate-100 text-slate-900">
                 <tr id="theadVariable"></tr>
             </thead>
@@ -168,12 +169,19 @@ function renderVariable() {
             && (!campania || item.campania === campania);
     });
 
+    document.getElementById('colgroupVariable').innerHTML = `
+        <col class="w-[170px]">
+        <col class="w-[210px]">
+        <col class="w-[260px]">
+        <col class="w-[120px]">
+        ${meses.map(() => '<col class="w-[95px]">').join('')}
+    `;
     document.getElementById('theadVariable').innerHTML = `
-        <th class="sticky left-0 z-30 w-[160px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Site</th>
-        <th class="sticky left-[160px] z-30 w-[190px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Cliente</th>
-        <th class="sticky left-[350px] z-30 w-[240px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Campaña</th>
-        <th class="w-[130px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3 text-center font-semibold">Total</th>
-        ${meses.map(mes => `<th class="w-[110px] border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">${escapeHtml(mes.label)}</th>`).join('')}
+        <th class="border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Site</th>
+        <th class="border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Cliente</th>
+        <th class="border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Campaña</th>
+        <th class="border-b border-r border-blue-200 bg-blue-100 px-3 py-3 text-center font-semibold">Total</th>
+        ${meses.map(mes => `<th class="border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">${escapeHtml(mes.label)}</th>`).join('')}
     `;
 
     const totalMeses = Object.fromEntries(meses.map(mes => [mes.value, 0]));
@@ -185,18 +193,18 @@ function renderVariable() {
 
     const totalRow = `
         <tr class="bg-blue-50 font-bold text-blue-950">
-            <td class="sticky left-0 z-10 border-b border-r border-blue-100 bg-blue-50 px-3 py-3">TOTAL</td>
-            <td class="sticky left-[160px] z-10 border-b border-r border-blue-100 bg-blue-50 px-3 py-3"></td>
-            <td class="sticky left-[350px] z-10 border-b border-r border-blue-100 bg-blue-50 px-3 py-3">GENERAL</td>
+            <td class="border-b border-r border-blue-100 bg-blue-50 px-3 py-3">TOTAL</td>
+            <td class="border-b border-r border-blue-100 bg-blue-50 px-3 py-3"></td>
+            <td class="border-b border-r border-blue-100 bg-blue-50 px-3 py-3">GENERAL</td>
             <td class="border-b border-r border-blue-100 px-3 py-3 text-center tabular-nums">${formatoMoneda(total)}</td>
             ${meses.map(mes => `<td class="border-b border-r border-blue-100 px-3 py-3 text-center tabular-nums">${formatoMoneda(totalMeses[mes.value])}</td>`).join('')}
         </tr>`;
 
     const rows = visibles.map(item => `
         <tr class="hover:bg-slate-50">
-            <td class="sticky left-0 z-10 border-b border-r border-slate-200 bg-white px-3 py-3">${escapeHtml(item.site || '')}</td>
-            <td class="sticky left-[160px] z-10 border-b border-r border-slate-200 bg-white px-3 py-3">${escapeHtml(item.cliente || '')}</td>
-            <td class="sticky left-[350px] z-10 border-b border-r border-slate-200 bg-white px-3 py-3 font-semibold">${escapeHtml(item.campania || '')}</td>
+            <td class="border-b border-r border-slate-200 bg-white px-3 py-3 align-middle">${escapeHtml(item.site || '')}</td>
+            <td class="border-b border-r border-slate-200 bg-white px-3 py-3 align-middle">${escapeHtml(item.cliente || '')}</td>
+            <td class="border-b border-r border-slate-200 bg-white px-3 py-3 align-middle font-semibold leading-snug">${escapeHtml(item.campania || '')}</td>
             <td class="border-b border-r border-slate-200 bg-slate-50 px-3 py-3 text-center font-semibold tabular-nums">${formatoMoneda(item.total || 0)}</td>
             ${meses.map(mes => `
                 <td class="border-b border-r border-slate-200 px-3 py-2 text-center tabular-nums">
