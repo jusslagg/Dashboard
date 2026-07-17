@@ -1,0 +1,118 @@
+{% extends "layout.html" %}
+
+{% block title %}Suma fija - Facturación{% endblock %}
+
+{% block content %}
+<div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Proyectados · Variable</p>
+        <h1 class="text-3xl font-bold text-gray-950">Variable</h1>
+        <p class="mt-1 text-sm text-slate-500">Importe mensual definido por la dotación de cada cuenta. Se suma a Facturación horas como Fijo mensual.</p>
+    </div>
+    <div class="flex gap-2">
+        <select id="yearFiltro" onchange="cargar()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm">
+            <option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+        </select>
+        <button type="button" onclick="cargar()" class="h-10 rounded-md bg-slate-900 px-4 text-sm font-semibold text-white">Actualizar</button>
+    </div>
+</div>
+
+<div class="mb-4 inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1">
+    <a href="/variable" class="rounded-md px-4 py-2 text-sm font-semibold text-slate-600">% Variable</a>
+    <a href="/variable" class="rounded-md px-4 py-2 text-sm font-semibold text-slate-600">Estimación variable</a>
+    <a href="/variable" class="rounded-md px-4 py-2 text-sm font-semibold text-slate-600">Tarifación</a>
+    <a href="/variable" class="rounded-md px-4 py-2 text-sm font-semibold text-slate-600">Next Gen</a>
+    <span class="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Suma fija</span>
+</div>
+
+<section class="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h2 class="font-semibold text-gray-950">Importes por cuenta y mes</h2>
+            <p id="contador" class="text-xs text-slate-500">Cargando...</p>
+        </div>
+        <input id="buscar" type="search" oninput="render()" placeholder="Buscar cliente o campaña..." class="h-10 w-full rounded-md border border-gray-300 px-3 text-sm sm:w-80">
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-[1900px] w-full border-separate border-spacing-0 text-sm">
+            <thead class="sticky top-0 z-20 bg-slate-100"><tr id="cabecera"></tr></thead>
+            <tbody id="cuerpo"><tr><td class="p-8 text-center text-slate-500">Cargando...</td></tr></tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let meses = [];
+let filas = [];
+
+document.addEventListener('DOMContentLoaded', cargar);
+
+async function cargar() {
+    const year = document.getElementById('yearFiltro').value;
+    const response = await fetch(`/api/suma-fija?year=${encodeURIComponent(year)}`, {credentials: 'same-origin'});
+    const data = await response.json();
+    if (!response.ok || !data.success) return alert('No se pudo cargar Suma fija');
+    meses = data.meses || [];
+    filas = data.filas || [];
+    render();
+}
+
+function normalizar(valor) {
+    return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function escapeHtml(valor) {
+    return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+
+function render() {
+    const filtro = normalizar(document.getElementById('buscar').value);
+    const visibles = filas.filter(f => !filtro || normalizar(`${f.site} ${f.cliente} ${f.campania}`).includes(filtro));
+    document.getElementById('cabecera').innerHTML = `
+        <th class="sticky left-0 z-30 min-w-[170px] border-b border-r border-slate-300 bg-slate-100 px-3 py-3 text-left">Site</th>
+        <th class="sticky left-[170px] z-30 min-w-[210px] border-b border-r border-slate-300 bg-slate-100 px-3 py-3 text-left">Cliente</th>
+        <th class="sticky left-[380px] z-30 min-w-[240px] border-b border-r border-slate-300 bg-slate-100 px-3 py-3 text-left">Campaña</th>
+        ${meses.map(m => `<th class="min-w-[135px] border-b border-r border-slate-300 px-3 py-3 text-center">${escapeHtml(m.label)}</th>`).join('')}`;
+    document.getElementById('cuerpo').innerHTML = visibles.map((fila, index) => {
+        const bg = index % 2 ? 'bg-slate-50' : 'bg-white';
+        return `<tr class="${bg}">
+            <td class="sticky left-0 border-b border-r border-slate-200 ${bg} px-3 py-2">${escapeHtml(fila.site || 'Sin site')}</td>
+            <td class="sticky left-[170px] border-b border-r border-slate-200 ${bg} px-3 py-2">${escapeHtml(fila.cliente)}</td>
+            <td class="sticky left-[380px] border-b border-r border-slate-200 ${bg} px-3 py-2 font-semibold">${escapeHtml(fila.campania)}</td>
+            ${meses.map(m => {
+                const dato = fila.meses[m.value] || {id:null,monto:0};
+                return `<td class="border-b border-r border-slate-200 p-1.5">
+                    <input type="number" step="0.01" min="0" value="${dato.monto || 0}" ${dato.id ? '' : 'disabled'}
+                        onchange="guardar(${dato.id || 'null'}, this)"
+                        onfocus="this.select()" class="h-9 w-full rounded border border-slate-300 bg-white px-2 text-right tabular-nums disabled:bg-slate-100">
+                </td>`;
+            }).join('')}
+        </tr>`;
+    }).join('') || `<tr><td colspan="${meses.length + 3}" class="p-8 text-center text-slate-500">Sin resultados.</td></tr>`;
+    document.getElementById('contador').textContent = `${visibles.length} campaña(s). Los cambios se guardan al salir del campo.`;
+}
+
+async function guardar(id, input) {
+    if (!id) return;
+    input.disabled = true;
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const response = await fetch('/api/suma-fija', {
+        method: 'POST', credentials: 'same-origin',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+        body: JSON.stringify({id, monto: input.value}),
+    });
+    const data = await response.json();
+    input.disabled = false;
+    if (!response.ok || !data.success) {
+        alert((data.errores || ['No se pudo guardar']).join(' | '));
+        await cargar();
+        return;
+    }
+    input.value = data.registro.monto;
+    input.classList.add('border-emerald-500', 'bg-emerald-50');
+    setTimeout(() => input.classList.remove('border-emerald-500', 'bg-emerald-50'), 900);
+}
+</script>
+{% endblock %}

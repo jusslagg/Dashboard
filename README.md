@@ -875,6 +875,8 @@ La identificación es editable directamente desde el lápiz de la columna **Site
 
 Las proyecciones comunes se calculan por cada apertura de campaña, respetando su precio y porcentaje variable, y después se consolidan bajo el cliente. Si una apertura no tiene proyección propia para un mes, se utiliza la proyección base del cliente como respaldo. PLP conserva como excepción sus clasificaciones Personal, Personal CX, Personal Soporte y Personal SMB.
 
+Los importes de **Suma fija** se guardan como `importe_fijo_mensual` dentro de `matriz_precios`. Facturación horas los incorpora como concepto `Fijo mensual`, separado de Horas, Variable, Tarifación y Next Gen. Para 2026 incluye los importes por dotación de Assurant, BBVA Seguros, OMINT y Qualia Cencosud, además de los importes fijos propios que ya existan, como Bice.
+
 Permite:
 
 - filtrar por site, cliente, campaña y concepto;
@@ -1101,6 +1103,7 @@ Rutas HTML:
 /matriz
 /matriz-proyecciones
 /matriz-precios
+/suma-fija
 /resumen
 /variable
 /control-proyecciones
@@ -1129,6 +1132,7 @@ APIs destacadas:
 /api/personal-distribucion
 /api/matriz-precios
 /api/matriz-precios/inflacion
+/api/suma-fija
 /api/resumen-proyeccion
 /api/variables
 /api/variables/template

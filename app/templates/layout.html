@@ -96,7 +96,7 @@
                         <a href="/resumen" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/resumen' %}active{% endif %}">
                             <i class="fas fa-file-invoice-dollar w-6"></i><span class="sidebar-text">Facturación horas</span>
                         </a>
-                        <a href="/variable" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/variable' %}active{% endif %}">
+                        <a href="/variable" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path in ['/variable', '/suma-fija'] %}active{% endif %}">
                             <i class="fas fa-percent w-6"></i><span class="sidebar-text">Variable</span>
                         </a>
                         <a href="/control-proyecciones" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/control-proyecciones' %}active{% endif %}">

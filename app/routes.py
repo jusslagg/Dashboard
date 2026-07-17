@@ -1932,6 +1932,13 @@ def matriz_precios():
     return render_template('matriz_precios.html')
 
 
+@main_bp.route('/suma-fija')
+@login_requerido
+def suma_fija():
+    """Importes mensuales por dotación que integran Facturación horas."""
+    return render_template('suma_fija.html')
+
+
 @main_bp.route('/resumen')
 @login_requerido
 def resumen():
@@ -4785,6 +4792,59 @@ def api_matriz_proyecciones():
             {**registro.to_dict(), 'mes_label': etiqueta_mes_proyeccion(registro.mes)}
             for registro in registros
         ],
+    })
+
+
+@main_bp.route('/api/suma-fija', methods=['GET'])
+@login_requerido
+def api_suma_fija():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    meses_info = opciones_meses_proyeccion(year)
+    meses = [item['value'] for item in meses_info]
+    registros = ProyeccionPrecio.query.filter(ProyeccionPrecio.mes.in_(meses)).order_by(
+        ProyeccionPrecio.cliente, ProyeccionPrecio.campania, ProyeccionPrecio.mes,
+    ).all()
+    filas = {}
+    for registro in registros:
+        clave = (registro.cliente, registro.campania)
+        fila = filas.setdefault(clave, {
+            'site': registro.site or '',
+            'cliente': registro.cliente,
+            'campania': registro.campania,
+            'meses': {mes: {'id': None, 'monto': 0} for mes in meses},
+        })
+        fila['meses'][registro.mes] = {
+            'id': registro.id,
+            'monto': round(registro.importe_fijo_mensual or 0, 2),
+        }
+    return jsonify({
+        'success': True, 'year': year, 'meses': meses_info,
+        'filas': list(filas.values()),
+    })
+
+
+@main_bp.route('/api/suma-fija', methods=['POST'])
+@login_requerido
+def api_guardar_suma_fija():
+    data = request.get_json(silent=True) or {}
+    precio_id = data.get('id')
+    monto = parse_numero(data.get('monto'))
+    if monto < 0:
+        return jsonify({'success': False, 'errores': ['La suma fija no puede ser negativa']}), 400
+    precio = ProyeccionPrecio.query.get_or_404(precio_id)
+    antes = precio.to_dict()
+    precio.importe_fijo_mensual = monto
+    db.session.flush()
+    registrar_historial(
+        'edicion', 'matriz_precios', precio.id,
+        f'Suma fija > {precio.cliente} / {precio.campania} / {precio.mes}: {monto}',
+        detalle='Importe mensual por dotación aplicado en Facturación horas',
+        antes={'precios': [antes]}, despues={'precios': [precio.to_dict()]},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True, 'mensaje': 'Suma fija actualizada',
+        'registro': {'id': precio.id, 'monto': round(precio.importe_fijo_mensual or 0, 2)},
     })
 
 
