@@ -402,9 +402,12 @@ function renderFila(item, index) {
     const esTotal = item.tipo === 'total_site';
     const rowClass = esTotal ? 'bg-slate-100 font-bold text-slate-950' : (index % 2 === 0 ? 'bg-white hover:bg-blue-50/40' : 'bg-slate-50/70 hover:bg-blue-50/40');
     const stickyClass = esTotal ? 'bg-slate-100' : (index % 2 === 0 ? 'bg-white' : 'bg-slate-50');
+    const siteActual = item.site || 'Sin site';
+    const ajuste = encodeAttr(JSON.stringify({site: siteActual, cliente: item.cliente || '', campania: item.campania || '', origenes: item.origenes || []}));
+    const siteCell = esTotal ? escapeHtml(siteActual) : `<button type="button" onclick="editarIdentidadProyeccion('${ajuste}')" class="inline-flex items-center gap-1 rounded px-2 py-1 text-left text-xs font-semibold ${normalizar(siteActual) === 'sin site' || normalizar(siteActual) === 'n/a' ? 'bg-amber-100 text-amber-900' : 'text-slate-700 hover:bg-slate-100'}"><span>${escapeHtml(siteActual)}</span><i data-lucide="pencil" class="h-3 w-3"></i></button>`;
     return `
         <tr class="${rowClass}">
-            <td class="sticky left-0 z-10 min-w-[150px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2.5 text-left">${escapeHtml(item.site || '')}</td>
+            <td class="sticky left-0 z-10 min-w-[150px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2.5 text-left">${siteCell}</td>
             <td class="sticky left-[150px] z-10 min-w-[190px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2.5 text-left">${escapeHtml(item.cliente || '')}</td>
             <td class="sticky left-[340px] z-10 min-w-[240px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2.5 text-left font-semibold">${escapeHtml(item.campania)}</td>
             <td class="min-w-[130px] border-b border-r border-slate-200 px-3 py-2.5 text-left">${badgeConcepto(item.concepto)}</td>
@@ -412,6 +415,33 @@ function renderFila(item, index) {
             ${meses.map(mes => `<td class="min-w-[135px] border-b border-r border-slate-200 px-3 py-2.5 text-right tabular-nums">${formatCurrency(item.meses[mes.value])}</td>`).join('')}
         </tr>
     `;
+}
+
+async function editarIdentidadProyeccion(ajusteRaw) {
+    const ajuste = JSON.parse(decodeURIComponent(ajusteRaw));
+    const site = prompt(`Ingresá el site o gerencia para:\n${ajuste.cliente} / ${ajuste.campania}`, ['Sin site', 'N/A'].includes(ajuste.site) ? '' : ajuste.site);
+    if (site === null || !site.trim()) return;
+    const cliente = prompt('Cliente con el que debe consolidarse:', ajuste.cliente);
+    if (cliente === null || !cliente.trim()) return;
+    const campania = prompt('Campaña con la que debe consolidarse:', ajuste.campania);
+    if (campania === null || !campania.trim()) return;
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const response = await fetch('/api/sites-proyeccion', {
+        method: 'POST', credentials: 'same-origin',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+        body: JSON.stringify({
+            origenes: ajuste.origenes.length ? ajuste.origenes : [{cliente: ajuste.cliente, campania: ajuste.campania}],
+            cliente_destino: cliente.trim(),
+            campania_destino: campania.trim(),
+            site: site.trim(),
+        }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        alert((data.errores || ['No se pudo actualizar la identificación']).join(' | '));
+        return;
+    }
+    await cargarResumen();
 }
 
 function badgeConcepto(concepto) {
@@ -509,6 +539,10 @@ function escapeHtml(value) {
         '"': '&quot;',
         "'": '&#39;',
     }[char]));
+}
+
+function encodeAttr(value) {
+    return encodeURIComponent(String(value || '')).replace(/'/g, '%27');
 }
 
 function crearIconos() {

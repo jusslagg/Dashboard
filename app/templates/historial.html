@@ -15,6 +15,8 @@
             <option value="creacion">Creacion</option>
             <option value="edicion">Edicion</option>
             <option value="eliminacion">Eliminacion</option>
+            <option value="importacion">Importacion</option>
+            <option value="deshacer">Deshacer</option>
         </select>
         <select id="filtroEntidad" onchange="cargarHistorial()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todas las areas</option>
@@ -23,6 +25,9 @@
             <option value="proyeccion_matriz">Proyecciones</option>
             <option value="matriz_precios">Precios</option>
             <option value="variables">Variable</option>
+            <option value="tarifaciones">Variable - Tarifacion</option>
+            <option value="next_gen">Variable - Next Gen</option>
+            <option value="sites_proyeccion">Facturación horas - Sites</option>
             <option value="usuario">Usuarios</option>
         </select>
         <button onclick="cargarHistorial()" class="h-10 rounded bg-slate-800 px-4 text-sm font-semibold text-white hover:bg-slate-700">
@@ -172,11 +177,11 @@ function parseDetalle(detalle) {
 }
 
 function labelAccion(accion) {
-    return { creacion: 'Creacion', edicion: 'Edicion', eliminacion: 'Eliminacion', deshacer: 'Deshacer' }[accion] || accion;
+    return { creacion: 'Creación', edicion: 'Edición', eliminacion: 'Eliminación', importacion: 'Importación', deshacer: 'Deshacer' }[accion] || accion;
 }
 
 function labelEntidad(entidad) {
-    return { facturacion: 'Facturación', asignacion: 'Datos maestros', proyeccion_matriz: 'Proyecciones', matriz_precios: 'Precios', variables: 'Variable', usuario: 'Usuarios' }[entidad] || entidad;
+    return { facturacion: 'Facturación real', asignacion: 'Datos maestros', proyeccion_matriz: 'Proyecciones / Matriz', matriz_precios: 'Proyecciones / Precios', variables: 'Variable / % Variable', tarifaciones: 'Variable / Tarifación', next_gen: 'Variable / Next Gen', sites_proyeccion: 'Facturación horas / Sites', usuario: 'Usuarios' }[entidad] || entidad;
 }
 
 function badgeAccion(accion) {
@@ -187,7 +192,7 @@ function badgeAccion(accion) {
 }
 
 function puedeDeshacer(item) {
-    return item && ['proyeccion_matriz', 'matriz_precios', 'variables'].includes(item.entidad) && item.accion !== 'deshacer';
+    return item && ['proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion'].includes(item.entidad) && item.accion !== 'deshacer';
 }
 
 async function deshacerMovimiento(id) {

@@ -353,6 +353,12 @@ class ProyeccionMatriz(db.Model):
     dias_objetivo = db.Column(db.Integer, default=0, nullable=False)
     horas_requeridas = db.Column(db.Float, default=0, nullable=False)
     porcentaje_cumplimiento = db.Column(db.Float, default=100, nullable=False)
+    tiene_nocturnidad = db.Column(db.Boolean, default=False, nullable=False)
+    porcentaje_nocturnidad = db.Column(db.Float, default=0, nullable=False)
+    tipo_plp = db.Column(db.String(30), nullable=True)
+    horas_carga_manual = db.Column(db.Boolean, default=False, nullable=False)
+    dias_objetivo_manual = db.Column(db.Integer, nullable=True)
+    horas_requeridas_manual = db.Column(db.Float, nullable=True)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     jornadas = db.relationship(
@@ -384,6 +390,12 @@ class ProyeccionMatriz(db.Model):
             'dias_objetivo': self.dias_objetivo or 0,
             'horas_requeridas': self.horas_requeridas or 0,
             'porcentaje_cumplimiento': self.porcentaje_cumplimiento or 0,
+            'tiene_nocturnidad': bool(self.tiene_nocturnidad),
+            'porcentaje_nocturnidad': self.porcentaje_nocturnidad or 0,
+            'tipo_plp': self.tipo_plp or '',
+            'horas_carga_manual': bool(self.horas_carga_manual),
+            'dias_objetivo_manual': self.dias_objetivo_manual,
+            'horas_requeridas_manual': self.horas_requeridas_manual,
             'horas_proyectadas': round(self.horas_proyectadas, 2),
             'jornadas': [jornada.to_dict() for jornada in self.jornadas],
             'creado_en': self.creado_en.isoformat() if self.creado_en else None,
@@ -410,6 +422,36 @@ class ProyeccionMatrizJornada(db.Model):
             'carga_horaria': self.carga_horaria or 0,
             'dias_objetivo': self.dias_objetivo or 0,
             'horas_requeridas': round(self.horas_requeridas or 0, 2),
+        }
+
+
+class PersonalDistribucionHoras(db.Model):
+    __tablename__ = 'personal_distribucion_horas'
+
+    id = db.Column(db.Integer, primary_key=True)
+    servicio = db.Column(db.String(100), nullable=False, index=True)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    mes = db.Column(db.String(7), nullable=False, index=True)
+    porcentaje_diurno = db.Column(db.Float, default=100, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('servicio', 'mes', name='uq_personal_distribucion_servicio_mes'),
+    )
+
+    @property
+    def porcentaje_nocturno(self):
+        return max(0, 100 - (self.porcentaje_diurno or 0))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'servicio': self.servicio,
+            'year': self.year,
+            'mes': self.mes,
+            'porcentaje_diurno': self.porcentaje_diurno or 0,
+            'porcentaje_nocturno': self.porcentaje_nocturno,
         }
 
 
@@ -482,6 +524,95 @@ class VariableCampania(db.Model):
             'porcentaje': self.porcentaje or 0,
             'creado_en': self.creado_en.isoformat() if self.creado_en else None,
             'actualizado_en': self.actualizado_en.isoformat() if self.actualizado_en else None,
+        }
+
+
+class TarifacionCampania(db.Model):
+    __tablename__ = 'tarifaciones_campanias'
+
+    id = db.Column(db.Integer, primary_key=True)
+    site = db.Column(db.String(100), nullable=True)
+    cliente = db.Column(db.String(100), nullable=False)
+    campania = db.Column(db.String(100), nullable=False)
+    concepto = db.Column(db.String(100), default='Tarifación', nullable=False)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    mes = db.Column(db.String(7), nullable=False, index=True)
+    monto = db.Column(db.Float, default=0, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('cliente', 'campania', 'concepto', 'mes', name='uq_tarifacion_campania_concepto_mes'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'site': self.site or '', 'cliente': self.cliente,
+            'campania': self.campania, 'concepto': self.concepto,
+            'year': self.year, 'mes': self.mes, 'monto': self.monto or 0,
+        }
+
+
+class NextGenDolar(db.Model):
+    __tablename__ = 'next_gen_dolar'
+
+    id = db.Column(db.Integer, primary_key=True)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    mes = db.Column(db.String(7), nullable=False, unique=True, index=True)
+    valor = db.Column(db.Float, default=0, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {'id': self.id, 'year': self.year, 'mes': self.mes, 'valor': self.valor or 0}
+
+
+class NextGenProducto(db.Model):
+    __tablename__ = 'next_gen_productos'
+
+    id = db.Column(db.Integer, primary_key=True)
+    site = db.Column(db.String(100), nullable=True)
+    cliente = db.Column(db.String(100), nullable=False)
+    campania = db.Column(db.String(100), nullable=False)
+    producto = db.Column(db.String(160), nullable=False)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    mes = db.Column(db.String(7), nullable=False, index=True)
+    cantidad_usd = db.Column(db.Float, default=0, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('cliente', 'campania', 'producto', 'mes', name='uq_next_gen_producto_mes'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'site': self.site or '', 'cliente': self.cliente,
+            'campania': self.campania, 'producto': self.producto,
+            'year': self.year, 'mes': self.mes, 'cantidad_usd': self.cantidad_usd or 0,
+        }
+
+
+class SiteProyeccion(db.Model):
+    __tablename__ = 'sites_proyecciones'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente = db.Column(db.String(100), nullable=False)
+    campania = db.Column(db.String(160), nullable=False)
+    site = db.Column(db.String(100), nullable=False)
+    cliente_destino = db.Column(db.String(100), nullable=True)
+    campania_destino = db.Column(db.String(160), nullable=True)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('cliente', 'campania', name='uq_site_proyeccion_cliente_campania'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'cliente': self.cliente, 'campania': self.campania, 'site': self.site,
+            'cliente_destino': self.cliente_destino or '', 'campania_destino': self.campania_destino or '',
         }
 
 

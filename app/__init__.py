@@ -179,6 +179,12 @@ def ensure_schema():
             'carga_semanal': "ALTER TABLE matriz_proyecciones ADD COLUMN carga_semanal VARCHAR(20) DEFAULT 'L a V'",
             'carga_horaria': 'ALTER TABLE matriz_proyecciones ADD COLUMN carga_horaria FLOAT DEFAULT 0',
             'dias_objetivo': 'ALTER TABLE matriz_proyecciones ADD COLUMN dias_objetivo INTEGER DEFAULT 0',
+            'tiene_nocturnidad': 'ALTER TABLE matriz_proyecciones ADD COLUMN tiene_nocturnidad BOOLEAN DEFAULT 0',
+            'porcentaje_nocturnidad': 'ALTER TABLE matriz_proyecciones ADD COLUMN porcentaje_nocturnidad FLOAT DEFAULT 0',
+            'tipo_plp': 'ALTER TABLE matriz_proyecciones ADD COLUMN tipo_plp VARCHAR(30)',
+            'horas_carga_manual': 'ALTER TABLE matriz_proyecciones ADD COLUMN horas_carga_manual BOOLEAN DEFAULT 0',
+            'dias_objetivo_manual': 'ALTER TABLE matriz_proyecciones ADD COLUMN dias_objetivo_manual INTEGER',
+            'horas_requeridas_manual': 'ALTER TABLE matriz_proyecciones ADD COLUMN horas_requeridas_manual FLOAT',
         }
         for column, statement in proyeccion_missing_columns.items():
             if column not in proyeccion_columns:
@@ -198,6 +204,25 @@ def ensure_schema():
             SET dias_objetivo = 0
             WHERE dias_objetivo IS NULL
         """))
+        db.session.execute(text("""
+            UPDATE matriz_proyecciones
+            SET tiene_nocturnidad = 0, porcentaje_nocturnidad = 0
+            WHERE tiene_nocturnidad IS NULL OR porcentaje_nocturnidad IS NULL
+        """))
+        db.session.execute(text("""
+            UPDATE matriz_proyecciones
+            SET horas_carga_manual = 0
+            WHERE horas_carga_manual IS NULL
+        """))
+        db.session.execute(text("""
+            UPDATE matriz_proyecciones
+            SET cliente = 'Personal'
+            WHERE tipo_plp IS NOT NULL
+              AND tipo_plp != ''
+              AND cliente != 'Personal'
+        """))
+        db.session.commit()
+        asegurar_distribucion_personal_inicial()
 
     if inspector.has_table('matriz_precios'):
         precio_columns = {column['name'] for column in inspector.get_columns('matriz_precios')}
@@ -223,6 +248,13 @@ def ensure_schema():
                 )
                 WHERE site IS NULL OR site = ''
             """))
+
+    if inspector.has_table('sites_proyecciones'):
+        site_columns = {column['name'] for column in inspector.get_columns('sites_proyecciones')}
+        if 'cliente_destino' not in site_columns:
+            db.session.execute(text("ALTER TABLE sites_proyecciones ADD COLUMN cliente_destino VARCHAR(100)"))
+        if 'campania_destino' not in site_columns:
+            db.session.execute(text("ALTER TABLE sites_proyecciones ADD COLUMN campania_destino VARCHAR(160)"))
 
     columns = {column['name'] for column in inspector.get_columns('facturacion_2026')}
     missing_columns = {
@@ -317,3 +349,49 @@ def asegurar_administrador_inicial_db():
             despues='{"rol": "administrador"}',
         ))
     db.session.commit()
+
+
+def asegurar_distribucion_personal_inicial():
+    from app.models import PersonalDistribucionHoras, ProyeccionMatriz
+
+    valores = {
+        'Personal CX': [98.16796694772124, 96.11765302091567, 90.08499357215123, 93.08592324475397, 91.12527178069466, 93.75060264177098, 91.39669824176157, 93.81087110649403, 91.99630306566439, 88.76005792692392, 89.80150318528723, 88.70580382605068],
+        'Personal': [94.08837911163839, 94.2975562866131, 86.06926288070605, 91.86256843714347, 92.18224768429545, 92.44647182529847, 88.23584619838472, 92.93451439600867, 89.83343814025947, 90.84041720493514, 91.81609953736157, 90.85042955924541],
+        'Personal Soporte': [79.46650447358854, 80.4847455095552, 71.14105709600506, 71.25708060209251, 82.69712955112763, 69.38766319665987, 65.47509735717676, 65.73781910354595, 68.50213925809712, 76.54533345298616, 78.59332882295669, 67.11558415411434],
+        'Personal SMB': [97.19048607720376, 97.22019802994073, 96.61545016353689, 96.45611517854402, 94.69738664033223, 97.81764486445577, 91.16740061359158, 91.80295034769298, 91.92734071504796, 91.92734178359599, 91.92734152924741, 91.92734327010287],
+    }
+    existentes = {
+        (fila.servicio, fila.mes)
+        for fila in PersonalDistribucionHoras.query.filter_by(year=2026).all()
+    }
+    agregados = False
+    for servicio, porcentajes in valores.items():
+        for numero_mes, porcentaje in enumerate(porcentajes, start=1):
+            mes = f'2026-{numero_mes:02d}'
+            if (servicio, mes) in existentes:
+                continue
+            db.session.add(PersonalDistribucionHoras(
+                servicio=servicio,
+                year=2026,
+                mes=mes,
+                porcentaje_diurno=porcentaje,
+            ))
+            agregados = True
+    configuraciones = {
+        (fila.servicio.casefold(), fila.mes): fila
+        for fila in PersonalDistribucionHoras.query.all()
+    }
+    actualizados = False
+    nombres = {nombre.casefold(): nombre for nombre in valores}
+    for proyeccion in ProyeccionMatriz.query.all():
+        servicio = nombres.get((proyeccion.tipo_plp or '').strip().casefold()) or nombres.get((proyeccion.campania or '').strip().casefold()) or nombres.get((proyeccion.cliente or '').strip().casefold())
+        if not servicio:
+            continue
+        distribucion = configuraciones.get((servicio.casefold(), proyeccion.mes))
+        porcentaje_nocturno = distribucion.porcentaje_nocturno if distribucion else 0
+        if proyeccion.porcentaje_nocturnidad != porcentaje_nocturno or proyeccion.tiene_nocturnidad != (porcentaje_nocturno > 0):
+            proyeccion.porcentaje_nocturnidad = porcentaje_nocturno
+            proyeccion.tiene_nocturnidad = porcentaje_nocturno > 0
+            actualizados = True
+    if agregados or actualizados:
+        db.session.commit()

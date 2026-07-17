@@ -1,13 +1,14 @@
 ﻿# filepath: app/routes.py
 from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, session, url_for
 from app import db, get_csrf_token
-from app.models import AsignacionComercial, Facturacion2026, FeriadoOperativo, HistorialCambio, JustificacionAjuste, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, ROLES_USUARIO, Usuario, VariableCampania, redondear_moneda
+from app.models import AsignacionComercial, Facturacion2026, FeriadoOperativo, HistorialCambio, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, ROLES_USUARIO, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
 import calendar
 from sqlalchemy import func
 from html import escape
 from html.parser import HTMLParser
 from functools import wraps
+from difflib import SequenceMatcher
 import csv
 import io
 import json
@@ -509,6 +510,14 @@ def normalizar_header(valor):
     return ' '.join(texto.split())
 
 
+def normalizar_site(valor):
+    site = str(valor or '').strip()
+    clave = normalizar_header(site).replace(' ', '')
+    if 'multicuent' in clave or 'multicampan' in clave:
+        return 'Gerencia Multicampaña'
+    return site
+
+
 def normalizar_tipo_vh(valor):
     texto = str(valor or '').strip()
     if normalizar_header(texto) == 'personal cobranzas':
@@ -884,6 +893,17 @@ def query_por_asignacion(asignacion):
     return Facturacion2026.query.filter_by(**filtros_asignacion(asignacion))
 
 
+def obtener_o_crear_asignacion(campos):
+    asignacion = AsignacionComercial.query.filter_by(**campos).first()
+    if asignacion:
+        asignacion.activa = True
+        return asignacion, False
+    asignacion = AsignacionComercial(**campos)
+    db.session.add(asignacion)
+    db.session.flush()
+    return asignacion, True
+
+
 TIPOS_JUSTIFICACION = {
     'bonos': 'Bonos',
     'penalizaciones': 'Penalizaciones',
@@ -1166,26 +1186,146 @@ def calcular_dias_objetivo(year, mes_numero, carga_semanal, feriados=None):
     return dias
 
 
+SERVICIOS_PERSONAL = ('Personal CX', 'Personal', 'Personal Soporte', 'Personal SMB')
+
+SITES_NEXT_GEN_ORIGINALES = {
+    normalizar_header('Johnson & Johnson'): 'Gerencia Multicampaña',
+    normalizar_header('Mirgor'): 'Gerencia Multicampaña',
+    normalizar_header('Mirgor BBTI'): 'Gerencia Multicampaña',
+    normalizar_header('OpenPay'): 'Gerencia Multicampaña',
+    normalizar_header('Supervielle Seguros'): 'Gerencia Multicampaña',
+    normalizar_header('Yamaha'): 'Gerencia Multicampaña',
+    normalizar_header('Bi Bank'): 'Gerencia Multicampaña',
+    normalizar_header('Santander Consumer'): 'Mariano Quesada',
+    normalizar_header('APM - TERMINAL 4'): 'N/A',
+    normalizar_header('Banco Credicoop'): 'N/A',
+    normalizar_header('Almundo'): 'N/A',
+    normalizar_header('BAPRO'): 'N/A',
+    normalizar_header('ANDREANI'): 'N/A',
+}
+
+
+def site_original_next_gen(cliente, campania, fallback='Sin site'):
+    return (
+        SITES_NEXT_GEN_ORIGINALES.get(normalizar_header(campania))
+        or SITES_NEXT_GEN_ORIGINALES.get(normalizar_header(cliente))
+        or fallback
+    )
+
+
+def buscar_proyeccion_plp(tipo_plp, campania, mes):
+    """Encuentra una campaña PLP aunque Excel cambie acentos o traiga texto dañado."""
+    candidatas = ProyeccionMatriz.query.filter_by(cliente='Personal', mes=mes).filter(
+        ProyeccionMatriz.tipo_plp == tipo_plp,
+    ).all()
+    clave_buscada = ''.join(caracter for caracter in normalizar_header(campania) if caracter.isalnum())
+    for candidata in candidatas:
+        clave_candidata = ''.join(
+            caracter for caracter in normalizar_header(candidata.campania) if caracter.isalnum()
+        )
+        if clave_candidata == clave_buscada:
+            return candidata
+
+    mejor = None
+    mejor_ratio = 0
+    for candidata in candidatas:
+        if '\ufffd' not in str(candidata.campania or '') and '\ufffd' not in str(campania or ''):
+            continue
+        clave_candidata = ''.join(
+            caracter for caracter in normalizar_header(candidata.campania) if caracter.isalnum()
+        )
+        ratio = SequenceMatcher(None, clave_buscada, clave_candidata).ratio()
+        if ratio > mejor_ratio:
+            mejor, mejor_ratio = candidata, ratio
+    return mejor if mejor_ratio >= 0.88 else None
+
+
+def servicio_personal_identificado(cliente, campania, tipo_plp=None):
+    por_nombre = {normalizar_header(nombre): nombre for nombre in SERVICIOS_PERSONAL}
+    return por_nombre.get(normalizar_header(tipo_plp)) or por_nombre.get(normalizar_header(campania)) or por_nombre.get(normalizar_header(cliente))
+
+
+def distribucion_personal(cliente, campania, mes, tipo_plp=None):
+    servicio = servicio_personal_identificado(cliente, campania, tipo_plp)
+    if not servicio:
+        return None
+    exacta = PersonalDistribucionHoras.query.filter_by(servicio=servicio, mes=mes).first()
+    if exacta:
+        return exacta
+    try:
+        year, numero_mes = int(mes[:4]), mes[-2:]
+    except (TypeError, ValueError):
+        return None
+    return PersonalDistribucionHoras.query.filter(
+        PersonalDistribucionHoras.servicio == servicio,
+        PersonalDistribucionHoras.year < year,
+        PersonalDistribucionHoras.mes.like(f'%-{numero_mes}'),
+    ).order_by(PersonalDistribucionHoras.year.desc()).first()
+
+
+def mes_plp_importado(valor, year):
+    directo = mes_valido(str(valor or '').strip())
+    if directo:
+        return directo
+    texto = normalizar_header(valor).replace('_', '-').replace('/', '-').replace(' ', '-')
+    partes = [parte for parte in texto.split('-') if parte]
+    if len(partes) < 2:
+        return None
+    meses_por_nombre = {normalizar_header(label): numero for numero, label in MESES_PROYECCION}
+    numero = meses_por_nombre.get(partes[0][:3])
+    if not numero:
+        return None
+    try:
+        year_valor = int(partes[-1])
+    except ValueError:
+        return None
+    if year_valor < 100:
+        year_valor += 2000
+    return f'{year_valor}-{numero}' if year_valor == year else None
+
+
 def aplicar_calculo_proyeccion(proyeccion, valores, mes, feriados=None):
     year = int(mes[:4])
     mes_numero = int(mes[-2:])
-    jornadas = valores.get('jornadas') or [{
+    horas_carga_manual = bool(valores.get('horas_carga_manual'))
+    jornadas = [] if horas_carga_manual else (valores.get('jornadas') or [{
         'dotacion_requerida': valores.get('dotacion_requerida') or 0,
         'carga_semanal': valores.get('carga_semanal'),
         'carga_horaria': valores.get('carga_horaria') or 0,
-    }]
+    }])
     jornadas_calculadas = []
     dotacion_total = 0
     horas_total = 0
     dias_objetivo_total = 0
     carga_semanal_resumen = normalizar_carga_semanal(jornadas[0].get('carga_semanal') if jornadas else None)
     carga_horaria_resumen = jornadas[0].get('carga_horaria') if jornadas else 0
+    dias_objetivo_manual = valores.get('dias_objetivo_manual')
+    horas_requeridas_override = valores.get('horas_requeridas_override')
+
+    if horas_carga_manual:
+        horas_manual = valores.get('horas_requeridas_manual') or 0
+        porcentaje_cumplimiento_manual = valores.get('porcentaje_cumplimiento') or 0
+        horas_finales = horas_manual * porcentaje_cumplimiento_manual / 100
+        carga_semanal_resumen = normalizar_carga_semanal(valores.get('carga_semanal_plp') or 'L a V')
+        carga_horaria_resumen = valores.get('carga_horaria_plp') or 6
+        dias_laborales = calcular_dias_objetivo(year, mes_numero, carga_semanal_resumen, feriados)
+        dotacion_calculada = horas_finales / dias_laborales / carga_horaria_resumen if dias_laborales else 0
+        dotacion_total = dotacion_calculada
+        horas_total = horas_manual
+        dias_objetivo_total = dias_laborales
+        jornadas_calculadas.append({
+            'dotacion_requerida': dotacion_calculada,
+            'carga_semanal': carga_semanal_resumen,
+            'carga_horaria': carga_horaria_resumen,
+            'dias_objetivo': dias_laborales,
+            'horas_requeridas': horas_manual,
+        })
 
     for jornada in jornadas:
         dotacion = jornada.get('dotacion_requerida') or 0
         carga_semanal = normalizar_carga_semanal(jornada.get('carga_semanal'))
         carga_horaria = jornada.get('carga_horaria') or 0
-        dias_objetivo = calcular_dias_objetivo(year, mes_numero, carga_semanal, feriados)
+        dias_objetivo = dias_objetivo_manual if dias_objetivo_manual is not None else calcular_dias_objetivo(year, mes_numero, carga_semanal, feriados)
         horas_requeridas = dotacion * dias_objetivo * carga_horaria
         dotacion_total += dotacion
         horas_total += horas_requeridas
@@ -1198,6 +1338,9 @@ def aplicar_calculo_proyeccion(proyeccion, valores, mes, feriados=None):
             'horas_requeridas': horas_requeridas,
         })
 
+    if not horas_carga_manual and horas_requeridas_override is not None:
+        horas_total = horas_requeridas_override
+
     proyeccion.cliente = valores['cliente']
     proyeccion.campania = valores['campania']
     proyeccion.year = year
@@ -1208,6 +1351,13 @@ def aplicar_calculo_proyeccion(proyeccion, valores, mes, feriados=None):
     proyeccion.dias_objetivo = dias_objetivo_total
     proyeccion.horas_requeridas = horas_total
     proyeccion.porcentaje_cumplimiento = valores.get('porcentaje_cumplimiento') or 0
+    proyeccion.tipo_plp = valores.get('tipo_plp') or None
+    proyeccion.horas_carga_manual = horas_carga_manual
+    proyeccion.dias_objetivo_manual = None if horas_carga_manual else dias_objetivo_manual
+    proyeccion.horas_requeridas_manual = None if horas_carga_manual else horas_requeridas_override
+    distribucion = distribucion_personal(valores['cliente'], valores['campania'], mes, proyeccion.tipo_plp)
+    proyeccion.tiene_nocturnidad = bool(distribucion and distribucion.porcentaje_nocturno > 0)
+    proyeccion.porcentaje_nocturnidad = distribucion.porcentaje_nocturno if distribucion else 0
     proyeccion.jornadas = [
         ProyeccionMatrizJornada(**jornada)
         for jornada in jornadas_calculadas
@@ -1237,8 +1387,40 @@ def recalcular_proyecciones_mes(year, mes_numero):
             'campania': proyeccion.campania,
             'jornadas': jornadas,
             'porcentaje_cumplimiento': proyeccion.porcentaje_cumplimiento,
+            'tiene_nocturnidad': proyeccion.tiene_nocturnidad,
+            'porcentaje_nocturnidad': proyeccion.porcentaje_nocturnidad,
+            'tipo_plp': proyeccion.tipo_plp,
+            'horas_carga_manual': proyeccion.horas_carga_manual,
+            'horas_requeridas_manual': proyeccion.horas_requeridas,
+            'carga_semanal_plp': proyeccion.carga_semanal,
+            'carga_horaria_plp': proyeccion.carga_horaria,
+            'dias_objetivo_manual': proyeccion.dias_objetivo_manual,
+            'horas_requeridas_override': proyeccion.horas_requeridas_manual,
         }
         aplicar_calculo_proyeccion(proyeccion, valores, mes, feriados)
+    return len(proyecciones)
+
+
+def recalcular_proyecciones_plp_year(year):
+    meses = [item['value'] for item in opciones_meses_proyeccion(year)]
+    proyecciones = ProyeccionMatriz.query.filter(
+        ProyeccionMatriz.mes.in_(meses),
+        ProyeccionMatriz.tipo_plp.isnot(None),
+        ProyeccionMatriz.tipo_plp != '',
+    ).all()
+    feriados = fechas_feriadas_activas(year)
+    for proyeccion in proyecciones:
+        aplicar_calculo_proyeccion(proyeccion, {
+            'cliente': 'Personal',
+            'campania': proyeccion.campania,
+            'tipo_plp': proyeccion.tipo_plp,
+            'horas_carga_manual': True,
+            'horas_requeridas_manual': proyeccion.horas_requeridas,
+            'carga_semanal_plp': proyeccion.carga_semanal,
+            'carga_horaria_plp': proyeccion.carga_horaria,
+            'porcentaje_cumplimiento': proyeccion.porcentaje_cumplimiento,
+            'jornadas': [],
+        }, proyeccion.mes, feriados)
     return len(proyecciones)
 
 
@@ -1274,6 +1456,12 @@ def restaurar_proyeccion_snapshot(proyeccion, snapshot):
     proyeccion.dias_objetivo = snapshot.get('dias_objetivo') or 0
     proyeccion.horas_requeridas = snapshot.get('horas_requeridas') or 0
     proyeccion.porcentaje_cumplimiento = snapshot.get('porcentaje_cumplimiento') or 0
+    proyeccion.tiene_nocturnidad = bool(snapshot.get('tiene_nocturnidad'))
+    proyeccion.porcentaje_nocturnidad = snapshot.get('porcentaje_nocturnidad') or 0
+    proyeccion.tipo_plp = snapshot.get('tipo_plp') or None
+    proyeccion.horas_carga_manual = bool(snapshot.get('horas_carga_manual'))
+    proyeccion.dias_objetivo_manual = snapshot.get('dias_objetivo_manual')
+    proyeccion.horas_requeridas_manual = snapshot.get('horas_requeridas_manual')
     proyeccion.jornadas = [
         ProyeccionMatrizJornada(
             dotacion_requerida=jornada.get('dotacion_requerida') or 0,
@@ -1337,6 +1525,76 @@ def restaurar_variable_snapshot(variable, snapshot):
     variable.porcentaje = snapshot.get('porcentaje') or 0
 
 
+def buscar_tarifacion_snapshot(snapshot):
+    if not snapshot:
+        return None
+    if snapshot.get('id'):
+        encontrada = db.session.get(TarifacionCampania, snapshot['id'])
+        if encontrada:
+            return encontrada
+    return TarifacionCampania.query.filter_by(
+        cliente=snapshot.get('cliente'), campania=snapshot.get('campania'),
+        concepto=snapshot.get('concepto'), mes=snapshot.get('mes'),
+    ).first()
+
+
+def restaurar_tarifacion_snapshot(registro, snapshot):
+    registro.site = snapshot.get('site') or ''
+    registro.cliente = snapshot.get('cliente') or ''
+    registro.campania = snapshot.get('campania') or ''
+    registro.concepto = snapshot.get('concepto') or 'Tarifación'
+    registro.year = int(snapshot.get('year') or str(snapshot.get('mes', '0'))[:4] or 0)
+    registro.mes = snapshot.get('mes') or ''
+    registro.monto = snapshot.get('monto') or 0
+
+
+def buscar_next_gen_snapshot(snapshot):
+    if not snapshot:
+        return None
+    modelo = NextGenDolar if snapshot.get('tipo_registro') == 'dolar' else NextGenProducto
+    if snapshot.get('id'):
+        encontrado = db.session.get(modelo, snapshot['id'])
+        if encontrado:
+            return encontrado
+    if modelo is NextGenDolar:
+        return NextGenDolar.query.filter_by(mes=snapshot.get('mes')).first()
+    return NextGenProducto.query.filter_by(
+        cliente=snapshot.get('cliente'), campania=snapshot.get('campania'),
+        producto=snapshot.get('producto'), mes=snapshot.get('mes'),
+    ).first()
+
+
+def restaurar_next_gen_snapshot(registro, snapshot):
+    registro.year = int(snapshot.get('year') or str(snapshot.get('mes', '0'))[:4] or 0)
+    registro.mes = snapshot.get('mes') or ''
+    if isinstance(registro, NextGenDolar):
+        registro.valor = snapshot.get('valor') or 0
+    else:
+        registro.site = snapshot.get('site') or ''
+        registro.cliente = snapshot.get('cliente') or ''
+        registro.campania = snapshot.get('campania') or ''
+        registro.producto = snapshot.get('producto') or ''
+        registro.cantidad_usd = snapshot.get('cantidad_usd') or 0
+
+
+def buscar_site_proyeccion_snapshot(snapshot):
+    if not snapshot:
+        return None
+    if snapshot.get('id'):
+        encontrado = db.session.get(SiteProyeccion, snapshot['id'])
+        if encontrado:
+            return encontrado
+    return SiteProyeccion.query.filter_by(cliente=snapshot.get('cliente'), campania=snapshot.get('campania')).first()
+
+
+def restaurar_site_proyeccion_snapshot(registro, snapshot):
+    registro.cliente = snapshot.get('cliente') or ''
+    registro.campania = snapshot.get('campania') or ''
+    registro.site = snapshot.get('site') or ''
+    registro.cliente_destino = snapshot.get('cliente_destino') or None
+    registro.campania_destino = snapshot.get('campania_destino') or None
+
+
 def lista_snapshots_historial(value):
     if not value:
         return []
@@ -1344,6 +1602,18 @@ def lista_snapshots_historial(value):
         return value['proyecciones']
     if isinstance(value, dict) and isinstance(value.get('precios'), list):
         return value['precios']
+    if isinstance(value, dict) and isinstance(value.get('variables'), list):
+        return value['variables']
+    if isinstance(value, dict) and isinstance(value.get('tarifaciones'), list):
+        return value['tarifaciones']
+    if isinstance(value, dict) and isinstance(value.get('next_gen'), list):
+        return value['next_gen']
+    if isinstance(value, dict) and isinstance(value.get('sites_proyeccion'), list):
+        return value['sites_proyeccion']
+    if isinstance(value, dict) and value.get('tipo_registro') in ('dolar', 'producto'):
+        return [value]
+    if isinstance(value, dict) and {'cliente', 'campania', 'site'}.issubset(value.keys()) and 'mes' not in value:
+        return [value]
     if isinstance(value, dict) and {'cliente', 'campania', 'mes'}.issubset(value.keys()):
         return [value]
     if isinstance(value, list):
@@ -1399,6 +1669,18 @@ def existe_variable_snapshot(snapshot):
         campania=snapshot.get('campania'),
         mes=snapshot.get('mes'),
     ).first() is not None
+
+
+def existe_tarifacion_snapshot(snapshot):
+    return buscar_tarifacion_snapshot(snapshot) is not None if snapshot else False
+
+
+def existe_next_gen_snapshot(snapshot):
+    return buscar_next_gen_snapshot(snapshot) is not None if snapshot else False
+
+
+def existe_site_proyeccion_snapshot(snapshot):
+    return buscar_site_proyeccion_snapshot(snapshot) is not None if snapshot else False
 
 
 def metricas_matriz(registros):
@@ -1923,9 +2205,9 @@ def deshacer_item_historial(item):
         return {'success': False, 'errores': ['Este movimiento ya es un deshacer']}, 400
     if historial_movimiento_deshace(item.id):
         return {'success': False, 'errores': ['Este movimiento ya fue deshecho']}, 400
-    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables')
+    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion')
     if item.entidad not in entidades_permitidas:
-        return {'success': False, 'errores': ['Por ahora solo se pueden deshacer movimientos de proyecciones, precios y variables']}, 400
+        return {'success': False, 'errores': ['Este tipo de movimiento todavía no admite deshacer']}, 400
 
     antes = item._json(item.antes) or {}
     despues = item._json(item.despues) or {}
@@ -1940,6 +2222,12 @@ def deshacer_item_historial(item):
             actual = buscar_precio_snapshot(despues_snapshot) or buscar_precio_snapshot(antes_snapshot)
         elif item.entidad == 'variables':
             actual = buscar_variable_snapshot(despues_snapshot) or buscar_variable_snapshot(antes_snapshot)
+        elif item.entidad == 'tarifaciones':
+            actual = buscar_tarifacion_snapshot(despues_snapshot) or buscar_tarifacion_snapshot(antes_snapshot)
+        elif item.entidad == 'next_gen':
+            actual = buscar_next_gen_snapshot(despues_snapshot) or buscar_next_gen_snapshot(antes_snapshot)
+        elif item.entidad == 'sites_proyeccion':
+            actual = buscar_site_proyeccion_snapshot(despues_snapshot) or buscar_site_proyeccion_snapshot(antes_snapshot)
         else:
             actual = buscar_proyeccion_snapshot(despues_snapshot) or buscar_proyeccion_snapshot(antes_snapshot)
         if antes_snapshot:
@@ -1948,6 +2236,13 @@ def deshacer_item_historial(item):
                     actual = ProyeccionPrecio()
                 elif item.entidad == 'variables':
                     actual = VariableCampania()
+                elif item.entidad == 'tarifaciones':
+                    actual = TarifacionCampania()
+                elif item.entidad == 'next_gen':
+                    snapshot_base = antes_snapshot or despues_snapshot or {}
+                    actual = NextGenDolar() if snapshot_base.get('tipo_registro') == 'dolar' else NextGenProducto()
+                elif item.entidad == 'sites_proyeccion':
+                    actual = SiteProyeccion()
                 else:
                     actual = ProyeccionMatriz()
                 db.session.add(actual)
@@ -1955,6 +2250,12 @@ def deshacer_item_historial(item):
                 restaurar_precio_snapshot(actual, antes_snapshot)
             elif item.entidad == 'variables':
                 restaurar_variable_snapshot(actual, antes_snapshot)
+            elif item.entidad == 'tarifaciones':
+                restaurar_tarifacion_snapshot(actual, antes_snapshot)
+            elif item.entidad == 'next_gen':
+                restaurar_next_gen_snapshot(actual, antes_snapshot)
+            elif item.entidad == 'sites_proyeccion':
+                restaurar_site_proyeccion_snapshot(actual, antes_snapshot)
             else:
                 restaurar_proyeccion_snapshot(actual, antes_snapshot)
         elif actual:
@@ -1979,6 +2280,15 @@ def deshacer_item_historial(item):
         elif item.entidad == 'variables':
             existe_antes = existe_variable_snapshot(antes_snapshot)
             existe_despues = existe_variable_snapshot(despues_snapshot)
+        elif item.entidad == 'tarifaciones':
+            existe_antes = existe_tarifacion_snapshot(antes_snapshot)
+            existe_despues = existe_tarifacion_snapshot(despues_snapshot)
+        elif item.entidad == 'next_gen':
+            existe_antes = existe_next_gen_snapshot(antes_snapshot)
+            existe_despues = existe_next_gen_snapshot(despues_snapshot)
+        elif item.entidad == 'sites_proyeccion':
+            existe_antes = existe_site_proyeccion_snapshot(antes_snapshot)
+            existe_despues = existe_site_proyeccion_snapshot(despues_snapshot)
         else:
             existe_antes = existe_proyeccion_snapshot(antes_snapshot)
             existe_despues = existe_proyeccion_snapshot(despues_snapshot)
@@ -2487,6 +2797,29 @@ def payload_proyeccion(data):
     campania = str(data.get('campania') or '').strip()
     mes = str(data.get('mes') or '').strip()
     errores = []
+    tipo_plp = str(data.get('tipo_plp') or '').strip()
+    horas_carga_manual = bool(tipo_plp)
+    if tipo_plp:
+        cliente = 'Personal'
+        campania = str(data.get('campania_plp') or campania).strip()
+    horas_requeridas_manual = 0
+    carga_semanal_plp = normalizar_carga_semanal(data.get('carga_semanal_plp') or 'L a V')
+    try:
+        carga_horaria_plp = parse_numero(data.get('carga_horaria_plp') if data.get('carga_horaria_plp') not in (None, '') else 6)
+    except ValueError:
+        carga_horaria_plp = 0
+        errores.append('La jornada laboral PLP no es válida')
+    if tipo_plp:
+        if tipo_plp not in SERVICIOS_PERSONAL:
+            errores.append('El tipo PLP no es válido')
+        try:
+            horas_requeridas_manual = parse_numero(data.get('horas_requeridas_manual'))
+        except ValueError:
+            errores.append('Las horas PLP no son válidas')
+        if horas_requeridas_manual < 0:
+            errores.append('Las horas PLP no pueden ser negativas')
+        if carga_horaria_plp <= 0:
+            errores.append('La jornada laboral PLP debe ser mayor a cero')
 
     try:
         year = int(data.get('year') or (mes.split('-')[0] if '-' in mes else datetime.utcnow().year))
@@ -2509,6 +2842,33 @@ def payload_proyeccion(data):
     except ValueError:
         porcentaje_cumplimiento = 0
         errores.append('Hay valores numericos con formato invalido')
+
+    dias_objetivo_manual = None
+    horas_requeridas_override = None
+    if not tipo_plp:
+        try:
+            if data.get('dias_objetivo_manual') not in (None, ''):
+                dias_objetivo_manual = int(parse_numero(data.get('dias_objetivo_manual')))
+            if data.get('horas_requeridas_override') not in (None, ''):
+                horas_requeridas_override = parse_numero(data.get('horas_requeridas_override'))
+        except (TypeError, ValueError):
+            errores.append('Los días u horas manuales no tienen un formato válido')
+        if dias_objetivo_manual is not None and dias_objetivo_manual <= 0:
+            errores.append('Los días hábiles manuales deben ser mayores a cero')
+        if horas_requeridas_override is not None and horas_requeridas_override < 0:
+            errores.append('Las horas requeridas manuales no pueden ser negativas')
+
+    es_personal = 'personal' in normalizar_header(f'{cliente} {campania}')
+    tiene_nocturnidad = bool(data.get('tiene_nocturnidad')) and es_personal
+    try:
+        porcentaje_nocturnidad = parse_numero(data.get('porcentaje_nocturnidad') or 0)
+    except ValueError:
+        porcentaje_nocturnidad = 0
+        errores.append('El porcentaje de nocturnidad no es valido')
+    if tiene_nocturnidad and not (0 < porcentaje_nocturnidad < 100):
+        errores.append('El porcentaje de nocturnidad debe ser mayor a 0 y menor a 100')
+    if not tiene_nocturnidad:
+        porcentaje_nocturnidad = 0
 
     jornadas = []
     raw_jornadas = data.get('jornadas') if isinstance(data.get('jornadas'), list) else []
@@ -2538,7 +2898,7 @@ def payload_proyeccion(data):
                 'carga_horaria': carga_horaria,
             })
 
-    if not jornadas:
+    if not jornadas and not horas_carga_manual:
         errores.append('Debe cargar al menos una jornada con dotacion y carga horaria')
     if porcentaje_cumplimiento < 0:
         errores.append('El porcentaje de cumplimiento no puede ser negativo')
@@ -2552,6 +2912,15 @@ def payload_proyeccion(data):
             'mes': mes,
             'jornadas': jornadas,
             'porcentaje_cumplimiento': porcentaje_cumplimiento,
+            'tiene_nocturnidad': tiene_nocturnidad,
+            'porcentaje_nocturnidad': porcentaje_nocturnidad,
+            'tipo_plp': tipo_plp,
+            'horas_carga_manual': horas_carga_manual,
+            'horas_requeridas_manual': horas_requeridas_manual,
+            'carga_semanal_plp': carga_semanal_plp,
+            'carga_horaria_plp': carga_horaria_plp,
+            'dias_objetivo_manual': dias_objetivo_manual,
+            'horas_requeridas_override': horas_requeridas_override,
         }
     }
 
@@ -2843,7 +3212,8 @@ def api_guardar_matriz_precio():
     guardados = []
     antes = []
     site_asignado = valores.get('site') or sites_por_clave_precio(valores['cliente'], valores['campania']) or ''
-    for mes in meses_proyeccion_desde(valores['mes']):
+    meses_a_guardar = [valores['mes']] if valores.get('horas_carga_manual') else meses_proyeccion_desde(valores['mes'])
+    for mes in meses_a_guardar:
         precio = ProyeccionPrecio.query.filter_by(
             cliente=valores['cliente'],
             campania=valores['campania'],
@@ -3162,10 +3532,24 @@ def construir_resumen_proyeccion_data(year):
     meses = [item['value'] for item in meses_info]
 
     asociaciones = AsignacionComercial.query.filter_by(activa=True).all()
+    sites_regularizados = {
+        (normalizar_header(registro.cliente), normalizar_nombre_variable(registro.campania)): registro
+        for registro in SiteProyeccion.query.all()
+    }
+
+    def regularizacion(cliente, campania):
+        clave_campania = normalizar_nombre_variable(campania)
+        if clave_campania.endswith(' nocturnidad'):
+            clave_campania = clave_campania[:-len(' nocturnidad')]
+        return sites_regularizados.get((normalizar_header(cliente), clave_campania))
+
+    def site_regularizado(cliente, campania):
+        registro = regularizacion(cliente, campania)
+        return registro.site if registro else None
     sites_por_clave = {}
     sites_por_nombre = {}
     for asignacion in asociaciones:
-        site_asignado = asignacion.gerente or asignacion.jefe_site or 'Sin site'
+        site_asignado = normalizar_site(asignacion.gerente or asignacion.jefe_site or 'Sin site')
         sites_por_clave.setdefault((asignacion.cliente, asignacion.campania), site_asignado)
         sites_por_nombre.setdefault(normalizar_header(asignacion.campania), site_asignado)
         sites_por_nombre.setdefault(normalizar_header(asignacion.cliente), site_asignado)
@@ -3174,6 +3558,7 @@ def construir_resumen_proyeccion_data(year):
     precios = ProyeccionPrecio.query.filter(ProyeccionPrecio.mes.in_(meses)).all()
     precios_por_clave = {}
     precios_por_nombre = {}
+    precios_por_nombre_variable = {}
     for precio in precios:
         site_precio = (
             (precio.site or '').strip()
@@ -3184,6 +3569,8 @@ def construir_resumen_proyeccion_data(year):
         precios_por_clave[(precio.cliente, precio.campania, precio.mes)] = precio
         precios_por_nombre.setdefault((normalizar_header(precio.campania), precio.mes), precio)
         precios_por_nombre.setdefault((normalizar_header(precio.cliente), precio.mes), precio)
+        precios_por_nombre_variable.setdefault((normalizar_nombre_variable(precio.campania), precio.mes), precio)
+        precios_por_nombre_variable.setdefault((normalizar_nombre_variable(precio.cliente), precio.mes), precio)
 
     filas = []
     total_general = {mes: 0 for mes in meses}
@@ -3198,32 +3585,91 @@ def construir_resumen_proyeccion_data(year):
         )
         if not precio:
             continue
-        site = (
+        site = 'Personal' if proyeccion.tipo_plp else (
             (precio.site or '').strip()
             or sites_por_clave.get(clave)
             or sites_por_nombre.get(normalizar_header(proyeccion.campania))
             or sites_por_nombre.get(normalizar_header(proyeccion.cliente))
-            or 'Next Gen'
+            or site_original_next_gen(proyeccion.cliente, proyeccion.campania)
         )
-        valor = (proyeccion.horas_proyectadas or 0) * (precio.precio_final or 0)
-        fila_clave = (site, proyeccion.cliente, proyeccion.campania, 'Horas')
+        site = normalizar_site(site)
+        if normalizar_header(site) == 'next gen':
+            site = site_original_next_gen(proyeccion.cliente, proyeccion.campania)
+        for nombre_campania, horas, _ in aperturas_nocturnidad(proyeccion):
+            site_apertura = normalizar_site(site_regularizado(proyeccion.cliente, nombre_campania) or site)
+            precio_apertura = precios_por_nombre_variable.get(
+                (normalizar_nombre_variable(nombre_campania), proyeccion.mes),
+                precio,
+            )
+            valor = horas * (precio_apertura.precio_final or 0)
+            fila_clave = (site_apertura, proyeccion.cliente, nombre_campania, 'Horas')
+            fila = next((item for item in filas if item['clave'] == fila_clave), None)
+            if not fila:
+                fila = {
+                    'clave': fila_clave,
+                    'site': site_apertura,
+                    'cliente': proyeccion.cliente,
+                    'campania': nombre_campania,
+                    'campania_facturacion': nombre_campania if proyeccion.tipo_plp else proyeccion.cliente,
+                    'concepto': 'Horas',
+                    'meses': {mes: 0 for mes in meses},
+                    'total': 0,
+                }
+                filas.append(fila)
+            fila['meses'][proyeccion.mes] += valor
+            fila['total'] += valor
+            total_general[proyeccion.mes] += valor
+            totales_por_site.setdefault(site_apertura, {mes: 0 for mes in meses})
+            totales_por_site[site_apertura][proyeccion.mes] += valor
+
+    # Si una apertura no tiene proyección propia en un mes, usa la proyección
+    # base de su cliente. La relación apertura→cliente se aprende de los otros
+    # meses cargados (caso Unicef Activos+Leads en enero).
+    cliente_por_apertura = {
+        normalizar_nombre_variable(item.campania): item.cliente
+        for item in proyecciones
+        if normalizar_nombre_variable(item.campania) != normalizar_nombre_variable(item.cliente)
+        and not item.tipo_plp
+    }
+    proyecciones_exactas = {
+        (normalizar_nombre_variable(item.campania), item.mes) for item in proyecciones
+    }
+    proyeccion_base = {
+        (normalizar_header(item.cliente), item.mes): item
+        for item in proyecciones
+        if normalizar_nombre_variable(item.campania) == normalizar_nombre_variable(item.cliente)
+        and not item.tipo_plp
+    }
+    for precio in precios:
+        clave_apertura = normalizar_nombre_variable(precio.campania)
+        cliente_padre = cliente_por_apertura.get(clave_apertura)
+        if not cliente_padre or (clave_apertura, precio.mes) in proyecciones_exactas:
+            continue
+        base = proyeccion_base.get((normalizar_header(cliente_padre), precio.mes))
+        if not base:
+            continue
+        site = normalizar_site(
+            site_regularizado(cliente_padre, precio.campania)
+            or (precio.site or '').strip()
+            or sites_por_clave.get((cliente_padre, precio.campania))
+            or sites_por_nombre.get(normalizar_header(cliente_padre))
+            or 'Sin site'
+        )
+        valor = (base.horas_proyectadas or 0) * (precio.precio_final or 0)
+        fila_clave = (site, cliente_padre, precio.campania, 'Horas')
         fila = next((item for item in filas if item['clave'] == fila_clave), None)
         if not fila:
             fila = {
-                'clave': fila_clave,
-                'site': site,
-                'cliente': proyeccion.cliente,
-                'campania': proyeccion.campania,
-                'concepto': 'Horas',
-                'meses': {mes: 0 for mes in meses},
-                'total': 0,
+                'clave': fila_clave, 'site': site, 'cliente': cliente_padre,
+                'campania': precio.campania, 'campania_facturacion': cliente_padre,
+                'concepto': 'Horas', 'meses': {mes: 0 for mes in meses}, 'total': 0,
             }
             filas.append(fila)
-        fila['meses'][proyeccion.mes] += valor
+        fila['meses'][precio.mes] += valor
         fila['total'] += valor
-        total_general[proyeccion.mes] += valor
+        total_general[precio.mes] += valor
         totales_por_site.setdefault(site, {mes: 0 for mes in meses})
-        totales_por_site[site][proyeccion.mes] += valor
+        totales_por_site[site][precio.mes] += valor
 
     for precio in precios:
         valor = precio.importe_fijo_mensual or 0
@@ -3237,6 +3683,8 @@ def construir_resumen_proyeccion_data(year):
             or sites_por_nombre.get(normalizar_header(precio.cliente))
             or 'Sin site'
         )
+        site = normalizar_site(site)
+        site = normalizar_site(site_regularizado(precio.cliente, precio.campania) or site)
         fila_clave = (site, precio.cliente, precio.campania, 'Fijo mensual')
         fila = next((item for item in filas if item['clave'] == fila_clave), None)
         if not fila:
@@ -3255,6 +3703,108 @@ def construir_resumen_proyeccion_data(year):
         total_general[precio.mes] += valor
         totales_por_site.setdefault(site, {mes: 0 for mes in meses})
         totales_por_site[site][precio.mes] += valor
+
+    # Variable se incorpora como un concepto adicional de la misma campaña.
+    # El cruce ignora mayúsculas, minúsculas, acentos y alias de nocturnidad.
+    variables_year = VariableCampania.query.filter(VariableCampania.year <= year).all()
+    filas_horas = [item for item in filas if item['concepto'] == 'Horas']
+    for base in filas_horas:
+        for mes in meses:
+            candidatas = [item for item in variables_year
+                if normalizar_nombre_variable(item.campania) == normalizar_nombre_variable(base['campania'])
+                and item.mes.endswith(f'-{mes[-2:]}')
+                and (
+                    normalizar_header(item.cliente) == normalizar_header(base['cliente'])
+                    or normalizar_nombre_variable(item.cliente) == normalizar_nombre_variable(base['campania'])
+                )]
+            variable = max(candidatas, key=lambda item: item.year, default=None)
+            if not variable:
+                continue
+            valor = redondear_moneda(base['meses'][mes] * ((variable.porcentaje or 0) / 100))
+            fila_clave = (base['site'], base['cliente'], base['campania'], 'Variable')
+            fila = next((item for item in filas if item['clave'] == fila_clave), None)
+            if not fila:
+                fila = {
+                    'clave': fila_clave, 'site': base['site'], 'cliente': base['cliente'],
+                    'campania': base['campania'], 'concepto': 'Variable',
+                    'campania_facturacion': base.get('campania_facturacion'),
+                    'meses': {item: 0 for item in meses}, 'total': 0,
+                }
+                filas.append(fila)
+            fila['meses'][mes] += valor
+            fila['total'] += valor
+            total_general[mes] += valor
+            totales_por_site.setdefault(base['site'], {item: 0 for item in meses})
+            totales_por_site[base['site']][mes] += valor
+
+    # Tarifación es un concepto monetario independiente que integra
+    # Facturación horas y participa de sus totales con su propio signo.
+    tarifaciones = TarifacionCampania.query.filter(
+        TarifacionCampania.year == year,
+        TarifacionCampania.mes.in_(meses),
+    ).all()
+    for tarifacion in tarifaciones:
+        valor = tarifacion.monto or 0
+        base_coincidente = next((item for item in filas_horas
+            if normalizar_nombre_variable(item['campania']) == normalizar_nombre_variable(tarifacion.campania)
+            and (
+                normalizar_header(item['cliente']) == normalizar_header(tarifacion.cliente)
+                or normalizar_nombre_variable(item['campania']) == normalizar_nombre_variable(tarifacion.cliente)
+            )), None)
+        site = normalizar_site(base_coincidente['site'] if base_coincidente else ((tarifacion.site or '').strip() or 'Sin site'))
+        cliente = base_coincidente['cliente'] if base_coincidente else tarifacion.cliente
+        campania = base_coincidente['campania'] if base_coincidente else tarifacion.campania
+        concepto = tarifacion.concepto or 'Tarifación'
+        fila_clave = (site, cliente, campania, concepto)
+        fila = next((item for item in filas if item['clave'] == fila_clave), None)
+        if not fila:
+            fila = {
+                'clave': fila_clave, 'site': site, 'cliente': cliente,
+                'campania': campania, 'concepto': concepto,
+                'campania_facturacion': base_coincidente.get('campania_facturacion') if base_coincidente else tarifacion.cliente,
+                'meses': {mes: 0 for mes in meses}, 'total': 0,
+            }
+            filas.append(fila)
+        fila['meses'][tarifacion.mes] += valor
+        fila['total'] += valor
+        total_general[tarifacion.mes] += valor
+        totales_por_site.setdefault(site, {mes: 0 for mes in meses})
+        totales_por_site[site][tarifacion.mes] += valor
+
+    # Next Gen: cantidades mensuales en USD valorizadas con el dólar de cada mes.
+    dolares_next_gen = {r.mes: r.valor or 0 for r in NextGenDolar.query.filter_by(year=year).all()}
+    productos_next_gen = NextGenProducto.query.filter_by(year=year).all()
+    for producto in productos_next_gen:
+        valor = redondear_moneda((producto.cantidad_usd or 0) * dolares_next_gen.get(producto.mes, 0))
+        base_coincidente = next((item for item in filas_horas
+            if normalizar_nombre_variable(item['campania']) == normalizar_nombre_variable(producto.campania)
+            and (
+                normalizar_header(item['cliente']) == normalizar_header(producto.cliente)
+                or normalizar_nombre_variable(item['campania']) == normalizar_nombre_variable(producto.cliente)
+            )), None)
+        site_base = base_coincidente['site'] if base_coincidente else (producto.site or '').strip()
+        if normalizar_header(site_base) in ('', 'next gen', 'sin site'):
+            site_base = site_original_next_gen(producto.cliente, producto.campania)
+        site_base = site_regularizado(producto.cliente, producto.campania) or site_base
+        site = normalizar_site(site_base)
+        cliente = base_coincidente['cliente'] if base_coincidente else producto.cliente
+        campania = base_coincidente['campania'] if base_coincidente else producto.campania
+        fila_clave = (site, cliente, campania, 'Next Gen')
+        fila = next((item for item in filas if item['clave'] == fila_clave), None)
+        if not fila:
+            fila = {
+                'clave': fila_clave, 'site': site, 'cliente': cliente,
+                'campania': campania, 'concepto': 'Next Gen',
+                'campania_facturacion': base_coincidente.get('campania_facturacion') if base_coincidente else producto.cliente,
+                'meses': {mes: 0 for mes in meses}, 'total': 0,
+            }
+            filas.append(fila)
+        if producto.mes in fila['meses']:
+            fila['meses'][producto.mes] += valor
+            fila['total'] += valor
+            total_general[producto.mes] += valor
+            totales_por_site.setdefault(site, {mes: 0 for mes in meses})
+            totales_por_site[site][producto.mes] += valor
 
     filas_ordenadas = []
     for site in sorted({fila['site'] for fila in filas}):
@@ -3280,9 +3830,16 @@ def construir_resumen_proyeccion_data(year):
         'meses': meses_info,
         'filas': [
             {
-                'site': fila['site'],
-                'cliente': fila.get('cliente') or '',
-                'campania': fila['campania'],
+                'site': ((regularizacion(fila.get('cliente'), fila.get('campania')).site
+                          if regularizacion(fila.get('cliente'), fila.get('campania')) else None) or fila['site']),
+                'cliente': ((regularizacion(fila.get('cliente'), fila.get('campania')).cliente_destino
+                             if regularizacion(fila.get('cliente'), fila.get('campania')) else None)
+                            or fila.get('cliente') or ''),
+                'campania': ((regularizacion(fila.get('cliente'), fila.get('campania')).campania_destino
+                              if regularizacion(fila.get('cliente'), fila.get('campania')) else None)
+                             or fila.get('campania_facturacion') or fila['campania']),
+                'origenes': ([{'cliente': fila.get('cliente') or '', 'campania': fila.get('campania') or ''}]
+                             if fila.get('tipo', 'detalle') == 'detalle' else []),
                 'concepto': fila['concepto'],
                 'tipo': fila.get('tipo', 'detalle'),
                 'meses': {mes: round(fila['meses'].get(mes, 0), 2) for mes in meses},
@@ -3301,7 +3858,104 @@ def construir_resumen_proyeccion_data(year):
 @login_requerido
 def api_resumen_proyeccion():
     year = int(request.args.get('year') or datetime.utcnow().year)
-    return jsonify(construir_resumen_proyeccion_data(year))
+    return jsonify(consolidar_resumen_proyeccion(construir_resumen_proyeccion_data(year)))
+
+
+@main_bp.route('/api/sites-proyeccion', methods=['POST'])
+@login_requerido
+def api_guardar_site_proyeccion():
+    data = request.get_json(silent=True) or {}
+    site = str(data.get('site') or '').strip()
+    cliente_destino = str(data.get('cliente_destino') or '').strip()
+    campania_destino = str(data.get('campania_destino') or '').strip()
+    origenes = data.get('origenes') or [{'cliente': data.get('cliente'), 'campania': data.get('campania')}]
+    if not site or not cliente_destino or not campania_destino:
+        return jsonify({'success': False, 'errores': ['Site, cliente y campaña son obligatorios']}), 400
+    existentes = SiteProyeccion.query.all()
+    antes, despues = [], []
+    for origen in origenes:
+        cliente = str(origen.get('cliente') or '').strip()
+        campania = str(origen.get('campania') or '').strip()
+        if not cliente or not campania:
+            continue
+        clave_cliente = normalizar_header(cliente)
+        clave_campania = normalizar_nombre_variable(campania)
+        if clave_campania.endswith(' nocturnidad'):
+            clave_campania = clave_campania[:-len(' nocturnidad')]
+            campania = campania[:-len(' nocturnidad')].strip()
+        registro = next((item for item in existentes
+                         if normalizar_header(item.cliente) == clave_cliente
+                         and normalizar_nombre_variable(item.campania) == clave_campania), None)
+        antes.append(registro.to_dict() if registro else None)
+        if not registro:
+            registro = SiteProyeccion(cliente=cliente, campania=campania, site=site)
+            db.session.add(registro)
+            existentes.append(registro)
+        registro.site = site
+        registro.cliente_destino = cliente_destino
+        registro.campania_destino = campania_destino
+        db.session.flush()
+        despues.append(registro.to_dict())
+    if not despues:
+        return jsonify({'success': False, 'errores': ['No se recibió ningún nombre de origen válido']}), 400
+    registrar_historial(
+        'edicion' if any(antes) else 'creacion', 'sites_proyeccion', None,
+        f'Facturación horas > Regularización: {cliente_destino} / {campania_destino} → {site}',
+        detalle=f'{len(despues)} identificación(es) de origen',
+        antes={'sites_proyeccion': antes}, despues={'sites_proyeccion': despues},
+    )
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Site, cliente y campaña actualizados; los nombres coincidentes se consolidaron'})
+
+
+def consolidar_resumen_proyeccion(data):
+    """Devuelve una sola fila por campaña con Horas + Variable + Tarifación."""
+    meses = [item['value'] for item in data.get('meses', [])]
+    detalles = [fila for fila in data.get('filas', []) if fila.get('tipo') != 'total_site']
+    grupos = {}
+    # Horas primero para conservar su cliente y site como datos principales.
+    for fila in sorted(detalles, key=lambda item: (
+        0 if item.get('concepto') == 'Horas' else 1,
+        1 if normalizar_nombre_variable(item.get('campania')).endswith(' nocturnidad') else 0,
+    )):
+        clave = normalizar_nombre_variable(fila.get('campania'))
+        if clave.endswith(' nocturnidad'):
+            clave = clave[:-len(' nocturnidad')]
+        clave = (normalizar_header(fila.get('cliente')), clave)
+        grupo = grupos.setdefault(clave, {
+            'site': fila.get('site') or '', 'cliente': fila.get('cliente') or '',
+            'campania': fila.get('campania') or '', 'concepto': 'Consolidado',
+            'tipo': 'detalle', 'meses': {mes: 0 for mes in meses}, 'total': 0,
+            'conceptos': set(), 'origenes': [],
+        })
+        grupo['conceptos'].add(fila.get('concepto') or '')
+        for origen in fila.get('origenes', []):
+            if origen not in grupo['origenes']:
+                grupo['origenes'].append(origen)
+        for mes in meses:
+            grupo['meses'][mes] += numero_seguro(fila.get('meses', {}).get(mes))
+
+    filas = []
+    totales_site = {}
+    for grupo in grupos.values():
+        grupo['meses'] = {mes: round(valor, 2) for mes, valor in grupo['meses'].items()}
+        grupo['total'] = round(sum(grupo['meses'].values()), 2)
+        grupo['conceptos'] = sorted(concepto for concepto in grupo['conceptos'] if concepto)
+        filas.append(grupo)
+        site = grupo['site'] or 'Sin site'
+        totales_site.setdefault(site, {mes: 0 for mes in meses})
+        for mes in meses:
+            totales_site[site][mes] += grupo['meses'][mes]
+
+    salida = []
+    for site in sorted(totales_site):
+        salida.extend(sorted([fila for fila in filas if (fila['site'] or 'Sin site') == site], key=lambda item: item['campania']))
+        meses_site = {mes: round(totales_site[site][mes], 2) for mes in meses}
+        salida.append({
+            'site': site, 'cliente': '', 'campania': site, 'concepto': 'Total',
+            'tipo': 'total_site', 'meses': meses_site, 'total': round(sum(meses_site.values()), 2),
+        })
+    return {**data, 'filas': salida}
 
 
 def numero_seguro(valor):
@@ -3318,6 +3972,21 @@ def site_por_proyeccion(cliente, campania, sites_por_clave, sites_por_nombre):
         or sites_por_nombre.get(normalizar_header(cliente))
         or 'Sin site'
     )
+
+
+def aperturas_nocturnidad(proyeccion):
+    horas = proyeccion.horas_proyectadas or 0
+    dotacion = proyeccion.dotacion_requerida or 0
+    porcentaje = proyeccion.porcentaje_nocturnidad or 0
+    nombre_base = proyeccion.tipo_plp or proyeccion.campania
+    if not proyeccion.tiene_nocturnidad or porcentaje <= 0:
+        return [(nombre_base, horas, dotacion)]
+    horas_nocturnas = horas * porcentaje / 100
+    dotacion_nocturna = dotacion * porcentaje / 100
+    return [
+        (nombre_base, horas - horas_nocturnas, dotacion - dotacion_nocturna),
+        (f'{nombre_base} nocturnidad', horas_nocturnas, dotacion_nocturna),
+    ]
 
 
 def construir_control_proyecciones_data(year):
@@ -3339,19 +4008,20 @@ def construir_control_proyecciones_data(year):
     ).all()
     filas_por_clave = {}
     for proyeccion in proyecciones:
-        site = site_por_proyeccion(proyeccion.cliente, proyeccion.campania, sites_por_clave, sites_por_nombre)
-        clave = (site, proyeccion.cliente, proyeccion.campania)
-        fila = filas_por_clave.setdefault(clave, {
-            'site': site,
-            'cliente': proyeccion.cliente,
-            'campania': proyeccion.campania,
-            'horas': {mes: 0 for mes in meses},
-            'dotaciones': {mes: 0 for mes in meses},
-            'total_horas': 0,
-            'total_dotaciones': 0,
-        })
-        fila['horas'][proyeccion.mes] += proyeccion.horas_proyectadas or 0
-        fila['dotaciones'][proyeccion.mes] += proyeccion.dotacion_requerida or 0
+        site = 'Personal' if proyeccion.tipo_plp else site_por_proyeccion(proyeccion.cliente, proyeccion.campania, sites_por_clave, sites_por_nombre)
+        for nombre_campania, horas, dotacion in aperturas_nocturnidad(proyeccion):
+            clave = (site, proyeccion.cliente, nombre_campania)
+            fila = filas_por_clave.setdefault(clave, {
+                'site': site,
+                'cliente': proyeccion.cliente,
+                'campania': nombre_campania,
+                'horas': {mes: 0 for mes in meses},
+                'dotaciones': {mes: 0 for mes in meses},
+                'total_horas': 0,
+                'total_dotaciones': 0,
+            })
+            fila['horas'][proyeccion.mes] += horas
+            fila['dotaciones'][proyeccion.mes] += dotacion
 
     filas = []
     total_horas = {mes: 0 for mes in meses}
@@ -3380,6 +4050,14 @@ def construir_control_proyecciones_data(year):
     }
 
 
+def normalizar_nombre_variable(valor):
+    nombre = normalizar_header(valor)
+    for sufijo in (' nocturnos', ' nocturno', ' nocturna'):
+        if nombre.endswith(sufijo):
+            nombre = nombre[:-len(sufijo)] + ' nocturnidad'
+    return nombre
+
+
 def construir_variable_data(year):
     resumen_data = construir_resumen_proyeccion_data(year)
     meses_info = resumen_data['meses']
@@ -3388,6 +4066,8 @@ def construir_variable_data(year):
 
     for fila in resumen_data['filas']:
         if fila.get('tipo') == 'total_site':
+            continue
+        if fila.get('concepto') not in ('Horas', 'Fijo mensual'):
             continue
         clave = (fila.get('site') or '', fila.get('cliente') or '', fila.get('campania') or '')
         base = base_por_clave.setdefault(clave, {
@@ -3401,9 +4081,25 @@ def construir_variable_data(year):
             base['meses'][mes] += numero_seguro(fila.get('meses', {}).get(mes))
         base['total_base'] += numero_seguro(fila.get('total'))
 
-    variables = VariableCampania.query.filter(VariableCampania.mes.in_(meses)).all()
+    variables = VariableCampania.query.filter(VariableCampania.year <= year).all()
+    claves_base_normalizadas = {
+        (normalizar_header(item['cliente']), normalizar_nombre_variable(item['campania']))
+        for item in base_por_clave.values()
+    }
+    for variable in sorted(variables, key=lambda item: item.year, reverse=True):
+        clave_normalizada = (normalizar_header(variable.cliente), normalizar_nombre_variable(variable.campania))
+        if clave_normalizada in claves_base_normalizadas:
+            continue
+        base_por_clave[(variable.site or '', variable.cliente, variable.campania)] = {
+            'site': variable.site or '',
+            'cliente': variable.cliente,
+            'campania': variable.campania,
+            'meses': {mes: 0 for mes in meses},
+            'total_base': 0,
+        }
+        claves_base_normalizadas.add(clave_normalizada)
     variables_por_clave = {
-        (variable.site or '', variable.cliente, variable.campania, variable.mes): variable
+        (normalizar_header(variable.cliente), normalizar_nombre_variable(variable.campania), variable.mes): variable
         for variable in variables
     }
 
@@ -3415,7 +4111,19 @@ def construir_variable_data(year):
         importes = {}
         total = 0
         for mes in meses:
-            variable = variables_por_clave.get((base['site'], base['cliente'], base['campania'], mes))
+            clave_variable = (normalizar_header(base['cliente']), normalizar_nombre_variable(base['campania']), mes)
+            variable = variables_por_clave.get(clave_variable)
+            heredado = False
+            if not variable:
+                numero_mes = mes[-2:]
+                candidatas = [
+                    item for item in variables
+                    if normalizar_header(item.cliente) == normalizar_header(base['cliente'])
+                    and normalizar_nombre_variable(item.campania) == normalizar_nombre_variable(base['campania'])
+                    and item.year < year and item.mes.endswith(f'-{numero_mes}')
+                ]
+                variable = max(candidatas, key=lambda item: item.year, default=None)
+                heredado = bool(variable)
             porcentaje = variable.porcentaje if variable else 0
             importe = redondear_moneda(base['meses'][mes] * (porcentaje / 100))
             porcentajes[mes] = round(porcentaje or 0, 2)
@@ -3428,6 +4136,10 @@ def construir_variable_data(year):
             'campania': base['campania'],
             'base_meses': {mes: round(base['meses'][mes], 2) for mes in meses},
             'porcentajes': porcentajes,
+            'porcentajes_heredados': {
+                mes: not bool(variables_por_clave.get((normalizar_header(base['cliente']), normalizar_nombre_variable(base['campania']), mes))) and bool(porcentajes[mes])
+                for mes in meses
+            },
             'meses': importes,
             'total_base': round(base['total_base'], 2),
             'total': round(total, 2),
@@ -3454,11 +4166,510 @@ def construir_variable_data(year):
     }
 
 
+def construir_tarifacion_data(year):
+    resumen = construir_resumen_proyeccion_data(year)
+    meses_info = resumen['meses']
+    meses = [item['value'] for item in meses_info]
+    bases = {}
+    for fila in resumen['filas']:
+        if fila.get('tipo') == 'total_site':
+            continue
+        if fila.get('concepto') not in ('Horas', 'Fijo mensual'):
+            continue
+        clave = (normalizar_header(fila.get('cliente')), normalizar_nombre_variable(fila.get('campania')))
+        base = bases.setdefault(clave, {
+            'site': fila.get('site') or '', 'cliente': fila.get('cliente') or '',
+            'campania': fila.get('campania') or '', 'meses': {mes: 0 for mes in meses},
+        })
+        for mes in meses:
+            base['meses'][mes] += numero_seguro(fila.get('meses', {}).get(mes))
+    registros = TarifacionCampania.query.filter_by(year=year).all()
+    for registro in registros:
+        clave = (normalizar_header(registro.cliente), normalizar_nombre_variable(registro.campania))
+        bases.setdefault(clave, {
+            'site': registro.site or '', 'cliente': registro.cliente,
+            'campania': registro.campania, 'meses': {mes: 0 for mes in meses},
+        })
+    filas = []
+    total_ajustado = {mes: 0 for mes in meses}
+    for clave, base in sorted(bases.items()):
+        propios = [r for r in registros if (normalizar_header(r.cliente), normalizar_nombre_variable(r.campania)) == clave]
+        conceptos = sorted({r.concepto for r in propios}) or ['Tarifación']
+        for concepto in conceptos:
+            montos = {mes: 0 for mes in meses}
+            for registro in propios:
+                if registro.concepto == concepto and registro.mes in montos:
+                    montos[registro.mes] += registro.monto or 0
+            ajustados = {mes: redondear_moneda(base['meses'][mes] + montos[mes]) for mes in meses}
+            for mes in meses:
+                total_ajustado[mes] += ajustados[mes]
+            filas.append({
+                'site': base['site'], 'cliente': base['cliente'], 'campania': base['campania'],
+                'concepto': concepto,
+                'facturacion_horas': {mes: round(base['meses'][mes], 2) for mes in meses},
+                'montos': {mes: round(montos[mes], 2) for mes in meses},
+                'ajustados': ajustados,
+                'total_monto': round(sum(montos.values()), 2),
+                'total_ajustado': round(sum(ajustados.values()), 2),
+            })
+    return {'success': True, 'year': year, 'meses': meses_info, 'filas': filas,
+            'total_ajustado': {'meses': total_ajustado, 'total': round(sum(total_ajustado.values()), 2)}}
+
+
+@main_bp.route('/api/tarifaciones', methods=['GET'])
+@login_requerido
+def api_tarifaciones():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    return jsonify(construir_tarifacion_data(year))
+
+
+@main_bp.route('/api/tarifaciones', methods=['POST'])
+@login_requerido
+def api_guardar_tarifacion():
+    data = request.get_json(silent=True) or {}
+    mes = mes_valido(data.get('mes'))
+    cliente = str(data.get('cliente') or '').strip()
+    campania = str(data.get('campania') or '').strip()
+    concepto = str(data.get('concepto') or 'Tarifación').strip() or 'Tarifación'
+    if not mes or not cliente or not campania:
+        return jsonify({'success': False, 'errores': ['Cliente, campaña y mes son obligatorios']}), 400
+    try:
+        monto = parse_numero(data.get('monto'))
+    except ValueError:
+        return jsonify({'success': False, 'errores': ['El monto no es válido']}), 400
+    registro = TarifacionCampania.query.filter_by(
+        cliente=cliente, campania=campania, concepto=concepto, mes=mes,
+    ).first()
+    antes = registro.to_dict() if registro else None
+    if not registro:
+        registro = TarifacionCampania(cliente=cliente, campania=campania, concepto=concepto, mes=mes)
+        db.session.add(registro)
+    registro.site = str(data.get('site') or '').strip()
+    registro.year = int(mes[:4])
+    registro.monto = monto
+    db.session.flush()
+    registrar_historial(
+        'edicion' if antes else 'creacion', 'tarifaciones', mes,
+        f'Tarifación guardada: {cliente} / {campania} / {concepto} / {mes}',
+        antes=antes, despues=registro.to_dict(),
+    )
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Tarifación guardada y aplicada en Facturación horas'})
+
+
+@main_bp.route('/api/tarifaciones/template', methods=['GET'])
+@login_requerido
+def api_template_tarifaciones():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    data = construir_tarifacion_data(year)
+    headers = ['Cuenta', 'Site', 'Cliente', 'Concepto'] + [mes['label'] for mes in data['meses']]
+    rows = [[fila['cliente'], fila['site'], fila['campania'], fila['concepto'],
+             *[fila['montos'][mes['value']] for mes in data['meses']]] for fila in data['filas']]
+    return Response(crear_xlsx(headers, rows),
+                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    headers={'Content-Disposition': f'attachment; filename="tarifaciones_{year}.xlsx"'})
+
+
+@main_bp.route('/api/tarifaciones/importar', methods=['POST'])
+@login_requerido
+def api_importar_tarifaciones():
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        return jsonify({'success': False, 'errores': ['Seleccione el archivo de tarifación']}), 400
+    year = int(request.form.get('year') or datetime.utcnow().year)
+    try:
+        contenido = archivo.read()
+        filas = filas_desde_xlsx(contenido) if archivo.filename.lower().endswith('.xlsx') else filas_desde_csv(decodificar_texto_importacion(contenido))
+    except Exception:
+        return jsonify({'success': False, 'errores': ['No se pudo leer el archivo de tarifación']}), 400
+    if len(filas) < 2:
+        return jsonify({'success': False, 'errores': ['El archivo no contiene datos']}), 400
+    headers = [normalizar_header(x) for x in filas[0]]
+    idx_cuenta = next((i for i, h in enumerate(headers) if h == 'cuenta'), None)
+    idx_site = next((i for i, h in enumerate(headers) if h == 'site'), None)
+    idx_cliente = next((i for i, h in enumerate(headers) if h in ('cliente', 'campana', 'campania')), None)
+    idx_concepto = next((i for i, h in enumerate(headers) if h == 'concepto'), None)
+    columnas = {i: mes_plp_importado(v, year) for i, v in enumerate(filas[0])}
+    columnas = {i: mes for i, mes in columnas.items() if mes}
+    if idx_cliente is None or not columnas:
+        return jsonify({'success': False, 'errores': ['Se esperan Cliente y columnas de enero a diciembre']}), 400
+    guardados = []
+    antes = []
+    for fila in filas[1:]:
+        celda = lambda i: fila[i] if i is not None and i < len(fila) else ''
+        campania = str(celda(idx_cliente) or '').strip()
+        if not campania:
+            continue
+        cliente = str(celda(idx_cuenta) or campania).strip()
+        site = str(celda(idx_site) or '').strip()
+        concepto = str(celda(idx_concepto) or 'Tarifación').strip() or 'Tarifación'
+        for indice, mes in columnas.items():
+            valor = celda(indice)
+            if valor in (None, ''):
+                continue
+            try:
+                monto = parse_numero(valor)
+            except ValueError:
+                continue
+            registro = TarifacionCampania.query.filter_by(cliente=cliente, campania=campania, concepto=concepto, mes=mes).first()
+            antes.append(registro.to_dict() if registro else None)
+            if not registro:
+                registro = TarifacionCampania(cliente=cliente, campania=campania, concepto=concepto, mes=mes)
+                db.session.add(registro)
+            registro.site, registro.year, registro.monto = site, year, monto
+            guardados.append(registro)
+    if not guardados:
+        return jsonify({'success': False, 'errores': ['No se encontraron importes para guardar']}), 400
+    db.session.flush()
+    registrar_historial(
+        'importacion', 'tarifaciones', str(year),
+        f'Importación de tarifaciones {year}: {len(guardados)} importe(s)',
+        antes={'tarifaciones': antes},
+        despues={'tarifaciones': [item.to_dict() for item in guardados]},
+    )
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': f'{len(guardados)} importe(s) de tarifación importado(s) para {year}'})
+
+
 @main_bp.route('/api/variables', methods=['GET'])
 @login_requerido
 def api_variables():
     year = int(request.args.get('year') or datetime.utcnow().year)
     return jsonify(construir_variable_data(year))
+
+
+def construir_next_gen_data(year):
+    meses_info = opciones_meses_proyeccion(year)
+    meses = [item['value'] for item in meses_info]
+    dolares = {mes: 0 for mes in meses}
+    for registro in NextGenDolar.query.filter_by(year=year).all():
+        if registro.mes in dolares:
+            dolares[registro.mes] = round(registro.valor or 0, 4)
+    registros = NextGenProducto.query.filter_by(year=year).all()
+    grupos = {}
+    for registro in registros:
+        site_registro = registro.site or site_original_next_gen(registro.cliente, registro.campania)
+        clave = (site_registro, registro.cliente, registro.campania, registro.producto)
+        grupo = grupos.setdefault(clave, {
+            'site': site_registro, 'cliente': registro.cliente,
+            'campania': registro.campania, 'producto': registro.producto,
+            'usd': {mes: 0 for mes in meses}, 'pesos': {mes: 0 for mes in meses},
+        })
+        if registro.mes in grupo['usd']:
+            grupo['usd'][registro.mes] += registro.cantidad_usd or 0
+    filas = []
+    total_pesos = {mes: 0 for mes in meses}
+    total_usd = {mes: 0 for mes in meses}
+    for grupo in grupos.values():
+        for mes in meses:
+            grupo['pesos'][mes] = redondear_moneda(grupo['usd'][mes] * dolares[mes])
+            total_pesos[mes] += grupo['pesos'][mes]
+            total_usd[mes] += grupo['usd'][mes]
+        grupo['total_usd'] = round(sum(grupo['usd'].values()), 2)
+        grupo['total_pesos'] = round(sum(grupo['pesos'].values()), 2)
+        filas.append(grupo)
+    filas.sort(key=lambda item: (normalizar_header(item['cliente']), normalizar_header(item['campania']), normalizar_header(item['producto'])))
+    return {
+        'success': True, 'year': year, 'meses': meses_info, 'dolares': dolares,
+        'filas': filas,
+        'total_usd': {'meses': {mes: round(valor, 2) for mes, valor in total_usd.items()}, 'total': round(sum(total_usd.values()), 2)},
+        'total_pesos': {'meses': {mes: round(valor, 2) for mes, valor in total_pesos.items()}, 'total': round(sum(total_pesos.values()), 2)},
+    }
+
+
+@main_bp.route('/api/next-gen', methods=['GET', 'POST'])
+@login_requerido
+def api_next_gen():
+    if request.method == 'GET':
+        year = int(request.args.get('year') or datetime.utcnow().year)
+        return jsonify(construir_next_gen_data(year))
+    data = request.get_json(silent=True) or {}
+    mes = mes_valido(data.get('mes'))
+    if not mes:
+        return jsonify({'success': False, 'errores': ['El mes no es válido']}), 400
+    if data.get('tipo') == 'dolar':
+        try:
+            valor = parse_numero(data.get('valor'))
+        except ValueError:
+            return jsonify({'success': False, 'errores': ['El valor del dólar no es válido']}), 400
+        registro = NextGenDolar.query.filter_by(mes=mes).first()
+        antes = registro.to_dict() if registro else None
+        if not registro:
+            registro = NextGenDolar(year=int(mes[:4]), mes=mes)
+            db.session.add(registro)
+        registro.valor = valor
+        db.session.flush()
+        despues = {**registro.to_dict(), 'tipo_registro': 'dolar'}
+        if antes:
+            antes = {**antes, 'tipo_registro': 'dolar'}
+        registrar_historial('edicion' if antes else 'creacion', 'next_gen', mes,
+                            f'Next Gen > Dólar actualizado: {mes} = {valor}', antes=antes, despues=despues)
+    else:
+        cliente = str(data.get('cliente') or '').strip()
+        campania = str(data.get('campania') or '').strip()
+        producto = str(data.get('producto') or '').strip()
+        if not cliente or not campania or not producto:
+            return jsonify({'success': False, 'errores': ['Cliente, campaña y producto son obligatorios']}), 400
+        try:
+            cantidad = parse_numero(data.get('cantidad_usd'))
+        except ValueError:
+            return jsonify({'success': False, 'errores': ['La cantidad en USD no es válida']}), 400
+        registro = NextGenProducto.query.filter_by(cliente=cliente, campania=campania, producto=producto, mes=mes).first()
+        antes = registro.to_dict() if registro else None
+        if not registro:
+            registro = NextGenProducto(cliente=cliente, campania=campania, producto=producto, mes=mes, year=int(mes[:4]))
+            db.session.add(registro)
+        registro.site = str(data.get('site') or '').strip()
+        registro.cantidad_usd = cantidad
+        db.session.flush()
+        despues = {**registro.to_dict(), 'tipo_registro': 'producto'}
+        if antes:
+            antes = {**antes, 'tipo_registro': 'producto'}
+        registrar_historial('edicion' if antes else 'creacion', 'next_gen', mes,
+                            f'Next Gen > Producto: {cliente} / {campania} / {producto} / {mes}', antes=antes, despues=despues)
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Next Gen guardado y aplicado en Facturación horas'})
+
+
+@main_bp.route('/api/next-gen/template', methods=['GET'])
+@login_requerido
+def api_template_next_gen():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    data = construir_next_gen_data(year)
+    headers = ['CLIENTE'] + [mes['label'] for mes in data['meses']]
+    rows = [[fila['producto'], *[fila['usd'][mes['value']] for mes in data['meses']]] for fila in data['filas']]
+    if not rows:
+        rows = [['APM - TERMINAL 4', *([0] * 12)]]
+    return Response(crear_xlsx(headers, rows),
+                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    headers={'Content-Disposition': f'attachment; filename="next_gen_{year}.xlsx"'})
+
+
+@main_bp.route('/api/next-gen/importar', methods=['POST'])
+@login_requerido
+def api_importar_next_gen():
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        return jsonify({'success': False, 'errores': ['Seleccione el archivo de Next Gen']}), 400
+    year = int(request.form.get('year') or datetime.utcnow().year)
+    try:
+        contenido = archivo.read()
+        if archivo.filename.lower().endswith('.xlsx'):
+            filas = filas_desde_xlsx(contenido)
+        elif archivo.filename.lower().endswith('.csv'):
+            filas = filas_desde_csv(decodificar_texto_importacion(contenido))
+        else:
+            return jsonify({'success': False, 'errores': ['Use un archivo .xlsx o .csv']}), 400
+    except Exception:
+        return jsonify({'success': False, 'errores': ['No se pudo leer el archivo de Next Gen']}), 400
+    if len(filas) < 2:
+        return jsonify({'success': False, 'errores': ['El archivo no contiene datos']}), 400
+    headers = [normalizar_header(x) for x in filas[0]]
+    idx_cuenta = next((i for i, h in enumerate(headers) if h == 'cuenta'), None)
+    idx_site = next((i for i, h in enumerate(headers) if h == 'site'), None)
+    idx_cliente_simple = next((i for i, h in enumerate(headers) if h == 'cliente'), None)
+    idx_campania = next((i for i, h in enumerate(headers) if h in ('campana', 'campania')), None)
+    idx_producto = next((i for i, h in enumerate(headers) if h == 'producto'), None)
+    if idx_producto is None:
+        idx_producto = idx_cliente_simple
+    columnas = {i: mes_plp_importado(v, year) for i, v in enumerate(filas[0])}
+    columnas = {i: mes for i, mes in columnas.items() if mes}
+    if idx_producto is None or not columnas:
+        return jsonify({'success': False, 'errores': ['Se esperan CLIENTE y los doce meses']}), 400
+    aliases = {normalizar_header(clave): valor for clave, valor in {
+        'APM - TERMINAL 4': 'APM - TERMINAL 4', 'BAPRO': 'BAPRO',
+        'BCO. CREDICOOP': 'Banco Credicoop', 'LIFE': 'LIFE',
+        'CONSUMER SANTANDER': 'Santander Consumer', 'J&J': 'Johnson & Johnson',
+        'LIBRA': 'LIBRA', 'LEIVA JOYAS': 'Leiva Joyas', 'M & W': 'M & W',
+        'MAR SALVAJE': 'MAR SALVAJE', 'MIRGOR - SC': 'Mirgor',
+        'MIRGOR - TRADE IN': 'Mirgor BBTI', 'OPEN PAY': 'OpenPay',
+        'SPV SEG.': 'Supervielle Seguros', 'SHIP NOW': 'SHIP NOW',
+        'YAMAHA': 'Yamaha', 'DASC - ADVAL': 'DASC - ADVAL',
+        'BSF CARREFOUR': 'Carrefour', 'BIBANK': 'Bi Bank', 'ALMUNDO': 'Almundo',
+        'ANDREANI': 'ANDREANI',
+    }.items()}
+    campanias_base = construir_variable_data(year).get('campanias', [])
+    antes, guardados = [], []
+    for fila in filas[1:]:
+        celda = lambda i: fila[i] if i is not None and i < len(fila) else ''
+        producto_nombre = str(celda(idx_producto) or '').strip()
+        if not producto_nombre:
+            continue
+        es_dolar = normalizar_header(producto_nombre) in ('valor dolar', 'dolar')
+        existente = next((r for r in NextGenProducto.query.filter_by(year=year).all()
+                          if normalizar_header(r.producto) == normalizar_header(producto_nombre)), None)
+        cuenta_archivo = str(celda(idx_cuenta) or '').strip() if idx_cuenta is not None else ''
+        campania_archivo = str(celda(idx_campania) or '').strip() if idx_campania is not None else ''
+        canonica = aliases.get(normalizar_header(producto_nombre), campania_archivo or producto_nombre)
+        base = next((item for item in campanias_base
+                     if normalizar_nombre_variable(item['campania']) == normalizar_nombre_variable(canonica)), None)
+        cliente = existente.cliente if existente else (cuenta_archivo or (base['cliente'] if base else canonica))
+        campania = existente.campania if existente else (campania_archivo or (base['campania'] if base else canonica))
+        site = existente.site if existente else (str(celda(idx_site) or '').strip() if idx_site is not None else (base['site'] if base else ''))
+        for indice, mes in columnas.items():
+            valor = celda(indice)
+            if valor in (None, ''):
+                continue
+            try:
+                numero = parse_numero(valor)
+            except ValueError:
+                continue
+            if es_dolar:
+                registro = NextGenDolar.query.filter_by(mes=mes).first()
+                previo = registro.to_dict() if registro else None
+                if not registro:
+                    registro = NextGenDolar(year=year, mes=mes)
+                    db.session.add(registro)
+                registro.valor = numero
+                antes.append({**previo, 'tipo_registro': 'dolar'} if previo else None)
+                guardados.append(registro)
+            else:
+                registro = NextGenProducto.query.filter_by(cliente=cliente, campania=campania, producto=producto_nombre, mes=mes).first()
+                previo = registro.to_dict() if registro else None
+                if not registro:
+                    registro = NextGenProducto(cliente=cliente, campania=campania, producto=producto_nombre, year=year, mes=mes)
+                    db.session.add(registro)
+                registro.site = site
+                registro.cantidad_usd = numero
+                antes.append({**previo, 'tipo_registro': 'producto'} if previo else None)
+                guardados.append(registro)
+    if not guardados:
+        return jsonify({'success': False, 'errores': ['No se encontraron valores para importar']}), 400
+    db.session.flush()
+    despues = [{**item.to_dict(), 'tipo_registro': 'dolar' if isinstance(item, NextGenDolar) else 'producto'} for item in guardados]
+    registrar_historial('importacion', 'next_gen', str(year),
+                        f'Next Gen > Importación {year}: {len(guardados)} valor(es)',
+                        antes={'next_gen': antes}, despues={'next_gen': despues})
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': f'{len(guardados)} valor(es) de Next Gen importado(s) para {year}'})
+
+
+@main_bp.route('/api/variables/template', methods=['GET'])
+@login_requerido
+def api_template_variables():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    data = construir_variable_data(year)
+    meses = data['meses']
+    headers = ['Cuenta', 'Site', 'Cliente'] + [mes['label'] for mes in meses]
+    rows = [
+        [
+            fila['cliente'],
+            fila['site'],
+            fila['campania'],
+            *[fila.get('porcentajes', {}).get(mes['value'], 0) for mes in meses],
+        ]
+        for fila in data['filas']
+    ]
+    contenido = crear_xlsx(headers, rows)
+    return Response(
+        contenido,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename="variables_{year}.xlsx"'},
+    )
+
+
+@main_bp.route('/api/variables/importar', methods=['POST'])
+@login_requerido
+def api_importar_variables():
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        return jsonify({'success': False, 'errores': ['Seleccione el archivo de variables']}), 400
+    try:
+        year = int(request.form.get('year') or datetime.utcnow().year)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
+    try:
+        contenido = archivo.read()
+        if archivo.filename.lower().endswith('.xlsx'):
+            filas_archivo = filas_desde_xlsx(contenido)
+        elif archivo.filename.lower().endswith('.csv'):
+            filas_archivo = filas_desde_csv(decodificar_texto_importacion(contenido))
+        else:
+            return jsonify({'success': False, 'errores': ['Use un archivo .xlsx o .csv']}), 400
+    except Exception:
+        return jsonify({'success': False, 'errores': ['No se pudo leer el archivo de variables']}), 400
+    if len(filas_archivo) < 2:
+        return jsonify({'success': False, 'errores': ['El archivo no contiene datos']}), 400
+
+    headers = [normalizar_header(valor) for valor in filas_archivo[0]]
+    indice_cuenta = next((i for i, h in enumerate(headers) if h in ('cuenta', 'cliente')), None)
+    indice_site = next((i for i, h in enumerate(headers) if h == 'site'), None)
+    indice_nombre = next((i for i, h in enumerate(headers) if h in ('campana', 'campania')), None)
+    if indice_nombre is None:
+        indices_cliente = [i for i, h in enumerate(headers) if h == 'cliente']
+        indice_nombre = indices_cliente[-1] if indices_cliente else None
+    columnas_meses = {}
+    for indice, header in enumerate(filas_archivo[0]):
+        mes = mes_plp_importado(header, year)
+        if mes:
+            columnas_meses[indice] = mes
+    if indice_nombre is None or not columnas_meses:
+        return jsonify({'success': False, 'errores': ['Se esperan Cuenta/Cliente, Campaña o Cliente identificador y columnas mensuales']}), 400
+
+    base = construir_variable_data(year)
+    campanias_base = base['campanias']
+    antes = []
+    guardadas = []
+    omitidas = []
+    for numero_fila, fila in enumerate(filas_archivo[1:], start=2):
+        if not any(str(valor or '').strip() for valor in fila):
+            continue
+        celda = lambda indice: fila[indice] if indice is not None and indice < len(fila) else ''
+        nombre = str(celda(indice_nombre) or '').strip()
+        cuenta = str(celda(indice_cuenta) or '').strip()
+        if not nombre:
+            omitidas.append(f'Fila {numero_fila}: falta el identificador de campaña')
+            continue
+        nombre_normalizado = normalizar_nombre_variable(nombre)
+        candidatas = [item for item in campanias_base if normalizar_nombre_variable(item['campania']) == nombre_normalizado]
+        if cuenta:
+            por_cuenta = [item for item in candidatas if normalizar_header(item['cliente']) == normalizar_header(cuenta)]
+            candidatas = por_cuenta or candidatas
+        if len(candidatas) == 1:
+            campania = candidatas[0]
+        else:
+            campania = {
+                'site': str(celda(indice_site) or '').strip(),
+                'cliente': cuenta or nombre,
+                'campania': nombre,
+            }
+        for indice, mes in columnas_meses.items():
+            valor = celda(indice)
+            if valor in (None, ''):
+                continue
+            try:
+                porcentaje = parse_numero(valor)
+                if 0 < abs(porcentaje) <= 1:
+                    porcentaje *= 100
+            except ValueError:
+                omitidas.append(f'Fila {numero_fila}, {mes}: porcentaje inválido')
+                continue
+            variable = VariableCampania.query.filter_by(
+                cliente=campania['cliente'], campania=campania['campania'], mes=mes,
+            ).first()
+            antes.append(variable.to_dict() if variable else None)
+            if not variable:
+                variable = VariableCampania(cliente=campania['cliente'], campania=campania['campania'], mes=mes)
+                db.session.add(variable)
+            variable.site = campania['site']
+            variable.year = year
+            variable.porcentaje = porcentaje
+            guardadas.append(variable)
+    if not guardadas:
+        return jsonify({'success': False, 'errores': omitidas[:30] or ['No hubo campañas coincidentes con Facturación horas']}), 400
+    db.session.flush()
+    registrar_historial(
+        'importacion', 'variables', str(year),
+        f'Importación de variables {year}: {len(guardadas)} porcentaje(s)',
+        antes={'variables': antes},
+        despues={'variables': [item.to_dict() for item in guardadas]},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'{len(guardadas)} porcentaje(s) importado(s) para {year}',
+        'omitidas': omitidas[:30],
+    })
 
 
 @main_bp.route('/api/control-proyecciones', methods=['GET'])
@@ -3543,6 +4754,8 @@ def api_guardar_variable():
 @login_requerido
 def api_matriz_proyecciones():
     year = int(request.args.get('year') or datetime.utcnow().year)
+    if recalcular_proyecciones_plp_year(year):
+        db.session.commit()
     meses = [item['value'] for item in opciones_meses_proyeccion(year)]
     registros = ProyeccionMatriz.query.filter(ProyeccionMatriz.mes.in_(meses)).order_by(
         ProyeccionMatriz.cliente,
@@ -3575,6 +4788,260 @@ def api_matriz_proyecciones():
     })
 
 
+@main_bp.route('/api/personal-distribucion', methods=['GET', 'POST'])
+@login_requerido
+def api_personal_distribucion():
+    if request.method == 'GET':
+        year = int(request.args.get('year') or datetime.utcnow().year)
+        filas = PersonalDistribucionHoras.query.filter_by(year=year).order_by(
+            PersonalDistribucionHoras.mes,
+            PersonalDistribucionHoras.servicio,
+        ).all()
+        por_clave = {(fila.servicio, fila.mes): fila.to_dict() for fila in filas}
+        distribuciones = []
+        for mes_info in opciones_meses_proyeccion(year):
+            mes = mes_info['value']
+            for servicio in SERVICIOS_PERSONAL:
+                actual = por_clave.get((servicio, mes))
+                if actual:
+                    actual['heredado'] = False
+                    distribuciones.append(actual)
+                    continue
+                anterior = distribucion_personal('', '', mes, servicio)
+                porcentaje_diurno = anterior.porcentaje_diurno if anterior else 100
+                distribuciones.append({
+                    'id': None,
+                    'servicio': servicio,
+                    'year': year,
+                    'mes': mes,
+                    'porcentaje_diurno': porcentaje_diurno,
+                    'porcentaje_nocturno': max(0, 100 - porcentaje_diurno),
+                    'heredado': bool(anterior),
+                })
+        return jsonify({
+            'success': True,
+            'year': year,
+            'servicios': list(SERVICIOS_PERSONAL),
+            'meses': opciones_meses_proyeccion(year),
+            'distribuciones': distribuciones,
+        })
+
+    data = request.get_json(silent=True) or {}
+    try:
+        year = int(data.get('year') or datetime.utcnow().year)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
+    entradas = data.get('distribuciones') if isinstance(data.get('distribuciones'), list) else []
+    errores = []
+    normalizadas = []
+    for entrada in entradas:
+        servicio = str(entrada.get('servicio') or '').strip()
+        mes = mes_valido(entrada.get('mes'))
+        try:
+            porcentaje_diurno = parse_numero(entrada.get('porcentaje_diurno'))
+        except (AttributeError, ValueError):
+            porcentaje_diurno = -1
+        if servicio not in SERVICIOS_PERSONAL:
+            errores.append(f'Servicio de Personal no válido: {servicio or "vacío"}')
+        elif not mes or int(mes[:4]) != year:
+            errores.append(f'Mes no válido para {servicio}')
+        elif not 0 <= porcentaje_diurno <= 100:
+            errores.append(f'El porcentaje diurno de {servicio} debe estar entre 0 y 100')
+        else:
+            normalizadas.append((servicio, mes, porcentaje_diurno))
+    if errores or not normalizadas:
+        return jsonify({'success': False, 'errores': errores or ['No hay porcentajes para guardar']}), 400
+
+    antes = []
+    guardadas = []
+    for servicio, mes, porcentaje_diurno in normalizadas:
+        fila = PersonalDistribucionHoras.query.filter_by(servicio=servicio, mes=mes).first()
+        antes.append(fila.to_dict() if fila else None)
+        if not fila:
+            fila = PersonalDistribucionHoras(servicio=servicio, year=year, mes=mes)
+            db.session.add(fila)
+        fila.porcentaje_diurno = porcentaje_diurno
+        guardadas.append(fila)
+
+    db.session.flush()
+    proyecciones = ProyeccionMatriz.query.filter(ProyeccionMatriz.mes.in_([mes for _, mes, _ in normalizadas])).all()
+    feriados = fechas_feriadas_activas(year)
+    for proyeccion in proyecciones:
+        if not servicio_personal_identificado(proyeccion.cliente, proyeccion.campania, proyeccion.tipo_plp):
+            continue
+        aplicar_calculo_proyeccion(proyeccion, {
+            'cliente': proyeccion.cliente,
+            'campania': proyeccion.campania,
+            'jornadas': [jornada.to_dict() for jornada in proyeccion.jornadas],
+            'porcentaje_cumplimiento': proyeccion.porcentaje_cumplimiento,
+            'tipo_plp': proyeccion.tipo_plp,
+            'horas_carga_manual': proyeccion.horas_carga_manual,
+            'horas_requeridas_manual': proyeccion.horas_requeridas,
+            'carga_semanal_plp': proyeccion.carga_semanal,
+            'carga_horaria_plp': proyeccion.carga_horaria,
+        }, proyeccion.mes, feriados)
+
+    registrar_historial(
+        'edicion',
+        'personal_distribucion_horas',
+        str(year),
+        f'Distribución diurna/nocturna de Personal actualizada para {year}',
+        antes={'distribuciones': antes},
+        despues={'distribuciones': [fila.to_dict() for fila in guardadas]},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': 'Porcentajes de Personal guardados y proyecciones recalculadas',
+        'distribuciones': [fila.to_dict() for fila in guardadas],
+    })
+
+
+@main_bp.route('/api/proyecciones-plp/template', methods=['GET'])
+@login_requerido
+def api_template_proyecciones_plp():
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    meses = [item['value'] for item in opciones_meses_proyeccion(year)]
+    registros = ProyeccionMatriz.query.filter(
+        ProyeccionMatriz.mes.in_(meses),
+        ProyeccionMatriz.tipo_plp.isnot(None),
+        ProyeccionMatriz.tipo_plp != '',
+    ).order_by(ProyeccionMatriz.mes, ProyeccionMatriz.tipo_plp, ProyeccionMatriz.campania).all()
+    rows = [[registro.tipo_plp, etiqueta_mes_proyeccion(registro.mes), registro.campania, round(registro.horas_requeridas or 0, 2), registro.carga_semanal or 'L a V', registro.carga_horaria or 6, registro.porcentaje_cumplimiento or 0] for registro in registros]
+    if not rows:
+        rows = [['Personal', f'ene-{str(year)[-2:]}', 'MÓVIL TELEFÓNICO', '', 'L a V', 6, 100]]
+    contenido = crear_xlsx(['Clasificación PLP', 'MES', 'CAMPAÑA', 'HORAS', 'Carga semanal', 'Horas jornada', '% cumplimiento'], rows)
+    return Response(
+        contenido,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename="proyecciones_plp_{year}.xlsx"'},
+    )
+
+
+@main_bp.route('/api/proyecciones-plp/importar', methods=['POST'])
+@login_requerido
+def api_importar_proyecciones_plp():
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        return jsonify({'success': False, 'errores': ['Seleccione el archivo anual de PLP']}), 400
+    try:
+        year = int(request.form.get('year') or datetime.utcnow().year)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
+    nombre = archivo.filename.lower()
+    contenido = archivo.read()
+    try:
+        if nombre.endswith('.xlsx'):
+            filas = filas_desde_xlsx(contenido)
+        elif nombre.endswith('.csv'):
+            filas = filas_desde_csv(decodificar_texto_importacion(contenido))
+        else:
+            return jsonify({'success': False, 'errores': ['Use un archivo .xlsx o .csv']}), 400
+    except Exception:
+        return jsonify({'success': False, 'errores': ['No se pudo leer el archivo PLP']}), 400
+    if len(filas) < 2:
+        return jsonify({'success': False, 'errores': ['El archivo no contiene filas para importar']}), 400
+
+    headers = [normalizar_header(celda) for celda in filas[0]]
+    indices_campania = [indice for indice, header in enumerate(headers) if header in ('campana', 'campania')]
+    indice_tipo_explicito = next((i for i, h in enumerate(headers) if h in ('clasificacion plp', 'tipo plp', 'plp')), None)
+    indice_tipo = indice_tipo_explicito if indice_tipo_explicito is not None else (indices_campania[0] if indices_campania else None)
+    indice_nombre = indices_campania[-1] if indices_campania and indices_campania[-1] != indice_tipo else next((i for i, h in enumerate(headers) if h in ('nombre campana', 'nombre campania', 'servicio')), None)
+    indice_mes = next((i for i, h in enumerate(headers) if h == 'mes'), None)
+    indice_horas = next((i for i, h in enumerate(headers) if h in ('horas', 'hs')), None)
+    indice_carga = next((i for i, h in enumerate(headers) if h == 'carga semanal'), None)
+    indice_jornada = next((i for i, h in enumerate(headers) if h in ('horas jornada', 'jornada laboral')), None)
+    indice_cumplimiento = next((i for i, h in enumerate(headers) if 'cumplimiento' in h), None)
+    if None in (indice_tipo, indice_nombre, indice_mes, indice_horas):
+        return jsonify({'success': False, 'errores': ['Se esperan las columnas Clasificación PLP, MES, CAMPAÑA y HORAS']}), 400
+
+    por_tipo = {normalizar_header(tipo): tipo for tipo in SERVICIOS_PERSONAL}
+    errores = []
+    entradas = []
+    for numero_fila, fila in enumerate(filas[1:], start=2):
+        if not any(str(celda or '').strip() for celda in fila):
+            continue
+        celda = lambda indice: fila[indice] if indice < len(fila) else ''
+        tipo = por_tipo.get(normalizar_header(celda(indice_tipo)))
+        mes = mes_plp_importado(celda(indice_mes), year)
+        campania = str(celda(indice_nombre) or '').strip()
+        try:
+            horas = parse_numero(celda(indice_horas))
+        except ValueError:
+            horas = -1
+        carga_semanal = normalizar_carga_semanal(celda(indice_carga) if indice_carga is not None else 'L a V')
+        try:
+            carga_horaria = parse_numero(celda(indice_jornada)) if indice_jornada is not None and celda(indice_jornada) not in (None, '') else 6
+        except ValueError:
+            carga_horaria = 0
+        try:
+            cumplimiento = parse_numero(celda(indice_cumplimiento)) if indice_cumplimiento is not None and celda(indice_cumplimiento) not in (None, '') else 100
+            # Excel almacena una celda con formato 98% como 0.98.
+            if indice_cumplimiento is not None and 0 < cumplimiento <= 1:
+                cumplimiento *= 100
+        except ValueError:
+            cumplimiento = -1
+        if not tipo:
+            errores.append(f'Fila {numero_fila}: clasificación PLP no válida')
+        elif not mes:
+            errores.append(f'Fila {numero_fila}: el mes no pertenece a {year}')
+        elif not campania:
+            errores.append(f'Fila {numero_fila}: falta el nombre de campaña')
+        elif horas < 0:
+            errores.append(f'Fila {numero_fila}: horas no válidas')
+        elif carga_horaria <= 0:
+            errores.append(f'Fila {numero_fila}: jornada laboral no válida')
+        elif cumplimiento < 0:
+            errores.append(f'Fila {numero_fila}: porcentaje de cumplimiento no válido')
+        else:
+            entradas.append((tipo, mes, campania, horas, carga_semanal, carga_horaria, cumplimiento))
+    if errores:
+        return jsonify({'success': False, 'errores': errores[:30]}), 400
+    if not entradas:
+        return jsonify({'success': False, 'errores': ['No se encontraron filas PLP válidas']}), 400
+
+    antes = []
+    guardadas = []
+    actualizadas = 0
+    creadas = 0
+    feriados = fechas_feriadas_activas(year)
+    for tipo, mes, campania, horas, carga_semanal, carga_horaria, cumplimiento in entradas:
+        proyeccion = buscar_proyeccion_plp(tipo, campania, mes)
+        antes.append(snapshot_proyeccion(proyeccion))
+        if proyeccion:
+            actualizadas += 1
+        else:
+            proyeccion = ProyeccionMatriz()
+            db.session.add(proyeccion)
+            creadas += 1
+        aplicar_calculo_proyeccion(proyeccion, {
+            'cliente': 'Personal',
+            'campania': campania,
+            'tipo_plp': tipo,
+            'horas_carga_manual': True,
+            'horas_requeridas_manual': horas,
+            'carga_semanal_plp': carga_semanal,
+            'carga_horaria_plp': carga_horaria,
+            'porcentaje_cumplimiento': cumplimiento,
+            'jornadas': [],
+        }, mes, feriados)
+        guardadas.append(proyeccion)
+    db.session.flush()
+    registrar_historial(
+        'importacion', 'proyeccion_matriz', str(year),
+        f'Importación anual PLP {year}: {len(guardadas)} registro(s)',
+        antes={'proyecciones': antes},
+        despues={'proyecciones': [snapshot_proyeccion(item) for item in guardadas]},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'PLP {year} actualizado: {actualizadas} reemplazadas y {creadas} nuevas',
+        'actualizadas': actualizadas,
+        'creadas': creadas,
+    })
+
+
 @main_bp.route('/api/matriz-proyecciones', methods=['POST'])
 @login_requerido
 def api_guardar_matriz_proyeccion():
@@ -3597,12 +5064,16 @@ def api_guardar_matriz_proyeccion():
     feriados = fechas_feriadas_activas(valores['year'])
     antes_snapshots = []
 
-    for mes in meses_proyeccion_desde(valores['mes']):
-        proyeccion = ProyeccionMatriz.query.filter_by(
-            cliente=valores['cliente'],
-            campania=valores['campania'],
-            mes=mes,
-        ).first()
+    meses_a_guardar = [valores['mes']] if valores.get('horas_carga_manual') else meses_proyeccion_desde(valores['mes'])
+    for mes in meses_a_guardar:
+        if valores.get('tipo_plp'):
+            proyeccion = buscar_proyeccion_plp(valores['tipo_plp'], valores['campania'], mes)
+        else:
+            proyeccion = ProyeccionMatriz.query.filter_by(
+                cliente=valores['cliente'],
+                campania=valores['campania'],
+                mes=mes,
+            ).first()
         antes_snapshots.append(snapshot_proyeccion(proyeccion))
         if not proyeccion:
             proyeccion = ProyeccionMatriz()
@@ -3722,7 +5193,7 @@ def api_template_matriz_proyecciones():
 
     headers = [
         'Cliente', 'Campaña', 'Año', 'Mes',
-        'Personas', 'Carga semanal', 'Hs diarias', 'Q dias objetivo',
+        'Dotación requerida', 'Carga semanal', 'Hs diarias', 'Q dias objetivo',
         'Hs requeridas jornada', 'Dotacion total', 'Hs requeridas total',
         '% cumplimiento', 'Horas proyectadas total',
     ]
@@ -3806,9 +5277,12 @@ def api_importar_matriz_proyecciones():
         'año': 'year',
         'mes': 'mes',
         'personas': 'dotacion_requerida',
+        'dotacion requerida': 'dotacion_requerida',
         'carga semanal': 'carga_semanal',
         'hs diarias': 'carga_horaria',
         '% cumplimiento': 'porcentaje_cumplimiento',
+        'cumplimiento': 'porcentaje_cumplimiento',
+        'porcentaje cumplimiento': 'porcentaje_cumplimiento',
         'hs requeridas total': 'horas_requeridas_total',
         'horas requeridas total': 'horas_requeridas_total',
         'horas proyectadas total': 'horas_proyectadas_total',
@@ -3842,6 +5316,10 @@ def api_importar_matriz_proyecciones():
             dotacion = parse_numero(celda('dotacion_requerida'))
             carga_horaria = parse_numero(celda('carga_horaria'))
             porcentaje = parse_numero(celda('porcentaje_cumplimiento')) if 'porcentaje_cumplimiento' in columnas and str(celda('porcentaje_cumplimiento')).strip() else 100
+            # Excel entrega una celda porcentual como decimal: 98% llega como 0.98.
+            # Si el archivo ya trae 98 o "98%", parse_numero devuelve 98 y se conserva.
+            if 0 < abs(porcentaje) <= 1:
+                porcentaje *= 100
             horas_requeridas_total = parse_numero(celda('horas_requeridas_total')) if 'horas_requeridas_total' in columnas and str(celda('horas_requeridas_total')).strip() else None
             horas_proyectadas_total = parse_numero(celda('horas_proyectadas_total')) if 'horas_proyectadas_total' in columnas and str(celda('horas_proyectadas_total')).strip() else None
         except ValueError:
@@ -3851,6 +5329,10 @@ def api_importar_matriz_proyecciones():
             errores.append(f'Fila {indice}: cliente, campaña y mes son obligatorios')
             continue
         carga_semanal = normalizar_carga_semanal(celda('carga_semanal'))
+        cumplimiento_explicito = (
+            'porcentaje_cumplimiento' in columnas
+            and str(celda('porcentaje_cumplimiento')).strip() != ''
+        )
         clave = (cliente, campania, mes)
         grupos.setdefault(clave, {
             'cliente': cliente,
@@ -3858,6 +5340,7 @@ def api_importar_matriz_proyecciones():
             'year': year,
             'mes': mes,
             'porcentaje_cumplimiento': porcentaje,
+            'cumplimiento_explicito': cumplimiento_explicito,
             'horas_requeridas_total': horas_requeridas_total,
             'horas_proyectadas_total': horas_proyectadas_total,
             'jornadas': [],
@@ -3866,6 +5349,9 @@ def api_importar_matriz_proyecciones():
             grupos[clave]['horas_requeridas_total'] = horas_requeridas_total
         if horas_proyectadas_total is not None:
             grupos[clave]['horas_proyectadas_total'] = horas_proyectadas_total
+        if cumplimiento_explicito:
+            grupos[clave]['porcentaje_cumplimiento'] = porcentaje
+            grupos[clave]['cumplimiento_explicito'] = True
         grupos[clave]['jornadas'].append({
             'dotacion_requerida': dotacion,
             'carga_semanal': carga_semanal,
@@ -3901,7 +5387,11 @@ def api_importar_matriz_proyecciones():
         horas_proyectadas_total = valores.get('horas_proyectadas_total')
         if horas_requeridas_total is not None and horas_requeridas_total >= 0:
             proyeccion.horas_requeridas = horas_requeridas_total
-            if horas_proyectadas_total is not None and horas_requeridas_total > 0:
+            if (
+                horas_proyectadas_total is not None
+                and horas_requeridas_total > 0
+                and not valores.get('cumplimiento_explicito')
+            ):
                 proyeccion.porcentaje_cumplimiento = (horas_proyectadas_total / horas_requeridas_total) * 100
         elif horas_proyectadas_total is not None and horas_proyectadas_total >= 0:
             proyeccion.horas_requeridas = horas_proyectadas_total
@@ -4326,6 +5816,8 @@ def api_actualizar_asignacion(asignacion_id):
     valores_anteriores = filtros_asignacion(asignacion)
     nuevos_valores = {}
     campos_asociacion = ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio']
+    vigencia_desde_raw = data.get('vigencia_desde')
+    vigencia_desde = mes_valido(vigencia_desde_raw) if vigencia_desde_raw else None
 
     for campo in campos_asociacion:
         if campo in data:
@@ -4339,6 +5831,46 @@ def api_actualizar_asignacion(asignacion_id):
 
     if nuevos_valores:
         valores_finales = {**valores_anteriores, **nuevos_valores}
+        if vigencia_desde_raw and not vigencia_desde:
+            return jsonify({'success': False, 'errores': ['El mes de vigencia debe tener formato YYYY-MM']}), 400
+        if vigencia_desde:
+            asignacion_nueva, creada = obtener_o_crear_asignacion(valores_finales)
+            registros_asociados = Facturacion2026.query.filter_by(**valores_anteriores).filter(
+                Facturacion2026.mes >= vigencia_desde
+            ).all()
+            for registro in registros_asociados:
+                for campo, valor in valores_finales.items():
+                    setattr(registro, campo, valor)
+
+            despues = snapshot_modelo(asignacion_nueva)
+            cambios = cambios_entre(antes, despues)
+            detalle = {
+                'vigencia_desde': vigencia_desde,
+                'asignacion_origen_id': asignacion.id,
+                'registros_actualizados': len(registros_asociados),
+                'cambios': cambios,
+            }
+            registrar_historial(
+                'creacion' if creada else 'edicion',
+                'asignacion',
+                asignacion_nueva.id,
+                f'Asociacion vigente desde {vigencia_desde}: {asignacion_nueva.label}',
+                antes=antes,
+                despues=despues,
+                detalle=serializar_json(detalle),
+            )
+            db.session.commit()
+            db.session.refresh(asignacion_nueva)
+            return jsonify({
+                'success': True,
+                'mensaje': f'Asociacion aplicada desde {vigencia_desde}. El historico anterior no se modifico.',
+                'asignacion': asignacion_nueva.to_dict(),
+                'asignacion_original': antes,
+                'vigencia_desde': vigencia_desde,
+                'registros_actualizados': len(registros_asociados),
+                'cambios': cambios,
+            })
+
         duplicada = AsignacionComercial.query.filter_by(**valores_finales).filter(
             AsignacionComercial.id != asignacion.id
         ).first()

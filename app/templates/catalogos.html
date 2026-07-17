@@ -44,6 +44,11 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de negocio</label>
                 <input id="tipo_negocio" name="tipo_negocio" type="text" placeholder="Opcional" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
+            <div id="grupoVigenciaDesde" class="hidden rounded border border-blue-100 bg-blue-50 p-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Aplicar desde mes</label>
+                <input id="vigencia_desde" name="vigencia_desde" type="month" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="mt-1 text-xs text-blue-700">Usalo para cambiar el jefe desde un mes sin modificar meses anteriores.</p>
+            </div>
             <div class="flex gap-2">
                 <button id="btnGuardarAsignacion" type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium">
                     <i class="fas fa-save mr-2"></i><span id="textoGuardarAsignacion">Guardar</span>
@@ -345,7 +350,8 @@ async function guardarAsignacion() {
         });
         const data = await leerRespuestaJson(response);
         if (data.success) {
-            const verificacion = id ? await verificarAsignacionGuardada(id, payload) : { ok: true, asignacion: data.asignacion };
+            const idVerificacion = id && data.asignacion ? data.asignacion.id : id;
+            const verificacion = id ? await verificarAsignacionGuardada(idVerificacion, payload) : { ok: true, asignacion: data.asignacion };
             if (!verificacion.ok) {
                 mostrarMensaje(verificacion.mensaje, 'error');
                 return;
@@ -373,7 +379,8 @@ function getPayload() {
         jefe_site: document.getElementById('jefe_site').value,
         campania: document.getElementById('campania').value,
         subcampania: document.getElementById('subcampania').value,
-        tipo_negocio: document.getElementById('tipo_negocio').value
+        tipo_negocio: document.getElementById('tipo_negocio').value,
+        vigencia_desde: document.getElementById('vigencia_desde').value
     };
 }
 
@@ -404,6 +411,8 @@ function editarAsignacion(item) {
     document.getElementById('campania').value = item.campania;
     document.getElementById('subcampania').value = item.subcampania;
     document.getElementById('tipo_negocio').value = item.tipo_negocio || '';
+    document.getElementById('vigencia_desde').value = '';
+    document.getElementById('grupoVigenciaDesde').classList.remove('hidden');
     document.getElementById('tituloFormulario').textContent = 'Editar asociacion';
     document.getElementById('subtituloFormulario').textContent = `Editando ID ${item.id}: ${item.cliente} / ${item.campania}`;
     document.getElementById('badgeModo').classList.remove('hidden');
@@ -454,10 +463,12 @@ function pedirConfirmacion() {
 function limpiarFormulario() {
     document.getElementById('formAsignacion').reset();
     document.getElementById('asignacionId').value = '';
+    document.getElementById('vigencia_desde').value = '';
     asignacionEditando = null;
     document.getElementById('tituloFormulario').textContent = 'Nueva asociacion';
     document.getElementById('subtituloFormulario').textContent = 'Completa los campos para crear una asociacion.';
     document.getElementById('badgeModo').classList.add('hidden');
+    document.getElementById('grupoVigenciaDesde').classList.add('hidden');
     document.getElementById('textoGuardarAsignacion').textContent = 'Guardar';
 }
 

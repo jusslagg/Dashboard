@@ -38,6 +38,52 @@
     </div>
 </div>
 
+<section id="panelDistribucionPersonal" class="mb-5 hidden rounded-lg border border-indigo-200 bg-white shadow">
+    <div class="flex flex-col gap-3 border-b border-indigo-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h2 class="font-semibold text-indigo-950">Distribución de horas Personal</h2>
+            <p class="mt-1 text-xs text-indigo-700">Ingresá el porcentaje diurno. La nocturnidad es la diferencia hasta 100%.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="descargarTemplatePLP()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700"><i class="fas fa-download"></i> Excel anual</button>
+            <input id="archivoPLP" type="file" accept=".xlsx,.csv" class="hidden" onchange="importarPLP()">
+            <button type="button" onclick="document.getElementById('archivoPLP').click()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700"><i class="fas fa-upload"></i> Importar año</button>
+            <button type="button" onclick="guardarDistribucionPersonal()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700"><i class="fas fa-save"></i> Guardar porcentajes</button>
+        </div>
+    </div>
+    <div class="overflow-x-auto p-4">
+        <table class="w-full min-w-[860px] border-collapse text-sm">
+            <thead><tr id="theadDistribucionPersonal" class="bg-indigo-50 text-indigo-950"></tr></thead>
+            <tbody id="tbodyDistribucionPersonal"></tbody>
+        </table>
+    </div>
+</section>
+
+<section id="panelResumenPLP" class="mb-5 hidden rounded-lg border border-emerald-200 bg-white shadow">
+    <div class="border-b border-emerald-100 px-5 py-4">
+        <h2 class="font-semibold text-emerald-950">Resumen mensual PLP</h2>
+        <p class="mt-1 text-xs text-emerald-700">Acumulado de horas proyectadas finales por clasificación.</p>
+    </div>
+    <div class="overflow-x-auto p-4">
+        <table class="w-full min-w-[900px] border-collapse text-sm">
+            <thead class="bg-emerald-50 text-emerald-950">
+                <tr>
+                    <th class="border border-emerald-100 px-3 py-2 text-left">Mes</th>
+                    <th class="border border-emerald-100 px-3 py-2 text-right">Personal CX</th>
+                    <th class="border border-emerald-100 px-3 py-2 text-right">Personal</th>
+                    <th class="border border-emerald-100 px-3 py-2 text-right">Personal Soporte</th>
+                    <th class="border border-emerald-100 px-3 py-2 text-right">Total Personal</th>
+                    <th class="border border-emerald-100 px-3 py-2 text-right">% Soporte</th>
+                    <th class="border border-emerald-100 px-3 py-2 text-right">Personal SMB</th>
+                    <th class="border border-emerald-100 px-3 py-2 text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyResumenPLP"></tbody>
+            <tfoot id="tfootResumenPLP"></tfoot>
+        </table>
+    </div>
+</section>
+
 <div class="grid grid-cols-1 gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
     <section class="rounded-lg bg-white p-5 shadow">
         <div class="mb-4 flex items-start justify-between gap-3">
@@ -50,13 +96,67 @@
 
         <form id="formProyeccion" class="space-y-4">
             <input type="hidden" id="proyeccionId">
-            <div>
+            <div id="campoClienteGeneral">
                 <label class="mb-1 block text-sm font-medium text-gray-700">Cliente *</label>
-                <select id="cliente" required onchange="actualizarCampanias()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+                <select id="cliente" required onchange="actualizarCampanias(); actualizarAvisoPersonal()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
             </div>
-            <div>
+            <div id="campoCampaniaGeneral">
                 <label class="mb-1 block text-sm font-medium text-gray-700">Campaña *</label>
-                <select id="campania" required class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+                <select id="campania" required onchange="actualizarAvisoPersonal()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+            </div>
+            <div id="bloqueNocturnidad" class="hidden rounded border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+                La distribución diurna/nocturna se aplicará automáticamente según el servicio y el mes configurados en la pestaña Personal.
+            </div>
+            <div id="bloqueCargaPLP" class="hidden space-y-3 rounded border border-amber-200 bg-amber-50 p-3">
+                <div>
+                    <label class="mb-1 block text-sm font-semibold text-amber-950">Clasificación PLP *</label>
+                    <select id="tipoPLP" onchange="actualizarClientePLP()" class="h-10 w-full rounded border border-amber-300 bg-white px-3 text-sm">
+                        <option value="">Seleccionar tipo PLP</option>
+                        <option value="Personal">Personal</option>
+                        <option value="Personal CX">Personal CX</option>
+                        <option value="Personal Soporte">Personal Soporte</option>
+                        <option value="Personal SMB">Personal SMB</option>
+                    </select>
+                    <p class="mt-1 text-xs text-amber-800">El cliente se guardará siempre como Personal; este valor clasifica la campaña PLP.</p>
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-semibold text-amber-950">Nombre de campaña *</label>
+                    <input id="campaniaPLP" list="campaniasPLPSugeridas" type="text" class="h-10 w-full rounded border border-amber-300 bg-white px-3 text-sm" placeholder="Ej. MÓVIL TELEFÓNICO">
+                    <datalist id="campaniasPLPSugeridas">
+                        <option value="MÓVIL TELEFÓNICO"><option value="ISLA DEGRADADOS"><option value="ONBOARDING"><option value="CONVERGENTE TELEFÓNICO">
+                        <option value="OPEN"><option value="TELERED"><option value="RETENCIÓN CONVERGENTE TELEFÓNICO"><option value="RETENCIÓN CABLE ISLA TÉCNICA">
+                        <option value="RETENCIÓN CABLE TELEFÓNICO"><option value="VENTAS FIJA TELEFÓNICO"><option value="VENTAS FIJA DIGITAL"><option value="PPAY TELEFÓNICO">
+                        <option value="PPAY DIGITALES"><option value="CONECTIVIDAD"><option value="ENTRETENIMIENTO"><option value="CBS">
+                        <option value="ESPECIALIZADA MÓVIL"><option value="DIGITAL"><option value="CAMPAÑA"><option value="AUTO INSTALABLE">
+                        <option value="MÓVIL DIGITAL"><option value="CONVERGENTE DIGITAL UNIFICADO"><option value="RETENCIÓN CABLE DIGITAL"><option value="SMB MÓVIL TELEFÓNICO">
+                        <option value="VENTAS OUT"><option value="VENTAS DIGITAL"><option value="CONECTIVIDAD NO FUN"><option value="SMB CONVERGENTE NO UNIFICADO">
+                    </datalist>
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-semibold text-amber-950">Horas proyectadas del mes *</label>
+                    <input id="horasPLP" type="number" min="0" step="0.01" oninput="actualizarProyectadas()" class="h-10 w-full rounded border border-amber-300 bg-white px-3 text-right text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="rounded bg-white p-2">
+                        <label class="text-[10px] font-semibold uppercase text-amber-700">Carga semanal</label>
+                        <select id="cargaSemanalPLP" onchange="actualizarProyectadas()" class="mt-1 h-9 w-full rounded border border-amber-200 bg-white px-2 text-sm">
+                            <option value="L a V">L a V</option><option value="L a V + S">L a V + S</option><option value="S + D + F">S + D + F</option><option value="S">S</option><option value="D">D</option><option value="F">F</option><option value="L a V +S+D+F">Todos los días</option>
+                        </select>
+                    </div>
+                    <div class="rounded bg-white p-2">
+                        <label class="text-[10px] font-semibold uppercase text-amber-700">Horas de jornada</label>
+                        <input id="cargaHorariaPLP" type="number" min="0.01" step="0.01" value="6" oninput="actualizarProyectadas()" class="mt-1 h-9 w-full rounded border border-amber-200 px-2 text-right text-sm">
+                    </div>
+                    <div class="rounded bg-white p-2 text-center">
+                        <div class="text-[10px] font-semibold uppercase text-amber-700">Días hábiles</div>
+                        <div id="diasPLP" class="mt-1 text-sm font-bold text-amber-950">0</div>
+                    </div>
+                    <div class="rounded bg-white p-2 text-center">
+                        <div class="text-[10px] font-semibold uppercase text-amber-700">Dotación requerida</div>
+                        <div id="dotacionPLP" class="mt-1 text-sm font-bold text-amber-950">0</div>
+                    </div>
+                </div>
+                <p class="text-xs text-amber-800">Las horas se cargan directamente y luego se dividen en diurnas/nocturnas según la clasificación y el mes.</p>
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
@@ -68,11 +168,11 @@
                     <select id="mes" required onchange="actualizarProyectadas()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
                 </div>
             </div>
-            <div class="rounded border border-slate-200 bg-slate-50 p-3">
+            <div id="configuracionJornadas" class="rounded border border-slate-200 bg-slate-50 p-3">
                 <div class="mb-3 flex items-center justify-between gap-3">
                     <div>
                         <h3 class="text-sm font-semibold text-slate-900">Jornadas</h3>
-                        <p class="mt-1 text-xs text-slate-500">Cantidad de personas, carga semanal y horas diarias.</p>
+                        <p class="mt-1 text-xs text-slate-500">Dotación requerida, carga semanal y horas diarias.</p>
                     </div>
                     <button type="button" onclick="agregarJornada()" class="inline-flex h-8 items-center justify-center gap-2 rounded bg-slate-700 px-3 text-xs font-medium text-white hover:bg-slate-800">
                         <i class="fas fa-plus"></i>
@@ -81,7 +181,21 @@
                 </div>
                 <div id="jornadasContainer" class="space-y-3"></div>
             </div>
-            <div class="grid grid-cols-3 gap-3">
+            <div id="ajustesManualesProyeccion" class="rounded border border-blue-200 bg-blue-50 p-3">
+                <div class="text-sm font-semibold text-blue-950">Control manual del período</div>
+                <p class="mt-1 text-xs text-blue-800">Opcional. Úselo si la campaña comienza o termina durante el mes. Los valores informados reemplazan el cálculo automático.</p>
+                <div class="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-blue-900">Días hábiles manuales</label>
+                        <input id="diasObjetivoManual" type="number" min="1" step="1" placeholder="Automático" oninput="actualizarProyectadas()" class="h-10 w-full rounded border border-blue-300 bg-white px-3 text-right text-sm">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-blue-900">Horas requeridas manuales</label>
+                        <input id="horasRequeridasManual" type="number" min="0" step="0.01" placeholder="Automático" oninput="actualizarProyectadas()" class="h-10 w-full rounded border border-blue-300 bg-white px-3 text-right text-sm">
+                    </div>
+                </div>
+            </div>
+            <div id="resumenJornadas" class="grid grid-cols-3 gap-3">
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Dotacion total</label>
                     <input id="dotacionTotal" readonly type="number" class="h-10 w-full rounded border border-gray-300 bg-slate-50 px-3 text-sm text-right text-slate-700">
@@ -94,7 +208,7 @@
                     <label class="mb-1 block text-sm font-medium text-gray-700">Hs. requeridas</label>
                     <input id="horasRequeridas" readonly type="number" min="0" step="0.01" placeholder="" class="h-10 w-full rounded border border-gray-300 bg-slate-50 px-3 text-sm text-right text-slate-700">
                 </div>
-            </div>            <div>
+            </div>            <div id="cumplimientoBlock">
                 <label class="mb-1 block text-sm font-medium text-gray-700">% cumplimiento *</label>
                 <input id="porcentajeCumplimiento" required type="number" min="0" step="0.01" value="100" oninput="actualizarProyectadas()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
@@ -116,6 +230,10 @@
                 <div>
                     <h2 class="font-semibold text-gray-900">Proyecciones cargadas</h2>
                     <p id="contadorProyecciones" class="mt-1 text-xs text-gray-500">Cargando...</p>
+                </div>
+                <div class="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1">
+                    <button id="tabTodas" type="button" onclick="cambiarPestania('todas')" class="rounded px-3 py-2 text-sm font-semibold">Todas</button>
+                    <button id="tabPersonal" type="button" onclick="cambiarPestania('personal')" class="rounded px-3 py-2 text-sm font-semibold">PLP</button>
                 </div>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-4">
                     <input id="buscarProyeccion" type="search" oninput="renderProyecciones()" placeholder="Buscar..." class="h-10 rounded border border-gray-300 px-3 text-sm">
@@ -161,6 +279,9 @@ let meses = [];
 let proyecciones = [];
 let feriados = [];
 let cargasSemanales = ['L a V', 'L a V + S', 'S + D + F', 'S', 'D', 'F', 'L a V +S+D+F'];
+let pestaniaActual = 'todas';
+let serviciosPersonal = [];
+let distribucionesPersonal = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('formProyeccion').addEventListener('submit', guardarProyeccion);
@@ -267,7 +388,9 @@ async function importarTemplateProyecciones() {
 async function cargarProyecciones() {
     const year = document.getElementById('yearFiltro').value;
     document.getElementById('year').value = year;
-    const response = await fetch(`/api/matriz-proyecciones?year=${encodeURIComponent(year)}`);
+    const response = await fetch(`/api/matriz-proyecciones?year=${encodeURIComponent(year)}&_=${Date.now()}`, {
+        cache: 'no-store',
+    });
     const data = await response.json();
     if (!data.success) {
         mostrarMensaje('No se pudieron cargar las proyecciones', 'error');
@@ -283,6 +406,8 @@ async function cargarProyecciones() {
     sincronizarMesesFormulario();
     if (!document.querySelectorAll('.jornada-row').length) agregarJornada();
     renderProyecciones();
+    renderResumenPLP();
+    await cargarDistribucionPersonal();
 }
 
 function popularClientes() {
@@ -308,6 +433,180 @@ function actualizarCampanias() {
     document.getElementById('campania').innerHTML = '<option value="">Seleccionar campaña</option>' + campanias.map(campania =>
         `<option value="${escapeHtml(campania)}" ${campania === actual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
     ).join('');
+    actualizarAvisoPersonal();
+}
+
+function esCampaniaPersonal() {
+    const cliente = normalizar(document.getElementById('cliente').value);
+    const campania = normalizar(document.getElementById('campania').value);
+    return serviciosPersonal.some(servicio => [cliente, campania].includes(normalizar(servicio)));
+}
+
+function actualizarAvisoPersonal() {
+    document.getElementById('bloqueNocturnidad').classList.toggle('hidden', !esCampaniaPersonal());
+}
+
+function cambiarPestania(pestania) {
+    pestaniaActual = pestania;
+    document.getElementById('panelDistribucionPersonal').classList.toggle('hidden', pestania !== 'personal');
+    document.getElementById('panelResumenPLP').classList.toggle('hidden', pestania !== 'personal');
+    document.getElementById('bloqueCargaPLP').classList.toggle('hidden', pestania !== 'personal');
+    document.getElementById('configuracionJornadas').classList.toggle('hidden', pestania === 'personal');
+    document.getElementById('ajustesManualesProyeccion').classList.toggle('hidden', pestania === 'personal');
+    document.getElementById('resumenJornadas').classList.toggle('hidden', pestania === 'personal');
+    document.getElementById('cumplimientoBlock').classList.remove('hidden');
+    document.getElementById('campoClienteGeneral').classList.toggle('hidden', pestania === 'personal');
+    document.getElementById('campoCampaniaGeneral').classList.toggle('hidden', pestania === 'personal');
+    document.getElementById('cliente').required = pestania !== 'personal';
+    document.getElementById('campania').required = pestania !== 'personal';
+    document.getElementById('tipoPLP').required = pestania === 'personal';
+    document.getElementById('campaniaPLP').required = pestania === 'personal';
+    document.getElementById('horasPLP').required = pestania === 'personal';
+    actualizarProyectadas();
+    renderProyecciones();
+}
+
+function renderResumenPLP() {
+    const tipos = ['Personal CX', 'Personal', 'Personal Soporte', 'Personal SMB'];
+    const acumulados = Object.fromEntries(meses.map(mes => [mes.value, Object.fromEntries(tipos.map(tipo => [tipo, 0]))]));
+    proyecciones.filter(item => item.tipo_plp && acumulados[item.mes]).forEach(item => {
+        // Este cuadro resume la carga PLP al 100%; el cumplimiento se controla
+        // por separado y solo afecta las horas proyectadas de cada registro.
+        if (tipos.includes(item.tipo_plp)) acumulados[item.mes][item.tipo_plp] += Number(item.horas_requeridas || 0);
+    });
+    // Excepción operativa PLP: Soporte de febrero 2026 incorpora 1.800 horas.
+    const filas = meses.map(mes => {
+        const valores = acumulados[mes.value] || {};
+        const cx = Math.round(Number(valores['Personal CX'] || 0));
+        const personal = Math.round(Number(valores.Personal || 0));
+        const soporte = Math.round(Number(valores['Personal Soporte'] || 0));
+        const smb = Math.round(Number(valores['Personal SMB'] || 0));
+        const totalPersonal = cx + personal + soporte;
+        return { mes, cx, personal, soporte, totalPersonal, porcentaje: totalPersonal ? soporte / totalPersonal * 100 : 0, smb, total: totalPersonal + smb };
+    });
+    document.getElementById('tbodyResumenPLP').innerHTML = filas.map(fila => `
+        <tr class="hover:bg-emerald-50/50">
+            <td class="border border-slate-200 px-3 py-2 font-semibold text-slate-700">${escapeHtml(fila.mes.label)}</td>
+            <td class="border border-slate-200 bg-emerald-50 px-3 py-2 text-right tabular-nums">${formatNumber(fila.cx)}</td>
+            <td class="border border-slate-200 bg-emerald-50 px-3 py-2 text-right tabular-nums">${formatNumber(fila.personal)}</td>
+            <td class="border border-slate-200 bg-emerald-50 px-3 py-2 text-right tabular-nums">${formatNumber(fila.soporte)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right font-semibold tabular-nums">${formatNumber(fila.totalPersonal)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right tabular-nums">${formatPercent(fila.porcentaje)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right tabular-nums">${formatNumber(fila.smb)}</td>
+            <td class="border border-slate-200 bg-blue-50 px-3 py-2 text-right font-bold text-blue-950 tabular-nums">${formatNumber(fila.total)}</td>
+        </tr>
+    `).join('');
+    const total = campo => filas.reduce((suma, fila) => suma + fila[campo], 0);
+    const totalPersonal = total('totalPersonal');
+    const totalSoporte = total('soporte');
+    document.getElementById('tfootResumenPLP').innerHTML = `
+        <tr class="bg-slate-100 font-bold text-slate-900">
+            <td class="border border-slate-200 px-3 py-2">TOTAL</td>
+            <td class="border border-slate-200 px-3 py-2 text-right">${formatNumber(total('cx'))}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right">${formatNumber(total('personal'))}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right">${formatNumber(totalSoporte)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right">${formatNumber(totalPersonal)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right">${formatPercent(totalPersonal ? totalSoporte / totalPersonal * 100 : 0)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right">${formatNumber(total('smb'))}</td>
+            <td class="border border-slate-200 bg-blue-100 px-3 py-2 text-right text-blue-950">${formatNumber(total('total'))}</td>
+        </tr>`;
+}
+
+function actualizarClientePLP() {
+    const tipo = document.getElementById('tipoPLP').value;
+    document.getElementById('bloqueNocturnidad').classList.toggle('hidden', !tipo);
+}
+
+async function cargarDistribucionPersonal() {
+    const year = document.getElementById('yearFiltro').value;
+    const response = await fetch(`/api/personal-distribucion?year=${encodeURIComponent(year)}`);
+    const data = await response.json();
+    if (!data.success) return;
+    serviciosPersonal = data.servicios || [];
+    distribucionesPersonal = data.distribuciones || [];
+    renderDistribucionPersonal();
+}
+
+function descargarTemplatePLP() {
+    const year = document.getElementById('yearFiltro').value;
+    window.location.href = `/api/proyecciones-plp/template?year=${encodeURIComponent(year)}`;
+}
+
+async function importarPLP() {
+    const input = document.getElementById('archivoPLP');
+    if (!input.files.length) return;
+    const year = document.getElementById('yearFiltro').value;
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const formData = new FormData();
+    formData.append('archivo', input.files[0]);
+    formData.append('year', year);
+    formData.append('csrf_token', csrf);
+    try {
+        const response = await fetch('/api/proyecciones-plp/importar', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrf },
+            credentials: 'same-origin',
+            body: formData,
+        });
+        const contentType = response.headers.get('content-type') || '';
+        const data = contentType.includes('application/json') ? await response.json() : null;
+        if (!response.ok || !data?.success) {
+            const mensaje = data?.errores?.join(' | ') || `La importación PLP falló con estado ${response.status}`;
+            mostrarMensaje(mensaje, 'error');
+            alert(mensaje);
+            return;
+        }
+        mostrarMensaje(data.mensaje, 'success');
+        alert(data.mensaje);
+        await cargarProyecciones();
+    } catch (error) {
+        mostrarMensaje('No se pudo completar la importación PLP', 'error');
+        alert('No se pudo completar la importación PLP');
+    } finally {
+        input.value = '';
+    }
+}
+
+function renderDistribucionPersonal() {
+    document.getElementById('theadDistribucionPersonal').innerHTML = `
+        <th class="border border-indigo-100 px-3 py-2 text-left">Mes</th>
+        ${serviciosPersonal.map(servicio => `<th class="border border-indigo-100 px-3 py-2 text-center">${escapeHtml(servicio)}<div class="text-[10px] font-normal">% diurno</div></th>`).join('')}
+    `;
+    document.getElementById('tbodyDistribucionPersonal').innerHTML = meses.map(mes => `
+        <tr>
+            <td class="border border-slate-200 px-3 py-2 font-semibold text-slate-700">${escapeHtml(mes.label)}</td>
+            ${serviciosPersonal.map(servicio => {
+                const fila = distribucionesPersonal.find(item => item.servicio === servicio && item.mes === mes.value);
+                const valor = fila ? fila.porcentaje_diurno : 100;
+                return `<td class="border border-slate-200 p-2"><div class="flex items-center justify-center gap-2"><input data-personal-servicio="${escapeHtml(servicio)}" data-personal-mes="${escapeHtml(mes.value)}" type="number" min="0" max="100" step="0.01" value="${valor}" oninput="actualizarNocturnoInput(this)" class="h-9 w-20 rounded border border-slate-300 px-2 text-right"><span class="text-xs text-slate-500">${formatPercent(100 - Number(valor))} noct.</span></div></td>`;
+            }).join('')}
+        </tr>
+    `).join('');
+}
+
+function actualizarNocturnoInput(input) {
+    const diurno = Math.max(0, Math.min(100, numero(input.value)));
+    input.nextElementSibling.textContent = `${formatPercent(100 - diurno)} noct.`;
+}
+
+async function guardarDistribucionPersonal() {
+    const distribuciones = [...document.querySelectorAll('[data-personal-servicio]')].map(input => ({
+        servicio: input.dataset.personalServicio,
+        mes: input.dataset.personalMes,
+        porcentaje_diurno: input.value,
+    }));
+    const response = await fetch('/api/personal-distribucion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ year: document.getElementById('yearFiltro').value, distribuciones }),
+    });
+    const data = await response.json();
+    if (!data.success) {
+        mostrarMensaje((data.errores || ['No se pudieron guardar los porcentajes']).join(', '), 'error');
+        return;
+    }
+    mostrarMensaje(data.mensaje, 'success');
+    await cargarProyecciones();
 }
 
 function popularFiltros() {
@@ -371,7 +670,7 @@ function agregarJornada(jornada = {}) {
     row.innerHTML = `
         <div class="grid grid-cols-2 gap-2">
             <div>
-                <label class="mb-1 block text-xs font-medium text-gray-600">Personas</label>
+                <label class="mb-1 block text-xs font-medium text-gray-600">Dotación requerida</label>
                 <input data-field="dotacion" type="number" min="0" step="0.01" value="${jornada.dotacion_requerida ?? ''}" oninput="actualizarProyectadas()" class="h-9 w-full rounded border border-gray-300 px-2 text-sm text-right">
             </div>
             <div>
@@ -417,14 +716,31 @@ function obtenerJornadasFormulario() {
 }
 
 function actualizarProyectadas() {
+    if (pestaniaActual === 'personal') {
+        const horas = numero(document.getElementById('horasPLP').value);
+        const cargaSemanal = document.getElementById('cargaSemanalPLP').value;
+        const cargaHoraria = numero(document.getElementById('cargaHorariaPLP').value);
+        const cumplimiento = numero(document.getElementById('porcentajeCumplimiento').value);
+        const horasFinales = horas * cumplimiento / 100;
+        const dias = calcularDiasObjetivo(cargaSemanal);
+        const dotacion = dias && cargaHoraria ? horasFinales / dias / cargaHoraria : 0;
+        document.getElementById('horasProyectadasPreview').textContent = formatNumber(horasFinales);
+        document.getElementById('diasPLP').textContent = formatNumber(dias);
+        document.getElementById('dotacionPLP').textContent = formatNumber(dotacion);
+        return;
+    }
     let dotacionTotal = 0;
     let diasMax = 0;
     let horas = 0;
+    const diasManualInput = document.getElementById('diasObjetivoManual');
+    const horasManualInput = document.getElementById('horasRequeridasManual');
+    const diasManual = diasManualInput.value.trim() === '' ? null : numero(diasManualInput.value);
+    const horasManual = horasManualInput.value.trim() === '' ? null : numero(horasManualInput.value);
     document.querySelectorAll('.jornada-row').forEach(row => {
         const dotacion = numero(row.querySelector('[data-field="dotacion"]').value);
         const cargaHoraria = numero(row.querySelector('[data-field="horas"]').value);
         const carga = row.querySelector('[data-field="carga"]').value;
-        const dias = calcularDiasObjetivo(carga);
+        const dias = diasManual === null ? calcularDiasObjetivo(carga) : diasManual;
         const requeridas = dotacion * dias * cargaHoraria;
         dotacionTotal += dotacion;
         diasMax = Math.max(diasMax, dias);
@@ -432,6 +748,7 @@ function actualizarProyectadas() {
         row.querySelector('[data-field="dias"]').value = dias;
         row.querySelector('[data-field="requeridas"]').value = requeridas ? requeridas.toFixed(2) : '';
     });
+    if (horasManual !== null) horas = horasManual;
     const porcentaje = numero(document.getElementById('porcentajeCumplimiento').value);
     document.getElementById('dotacionTotal').value = dotacionTotal ? dotacionTotal.toFixed(2) : '';
     document.getElementById('diasObjetivo').value = diasMax;
@@ -473,6 +790,13 @@ async function guardarProyeccion(event) {
         mes: document.getElementById('mes').value,
         jornadas: obtenerJornadasFormulario(),
         porcentaje_cumplimiento: document.getElementById('porcentajeCumplimiento').value,
+        dias_objetivo_manual: pestaniaActual === 'personal' ? '' : document.getElementById('diasObjetivoManual').value,
+        horas_requeridas_override: pestaniaActual === 'personal' ? '' : document.getElementById('horasRequeridasManual').value,
+        tipo_plp: pestaniaActual === 'personal' ? document.getElementById('tipoPLP').value : '',
+        campania_plp: pestaniaActual === 'personal' ? document.getElementById('campaniaPLP').value : '',
+        horas_requeridas_manual: pestaniaActual === 'personal' ? document.getElementById('horasPLP').value : '',
+        carga_semanal_plp: pestaniaActual === 'personal' ? document.getElementById('cargaSemanalPLP').value : '',
+        carga_horaria_plp: pestaniaActual === 'personal' ? document.getElementById('cargaHorariaPLP').value : '',
     };
     const response = await fetch('/api/matriz-proyecciones', {
         method: 'POST',
@@ -493,6 +817,7 @@ function editarProyeccion(id) {
     const item = proyecciones.find(proyeccion => Number(proyeccion.id) === Number(id));
     if (!item) return;
     document.getElementById('proyeccionId').value = item.id;
+    cambiarPestania(item.tipo_plp ? 'personal' : 'todas');
     document.getElementById('cliente').value = item.cliente;
     actualizarCampanias();
     document.getElementById('campania').value = item.campania;
@@ -511,7 +836,15 @@ function editarProyeccion(id) {
     document.getElementById('dotacionTotal').value = item.dotacion_requerida || '';
     document.getElementById('diasObjetivo').value = item.dias_objetivo || 0;
     document.getElementById('horasRequeridas').value = item.horas_requeridas;
+    document.getElementById('diasObjetivoManual').value = item.dias_objetivo_manual ?? '';
+    document.getElementById('horasRequeridasManual').value = item.horas_requeridas_manual ?? '';
     document.getElementById('porcentajeCumplimiento').value = item.porcentaje_cumplimiento;
+    document.getElementById('tipoPLP').value = item.tipo_plp || '';
+    document.getElementById('campaniaPLP').value = item.tipo_plp ? item.campania : '';
+    document.getElementById('horasPLP').value = item.horas_carga_manual ? item.horas_requeridas : '';
+    document.getElementById('cargaSemanalPLP').value = item.carga_semanal || 'L a V';
+    document.getElementById('cargaHorariaPLP').value = item.carga_horaria || 6;
+    actualizarAvisoPersonal();
     document.getElementById('tituloFormulario').textContent = 'Editar proyección';
     document.getElementById('subtituloFormulario').textContent = `${item.cliente} / ${item.campania} / ${item.mes_label}`;
     document.getElementById('badgeEditando').classList.remove('hidden');
@@ -537,36 +870,150 @@ function renderProyecciones() {
     const campania = document.getElementById('filtroCampania').value;
     const mes = document.getElementById('filtroMes').value;
     const filtradas = proyecciones.filter(item => {
+        if (pestaniaActual === 'personal' && !item.tipo_plp) return false;
         if (cliente && item.cliente !== cliente) return false;
         if (campania && item.campania !== campania) return false;
         if (mes && item.mes !== mes) return false;
         if (!texto) return true;
         return normalizar(`${item.cliente} ${item.campania} ${item.mes_label}`).includes(texto);
     });
+    document.getElementById('tabTodas').className = pestaniaActual === 'todas' ? 'rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm' : 'rounded px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white';
+    document.getElementById('tabPersonal').className = pestaniaActual === 'personal' ? 'rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm' : 'rounded px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white';
     document.getElementById('contadorProyecciones').textContent = `${filtradas.length} de ${proyecciones.length} proyección(es)`;
     if (!filtradas.length) {
         tbody.innerHTML = '<tr><td colspan="12" class="px-4 py-8 text-center text-gray-500">No hay proyecciones cargadas</td></tr>';
         return;
     }
-    tbody.innerHTML = filtradas.map(item => `
+    if (pestaniaActual === 'personal') {
+        renderProyeccionesPLPAgrupadas(filtradas);
+        return;
+    }
+    const detalles = pestaniaActual === 'todas' ? filtradas.filter(item => !item.tipo_plp) : filtradas;
+    tbody.innerHTML = detalles.flatMap(item => filasVisualesProyeccion(item).map(apertura => `
         <tr class="hover:bg-slate-50">
             <td class="border border-gray-200 px-3 py-2 font-medium text-gray-900">${escapeHtml(item.cliente)}</td>
-            <td class="border border-gray-200 px-3 py-2">${escapeHtml(item.campania)}</td>
+            <td class="border border-gray-200 px-3 py-2">${item.tipo_plp ? `<div class="font-semibold text-amber-900">${escapeHtml(item.tipo_plp)}</div><div class="mt-1 text-xs text-slate-600">${escapeHtml(apertura.campania)}</div>` : escapeHtml(apertura.campania)}</td>
             <td class="border border-gray-200 px-3 py-2 text-center">${item.year}</td>
             <td class="border border-gray-200 px-3 py-2 text-center">${escapeHtml(item.mes_label)}</td>
-            <td class="border border-gray-200 px-3 py-2 text-right">${formatNumber(item.dotacion_requerida)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatNumber(apertura.dotacion_requerida)}</td>
             <td class="border border-gray-200 px-3 py-2 text-center">${formatJornadasCarga(item)}</td>
             <td class="border border-gray-200 px-3 py-2 text-right">${formatJornadasHoras(item)}</td>
             <td class="border border-gray-200 px-3 py-2 text-right">${formatNumber(item.dias_objetivo)}</td>
-            <td class="border border-gray-200 px-3 py-2 text-right">${formatNumber(item.horas_requeridas)}</td>
-            <td class="border border-gray-200 bg-blue-50 px-3 py-2 text-right font-semibold text-blue-900">${formatNumber(item.horas_proyectadas)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatNumber(apertura.horas_requeridas)}</td>
+            <td class="border border-gray-200 bg-blue-50 px-3 py-2 text-right font-semibold text-blue-900">${formatNumber(apertura.horas_proyectadas)}${item.tiene_nocturnidad ? `<div class="mt-1 text-xs font-normal text-indigo-700">${formatPercent(apertura.porcentaje)}</div>` : ''}</td>
             <td class="border border-gray-200 px-3 py-2 text-right">${formatPercent(item.porcentaje_cumplimiento)}</td>
             <td class="border border-gray-200 px-3 py-2 text-center">
                 <button type="button" onclick="editarProyeccion(${item.id})" class="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"><i class="fas fa-pen"></i></button>
                 <button type="button" onclick="eliminarProyeccion(${item.id})" class="ml-1 rounded bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-700"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
-    `).join('');
+    `)).join('');
+    if (pestaniaActual === 'todas') {
+        renderProyeccionesPLPAgrupadas(filtradas.filter(item => item.tipo_plp), true);
+    }
+}
+
+function renderProyeccionesPLPAgrupadas(items, anexar = false) {
+    if (!items.length) return;
+    const grupos = new Map();
+    items.forEach(item => {
+        const clave = `${item.tipo_plp}|${item.mes}`;
+        if (!grupos.has(clave)) {
+            grupos.set(clave, {
+                cliente: 'Personal',
+                tipo_plp: item.tipo_plp,
+                year: item.year,
+                mes: item.mes,
+                mes_label: item.mes_label,
+                diurnas: 0,
+                nocturnas: 0,
+                requeridas_diurnas: 0,
+                requeridas_nocturnas: 0,
+                porcentaje_diurno: 100 - Number(item.porcentaje_nocturnidad || 0),
+                porcentaje_nocturno: Number(item.porcentaje_nocturnidad || 0),
+                dotacion_diurna: 0,
+                dotacion_nocturna: 0,
+                dias: 0,
+                cargas: new Set(),
+                jornadas: new Set(),
+                servicios: new Set(),
+            });
+        }
+        const grupo = grupos.get(clave);
+        const total = Number(item.horas_proyectadas || 0);
+        const requeridas = Number(item.horas_requeridas || 0);
+        const nocturnas = total * Number(item.porcentaje_nocturnidad || 0) / 100;
+        const requeridasNocturnas = requeridas * Number(item.porcentaje_nocturnidad || 0) / 100;
+        grupo.diurnas += total - nocturnas;
+        grupo.nocturnas += nocturnas;
+        grupo.requeridas_diurnas += requeridas - requeridasNocturnas;
+        grupo.requeridas_nocturnas += requeridasNocturnas;
+        const dotacionTotal = Number(item.dotacion_requerida || 0);
+        grupo.dotacion_nocturna += dotacionTotal * Number(item.porcentaje_nocturnidad || 0) / 100;
+        grupo.dotacion_diurna += dotacionTotal * (100 - Number(item.porcentaje_nocturnidad || 0)) / 100;
+        grupo.dias = Math.max(grupo.dias, Number(item.dias_objetivo || 0));
+        grupo.cargas.add(item.carga_semanal || 'L a V');
+        grupo.jornadas.add(Number(item.carga_horaria || 0));
+        grupo.servicios.add(item.campania);
+    });
+    const filas = [...grupos.values()].sort((a, b) => `${a.mes} ${a.tipo_plp}`.localeCompare(`${b.mes} ${b.tipo_plp}`));
+    const tbody = document.getElementById('tbodyProyecciones');
+    const html = filas.flatMap(grupo => [
+        { nombre: grupo.tipo_plp, requeridas: grupo.requeridas_diurnas, horas: grupo.diurnas, porcentaje: grupo.porcentaje_diurno, dotacion: grupo.dotacion_diurna },
+        { nombre: `${grupo.tipo_plp} nocturnidad`, requeridas: grupo.requeridas_nocturnas, horas: grupo.nocturnas, porcentaje: grupo.porcentaje_nocturno, dotacion: grupo.dotacion_nocturna },
+    ].filter(fila => fila.horas > 0).map(fila => `
+        <tr class="hover:bg-slate-50">
+            <td class="border border-gray-200 px-3 py-2 font-medium text-gray-900">Personal</td>
+            <td class="border border-gray-200 px-3 py-2 font-semibold text-amber-900">${escapeHtml(fila.nombre)}<div class="mt-1 text-xs font-normal text-slate-500">${grupo.servicios.size} servicio(s) acumulado(s)</div></td>
+            <td class="border border-gray-200 px-3 py-2 text-center">${grupo.year}</td>
+            <td class="border border-gray-200 px-3 py-2 text-center">${escapeHtml(grupo.mes_label)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatNumber(fila.dotacion)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-center">${grupo.cargas.size === 1 ? escapeHtml([...grupo.cargas][0]) : 'Varias'}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${grupo.jornadas.size === 1 ? `${formatNumber([...grupo.jornadas][0])} h` : 'Varias'}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatNumber(grupo.dias)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatNumber(fila.requeridas)}</td>
+            <td class="border border-gray-200 bg-blue-50 px-3 py-2 text-right font-semibold text-blue-900">${formatNumber(fila.horas)}<div class="mt-1 text-xs font-normal text-indigo-700">${formatPercent(fila.porcentaje)}</div></td>
+            <td class="border border-gray-200 px-3 py-2 text-right">${formatPercent(fila.requeridas ? fila.horas / fila.requeridas * 100 : 0)}</td>
+            <td class="border border-gray-200 px-3 py-2 text-center"><button type="button" onclick="editarAcumuladoPLP('${escapeHtml(grupo.tipo_plp)}', '${escapeHtml(grupo.mes)}')" class="rounded bg-amber-500 px-2 py-1 text-xs font-semibold text-white hover:bg-amber-600">Editar en PLP</button></td>
+        </tr>
+    `)).join('');
+    if (anexar) tbody.insertAdjacentHTML('beforeend', html);
+    else tbody.innerHTML = html;
+    if (!anexar) document.getElementById('contadorProyecciones').textContent = `${filas.length} clasificación(es), ${items.length} servicio(s) acumulado(s)`;
+}
+
+function editarAcumuladoPLP(tipo, mes) {
+    cambiarPestania('personal');
+    document.getElementById('tipoPLP').value = tipo;
+    document.getElementById('mes').value = mes;
+    document.getElementById('filtroMes').value = mes;
+    actualizarClientePLP();
+    renderProyecciones();
+    document.getElementById('bloqueCargaPLP').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function filasVisualesProyeccion(item) {
+    if (!item.tiene_nocturnidad || Number(item.porcentaje_nocturnidad || 0) <= 0) {
+        return [{ ...item, porcentaje: 100 }];
+    }
+    const porcentajeNocturno = Number(item.porcentaje_nocturnidad || 0);
+    const porcentajePrincipal = 100 - porcentajeNocturno;
+    return [
+        {
+            campania: item.campania,
+            dotacion_requerida: Number(item.dotacion_requerida || 0) * porcentajePrincipal / 100,
+            horas_requeridas: Number(item.horas_requeridas || 0) * porcentajePrincipal / 100,
+            horas_proyectadas: Number(item.horas_proyectadas || 0) * porcentajePrincipal / 100,
+            porcentaje: porcentajePrincipal,
+        },
+        {
+            campania: `${item.campania} nocturnidad`,
+            dotacion_requerida: Number(item.dotacion_requerida || 0) * porcentajeNocturno / 100,
+            horas_requeridas: Number(item.horas_requeridas || 0) * porcentajeNocturno / 100,
+            horas_proyectadas: Number(item.horas_proyectadas || 0) * porcentajeNocturno / 100,
+            porcentaje: porcentajeNocturno,
+        },
+    ];
 }
 
 function limpiarFormulario(resetMensaje = true) {
@@ -580,7 +1027,15 @@ function limpiarFormulario(resetMensaje = true) {
     document.getElementById('dotacionTotal').value = '';
     document.getElementById('diasObjetivo').value = '';
     document.getElementById('horasRequeridas').value = '';
+    document.getElementById('diasObjetivoManual').value = '';
+    document.getElementById('horasRequeridasManual').value = '';
     document.getElementById('porcentajeCumplimiento').value = 100;
+    document.getElementById('tipoPLP').value = '';
+    document.getElementById('campaniaPLP').value = '';
+    document.getElementById('horasPLP').value = '';
+    document.getElementById('cargaSemanalPLP').value = 'L a V';
+    document.getElementById('cargaHorariaPLP').value = 6;
+    actualizarAvisoPersonal();
     document.getElementById('tituloFormulario').textContent = 'Nueva proyección';
     document.getElementById('subtituloFormulario').textContent = 'Cliente, campaña y período.';
     document.getElementById('badgeEditando').classList.add('hidden');

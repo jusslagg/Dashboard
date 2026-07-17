@@ -186,9 +186,139 @@ Al iniciar, Flask crea las tablas que falten y aplica algunos ajustes simples de
 | `asignaciones_comerciales` | `AsignacionComercial` | Catálogo maestro de cliente, gerente, jefe de site, campaña, subcampaña y tipo de negocio. |
 | `matriz_proyecciones` | `ProyeccionMatriz` | Guarda la planificación mensual por cliente/campaña: dotación, carga horaria, días objetivo, horas requeridas y cumplimiento. |
 | `matriz_proyecciones_jornadas` | `ProyeccionMatrizJornada` | Guarda aperturas de jornadas dentro de una proyección cuando una campaña necesita más de una configuración horaria. |
+| `personal_distribucion_horas` | `PersonalDistribucionHoras` | Guarda por año, mes y clasificación PLP el porcentaje de horas diurnas; la nocturnidad es la diferencia hasta 100%. |
 | `matriz_precios` | `ProyeccionPrecio` | Guarda precios mensuales por cliente/campaña, alcance, precio final e importe fijo mensual. |
 | `variables_campanias` | `VariableCampania` | Guarda el porcentaje variable mensual por cliente/campaña. |
+| `tarifaciones_campanias` | `TarifacionCampania` | Guarda montos mensuales positivos o negativos que se suman a Facturación horas. |
+| `next_gen_dolar` | `NextGenDolar` | Guarda el valor del dólar utilizado por Next Gen para cada mes y año. |
+| `next_gen_productos` | `NextGenProducto` | Guarda cantidades mensuales en USD por cliente, campaña y producto Next Gen. |
+| `sites_proyecciones` | `SiteProyeccion` | Guarda la regularización manual del site o gerencia de una campaña proyectada. |
 | `feriados_operativos` | `FeriadoOperativo` | Guarda feriados o días no operativos que afectan los días objetivo de las proyecciones. |
+
+### Mapa de carga y destino
+
+| Tabla | Dónde se carga | A dónde apunta / qué alimenta |
+| --- | --- | --- |
+| `usuarios` | Usuarios o configuración inicial | Login, sesiones, permisos e identificación del historial. |
+| `asignaciones_comerciales` | Datos maestros | Formularios, filtros, sites, clientes y campañas de todos los módulos. |
+| `facturacion_2026` | Cargar datos, importación de facturación o edición en Control | Dashboard, Control, Comparativo, Matriz, Justificaciones y exportaciones reales. |
+| `justificaciones_ajustes` | Justificaciones | Un registro concreto de `facturacion_2026`; ajusta y explica bonos, penalizaciones u otros conceptos. |
+| `feriados_operativos` | Calendario operativo | Días objetivo, horas y dotaciones de `matriz_proyecciones`. |
+| `matriz_proyecciones` | Matriz de proyecciones, importación general o importación PLP | Control proyecciones y base de horas de Facturación horas. |
+| `matriz_proyecciones_jornadas` | Aperturas de jornada dentro de una proyección | Suma de horas y dotaciones de su registro padre en `matriz_proyecciones`. |
+| `personal_distribucion_horas` | Matriz de proyecciones > PLP > porcentajes | Apertura diurna/nocturna de las proyecciones Personal y sus cálculos posteriores. |
+| `matriz_precios` | Matriz de precios o importación anual | Valoriza horas proyectadas, nocturnidad e importes fijos en Facturación horas. |
+| `variables_campanias` | Variable > % Variable o importación anual | Estimación variable y total consolidado de Facturación horas. |
+| `tarifaciones_campanias` | Variable > Tarifación o importación anual | Ajuste monetario sumado o restado en Facturación horas. |
+| `next_gen_dolar` | Variable > Next Gen o importación anual | Cotización mensual usada para convertir productos Next Gen a pesos. |
+| `next_gen_productos` | Variable > Next Gen o importación anual | Importe Next Gen en pesos y total consolidado de Facturación horas. |
+| `sites_proyecciones` | Edición directa de la columna Site en Facturación horas | Reagrupa todos los meses y conceptos consolidados de la campaña. |
+| `historial_cambios` | Automática; no se carga manualmente | Auditoría y restauración de snapshots en operaciones compatibles con Deshacer. |
+
+### Ficha de colecciones para la base de datos
+
+Esta sección resume qué necesita cada tabla/colección para que la base quede armada correctamente.
+
+#### `usuarios`
+
+- **Propósito**: administrar acceso, roles y estado de los usuarios.
+- **Campos clave**: `nombre`, `email`, `password_hash`, `rol`, `activo`.
+- **Obligatorio para iniciar**: sí. Debe existir al menos un usuario administrador.
+- **Reglas importantes**: el email debe ser único; la contraseña se guarda como hash; los roles habilitan o bloquean acciones sensibles.
+- **Carga manual recomendada**: solo usuarios reales o de administración.
+
+#### `asignaciones_comerciales`
+
+- **Propósito**: catálogo maestro que define combinaciones válidas de cliente, gerente/site, jefe, campaña, subcampaña y tipo de negocio.
+- **Campos clave**: `cliente`, `gerente`, `jefe_site`, `campania`, `subcampania`, `tipo_negocio`, `activa`.
+- **Obligatorio para iniciar**: sí, antes de proyecciones, precios y variables.
+- **Reglas importantes**: cliente y campaña deben escribirse igual que en facturación, proyecciones y precios; una asociación inactiva no debería usarse para cargas nuevas.
+- **Uso histórico**: si cambia el jefe desde un mes puntual, usar **Aplicar desde mes** para no pisar meses anteriores.
+
+#### `facturacion_2026`
+
+- **Propósito**: guardar la facturación real cargada por mes y dimensión comercial.
+- **Campos clave**: `fecha`, `mes`, `cliente`, `gerente`, `jefe_site`, `campania`, `subcampania`, `tipo_negocio`, `tipo_jornada`, horas e importes.
+- **Obligatorio para iniciar**: sí, si se quiere usar Dashboard, Control, Comparativo, Matriz, Justificaciones y exportaciones.
+- **Reglas importantes**: `mes` debe estar en formato `YYYY-MM`; las dimensiones comerciales deben coincidir con `asignaciones_comerciales`; penalizaciones se tratan como descuento.
+- **Datos mínimos útiles**: fecha, mes, cliente, gerente, jefe, campaña, subcampaña, tipo de jornada, horas objetivo, horas facturadas y valor hora.
+
+#### `justificaciones_ajustes`
+
+- **Propósito**: explicar ajustes, bonos, penalizaciones u otros conceptos asociados a una carga real.
+- **Campos clave**: `facturacion_id`, `tipo`, `cantidad`, `precio`, `importe`, `descripcion`.
+- **Obligatorio para iniciar**: no.
+- **Reglas importantes**: cada justificación debe apuntar a un registro existente de `facturacion_2026`; en penalizaciones, el importe impacta como descuento.
+- **Carga manual recomendada**: solo cuando un desvío o ajuste necesite respaldo.
+
+#### `matriz_proyecciones`
+
+- **Propósito**: guardar la planificación mensual de horas y dotaciones por cliente/campaña.
+- **Campos clave**: `cliente`, `campania`, `year`, `mes`, `dotacion_requerida`, `carga_semanal`, `carga_horaria`, `dias_objetivo`, `horas_requeridas`, `porcentaje_cumplimiento`.
+- **Obligatorio para iniciar**: sí, si se usan Proyectados, Facturación horas, Variable o Control proyecciones.
+- **Clave funcional**: `cliente + campania + mes`.
+- **Reglas importantes**: `mes` debe estar en formato `YYYY-MM`; cliente/campaña deben existir en Datos maestros; feriados activos pueden recalcular días objetivo.
+
+#### `matriz_proyecciones_jornadas`
+
+- **Propósito**: abrir una proyección en varias jornadas cuando una campaña tiene más de una configuración horaria dentro del mismo mes.
+- **Campos clave**: `proyeccion_id`, `dotacion_requerida`, `carga_semanal`, `carga_horaria`, `dias_objetivo`, `horas_requeridas`.
+- **Obligatorio para iniciar**: no.
+- **Reglas importantes**: cada fila depende de una proyección existente en `matriz_proyecciones`.
+- **Cuándo usarla**: solo cuando una misma campaña/mes necesita separar jornadas.
+
+#### `personal_distribucion_horas`
+
+- **Propósito**: definir la apertura diurna/nocturna de las proyecciones PLP de Personal.
+- **Campos clave**: `servicio`, `year`, `mes`, `porcentaje_diurno`.
+- **Clasificaciones admitidas**: `Personal CX`, `Personal`, `Personal Soporte` y `Personal SMB`.
+- **Clave funcional**: `servicio + mes`.
+- **Regla principal**: `porcentaje_nocturno = 100 - porcentaje_diurno`.
+- **Destino**: recalcula las aperturas principal y `nocturnidad` de `matriz_proyecciones`; ambas alimentan Matriz de precios, Facturación horas, Variable y Control proyecciones.
+- **Cambio de año**: si el año seleccionado no tiene valores propios, la pantalla propone los porcentajes del año anterior. Al guardarlos se crean registros para el nuevo año sin modificar el histórico.
+- **Carga manual recomendada**: revisar los doce porcentajes de cada clasificación antes de importar o recalcular PLP.
+
+#### `matriz_precios`
+
+- **Propósito**: guardar precios mensuales para calcular facturación proyectada.
+- **Campos clave**: `site`, `cliente`, `campania`, `year`, `mes`, `precio_base`, `alcance_porcentaje`, `precio_final`, `importe_fijo_mensual`.
+- **Obligatorio para iniciar**: sí, si se quiere calcular Facturación horas.
+- **Clave funcional**: `cliente + campania + mes`.
+- **Reglas importantes**: debe coincidir con `matriz_proyecciones` en cliente/campaña/mes; `alcance_porcentaje` normalmente es `100`; `importe_fijo_mensual` puede quedar en `0`.
+
+#### `variables_campanias`
+
+- **Propósito**: guardar el porcentaje variable mensual aplicado sobre Facturación horas.
+- **Campos clave**: `site`, `cliente`, `campania`, `year`, `mes`, `porcentaje`.
+- **Obligatorio para iniciar**: no, salvo que se necesite calcular variables.
+- **Clave funcional**: `cliente + campania + mes`.
+- **Reglas importantes**: la campaña debe existir en Facturación horas; el porcentaje puede ser `0`; los cambios quedan auditados y pueden deshacerse desde Historial cuando aplica.
+
+#### `tarifaciones_campanias`
+
+- **Propósito**: guardar ajustes monetarios independientes de las horas y del porcentaje variable.
+- **Campos clave**: `site`, `cliente`, `campania`, `concepto`, `year`, `mes`, `monto`.
+- **Clave funcional**: `cliente + campania + concepto + mes`.
+- **Reglas importantes**: el monto conserva su signo; un valor positivo suma y uno negativo resta. La coincidencia con Facturación horas ignora mayúsculas, minúsculas y acentos.
+- **Destino**: se incorpora al mismo renglón consolidado de la campaña en Facturación horas.
+- **Carga**: se puede ingresar manualmente o importar todo el año desde la subpestaña **Tarifación**.
+- **Auditoría**: las creaciones, ediciones e importaciones quedan identificadas como Tarifación en Historial y se pueden deshacer.
+
+#### `feriados_operativos`
+
+- **Propósito**: registrar días no operativos que impactan en los días objetivo de proyecciones.
+- **Campos clave**: `year`, `fecha`, `nombre`, `tipo`, `activo`.
+- **Obligatorio para iniciar**: no, salvo que las proyecciones deban descontar feriados.
+- **Clave funcional**: `fecha`.
+- **Reglas importantes**: solo feriados activos impactan cálculos; al agregar o eliminar un feriado activo, se recalculan proyecciones del mes afectado.
+
+#### `historial_cambios`
+
+- **Propósito**: auditar operaciones relevantes y guardar snapshots para trazabilidad.
+- **Campos clave**: `usuario_id`, `usuario_nombre`, `usuario_email`, `accion`, `entidad`, `entidad_id`, `resumen`, `detalle`, `antes`, `despues`.
+- **Obligatorio para iniciar**: no se carga manualmente.
+- **Reglas importantes**: la aplicación lo completa automáticamente; permite revisar cambios y deshacer algunas operaciones soportadas.
+- **Uso esperado**: auditoría de creación, edición, eliminación, importaciones, inflación, precios, variables y proyecciones.
 
 ### Datos mínimos para iniciar
 
@@ -199,8 +329,10 @@ Para una base nueva, el orden recomendado de carga es:
 3. `facturacion_2026`: cargar registros reales si se quiere usar Dashboard, Control, Matriz, Comparativo y Justificaciones.
 4. `feriados_operativos`: cargar feriados si las proyecciones deben descontar días no operativos.
 5. `matriz_proyecciones`: cargar horas y dotaciones proyectadas por mes.
-6. `matriz_precios`: cargar precios por mes para cruzar contra las horas proyectadas.
-7. `variables_campanias`: cargar porcentajes variables una vez que exista Facturación horas.
+6. `personal_distribucion_horas`: configurar los porcentajes diurnos/nocturnos de PLP para el año correspondiente.
+7. `matriz_precios`: cargar precios por mes para cruzar contra las horas proyectadas, incluyendo los nombres de nocturnidad cuando tengan un precio específico.
+8. `variables_campanias`: cargar porcentajes variables una vez que exista Facturación horas.
+9. `tarifaciones_campanias`: cargar ajustes monetarios mensuales positivos o negativos cuando correspondan.
 
 ### `usuarios`
 
@@ -242,6 +374,24 @@ Datos que necesitás agregar:
 - site/gerente correcto para que los filtros agrupen bien.
 
 Esta tabla alimenta formularios de carga, filtros, Matriz de proyecciones, Matriz de precios, Facturación horas, Variable y Control proyecciones.
+
+#### Cambios de jefe de site con vigencia mensual
+
+Cuando una campaña cambia de responsable a partir de un mes determinado, no se debe pisar toda la asociación histórica. En Datos maestros se puede editar la asociación y completar **Aplicar desde mes** con formato `YYYY-MM`.
+
+Ejemplo:
+
+- `Santander Chat` estuvo bajo la jefatura de `Ismael Rissi` hasta `2026-05`.
+- Desde `2026-06` pasa a `Mariela Ditto`.
+
+Al editar la asociación y cargar `2026-06` en **Aplicar desde mes**, el sistema:
+
+- mantiene los registros anteriores a junio con `Ismael Rissi`;
+- actualiza desde junio en adelante con `Mariela Ditto`;
+- crea o activa una nueva asociación para la combinación vigente;
+- registra la operación en Historial.
+
+Si **Aplicar desde mes** queda vacío, la edición se comporta como una actualización general de la asociación y de sus cargas vinculadas.
 
 ### `facturacion_2026`
 
@@ -335,6 +485,12 @@ Campos principales:
 | `dias_objetivo` | Días operativos del mes. |
 | `horas_requeridas` | Horas esperadas antes de cumplimiento. |
 | `porcentaje_cumplimiento` | Porcentaje aplicado sobre horas requeridas. |
+| `tiene_nocturnidad` | Indica si la proyección se abre en horas diurnas y nocturnas. |
+| `porcentaje_nocturnidad` | Porcentaje nocturno aplicado; en PLP se obtiene desde la distribución mensual. |
+| `tipo_plp` | Clasificación PLP: Personal CX, Personal, Personal Soporte o Personal SMB. |
+| `horas_carga_manual` | Identifica que las horas fueron ingresadas directamente, como ocurre en PLP. |
+| `dias_objetivo_manual` | Reemplazo opcional de los días calculados para campañas que operan solo una parte del mes. |
+| `horas_requeridas_manual` | Reemplazo opcional del total calculado desde dotación, días y jornada. |
 
 Clave única:
 
@@ -350,6 +506,24 @@ Datos que necesitás agregar:
 - cliente y campaña alineados con `asignaciones_comerciales`.
 
 Esta tabla alimenta Matriz de proyecciones, Control proyecciones y Facturación horas.
+
+En el formulario general, **Días hábiles manuales** y **Horas requeridas manuales** son opcionales. Si quedan vacíos, se usa el cálculo automático. Si se informan, tienen prioridad y permanecen guardados al editar o recalcular la proyección. Esto permite representar altas a mitad de mes, cierres anticipados u otras ventanas operativas parciales.
+
+En PLP el `cliente` siempre se guarda como `Personal`. `tipo_plp` identifica la clasificación y `campania` conserva el nombre operativo importado, por ejemplo `MÓVIL TELEFÓNICO`. En pantalla, todos los servicios de una misma clasificación y mes se acumulan en dos renglones: la clasificación principal y la misma clasificación con el sufijo `nocturnidad`.
+
+### `personal_distribucion_horas`
+
+Campos principales:
+
+| Campo | Descripción |
+| --- | --- |
+| `servicio` | Clasificación PLP: Personal CX, Personal, Personal Soporte o Personal SMB. |
+| `year` | Año al que pertenece la distribución. |
+| `mes` | Mes en formato `YYYY-MM`. |
+| `porcentaje_diurno` | Proporción de horas que queda en el renglón principal. |
+| `porcentaje_nocturno` | Valor calculado como `100 - porcentaje_diurno`; no se carga directamente. |
+
+Los porcentajes se administran desde **Matriz de proyecciones > PLP**. Cambiar un porcentaje recalcula todas las proyecciones PLP coincidentes del mes. Los datos de años anteriores permanecen intactos.
 
 ### `matriz_proyecciones_jornadas`
 
@@ -433,6 +607,21 @@ Datos que necesitás agregar:
 
 Esta tabla alimenta el módulo Variable y puede deshacerse desde Historial.
 
+### `tarifaciones_campanias`
+
+Campos principales:
+
+| Campo | Descripción |
+| --- | --- |
+| `site` | Site o gerencia de agrupación. |
+| `cliente` | Cuenta comercial. |
+| `campania` | Nombre que debe coincidir con la campaña de Facturación horas. |
+| `concepto` | Etiqueta del ajuste, por ejemplo `Tarifación` o `Penalidad ADH`. |
+| `year`, `mes` | Período del importe. |
+| `monto` | Importe con signo: positivo suma y negativo resta. |
+
+La tabla no reemplaza el campo `tarifacion` de la facturación real: `tarifaciones_campanias` pertenece exclusivamente al circuito proyectado y se integra en Facturación horas.
+
 ### `historial_cambios`
 
 Guarda auditoría de operaciones.
@@ -461,8 +650,11 @@ Para que los módulos funcionen correctamente:
 
 - `asignaciones_comerciales` debe cargarse antes de proyecciones, precios y variables.
 - `matriz_proyecciones` necesita cliente/campaña existentes en el maestro.
+- Las proyecciones PLP siempre usan `Personal` como cliente y una de las cuatro clasificaciones admitidas en `tipo_plp`; el nombre operativo queda en `campania`.
+- `personal_distribucion_horas` divide las horas PLP en principal y nocturnidad antes del cruce con precios.
 - `matriz_precios` debe coincidir en cliente/campaña/mes con `matriz_proyecciones` para que Facturación horas calcule.
 - `variables_campanias` se carga sobre campañas que ya aparecen en Facturación horas.
+- `tarifaciones_campanias` se cruza por cliente/campaña/mes y suma o resta el monto al consolidado de Facturación horas.
 - `feriados_operativos` afecta el cálculo de días objetivo de `matriz_proyecciones`.
 - `historial_cambios` no es una tabla de carga manual: audita operaciones del sistema.
 
@@ -510,6 +702,8 @@ Permite mantener:
 - subcampaña;
 - tipo de negocio;
 - estado activo/inactivo.
+
+Cuando cambia el jefe de una campaña, permite indicar desde qué mes aplica el cambio para preservar el histórico mensual. Por ejemplo, si `Santander Chat` cambia de `Ismael Rissi` a `Mariela Ditto` desde junio, se edita la asociación, se cambia el jefe y se completa **Aplicar desde mes** con `2026-06`. Los meses anteriores quedan asociados al jefe anterior.
 
 Estas asociaciones alimentan filtros, formularios y agrupaciones de los módulos proyectados.
 
@@ -594,6 +788,31 @@ Funciones disponibles:
 - deshacer último cambio;
 - registro en historial.
 
+#### Subpestaña PLP
+
+Es el circuito exclusivo para campañas cuyo cliente es `Personal`. Las clasificaciones válidas son `Personal CX`, `Personal`, `Personal Soporte` y `Personal SMB`.
+
+Cada registro conserva el nombre operativo de la campaña, el mes y las horas cargadas, pero el listado acumula los nombres operativos de una misma clasificación. La apertura se muestra en dos renglones:
+
+- clasificación principal: horas correspondientes al porcentaje diurno;
+- `clasificación nocturnidad`: horas restantes hasta completar el 100%.
+
+La jornada comienza predefinida en `L a V` y `6` horas, pero ambos campos son editables. Los días objetivo salen de los días laborales del mes, descontando feriados activos. La dotación se recalcula así:
+
+```text
+dotación requerida = horas requeridas / días laborales / horas de jornada
+```
+
+El porcentaje de cumplimiento es editable y afecta las horas proyectadas finales. El resumen mensual PLP acumula las horas base importadas al 100% para poder cotejarlas contra el archivo original.
+
+La importación anual acepta `.xlsx` o `.csv` con estas columnas:
+
+```text
+Clasificación PLP | MES | CAMPAÑA | HORAS | Carga semanal | Horas jornada | % cumplimiento
+```
+
+Si se vuelve a importar la misma combinación `clasificación + campaña + mes`, se actualiza el registro existente en lugar de duplicarlo.
+
 ### Calendario operativo
 
 Administra feriados o días no operativos.
@@ -644,6 +863,18 @@ facturación horas = horas proyectadas * precio mensual
 
 También contempla importes fijos cuando están cargados.
 
+La vista final consolida en una sola línea por campaña:
+
+```text
+total campaña = facturación de horas + estimación variable + tarifaciones
+```
+
+En PLP, las horas principales y nocturnas se calculan con su precio correspondiente y luego se consolidan bajo la clasificación base. La asociación de variables y tarifaciones ignora diferencias de mayúsculas, minúsculas y acentos. `Multicuentas` y `Gerencia Multicampaña` se presentan bajo la misma agrupación comercial.
+
+La identificación es editable directamente desde el lápiz de la columna **Site**. Allí se pueden regularizar el site, el cliente y la campaña. El cliente/campaña ingresado funciona como nombre canónico: si varias identificaciones de origen se asignan al mismo nombre, sus Horas, Variable, Tarifación y Next Gen se consolidan y suman en una única línea para cada mes. La regularización se guarda en `sites_proyecciones`, no modifica los nombres históricos de las tablas de origen, queda registrada en Historial y puede deshacerse.
+
+Las proyecciones comunes se calculan por cada apertura de campaña, respetando su precio y porcentaje variable, y después se consolidan bajo el cliente. Si una apertura no tiene proyección propia para un mes, se utiliza la proyección base del cliente como respaldo. PLP conserva como excepción sus clasificaciones Personal, Personal CX, Personal Soporte y Personal SMB.
+
 Permite:
 
 - filtrar por site, cliente, campaña y concepto;
@@ -655,7 +886,14 @@ Permite:
 
 ### Variable
 
-Permite cargar un porcentaje mensual por campaña sobre el resultado de Facturación horas.
+El módulo tiene tres subpestañas relacionadas, pero cada una conserva su propio dato:
+
+- **% Variable**: porcentaje mensual guardado en `variables_campanias`.
+- **Estimación variable**: resultado monetario calculado; no es otra carga independiente.
+- **Tarifación**: monto mensual positivo o negativo guardado en `tarifaciones_campanias`.
+- **Next Gen**: cantidades mensuales en USD por producto, valorizadas con el dólar de cada mes.
+
+La subpestaña **% Variable** permite cargar un porcentaje mensual por campaña sobre el resultado de Facturación horas.
 
 La pantalla muestra solo campañas que existen en Facturación horas, para evitar cargar variables sobre campañas sin base de cálculo.
 
@@ -679,6 +917,38 @@ Características:
 - los números se muestran centrados;
 - se puede deshacer desde Historial;
 - soporta acentos y Ñ en cliente, campaña y site.
+
+La plantilla anual de variables contiene `Cuenta`, `Site`, `Cliente` y una columna por mes. Acepta porcentajes como `5`, `5%` o el valor decimal de Excel `0,05`. Al reimportar, se actualiza la combinación de campaña y mes existente. Al seleccionar un año nuevo sin valores propios, se toman como propuesta los últimos porcentajes disponibles del año anterior; los cambios posteriores no alteran el histórico.
+
+#### Estimación variable
+
+No requiere una tabla adicional. Se calcula sobre la facturación de horas de la misma campaña y mes:
+
+```text
+estimación variable = facturación horas * porcentaje / 100
+```
+
+Para PLP, las campañas principales y nocturnas pueden tener porcentajes propios. El resultado se consolida finalmente en el renglón de su clasificación base.
+
+#### Tarifación
+
+Permite ingresar o importar un monto adicional por campaña, concepto y mes:
+
+```text
+facturación consolidada = horas + estimación variable + monto de tarifación
+```
+
+Los montos negativos restan y los positivos suman. La plantilla anual incluye `Cuenta`, `Site`, `Cliente`, `Concepto` y los doce meses. Reimportar una misma combinación actualiza el valor existente.
+
+#### Next Gen
+
+Permite editar el valor mensual del dólar y cargar uno o varios productos por campaña. Cada producto conserva su cantidad mensual en USD y muestra el resultado convertido a pesos:
+
+```text
+Next Gen en pesos = cantidad USD del producto * valor del dólar del mes
+```
+
+Los productos de una misma campaña se acumulan y el resultado se incorpora como concepto `Next Gen` en Facturación horas. La plantilla anual replica el cuadro operativo: una columna `CLIENTE` para identificar el producto y doce columnas mensuales en USD. El valor del dólar se administra por mes desde la parte superior de la pestaña. Al reimportar, el sistema conserva la campaña asociada al producto y actualiza cada mes existente.
 
 ### Control proyecciones
 
@@ -716,12 +986,16 @@ Se registran operaciones como:
 - cambios de variable;
 - cambios de proyecciones;
 - cambios de precios.
+- cambios e importaciones de porcentajes variables;
+- cambios e importaciones de tarifación;
+- importaciones PLP y cambios de distribución diurna/nocturna.
 
 Desde Historial se puede deshacer, cuando aplica, cambios de:
 
 - Matriz de proyecciones;
 - Matriz de precios;
 - Variable.
+- Tarifación.
 
 El deshacer restaura el estado anterior guardado en el snapshot del historial. Si el registro no existía, se recrea; si debía eliminarse, se elimina; si debía modificarse, se restaura el valor previo.
 
@@ -734,6 +1008,21 @@ Plantillas disponibles:
 - carga de facturación;
 - matriz de proyecciones;
 - matriz de precios.
+- proyecciones anuales PLP;
+- porcentajes variables anuales;
+- tarifaciones anuales.
+
+Destino de cada importación:
+
+| Plantilla | Tabla principal | Pantalla de destino | Resultado posterior |
+| --- | --- | --- | --- |
+| Facturación real | `facturacion_2026` | Cargar datos / Control | Dashboard, Comparativo, Matriz y exportaciones. |
+| Matriz de proyecciones | `matriz_proyecciones` y, si aplica, `matriz_proyecciones_jornadas` | Proyectados > Matriz de proyecciones | Control proyecciones y Facturación horas. |
+| Proyecciones PLP | `matriz_proyecciones` con `cliente=Personal` y `tipo_plp` | Proyectados > Matriz de proyecciones > PLP | Resumen PLP, aperturas diurnas/nocturnas y Facturación horas. |
+| Matriz de precios | `matriz_precios` | Proyectados > Matriz de precios | Precio de las horas y de las aperturas nocturnas. |
+| Variables | `variables_campanias` | Variable > % Variable | Variable > Estimación variable y Facturación horas. |
+| Tarifación | `tarifaciones_campanias` | Variable > Tarifación | Suma o resta en Facturación horas. |
+| Next Gen | `next_gen_dolar` y `next_gen_productos` | Variable > Next Gen | Convierte USD a pesos y suma el resultado en Facturación horas. |
 
 Formatos soportados según el módulo:
 
@@ -776,6 +1065,27 @@ Las penalizaciones impactan como descuento. Aunque se carguen como valor positiv
 
 Los importes monetarios proyectados usan redondeo centralizado para evitar diferencias pequeñas entre campañas con el mismo precio base.
 
+### Proyección PLP
+
+```text
+horas diurnas = horas base * porcentaje diurno / 100
+horas nocturnas = horas base * (100 - porcentaje diurno) / 100
+horas proyectadas finales = horas base * porcentaje de cumplimiento / 100
+dotación = horas base / días laborales / horas de jornada
+```
+
+Las aperturas diurna y nocturna se valorizan con el precio mensual que coincida con cada nombre. El resumen operativo PLP muestra las horas base al 100%; el cumplimiento se aplica en el circuito de proyección y facturación.
+
+### Consolidado proyectado
+
+```text
+importe horas = horas proyectadas * precio final
+estimación variable = importe horas * porcentaje variable / 100
+total campaña = importe horas + estimación variable + Next Gen + tarifaciones
+```
+
+Una tarifación negativa funciona como descuento. No se debe confundir con el porcentaje variable ni con el campo de tarifación de la facturación real.
+
 ## APIs principales
 
 Rutas HTML:
@@ -814,10 +1124,22 @@ APIs destacadas:
 /api/comparativo
 /api/matriz
 /api/matriz-proyecciones
+/api/proyecciones-plp/template
+/api/proyecciones-plp/importar
+/api/personal-distribucion
 /api/matriz-precios
 /api/matriz-precios/inflacion
 /api/resumen-proyeccion
 /api/variables
+/api/variables/template
+/api/variables/importar
+/api/tarifaciones
+/api/tarifaciones/template
+/api/tarifaciones/importar
+/api/next-gen
+/api/next-gen/template
+/api/next-gen/importar
+/api/sites-proyeccion
 /api/control-proyecciones
 /api/calendario-operativo
 /api/historial
@@ -867,11 +1189,14 @@ Servir siempre detrás de HTTPS y con una base de datos administrada.
 4. Revisar Dashboard, Comparativo y Matriz.
 5. Cargar Matriz de proyecciones.
 6. Configurar Calendario operativo.
-7. Cargar Matriz de precios.
-8. Revisar Facturación horas.
-9. Cargar Variable.
-10. Revisar Control proyecciones para validar horas y dotaciones.
-11. Usar Historial para auditar o deshacer cambios.
+7. Para Personal, seleccionar el año, revisar la distribución diurna/nocturna e importar las proyecciones PLP.
+8. Cargar Matriz de precios, incluyendo precios nocturnos cuando correspondan.
+9. Revisar Facturación horas.
+10. Descargar o importar la plantilla de `% Variable` y revisar Estimación variable.
+11. Cargar o importar Tarifación con el signo correspondiente.
+12. Volver a Facturación horas y validar el consolidado `Horas + Variable + Tarifación`.
+13. Revisar Control proyecciones para validar horas y dotaciones.
+14. Usar Historial para auditar o deshacer cambios.
 
 ## Problemas frecuentes
 

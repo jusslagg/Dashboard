@@ -22,11 +22,25 @@
     </div>
 </div>
 
-<section class="mb-4 rounded-lg border border-slate-200 bg-white shadow-sm">
+<div class="mb-4 inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1">
+    <button id="tabPorcentajes" type="button" onclick="cambiarVistaVariable('porcentajes')" class="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white">% Variable</button>
+    <button id="tabEstimacion" type="button" onclick="cambiarVistaVariable('estimacion')" class="rounded-md px-4 py-2 text-sm font-semibold text-slate-600">Estimación variable</button>
+    <button id="tabTarifacion" type="button" onclick="cambiarVistaVariable('tarifacion')" class="rounded-md px-4 py-2 text-sm font-semibold text-slate-600">Tarifación</button>
+    <button id="tabNextGen" type="button" onclick="cambiarVistaVariable('nextgen')" class="rounded-md px-4 py-2 text-sm font-semibold text-slate-600">Next Gen</button>
+</div>
+
+<section id="panelCargaVariable" class="mb-4 rounded-lg border border-slate-200 bg-white shadow-sm">
     <div class="border-b border-slate-200 px-4 py-3">
-        <div class="flex flex-col gap-1">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
             <h2 class="font-semibold text-gray-950">Cargar porcentaje</h2>
             <p class="text-xs text-slate-500">Solo aparecen campañas con Facturación horas.</p>
+            </div>
+            <div>
+                <button type="button" onclick="descargarTemplateVariables()" class="mr-2 inline-flex h-9 items-center gap-2 rounded-md border border-emerald-600 bg-white px-4 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"><i class="fas fa-download"></i> Descargar template</button>
+                <input id="archivoVariables" type="file" accept=".xlsx,.csv" class="hidden" onchange="importarVariables()">
+                <button type="button" onclick="document.getElementById('archivoVariables').click()" class="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700"><i class="fas fa-file-import"></i> Importar variables del año</button>
+            </div>
         </div>
     </div>
     <form id="formVariable" class="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 xl:grid-cols-[minmax(280px,1fr)_170px_150px_auto] xl:items-end" onsubmit="guardarVariable(event)">
@@ -50,11 +64,51 @@
     <div id="mensajeVariable" class="hidden mx-4 mb-4 rounded-md px-3 py-2 text-sm"></div>
 </section>
 
+<section id="panelTarifacion" class="mb-4 hidden rounded-lg border border-amber-200 bg-white p-4 shadow-sm">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div><h2 class="font-semibold text-gray-950">Tarifación mensual</h2><p class="text-xs text-slate-500">Los importes positivos suman y los negativos restan a Facturación horas.</p></div>
+        <div class="flex gap-2">
+            <button type="button" onclick="descargarTemplateTarifaciones()" class="inline-flex h-9 items-center gap-2 rounded-md border border-amber-600 px-4 text-sm font-semibold text-amber-700"><i class="fas fa-download"></i> Descargar template</button>
+            <input id="archivoTarifaciones" type="file" accept=".xlsx,.csv" class="hidden" onchange="importarTarifaciones()">
+            <button type="button" onclick="document.getElementById('archivoTarifaciones').click()" class="inline-flex h-9 items-center gap-2 rounded-md bg-amber-600 px-4 text-sm font-semibold text-white"><i class="fas fa-file-import"></i> Importar tarifación</button>
+        </div>
+    </div>
+    <form class="mt-4 grid grid-cols-1 gap-3 border-t border-amber-100 pt-4 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_150px_180px_180px_auto] xl:items-end" onsubmit="guardarTarifacion(event)">
+        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Campaña</span><select id="tarifacionCampania" required class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"></select></label>
+        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Mes</span><select id="tarifacionMes" required class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"></select></label>
+        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Concepto</span><input id="tarifacionConcepto" value="Tarifación" class="h-10 w-full rounded-md border border-gray-300 px-3 text-sm"></label>
+        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Monto (+/-)</span><input id="tarifacionMonto" type="number" step="0.01" value="0" onclick="this.select()" required class="h-10 w-full rounded-md border border-gray-300 px-3 text-right text-sm"></label>
+        <button type="submit" class="h-10 rounded-md bg-amber-600 px-4 text-sm font-semibold text-white">Guardar monto</button>
+    </form>
+</section>
+
+<section id="panelNextGen" class="mb-4 hidden rounded-lg border border-cyan-200 bg-white p-4 shadow-sm">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div><h2 class="font-semibold text-gray-950">Next Gen</h2><p class="text-xs text-slate-500">Cantidades mensuales en USD multiplicadas por el valor mensual del dólar.</p></div>
+        <div class="flex gap-2">
+            <button type="button" onclick="descargarTemplateNextGen()" class="inline-flex h-9 items-center gap-2 rounded-md border border-cyan-600 px-4 text-sm font-semibold text-cyan-700"><i class="fas fa-download"></i> Descargar template</button>
+            <input id="archivoNextGen" type="file" accept=".xlsx,.csv" class="hidden" onchange="importarNextGen()">
+            <button type="button" onclick="document.getElementById('archivoNextGen').click()" class="inline-flex h-9 items-center gap-2 rounded-md bg-cyan-700 px-4 text-sm font-semibold text-white"><i class="fas fa-file-import"></i> Importar Next Gen</button>
+        </div>
+    </div>
+    <div class="mt-4 border-t border-cyan-100 pt-4">
+        <h3 class="text-sm font-semibold text-cyan-950">Valor del dólar por mes</h3>
+        <div id="dolaresNextGen" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-12"></div>
+    </div>
+    <form class="mt-4 grid grid-cols-1 gap-3 border-t border-cyan-100 pt-4 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_220px_150px_180px_auto] xl:items-end" onsubmit="guardarNextGenProducto(event)">
+        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Campaña destino</span><select id="nextGenCampania" required class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"></select></label>
+        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Producto</span><input id="nextGenProducto" required placeholder="Ej. APM - TERMINAL 4" class="h-10 w-full rounded-md border border-gray-300 px-3 text-sm"></label>
+        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Mes</span><select id="nextGenMes" required class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"></select></label>
+        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Cantidad USD</span><input id="nextGenUsd" type="number" step="0.01" value="0" onclick="this.select()" required class="h-10 w-full rounded-md border border-gray-300 px-3 text-right text-sm"></label>
+        <button type="submit" class="h-10 rounded-md bg-cyan-700 px-4 text-sm font-semibold text-white">Guardar producto</button>
+    </form>
+</section>
+
 <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
     <div class="border-b border-slate-200 px-4 py-3">
         <div class="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(220px,1fr)_minmax(220px,360px)_minmax(220px,360px)_minmax(240px,380px)]">
             <div>
-                <h2 class="font-semibold text-gray-950">Resultado variable</h2>
+                <h2 id="tituloTablaVariable" class="font-semibold text-gray-950">Porcentajes variables</h2>
                 <p id="contadorVariable" class="mt-1 text-xs text-slate-500">Cargando datos...</p>
             </div>
             <input id="buscarVariable" type="search" oninput="renderVariable()" placeholder="Buscar..." class="h-10 rounded-md border border-gray-300 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
@@ -81,17 +135,108 @@
 let meses = [];
 let filas = [];
 let campanias = [];
+let modoVista = 'porcentajes';
+let filasTarifacion = [];
+let dataNextGen = {dolares: {}, filas: [], total_usd: {meses: {}, total: 0}, total_pesos: {meses: {}, total: 0}};
 
 document.addEventListener('DOMContentLoaded', cargarVariable);
+
+function cambiarVistaVariable(modo) {
+    modoVista = modo;
+    const porcentajes = modo === 'porcentajes';
+    document.getElementById('panelCargaVariable').classList.toggle('hidden', !porcentajes);
+    document.getElementById('panelTarifacion').classList.toggle('hidden', modo !== 'tarifacion');
+    document.getElementById('panelNextGen').classList.toggle('hidden', modo !== 'nextgen');
+    document.getElementById('tabPorcentajes').className = porcentajes ? 'rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white' : 'rounded-md px-4 py-2 text-sm font-semibold text-slate-600';
+    document.getElementById('tabEstimacion').className = modo === 'estimacion' ? 'rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white' : 'rounded-md px-4 py-2 text-sm font-semibold text-slate-600';
+    document.getElementById('tabTarifacion').className = modo === 'tarifacion' ? 'rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white' : 'rounded-md px-4 py-2 text-sm font-semibold text-slate-600';
+    document.getElementById('tabNextGen').className = modo === 'nextgen' ? 'rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white' : 'rounded-md px-4 py-2 text-sm font-semibold text-slate-600';
+    document.getElementById('tituloTablaVariable').textContent = porcentajes ? 'Porcentajes variables' : (modo === 'tarifacion' ? 'Montos de tarifación' : (modo === 'nextgen' ? 'Productos Next Gen valorizados' : 'Estimación variable'));
+    renderVariable();
+}
+
+function descargarTemplateVariables() {
+    const year = document.getElementById('yearFiltro').value;
+    window.location.href = `/api/variables/template?year=${encodeURIComponent(year)}`;
+}
+
+function descargarTemplateTarifaciones() {
+    const year = document.getElementById('yearFiltro').value;
+    window.location.href = `/api/tarifaciones/template?year=${encodeURIComponent(year)}`;
+}
+
+function descargarTemplateNextGen() {
+    const year = document.getElementById('yearFiltro').value;
+    window.location.href = `/api/next-gen/template?year=${encodeURIComponent(year)}`;
+}
+
+async function importarNextGen() {
+    const input = document.getElementById('archivoNextGen');
+    if (!input.files.length) return;
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const formData = new FormData();
+    formData.append('archivo', input.files[0]); formData.append('year', document.getElementById('yearFiltro').value); formData.append('csrf_token', csrf);
+    try {
+        const response = await fetch('/api/next-gen/importar', {method: 'POST', headers: {'X-CSRF-Token': csrf}, credentials: 'same-origin', body: formData});
+        const data = await response.json();
+        mostrarMensaje(data.mensaje || (data.errores || ['No se pudo importar']).join(' | '), response.ok && data.success);
+        if (response.ok && data.success) await cargarVariable();
+    } finally { input.value = ''; }
+}
+
+async function importarTarifaciones() {
+    const input = document.getElementById('archivoTarifaciones');
+    if (!input.files.length) return;
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const formData = new FormData();
+    formData.append('archivo', input.files[0]); formData.append('year', document.getElementById('yearFiltro').value); formData.append('csrf_token', csrf);
+    try {
+        const response = await fetch('/api/tarifaciones/importar', {method: 'POST', headers: {'X-CSRF-Token': csrf}, credentials: 'same-origin', body: formData});
+        const data = await response.json();
+        mostrarMensaje(data.mensaje || (data.errores || ['No se pudo importar']).join(' | '), response.ok && data.success);
+        if (response.ok && data.success) await cargarVariable();
+    } finally { input.value = ''; }
+}
+
+async function importarVariables() {
+    const input = document.getElementById('archivoVariables');
+    if (!input.files.length) return;
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const formData = new FormData();
+    formData.append('archivo', input.files[0]);
+    formData.append('year', document.getElementById('yearFiltro').value);
+    formData.append('csrf_token', csrf);
+    try {
+        const response = await fetch('/api/variables/importar', {
+            method: 'POST', headers: { 'X-CSRF-Token': csrf }, credentials: 'same-origin', body: formData,
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            mostrarMensaje((data.errores || ['No se pudo importar']).join(' | '), false);
+            return;
+        }
+        const aviso = data.omitidas?.length ? `${data.mensaje}. Omitidas: ${data.omitidas.join(' | ')}` : data.mensaje;
+        mostrarMensaje(aviso, true);
+        await cargarVariable();
+    } finally {
+        input.value = '';
+    }
+}
 
 async function cargarVariable() {
     const year = document.getElementById('yearFiltro').value;
     document.getElementById('contadorVariable').textContent = 'Cargando datos...';
     const response = await fetch(`/api/variables?year=${encodeURIComponent(year)}`);
     const data = await response.json();
+    const tarifacionResponse = await fetch(`/api/tarifaciones?year=${encodeURIComponent(year)}&_=${Date.now()}`, {cache: 'no-store'});
+    const tarifacionData = await tarifacionResponse.json();
+    const nextGenResponse = await fetch(`/api/next-gen?year=${encodeURIComponent(year)}&_=${Date.now()}`, {cache: 'no-store'});
+    const nextGenData = await nextGenResponse.json();
     meses = data.meses || [];
     filas = data.filas || [];
     campanias = data.campanias || [];
+    filasTarifacion = tarifacionData.filas || [];
+    dataNextGen = nextGenData.success ? nextGenData : {dolares: {}, filas: [], total_usd: {meses: {}, total: 0}, total_pesos: {meses: {}, total: 0}};
     popularFormulario();
     popularFiltros();
     renderVariable();
@@ -105,6 +250,72 @@ function popularFormulario() {
         `<option value="${encodeURIComponent(JSON.stringify(item))}">${escapeHtml(item.label)}</option>`
     ).join('');
     document.getElementById('porcentajeInput').value = '0';
+    document.getElementById('tarifacionMes').innerHTML = document.getElementById('mesSelect').innerHTML;
+    document.getElementById('tarifacionCampania').innerHTML = '<option value="">Seleccionar campaña</option>' + campanias.map(item =>
+        `<option value="${encodeURIComponent(JSON.stringify(item))}">${escapeHtml(item.label)}</option>`
+    ).join('');
+    document.getElementById('nextGenMes').innerHTML = document.getElementById('mesSelect').innerHTML;
+    document.getElementById('nextGenCampania').innerHTML = '<option value="">Seleccionar campaña</option>' + campanias.map(item =>
+        `<option value="${encodeURIComponent(JSON.stringify(item))}">${escapeHtml(item.label)}</option>`
+    ).join('');
+    renderDolaresNextGen();
+}
+
+function renderDolaresNextGen() {
+    document.getElementById('dolaresNextGen').innerHTML = meses.map(mes => `
+        <label class="rounded border border-cyan-100 bg-cyan-50 p-2">
+            <span class="block text-[10px] font-semibold uppercase text-cyan-800">${escapeHtml(mes.label)}</span>
+            <input type="number" step="0.0001" value="${Number((dataNextGen.dolares || {})[mes.value] || 0)}" onchange="guardarDolarNextGen('${mes.value}', this.value)" class="mt-1 h-8 w-full rounded border border-cyan-200 bg-white px-2 text-right text-xs">
+        </label>`).join('');
+}
+
+async function guardarDolarNextGen(mes, valor) {
+    const response = await fetch('/api/next-gen', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({tipo: 'dolar', mes, valor})});
+    const data = await response.json();
+    mostrarMensaje(data.mensaje || (data.errores || []).join(' | '), response.ok && data.success);
+    if (response.ok && data.success) await cargarVariable();
+}
+
+async function guardarNextGenProducto(event) {
+    event.preventDefault();
+    const raw = document.getElementById('nextGenCampania').value;
+    if (!raw) return;
+    const campania = JSON.parse(decodeURIComponent(raw));
+    const response = await fetch('/api/next-gen', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+        tipo: 'producto', site: campania.site, cliente: campania.cliente, campania: campania.campania,
+        producto: document.getElementById('nextGenProducto').value,
+        mes: document.getElementById('nextGenMes').value, cantidad_usd: document.getElementById('nextGenUsd').value,
+    })});
+    const data = await response.json();
+    mostrarMensaje(data.mensaje || (data.errores || []).join(' | '), response.ok && data.success);
+    if (response.ok && data.success) await cargarVariable();
+}
+
+async function guardarNextGenValorFila(raw, mes, cantidad) {
+    const item = JSON.parse(decodeURIComponent(raw));
+    const response = await fetch('/api/next-gen', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+        tipo: 'producto', site: item.site, cliente: item.cliente, campania: item.campania,
+        producto: item.producto, mes, cantidad_usd: cantidad,
+    })});
+    const data = await response.json();
+    mostrarMensaje(data.mensaje || (data.errores || []).join(' | '), response.ok && data.success);
+    if (response.ok && data.success) await cargarVariable();
+}
+
+async function guardarTarifacion(event) {
+    event.preventDefault();
+    const raw = document.getElementById('tarifacionCampania').value;
+    if (!raw) return;
+    const campania = JSON.parse(decodeURIComponent(raw));
+    const response = await fetch('/api/tarifaciones', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+        site: campania.site, cliente: campania.cliente, campania: campania.campania,
+        mes: document.getElementById('tarifacionMes').value,
+        concepto: document.getElementById('tarifacionConcepto').value,
+        monto: document.getElementById('tarifacionMonto').value,
+    })});
+    const data = await response.json();
+    mostrarMensaje(data.mensaje || (data.errores || []).join(' | '), response.ok && data.success);
+    if (response.ok && data.success) await cargarVariable();
 }
 
 function popularFiltros() {
@@ -159,6 +370,14 @@ async function guardarVariable(event) {
 }
 
 function renderVariable() {
+    if (modoVista === 'nextgen') {
+        renderNextGen();
+        return;
+    }
+    if (modoVista === 'tarifacion') {
+        renderTarifacion();
+        return;
+    }
     const busqueda = normalizar(document.getElementById('buscarVariable').value);
     const cliente = document.getElementById('filtroCliente').value;
     const campania = document.getElementById('filtroCampania').value;
@@ -169,6 +388,7 @@ function renderVariable() {
             && (!campania || item.campania === campania);
     });
 
+    const esEstimacion = modoVista === 'estimacion';
     document.getElementById('colgroupVariable').innerHTML = `
         <col class="w-[170px]">
         <col class="w-[210px]">
@@ -180,7 +400,7 @@ function renderVariable() {
         <th class="border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Site</th>
         <th class="border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Cliente</th>
         <th class="border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Campaña</th>
-        <th class="border-b border-r border-blue-200 bg-blue-100 px-3 py-3 text-center font-semibold">Total</th>
+        <th class="border-b border-r border-blue-200 bg-blue-100 px-3 py-3 text-center font-semibold">${esEstimacion ? 'Total' : 'Promedio'}</th>
         ${meses.map(mes => `<th class="border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">${escapeHtml(mes.label)}</th>`).join('')}
     `;
 
@@ -191,7 +411,7 @@ function renderVariable() {
         meses.forEach(mes => totalMeses[mes.value] += Number((item.meses || {})[mes.value] || 0));
     });
 
-    const totalRow = `
+    const totalRow = !esEstimacion ? '' : `
         <tr class="bg-blue-50 font-bold text-blue-950">
             <td class="border-b border-r border-blue-100 bg-blue-50 px-3 py-3">TOTAL</td>
             <td class="border-b border-r border-blue-100 bg-blue-50 px-3 py-3"></td>
@@ -200,23 +420,80 @@ function renderVariable() {
             ${meses.map(mes => `<td class="border-b border-r border-blue-100 px-3 py-3 text-center tabular-nums">${formatoMoneda(totalMeses[mes.value])}</td>`).join('')}
         </tr>`;
 
-    const rows = visibles.map(item => `
+    const rows = visibles.map(item => {
+        const promedio = meses.length ? meses.reduce((suma, mes) => suma + Number((item.porcentajes || {})[mes.value] || 0), 0) / meses.length : 0;
+        return `
         <tr class="hover:bg-slate-50">
             <td class="border-b border-r border-slate-200 bg-white px-3 py-3 align-middle">${escapeHtml(item.site || '')}</td>
             <td class="border-b border-r border-slate-200 bg-white px-3 py-3 align-middle">${escapeHtml(item.cliente || '')}</td>
             <td class="border-b border-r border-slate-200 bg-white px-3 py-3 align-middle font-semibold leading-snug">${escapeHtml(item.campania || '')}</td>
-            <td class="border-b border-r border-slate-200 bg-slate-50 px-3 py-3 text-center font-semibold tabular-nums">${formatoMoneda(item.total || 0)}</td>
+            <td class="border-b border-r border-slate-200 bg-slate-50 px-3 py-3 text-center font-semibold tabular-nums">${esEstimacion ? formatoMoneda(item.total || 0) : formatoPorcentaje(promedio)}</td>
             ${meses.map(mes => `
                 <td class="border-b border-r border-slate-200 px-3 py-2 text-center tabular-nums">
-                    <div class="font-semibold">${formatoMoneda((item.meses || {})[mes.value] || 0)}</div>
-                    <div class="text-xs text-slate-500">${formatoPorcentaje((item.porcentajes || {})[mes.value] || 0)}</div>
+                    <div class="font-semibold">${esEstimacion ? formatoMoneda((item.meses || {})[mes.value] || 0) : formatoPorcentaje((item.porcentajes || {})[mes.value] || 0)}</div>
+                    <div class="text-xs text-slate-500">${esEstimacion ? formatoPorcentaje((item.porcentajes || {})[mes.value] || 0) : ((item.porcentajes_heredados || {})[mes.value] ? 'Heredado' : '')}</div>
                 </td>
             `).join('')}
         </tr>
-    `).join('');
+    `}).join('');
 
     document.getElementById('tbodyVariable').innerHTML = totalRow + (rows || `<tr><td colspan="${meses.length + 4}" class="px-4 py-8 text-center text-slate-500">Sin resultados para los filtros seleccionados.</td></tr>`);
-    document.getElementById('contadorVariable').textContent = `${visibles.length} campaña(s), total ${formatoMoneda(total)}`;
+    document.getElementById('contadorVariable').textContent = esEstimacion
+        ? `${visibles.length} campaña(s), total ${formatoMoneda(total)}`
+        : `${visibles.length} campaña(s) con porcentajes mensuales`;
+}
+
+function renderTarifacion() {
+    const busqueda = normalizar(document.getElementById('buscarVariable').value);
+    const visibles = filasTarifacion.filter(item => !busqueda || normalizar(`${item.site} ${item.cliente} ${item.campania} ${item.concepto}`).includes(busqueda));
+    document.getElementById('colgroupVariable').innerHTML = `<col class="w-[170px]"><col class="w-[300px]"><col class="w-[150px]"><col class="w-[150px]">${meses.map(() => '<col class="w-[125px]">').join('')}`;
+    document.getElementById('theadVariable').innerHTML = `
+        <th class="border-b border-r border-slate-200 px-3 py-3 text-left">Site</th>
+        <th class="border-b border-r border-slate-200 px-3 py-3 text-left">Cliente / Campaña</th>
+        <th class="border-b border-r border-slate-200 px-3 py-3 text-left">Concepto</th>
+        <th class="border-b border-r border-amber-200 bg-amber-100 px-3 py-3 text-center">Total tarifación</th>
+        ${meses.map(mes => `<th class="border-b border-r border-slate-200 px-3 py-3 text-center">${escapeHtml(mes.label)}</th>`).join('')}`;
+    const rows = visibles.map(item => `<tr class="hover:bg-amber-50/40">
+        <td class="border-b border-r border-slate-200 px-3 py-3">${escapeHtml(item.site)}</td>
+        <td class="border-b border-r border-slate-200 px-3 py-3"><div>${escapeHtml(item.cliente)}</div><div class="font-semibold">${escapeHtml(item.campania)}</div></td>
+        <td class="border-b border-r border-slate-200 px-3 py-3">${escapeHtml(item.concepto)}</td>
+        <td class="border-b border-r border-amber-200 bg-amber-50 px-3 py-3 text-center font-semibold">${formatoMoneda(item.total_monto)}</td>
+        ${meses.map(mes => `<td class="border-b border-r border-slate-200 px-3 py-2 text-center font-semibold ${(item.montos || {})[mes.value] < 0 ? 'text-red-600' : 'text-emerald-700'}">${formatoMoneda((item.montos || {})[mes.value] || 0)}</td>`).join('')}
+    </tr>`).join('');
+    document.getElementById('tbodyVariable').innerHTML = rows || `<tr><td colspan="${meses.length + 4}" class="px-4 py-8 text-center text-slate-500">Sin tarifaciones para mostrar.</td></tr>`;
+    document.getElementById('contadorVariable').textContent = `${visibles.length} campaña(s); estos montos se integran en Facturación horas`;
+}
+
+function renderNextGen() {
+    const busqueda = normalizar(document.getElementById('buscarVariable').value);
+    const cliente = document.getElementById('filtroCliente').value;
+    const campania = document.getElementById('filtroCampania').value;
+    const visibles = (dataNextGen.filas || []).filter(item => {
+        const texto = normalizar(`${item.site} ${item.cliente} ${item.campania} ${item.producto}`);
+        return (!busqueda || texto.includes(busqueda)) && (!cliente || item.cliente === cliente) && (!campania || item.campania === campania);
+    });
+    document.getElementById('colgroupVariable').innerHTML = `<col class="w-[160px]"><col class="w-[180px]"><col class="w-[220px]"><col class="w-[220px]"><col class="w-[145px]">${meses.map(() => '<col class="w-[140px]">').join('')}`;
+    document.getElementById('theadVariable').innerHTML = `
+        <th class="border-b border-r border-slate-200 px-3 py-3 text-left">Site</th>
+        <th class="border-b border-r border-slate-200 px-3 py-3 text-left">Cliente</th>
+        <th class="border-b border-r border-slate-200 px-3 py-3 text-left">Campaña destino</th>
+        <th class="border-b border-r border-slate-200 px-3 py-3 text-left">Producto</th>
+        <th class="border-b border-r border-cyan-200 bg-cyan-100 px-3 py-3 text-center">Total pesos</th>
+        ${meses.map(mes => `<th class="border-b border-r border-slate-200 px-3 py-3 text-center">${escapeHtml(mes.label)}<div class="text-[10px] text-cyan-700">USD ${Number((dataNextGen.dolares || {})[mes.value] || 0).toLocaleString('es-AR')}</div></th>`).join('')}`;
+    const rows = visibles.map(item => {
+        const raw = encodeURIComponent(JSON.stringify({site: item.site, cliente: item.cliente, campania: item.campania, producto: item.producto}));
+        return `<tr class="hover:bg-cyan-50/40">
+        <td class="border-b border-r border-slate-200 px-3 py-3">${escapeHtml(item.site)}</td>
+        <td class="border-b border-r border-slate-200 px-3 py-3">${escapeHtml(item.cliente)}</td>
+        <td class="border-b border-r border-slate-200 px-3 py-3 font-semibold">${escapeHtml(item.campania)}</td>
+        <td class="border-b border-r border-slate-200 px-3 py-3">${escapeHtml(item.producto)}</td>
+        <td class="border-b border-r border-cyan-200 bg-cyan-50 px-3 py-3 text-center font-semibold">${formatoMoneda(item.total_pesos)}</td>
+        ${meses.map(mes => `<td class="border-b border-r border-slate-200 px-2 py-2 text-center"><input type="number" step="0.01" value="${Number((item.usd || {})[mes.value] || 0)}" onchange="guardarNextGenValorFila('${raw}', '${mes.value}', this.value)" class="h-8 w-full rounded border border-cyan-100 px-2 text-right text-xs"><div class="mt-1 text-xs font-semibold text-cyan-800">${formatoMoneda((item.pesos || {})[mes.value] || 0)}</div></td>`).join('')}
+    </tr>`;
+    }).join('');
+    const totalRow = `<tr class="bg-cyan-100 font-bold text-cyan-950"><td colspan="4" class="border-b border-r border-cyan-200 px-3 py-3">TOTAL NEXT GEN</td><td class="border-b border-r border-cyan-200 px-3 py-3 text-center"><div>${formatoMoneda((dataNextGen.total_pesos || {}).total || 0)}</div><div class="text-xs">USD ${Number((dataNextGen.total_usd || {}).total || 0).toLocaleString('es-AR', {maximumFractionDigits: 2})}</div></td>${meses.map(mes => `<td class="border-b border-r border-cyan-200 px-3 py-3 text-center"><div>${formatoMoneda(((dataNextGen.total_pesos || {}).meses || {})[mes.value] || 0)}</div><div class="text-xs">USD ${Number(((dataNextGen.total_usd || {}).meses || {})[mes.value] || 0).toLocaleString('es-AR', {maximumFractionDigits: 2})}</div></td>`).join('')}</tr>`;
+    document.getElementById('tbodyVariable').innerHTML = totalRow + (rows || `<tr><td colspan="${meses.length + 5}" class="px-4 py-8 text-center text-slate-500">Sin productos Next Gen para mostrar.</td></tr>`);
+    document.getElementById('contadorVariable').textContent = `${visibles.length} producto(s), total ${formatoMoneda((dataNextGen.total_pesos || {}).total || 0)}`;
 }
 
 function mostrarMensaje(texto, ok) {
