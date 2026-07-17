@@ -1,5 +1,5 @@
 ﻿# filepath: app/routes.py
-from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, session, url_for
+from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
 from app import db, get_csrf_token
 from app.models import AsignacionComercial, Facturacion2026, FeriadoOperativo, HistorialCambio, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, ROLES_USUARIO, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
@@ -13,6 +13,8 @@ import csv
 import io
 import json
 import os
+import re
+import textwrap
 import time
 import unicodedata
 import zipfile
@@ -2015,6 +2017,142 @@ def usuarios():
 def historial():
     """Vista de historial de modificaciones y eliminaciones."""
     return render_template('historial.html')
+
+
+@main_bp.route('/guia-usuario')
+@login_requerido
+def guia_usuario():
+    """Abre la guia funcional, independiente de la documentacion tecnica."""
+    ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'guia_usuario.html'))
+    return send_file(ruta, mimetype='text/html')
+
+
+class _TextoDesdeHtml(HTMLParser):
+    """Convierte la guia HTML en texto legible para su version PDF."""
+
+    def __init__(self):
+        super().__init__()
+        self.partes = []
+        self.omitir = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ('style', 'script'):
+            self.omitir += 1
+        elif tag in ('h1', 'h2', 'h3', 'h4', 'p', 'li', 'tr', 'section'):
+            self.partes.append('\n')
+
+    def handle_endtag(self, tag):
+        if tag in ('style', 'script') and self.omitir:
+            self.omitir -= 1
+        elif tag in ('h1', 'h2', 'h3', 'h4', 'p', 'li', 'tr'):
+            self.partes.append('\n')
+
+    def handle_data(self, data):
+        if not self.omitir:
+            self.partes.append(data)
+
+    def texto(self):
+        texto = ''.join(self.partes)
+        texto = re.sub(r'[ \t]+', ' ', texto)
+        texto = re.sub(r'\n\s*\n\s*\n+', '\n\n', texto)
+        return texto.strip()
+
+
+def _pdf_desde_texto(titulo, texto):
+    """Genera un PDF simple y portable sin dependencias externas."""
+    lineas = [titulo, '']
+    for linea_original in texto.splitlines():
+        linea = linea_original.strip()
+        if not linea:
+            lineas.append('')
+            continue
+        lineas.extend(textwrap.wrap(linea, width=92, break_long_words=False) or [''])
+
+    lineas_por_pagina = 50
+    paginas = [lineas[i:i + lineas_por_pagina] for i in range(0, len(lineas), lineas_por_pagina)]
+    objetos = [
+        b'<< /Type /Catalog /Pages 2 0 R >>',
+        b'',  # Se completa cuando se conocen todas las paginas.
+        b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+    ]
+    referencias_paginas = []
+
+    def escapar_pdf(linea):
+        datos = linea.encode('cp1252', errors='replace')
+        return datos.replace(b'\\', b'\\\\').replace(b'(', b'\\(').replace(b')', b'\\)')
+
+    for pagina in paginas:
+        comandos = [b'BT', b'/F1 10 Tf', b'48 800 Td', b'14 TL']
+        for linea in pagina:
+            comandos.append(b'(' + escapar_pdf(linea) + b') Tj')
+            comandos.append(b'T*')
+        comandos.append(b'ET')
+        contenido = b'\n'.join(comandos)
+        numero_pagina = len(objetos) + 1
+        numero_contenido = numero_pagina + 1
+        referencias_paginas.append(numero_pagina)
+        objetos.append(
+            f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] '
+            f'/Resources << /Font << /F1 3 0 R >> >> /Contents {numero_contenido} 0 R >>'.encode()
+        )
+        objetos.append(
+            f'<< /Length {len(contenido)} >>\nstream\n'.encode() + contenido + b'\nendstream'
+        )
+
+    hijos = ' '.join(f'{numero} 0 R' for numero in referencias_paginas)
+    objetos[1] = f'<< /Type /Pages /Kids [{hijos}] /Count {len(referencias_paginas)} >>'.encode()
+
+    salida = bytearray(b'%PDF-1.4\n%\xe2\xe3\xcf\xd3\n')
+    offsets = [0]
+    for numero, objeto in enumerate(objetos, start=1):
+        offsets.append(len(salida))
+        salida.extend(f'{numero} 0 obj\n'.encode())
+        salida.extend(objeto)
+        salida.extend(b'\nendobj\n')
+    inicio_xref = len(salida)
+    salida.extend(f'xref\n0 {len(objetos) + 1}\n'.encode())
+    salida.extend(b'0000000000 65535 f \n')
+    for offset in offsets[1:]:
+        salida.extend(f'{offset:010d} 00000 n \n'.encode())
+    salida.extend(
+        f'trailer\n<< /Size {len(objetos) + 1} /Root 1 0 R >>\n'
+        f'startxref\n{inicio_xref}\n%%EOF\n'.encode()
+    )
+    return bytes(salida)
+
+
+@main_bp.route('/guia-usuario/descargar')
+@login_requerido
+def descargar_guia_usuario():
+    """Descarga la guia maquetada en PDF para cualquier usuario autenticado."""
+    ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'guia_usuario.pdf'))
+    return send_file(
+        ruta,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name='Guia_de_usuario_Dashboard_Facturacion.pdf',
+    )
+
+
+@main_bp.route('/documentacion-tecnica/descargar')
+@admin_requerido
+def descargar_documentacion_tecnica():
+    """Descarga la documentación técnica maquetada; solo para administradores."""
+    ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'documentacion_tecnica.pdf'))
+    return send_file(
+        ruta,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name='Documentacion_tecnica_Dashboard_Facturacion.pdf',
+    )
+
+
+@main_bp.route('/documentacion-tecnica')
+@admin_requerido
+def documentacion_tecnica():
+    """Abre la documentación técnica legible; solo para administradores."""
+    ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'documentacion_tecnica.html'))
+    return send_file(ruta, mimetype='text/html')
 
 
 # ========== ENDPOINTS API ==========

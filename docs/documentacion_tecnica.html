@@ -1,0 +1,2366 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Documentación técnica - Dashboard de Facturación</title>
+  <style>
+    :root{--navy:#0f2747;--blue:#2563eb;--cyan:#0891b2;--ink:#172033;--muted:#5f6b7a;--line:#dbe4ef;--soft:#f4f7fb;}
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);background:var(--soft);font:15px/1.62 Arial,sans-serif}
+    a{color:#1859ba} .top{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px max(18px,calc((100% - 1180px)/2));color:#fff;background:var(--navy)}
+    .top a{color:#fff;text-decoration:none} .buttons{display:flex;gap:8px;flex-wrap:wrap}
+    .button{display:inline-block;padding:8px 13px;border:1px solid #7fa1ce;border-radius:7px;background:#173b69;font-weight:bold}
+    .button.primary{border-color:#67e8f9;background:#0e7490}
+    .page{max-width:1180px;margin:24px auto 60px;padding:0 18px}
+    .cover,.toc,.content{margin-bottom:20px;padding:30px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(15,39,71,.05)}
+    .cover{padding:46px;background:linear-gradient(135deg,#0f2747,#155e75);color:#fff}
+    .cover h1{margin:0 0 10px;color:#fff;font-size:clamp(30px,5vw,48px);line-height:1.15} .cover p{max-width:830px;font-size:19px}
+    .toc ol{columns:2;column-gap:45px;padding-left:24px} .toc li{margin:5px 0} .toc li.sub{margin-left:18px;font-size:14px}
+    .toc a{text-decoration:none} h1,h2,h3,h4{scroll-margin-top:80px;color:var(--navy)} h1{font-size:34px} h2{margin-top:44px;padding:12px 15px;border-left:6px solid var(--cyan);background:#eef8fb;font-size:26px} h3{margin-top:30px;color:#174b83;font-size:21px} h4{font-size:17px}
+    .anchor{margin-left:8px;color:#9aa9ba;text-decoration:none;font-size:.75em;opacity:0} h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
+    p{margin:8px 0 14px} ul,ol{padding-left:26px} li{margin:5px 0}
+    code{padding:2px 5px;border-radius:4px;background:#edf1f6;color:#8b1d41;font-family:Consolas,monospace}
+    pre{overflow:auto;margin:16px 0;padding:17px;border-radius:8px;background:#101b2c;color:#e5edf7;line-height:1.5} pre code{padding:0;background:none;color:inherit}
+    .table-wrap{overflow-x:auto;margin:16px 0} table{width:100%;border-collapse:collapse;font-size:14px} th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top} th{background:#e9f0f8;color:var(--navy)}
+    .callout{padding:14px 17px;border-left:5px solid var(--blue);border-radius:6px;background:#eef5ff}
+    .back{position:fixed;right:20px;bottom:20px;padding:9px 12px;border-radius:8px;background:var(--navy);color:#fff;text-decoration:none}
+    footer{padding:25px;color:var(--muted);text-align:center}
+    @media(max-width:720px){.toc ol{columns:1}.cover,.toc,.content{padding:20px}.top{align-items:flex-start}}
+    @media print{body{background:#fff;font-size:10pt}.top,.back,.anchor{display:none}.page{max-width:none;margin:0;padding:0}.cover,.toc,.content{box-shadow:none;border:0}.cover{break-after:page}h2{break-before:page}pre,.table-wrap{break-inside:avoid}.toc a{color:#1859ba;text-decoration:underline}}
+  </style>
+</head>
+<body>
+  <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/descargar">Descargar PDF</a></div></div>
+  <main class="page">
+    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Julio de 2026</small></header>
+    <nav class="toc" id="indice"><h2>Índice técnico</h2><ol><li class=""><a href="#documentacion-disponible">Documentación disponible</a></li>
+<li class=""><a href="#estado-del-proyecto">Estado del proyecto</a></li>
+<li class=""><a href="#estructura">Estructura</a></li>
+<li class=""><a href="#requisitos">Requisitos</a></li>
+<li class=""><a href="#instalacion-local">Instalación local</a></li>
+<li class=""><a href="#como-levantar-el-proyecto">Cómo levantar el proyecto</a></li>
+<li class="sub"><a href="#opcion-recomendada-todo-junto">Opción recomendada: todo junto</a></li>
+<li class="sub"><a href="#solo-flask">Solo Flask</a></li>
+<li class="sub"><a href="#solo-next-js">Solo Next.js</a></li>
+<li class="sub"><a href="#scripts-disponibles">Scripts disponibles</a></li>
+<li class=""><a href="#variables-de-entorno-principales">Variables de entorno principales</a></li>
+<li class=""><a href="#usuarios-y-permisos">Usuarios y permisos</a></li>
+<li class=""><a href="#base-de-datos-tablas-y-datos-necesarios">Base de datos, tablas y datos necesarios</a></li>
+<li class="sub"><a href="#resumen-de-tablas-colecciones">Resumen de tablas/colecciones</a></li>
+<li class="sub"><a href="#mapa-de-carga-y-destino">Mapa de carga y destino</a></li>
+<li class="sub"><a href="#ficha-de-colecciones-para-la-base-de-datos">Ficha de colecciones para la base de datos</a></li>
+<li class="sub"><a href="#datos-minimos-para-iniciar">Datos mínimos para iniciar</a></li>
+<li class="sub"><a href="#usuarios-2">usuarios</a></li>
+<li class="sub"><a href="#asignaciones-comerciales-2">asignaciones_comerciales</a></li>
+<li class="sub"><a href="#facturacion-2026-2">facturacion_2026</a></li>
+<li class="sub"><a href="#justificaciones-ajustes-2">justificaciones_ajustes</a></li>
+<li class="sub"><a href="#feriados-operativos-2">feriados_operativos</a></li>
+<li class="sub"><a href="#matriz-proyecciones-2">matriz_proyecciones</a></li>
+<li class="sub"><a href="#personal-distribucion-horas-2">personal_distribucion_horas</a></li>
+<li class="sub"><a href="#matriz-proyecciones-jornadas-2">matriz_proyecciones_jornadas</a></li>
+<li class="sub"><a href="#matriz-precios-2">matriz_precios</a></li>
+<li class="sub"><a href="#variables-campanias-2">variables_campanias</a></li>
+<li class="sub"><a href="#tarifaciones-campanias-2">tarifaciones_campanias</a></li>
+<li class="sub"><a href="#historial-cambios-2">historial_cambios</a></li>
+<li class=""><a href="#dependencias-entre-tablas">Dependencias entre tablas</a></li>
+<li class=""><a href="#modulos-funcionales">Módulos funcionales</a></li>
+<li class="sub"><a href="#dashboard">Dashboard</a></li>
+<li class="sub"><a href="#cargar-datos">Cargar datos</a></li>
+<li class="sub"><a href="#datos-maestros">Datos maestros</a></li>
+<li class="sub"><a href="#control">Control</a></li>
+<li class="sub"><a href="#justificaciones">Justificaciones</a></li>
+<li class="sub"><a href="#comparativo">Comparativo</a></li>
+<li class="sub"><a href="#matriz">Matriz</a></li>
+<li class=""><a href="#proyectados">Proyectados</a></li>
+<li class="sub"><a href="#matriz-de-proyecciones">Matriz de proyecciones</a></li>
+<li class="sub"><a href="#calendario-operativo">Calendario operativo</a></li>
+<li class="sub"><a href="#matriz-de-precios">Matriz de precios</a></li>
+<li class="sub"><a href="#facturacion-horas">Facturación horas</a></li>
+<li class="sub"><a href="#variable">Variable</a></li>
+<li class="sub"><a href="#control-proyecciones">Control proyecciones</a></li>
+<li class=""><a href="#historial-y-deshacer">Historial y deshacer</a></li>
+<li class=""><a href="#importaciones-y-plantillas">Importaciones y plantillas</a></li>
+<li class=""><a href="#exportaciones">Exportaciones</a></li>
+<li class=""><a href="#calculos-principales">Cálculos principales</a></li>
+<li class="sub"><a href="#facturacion-real">Facturación real</a></li>
+<li class="sub"><a href="#penalizaciones">Penalizaciones</a></li>
+<li class="sub"><a href="#redondeo-monetario">Redondeo monetario</a></li>
+<li class="sub"><a href="#proyeccion-plp">Proyección PLP</a></li>
+<li class="sub"><a href="#consolidado-proyectado">Consolidado proyectado</a></li>
+<li class=""><a href="#apis-principales">APIs principales</a></li>
+<li class=""><a href="#seguridad">Seguridad</a></li>
+<li class=""><a href="#flujo-recomendado-de-uso">Flujo recomendado de uso</a></li>
+<li class=""><a href="#problemas-frecuentes">Problemas frecuentes</a></li>
+<li class="sub"><a href="#npm-no-se-reconoce">npm no se reconoce</a></li>
+<li class="sub"><a href="#la-app-usa-otro-puerto">La app usa otro puerto</a></li>
+<li class="sub"><a href="#no-veo-cambios-en-templates">No veo cambios en templates</a></li>
+<li class="sub"><a href="#error-de-permisos-con-sqlite">Error de permisos con SQLite</a></li>
+<li class="sub"><a href="#no-puedo-guardar-desde-el-navegador">No puedo guardar desde el navegador</a></li>
+<li class=""><a href="#notas-de-desarrollo">Notas de desarrollo</a></li>
+<li class=""><a href="#guia-tecnica-integral-para-mantenimiento-y-transferencia">Guía técnica integral para mantenimiento y transferencia</a></li>
+<li class="sub"><a href="#arquitectura-de-ejecucion">Arquitectura de ejecución</a></li>
+<li class="sub"><a href="#propiedad-y-flujo-de-los-datos">Propiedad y flujo de los datos</a></li>
+<li class="sub"><a href="#diccionario-completo-de-tablas">Diccionario completo de tablas</a></li>
+<li class="sub"><a href="#pipeline-exacto-de-facturacion-horas">Pipeline exacto de Facturación horas</a></li>
+<li class="sub"><a href="#tratamiento-especial-plp">Tratamiento especial PLP</a></li>
+<li class="sub"><a href="#suma-fija">Suma fija</a></li>
+<li class="sub"><a href="#correspondencia-con-el-excel-de-planificacion">Correspondencia con el Excel de planificación</a></li>
+<li class="sub"><a href="#conciliacion-2026">Conciliación 2026</a></li>
+<li class="sub"><a href="#contratos-de-las-apis-de-proyectados">Contratos de las APIs de Proyectados</a></li>
+<li class="sub"><a href="#seguridad-y-permisos-para-desarrolladores">Seguridad y permisos para desarrolladores</a></li>
+<li class="sub"><a href="#compartir-en-una-red-local">Compartir en una red local</a></li>
+<li class="sub"><a href="#backups-y-recuperacion">Backups y recuperación</a></li>
+<li class="sub"><a href="#guia-para-extender-un-modulo">Guía para extender un módulo</a></li>
+<li class="sub"><a href="#checklist-de-verificacion-despues-de-un-cambio">Checklist de verificación después de un cambio</a></li>
+<li class="sub"><a href="#diagnostico-de-desvios">Diagnóstico de desvíos</a></li></ol></nav>
+    <article class="content"><h1 id="dashboard-de-facturacion">Dashboard de Facturación<a class="anchor" href="#dashboard-de-facturacion" aria-label="Enlace a esta sección">#</a></h1>
+<p class="">Aplicación web para controlar facturación, proyecciones, precios, dotaciones, horas operativas y desvíos comerciales. El sistema combina un backend Flask con base SQLite/PostgreSQL y una experiencia web pensada para uso interno de finanzas, operaciones y control de gestión.</p>
+<p class="">La herramienta centraliza datos reales y proyectados para responder, de forma rápida, preguntas como:</p>
+<ul>
+<li>cuánto se facturó y cuánto se esperaba facturar;</li>
+<li>dónde están los desvíos por cliente, campaña, site o tipo de negocio;</li>
+<li>qué horas, precios, dotaciones, feriados, variables o penalizaciones explican el resultado;</li>
+<li>qué cambios se hicieron y cómo deshacerlos desde el historial.</li>
+</ul>
+<h2 id="documentacion-disponible">Documentación disponible<a class="anchor" href="#documentacion-disponible" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Este repositorio separa la documentación según su público:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Documento</th>
+<th>Destinatario</th>
+<th>Contenido</th>
+</tr></thead><tbody>
+<tr>
+<td><code>README.md</code></td>
+<td>Desarrollo, soporte y mantenimiento</td>
+<td>Arquitectura, instalación, base de datos, APIs, reglas de cálculo y diagnóstico técnico.</td>
+</tr>
+<tr>
+<td><code>docs/guia_usuario.html</code></td>
+<td>Usuarios operativos nuevos o habituales</td>
+<td>Guía sencilla con índice y recorridos paso a paso para facturación real, proyectados, Facturación horas, PLP, variables, adicionales, importaciones e historial.</td>
+</tr>
+</tbody></table></div>
+<p class="">Con la aplicación iniciada, la guía funcional se abre desde <strong>Ayuda &gt; Guía de usuario</strong> o desde:</p>
+<pre><code class="language-text">http://127.0.0.1:8009/guia-usuario</code></pre>
+<p class="">La guía puede descargarse directamente en PDF por cualquier usuario autenticado. La documentación técnica del README también puede descargarse en PDF, pero esa opción y su endpoint están reservados exclusivamente al rol <code>administrador</code>.</p>
+<pre><code class="language-text">/guia-usuario/descargar                 # Cualquier usuario autenticado
+/documentacion-tecnica/descargar        # Solo administrador</code></pre>
+<h2 id="estado-del-proyecto">Estado del proyecto<a class="anchor" href="#estado-del-proyecto" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">El proyecto tiene dos frentes:</p>
+<ul>
+<li><strong>Flask</strong>: backend principal, autenticación, base de datos, APIs y pantallas operativas.</li>
+<li><strong>Next.js</strong>: frontend en migración progresiva para algunas vistas modernas.</li>
+</ul>
+<p class="">En el uso actual, la mayor parte de las funcionalidades operativas se trabajan desde Flask.</p>
+<h2 id="estructura">Estructura<a class="anchor" href="#estructura" aria-label="Enlace a esta sección">#</a></h2>
+<pre><code class="language-text">Dashboard/
+├─ app/
+│  ├─ __init__.py              # Configuración Flask, seguridad, CORS, CSRF y migraciones simples
+│  ├─ models.py                # Modelos SQLAlchemy y reglas de cálculo
+│  ├─ routes.py                # Rutas HTML, APIs, importaciones, historial y exportaciones
+│  └─ templates/               # Pantallas Flask
+├─ instance/
+│  └─ facturacion.db           # Base SQLite local por defecto
+├─ next-app/                   # Frontend Next.js en migración
+├─ scripts/
+│  └─ dev.mjs                  # Levanta Flask + Next en desarrollo
+├─ run.py                      # Entrada Flask
+├─ requirements.txt            # Dependencias Python
+├─ package.json                # Scripts npm del proyecto
+├─ .env.example                # Variables de entorno sugeridas
+└─ README.md</code></pre>
+<h2 id="requisitos">Requisitos<a class="anchor" href="#requisitos" aria-label="Enlace a esta sección">#</a></h2>
+<ul>
+<li>Python 3.8 o superior.</li>
+<li>pip.</li>
+<li>Node.js con npm, si se quiere levantar también Next.js.</li>
+<li>Navegador moderno.</li>
+</ul>
+<p class="">En Windows, si <code>npm</code> no aparece en PowerShell, revisar que exista:</p>
+<pre><code class="language-text">C:\Program Files\nodejs\npm.cmd</code></pre>
+<h2 id="instalacion-local">Instalación local<a class="anchor" href="#instalacion-local" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Crear y activar entorno virtual:</p>
+<pre><code class="language-powershell">python -m venv venv
+venv\Scripts\activate</code></pre>
+<p class="">Instalar dependencias Python:</p>
+<pre><code class="language-powershell">pip install -r requirements.txt</code></pre>
+<p class="">Instalar dependencias del frontend Next.js:</p>
+<pre><code class="language-powershell">npm --prefix next-app install</code></pre>
+<p class="">Crear <code>.env</code> desde el ejemplo si hace falta:</p>
+<pre><code class="language-powershell">copy .env.example .env</code></pre>
+<h2 id="como-levantar-el-proyecto">Cómo levantar el proyecto<a class="anchor" href="#como-levantar-el-proyecto" aria-label="Enlace a esta sección">#</a></h2>
+<h3 id="opcion-recomendada-todo-junto">Opción recomendada: todo junto<a class="anchor" href="#opcion-recomendada-todo-junto" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Desde la carpeta raíz del proyecto:</p>
+<pre><code class="language-powershell">npm run dev</code></pre>
+<p class="">Esto levanta:</p>
+<ul>
+<li>Flask/API en <code>http://127.0.0.1:8009</code></li>
+<li>Next.js en <code>http://127.0.0.1:3000</code></li>
+</ul>
+<p class="">Si PowerShell no encuentra <code>npm</code>, se puede usar:</p>
+<pre><code class="language-powershell">.\dev.ps1</code></pre>
+<h3 id="solo-flask">Solo Flask<a class="anchor" href="#solo-flask" aria-label="Enlace a esta sección">#</a></h3>
+<pre><code class="language-powershell">python run.py</code></pre>
+<p class="">Por defecto Flask levanta en:</p>
+<pre><code class="language-text">http://127.0.0.1:8009</code></pre>
+<p class="">Para usar otro puerto, por ejemplo <code>8010</code>:</p>
+<pre><code class="language-powershell">$env:PORT=&quot;8010&quot;
+python run.py</code></pre>
+<h3 id="solo-next-js">Solo Next.js<a class="anchor" href="#solo-next-js" aria-label="Enlace a esta sección">#</a></h3>
+<pre><code class="language-powershell">npm run next:dev</code></pre>
+<h3 id="scripts-disponibles">Scripts disponibles<a class="anchor" href="#scripts-disponibles" aria-label="Enlace a esta sección">#</a></h3>
+<pre><code class="language-powershell">npm run dev        # Flask + Next.js
+npm run flask:dev  # Solo Flask
+npm run next:dev   # Solo Next.js
+npm run start      # Alias de npm run dev</code></pre>
+<h2 id="variables-de-entorno-principales">Variables de entorno principales<a class="anchor" href="#variables-de-entorno-principales" aria-label="Enlace a esta sección">#</a></h2>
+<pre><code class="language-text">SECRET_KEY=clave-secreta-local
+DATABASE_URL=sqlite:///facturacion.db
+CORS_ORIGINS=http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:8009,http://localhost:8009
+FLASK_HOST=127.0.0.1
+PORT=8009
+FLASK_DEBUG=0
+FLASK_RELOAD=0
+TEMPLATES_AUTO_RELOAD=0
+SESSION_COOKIE_SECURE=0
+SESSION_MINUTES=60
+MAX_CONTENT_LENGTH=10485760</code></pre>
+<p class="">Para PostgreSQL:</p>
+<pre><code class="language-text">DATABASE_URL=postgresql+psycopg://usuario:password@host:5432/facturacion</code></pre>
+<h2 id="usuarios-y-permisos">Usuarios y permisos<a class="anchor" href="#usuarios-y-permisos" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">El sistema tiene autenticación propia y roles definidos en base de datos.</p>
+<p class="">Roles principales:</p>
+<ul>
+<li><strong>superusuario</strong>: acceso amplio de administración.</li>
+<li><strong>administrador</strong>: administra usuarios, historial y acciones sensibles.</li>
+<li><strong>editor</strong>: puede cargar, editar y gestionar datos operativos.</li>
+<li><strong>lector</strong>: consulta información sin modificar datos.</li>
+</ul>
+<p class="">Acciones sensibles como edición, eliminación o deshacer cambios requieren sesión activa, token CSRF y permisos suficientes.</p>
+<h2 id="base-de-datos-tablas-y-datos-necesarios">Base de datos, tablas y datos necesarios<a class="anchor" href="#base-de-datos-tablas-y-datos-necesarios" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">La aplicación usa SQLAlchemy. En SQLite o PostgreSQL estos datos viven como <strong>tablas</strong>. Si más adelante se migra a una base documental, se pueden pensar como <strong>colecciones</strong> con la misma responsabilidad funcional.</p>
+<p class="">Al iniciar, Flask crea las tablas que falten y aplica algunos ajustes simples de esquema. Aun así, para que la herramienta tenga información útil, hay datos mínimos que conviene cargar en cada módulo.</p>
+<h3 id="resumen-de-tablas-colecciones">Resumen de tablas/colecciones<a class="anchor" href="#resumen-de-tablas-colecciones" aria-label="Enlace a esta sección">#</a></h3>
+<div class="table-wrap"><table><thead><tr>
+<th>Tabla / colección</th>
+<th>Modelo</th>
+<th>Para qué sirve</th>
+</tr></thead><tbody>
+<tr>
+<td><code>usuarios</code></td>
+<td><code>Usuario</code></td>
+<td>Guarda usuarios, roles, estado activo y hash de contraseña.</td>
+</tr>
+<tr>
+<td><code>historial_cambios</code></td>
+<td><code>HistorialCambio</code></td>
+<td>Registra cambios, snapshots anteriores/posteriores y permite deshacer operaciones soportadas.</td>
+</tr>
+<tr>
+<td><code>facturacion_2026</code></td>
+<td><code>Facturacion2026</code></td>
+<td>Guarda la facturación real cargada: horas, importes, bonos, penalizaciones, variables y datos comerciales.</td>
+</tr>
+<tr>
+<td><code>justificaciones_ajustes</code></td>
+<td><code>JustificacionAjuste</code></td>
+<td>Guarda explicaciones o ajustes asociados a un registro de facturación.</td>
+</tr>
+<tr>
+<td><code>asignaciones_comerciales</code></td>
+<td><code>AsignacionComercial</code></td>
+<td>Catálogo maestro de cliente, gerente, jefe de site, campaña, subcampaña y tipo de negocio.</td>
+</tr>
+<tr>
+<td><code>matriz_proyecciones</code></td>
+<td><code>ProyeccionMatriz</code></td>
+<td>Guarda la planificación mensual por cliente/campaña: dotación, carga horaria, días objetivo, horas requeridas y cumplimiento.</td>
+</tr>
+<tr>
+<td><code>matriz_proyecciones_jornadas</code></td>
+<td><code>ProyeccionMatrizJornada</code></td>
+<td>Guarda aperturas de jornadas dentro de una proyección cuando una campaña necesita más de una configuración horaria.</td>
+</tr>
+<tr>
+<td><code>personal_distribucion_horas</code></td>
+<td><code>PersonalDistribucionHoras</code></td>
+<td>Guarda por año, mes y clasificación PLP el porcentaje de horas diurnas; la nocturnidad es la diferencia hasta 100%.</td>
+</tr>
+<tr>
+<td><code>matriz_precios</code></td>
+<td><code>ProyeccionPrecio</code></td>
+<td>Guarda precios mensuales por cliente/campaña, alcance, precio final e importe fijo mensual.</td>
+</tr>
+<tr>
+<td><code>variables_campanias</code></td>
+<td><code>VariableCampania</code></td>
+<td>Guarda el porcentaje variable mensual por cliente/campaña.</td>
+</tr>
+<tr>
+<td><code>tarifaciones_campanias</code></td>
+<td><code>TarifacionCampania</code></td>
+<td>Guarda montos mensuales positivos o negativos que se suman a Facturación horas.</td>
+</tr>
+<tr>
+<td><code>next_gen_dolar</code></td>
+<td><code>NextGenDolar</code></td>
+<td>Guarda el valor del dólar utilizado por Next Gen para cada mes y año.</td>
+</tr>
+<tr>
+<td><code>next_gen_productos</code></td>
+<td><code>NextGenProducto</code></td>
+<td>Guarda cantidades mensuales en USD por cliente, campaña y producto Next Gen.</td>
+</tr>
+<tr>
+<td><code>sites_proyecciones</code></td>
+<td><code>SiteProyeccion</code></td>
+<td>Guarda la regularización manual del site o gerencia de una campaña proyectada.</td>
+</tr>
+<tr>
+<td><code>feriados_operativos</code></td>
+<td><code>FeriadoOperativo</code></td>
+<td>Guarda feriados o días no operativos que afectan los días objetivo de las proyecciones.</td>
+</tr>
+</tbody></table></div>
+<h3 id="mapa-de-carga-y-destino">Mapa de carga y destino<a class="anchor" href="#mapa-de-carga-y-destino" aria-label="Enlace a esta sección">#</a></h3>
+<div class="table-wrap"><table><thead><tr>
+<th>Tabla</th>
+<th>Dónde se carga</th>
+<th>A dónde apunta / qué alimenta</th>
+</tr></thead><tbody>
+<tr>
+<td><code>usuarios</code></td>
+<td>Usuarios o configuración inicial</td>
+<td>Login, sesiones, permisos e identificación del historial.</td>
+</tr>
+<tr>
+<td><code>asignaciones_comerciales</code></td>
+<td>Datos maestros</td>
+<td>Formularios, filtros, sites, clientes y campañas de todos los módulos.</td>
+</tr>
+<tr>
+<td><code>facturacion_2026</code></td>
+<td>Cargar datos, importación de facturación o edición en Control</td>
+<td>Dashboard, Control, Comparativo, Matriz, Justificaciones y exportaciones reales.</td>
+</tr>
+<tr>
+<td><code>justificaciones_ajustes</code></td>
+<td>Justificaciones</td>
+<td>Un registro concreto de <code>facturacion_2026</code>; ajusta y explica bonos, penalizaciones u otros conceptos.</td>
+</tr>
+<tr>
+<td><code>feriados_operativos</code></td>
+<td>Calendario operativo</td>
+<td>Días objetivo, horas y dotaciones de <code>matriz_proyecciones</code>.</td>
+</tr>
+<tr>
+<td><code>matriz_proyecciones</code></td>
+<td>Matriz de proyecciones, importación general o importación PLP</td>
+<td>Control proyecciones y base de horas de Facturación horas.</td>
+</tr>
+<tr>
+<td><code>matriz_proyecciones_jornadas</code></td>
+<td>Aperturas de jornada dentro de una proyección</td>
+<td>Suma de horas y dotaciones de su registro padre en <code>matriz_proyecciones</code>.</td>
+</tr>
+<tr>
+<td><code>personal_distribucion_horas</code></td>
+<td>Matriz de proyecciones &gt; PLP &gt; porcentajes</td>
+<td>Apertura diurna/nocturna de las proyecciones Personal y sus cálculos posteriores.</td>
+</tr>
+<tr>
+<td><code>matriz_precios</code></td>
+<td>Matriz de precios o importación anual</td>
+<td>Valoriza horas proyectadas, nocturnidad e importes fijos en Facturación horas.</td>
+</tr>
+<tr>
+<td><code>variables_campanias</code></td>
+<td>Variable &gt; % Variable o importación anual</td>
+<td>Estimación variable y total consolidado de Facturación horas.</td>
+</tr>
+<tr>
+<td><code>tarifaciones_campanias</code></td>
+<td>Variable &gt; Tarifación o importación anual</td>
+<td>Ajuste monetario sumado o restado en Facturación horas.</td>
+</tr>
+<tr>
+<td><code>next_gen_dolar</code></td>
+<td>Variable &gt; Next Gen o importación anual</td>
+<td>Cotización mensual usada para convertir productos Next Gen a pesos.</td>
+</tr>
+<tr>
+<td><code>next_gen_productos</code></td>
+<td>Variable &gt; Next Gen o importación anual</td>
+<td>Importe Next Gen en pesos y total consolidado de Facturación horas.</td>
+</tr>
+<tr>
+<td><code>sites_proyecciones</code></td>
+<td>Edición directa de la columna Site en Facturación horas</td>
+<td>Reagrupa todos los meses y conceptos consolidados de la campaña.</td>
+</tr>
+<tr>
+<td><code>historial_cambios</code></td>
+<td>Automática; no se carga manualmente</td>
+<td>Auditoría y restauración de snapshots en operaciones compatibles con Deshacer.</td>
+</tr>
+</tbody></table></div>
+<h3 id="ficha-de-colecciones-para-la-base-de-datos">Ficha de colecciones para la base de datos<a class="anchor" href="#ficha-de-colecciones-para-la-base-de-datos" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Esta sección resume qué necesita cada tabla/colección para que la base quede armada correctamente.</p>
+<h4 id="usuarios"><code>usuarios</code><a class="anchor" href="#usuarios" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: administrar acceso, roles y estado de los usuarios.</li>
+<li><strong>Campos clave</strong>: <code>nombre</code>, <code>email</code>, <code>password_hash</code>, <code>rol</code>, <code>activo</code>.</li>
+<li><strong>Obligatorio para iniciar</strong>: sí. Debe existir al menos un usuario administrador.</li>
+<li><strong>Reglas importantes</strong>: el email debe ser único; la contraseña se guarda como hash; los roles habilitan o bloquean acciones sensibles.</li>
+<li><strong>Carga manual recomendada</strong>: solo usuarios reales o de administración.</li>
+</ul>
+<h4 id="asignaciones-comerciales"><code>asignaciones_comerciales</code><a class="anchor" href="#asignaciones-comerciales" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: catálogo maestro que define combinaciones válidas de cliente, gerente/site, jefe, campaña, subcampaña y tipo de negocio.</li>
+<li><strong>Campos clave</strong>: <code>cliente</code>, <code>gerente</code>, <code>jefe_site</code>, <code>campania</code>, <code>subcampania</code>, <code>tipo_negocio</code>, <code>activa</code>.</li>
+<li><strong>Obligatorio para iniciar</strong>: sí, antes de proyecciones, precios y variables.</li>
+<li><strong>Reglas importantes</strong>: cliente y campaña deben escribirse igual que en facturación, proyecciones y precios; una asociación inactiva no debería usarse para cargas nuevas.</li>
+<li><strong>Uso histórico</strong>: si cambia el jefe desde un mes puntual, usar <strong>Aplicar desde mes</strong> para no pisar meses anteriores.</li>
+</ul>
+<h4 id="facturacion-2026"><code>facturacion_2026</code><a class="anchor" href="#facturacion-2026" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: guardar la facturación real cargada por mes y dimensión comercial.</li>
+<li><strong>Campos clave</strong>: <code>fecha</code>, <code>mes</code>, <code>cliente</code>, <code>gerente</code>, <code>jefe_site</code>, <code>campania</code>, <code>subcampania</code>, <code>tipo_negocio</code>, <code>tipo_jornada</code>, horas e importes.</li>
+<li><strong>Obligatorio para iniciar</strong>: sí, si se quiere usar Dashboard, Control, Comparativo, Matriz, Justificaciones y exportaciones.</li>
+<li><strong>Reglas importantes</strong>: <code>mes</code> debe estar en formato <code>YYYY-MM</code>; las dimensiones comerciales deben coincidir con <code>asignaciones_comerciales</code>; penalizaciones se tratan como descuento.</li>
+<li><strong>Datos mínimos útiles</strong>: fecha, mes, cliente, gerente, jefe, campaña, subcampaña, tipo de jornada, horas objetivo, horas facturadas y valor hora.</li>
+</ul>
+<h4 id="justificaciones-ajustes"><code>justificaciones_ajustes</code><a class="anchor" href="#justificaciones-ajustes" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: explicar ajustes, bonos, penalizaciones u otros conceptos asociados a una carga real.</li>
+<li><strong>Campos clave</strong>: <code>facturacion_id</code>, <code>tipo</code>, <code>cantidad</code>, <code>precio</code>, <code>importe</code>, <code>descripcion</code>.</li>
+<li><strong>Obligatorio para iniciar</strong>: no.</li>
+<li><strong>Reglas importantes</strong>: cada justificación debe apuntar a un registro existente de <code>facturacion_2026</code>; en penalizaciones, el importe impacta como descuento.</li>
+<li><strong>Carga manual recomendada</strong>: solo cuando un desvío o ajuste necesite respaldo.</li>
+</ul>
+<h4 id="matriz-proyecciones"><code>matriz_proyecciones</code><a class="anchor" href="#matriz-proyecciones" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: guardar la planificación mensual de horas y dotaciones por cliente/campaña.</li>
+<li><strong>Campos clave</strong>: <code>cliente</code>, <code>campania</code>, <code>year</code>, <code>mes</code>, <code>dotacion_requerida</code>, <code>carga_semanal</code>, <code>carga_horaria</code>, <code>dias_objetivo</code>, <code>horas_requeridas</code>, <code>porcentaje_cumplimiento</code>.</li>
+<li><strong>Obligatorio para iniciar</strong>: sí, si se usan Proyectados, Facturación horas, Variable o Control proyecciones.</li>
+<li><strong>Clave funcional</strong>: <code>cliente + campania + mes</code>.</li>
+<li><strong>Reglas importantes</strong>: <code>mes</code> debe estar en formato <code>YYYY-MM</code>; cliente/campaña deben existir en Datos maestros; feriados activos pueden recalcular días objetivo.</li>
+</ul>
+<h4 id="matriz-proyecciones-jornadas"><code>matriz_proyecciones_jornadas</code><a class="anchor" href="#matriz-proyecciones-jornadas" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: abrir una proyección en varias jornadas cuando una campaña tiene más de una configuración horaria dentro del mismo mes.</li>
+<li><strong>Campos clave</strong>: <code>proyeccion_id</code>, <code>dotacion_requerida</code>, <code>carga_semanal</code>, <code>carga_horaria</code>, <code>dias_objetivo</code>, <code>horas_requeridas</code>.</li>
+<li><strong>Obligatorio para iniciar</strong>: no.</li>
+<li><strong>Reglas importantes</strong>: cada fila depende de una proyección existente en <code>matriz_proyecciones</code>.</li>
+<li><strong>Cuándo usarla</strong>: solo cuando una misma campaña/mes necesita separar jornadas.</li>
+</ul>
+<h4 id="personal-distribucion-horas"><code>personal_distribucion_horas</code><a class="anchor" href="#personal-distribucion-horas" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: definir la apertura diurna/nocturna de las proyecciones PLP de Personal.</li>
+<li><strong>Campos clave</strong>: <code>servicio</code>, <code>year</code>, <code>mes</code>, <code>porcentaje_diurno</code>.</li>
+<li><strong>Clasificaciones admitidas</strong>: <code>Personal CX</code>, <code>Personal</code>, <code>Personal Soporte</code> y <code>Personal SMB</code>.</li>
+<li><strong>Clave funcional</strong>: <code>servicio + mes</code>.</li>
+<li><strong>Regla principal</strong>: <code>porcentaje_nocturno = 100 - porcentaje_diurno</code>.</li>
+<li><strong>Destino</strong>: recalcula las aperturas principal y <code>nocturnidad</code> de <code>matriz_proyecciones</code>; ambas alimentan Matriz de precios, Facturación horas, Variable y Control proyecciones.</li>
+<li><strong>Cambio de año</strong>: si el año seleccionado no tiene valores propios, la pantalla propone los porcentajes del año anterior. Al guardarlos se crean registros para el nuevo año sin modificar el histórico.</li>
+<li><strong>Carga manual recomendada</strong>: revisar los doce porcentajes de cada clasificación antes de importar o recalcular PLP.</li>
+</ul>
+<h4 id="matriz-precios"><code>matriz_precios</code><a class="anchor" href="#matriz-precios" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: guardar precios mensuales para calcular facturación proyectada.</li>
+<li><strong>Campos clave</strong>: <code>site</code>, <code>cliente</code>, <code>campania</code>, <code>year</code>, <code>mes</code>, <code>precio_base</code>, <code>alcance_porcentaje</code>, <code>precio_final</code>, <code>importe_fijo_mensual</code>.</li>
+<li><strong>Obligatorio para iniciar</strong>: sí, si se quiere calcular Facturación horas.</li>
+<li><strong>Clave funcional</strong>: <code>cliente + campania + mes</code>.</li>
+<li><strong>Reglas importantes</strong>: debe coincidir con <code>matriz_proyecciones</code> en cliente/campaña/mes; <code>alcance_porcentaje</code> normalmente es <code>100</code>; <code>importe_fijo_mensual</code> puede quedar en <code>0</code>.</li>
+</ul>
+<h4 id="variables-campanias"><code>variables_campanias</code><a class="anchor" href="#variables-campanias" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: guardar el porcentaje variable mensual aplicado sobre Facturación horas.</li>
+<li><strong>Campos clave</strong>: <code>site</code>, <code>cliente</code>, <code>campania</code>, <code>year</code>, <code>mes</code>, <code>porcentaje</code>.</li>
+<li><strong>Obligatorio para iniciar</strong>: no, salvo que se necesite calcular variables.</li>
+<li><strong>Clave funcional</strong>: <code>cliente + campania + mes</code>.</li>
+<li><strong>Reglas importantes</strong>: la campaña debe existir en Facturación horas; el porcentaje puede ser <code>0</code>; los cambios quedan auditados y pueden deshacerse desde Historial cuando aplica.</li>
+</ul>
+<h4 id="tarifaciones-campanias"><code>tarifaciones_campanias</code><a class="anchor" href="#tarifaciones-campanias" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: guardar ajustes monetarios independientes de las horas y del porcentaje variable.</li>
+<li><strong>Campos clave</strong>: <code>site</code>, <code>cliente</code>, <code>campania</code>, <code>concepto</code>, <code>year</code>, <code>mes</code>, <code>monto</code>.</li>
+<li><strong>Clave funcional</strong>: <code>cliente + campania + concepto + mes</code>.</li>
+<li><strong>Reglas importantes</strong>: el monto conserva su signo; un valor positivo suma y uno negativo resta. La coincidencia con Facturación horas ignora mayúsculas, minúsculas y acentos.</li>
+<li><strong>Destino</strong>: se incorpora al mismo renglón consolidado de la campaña en Facturación horas.</li>
+<li><strong>Carga</strong>: se puede ingresar manualmente o importar todo el año desde la subpestaña <strong>Tarifación</strong>.</li>
+<li><strong>Auditoría</strong>: las creaciones, ediciones e importaciones quedan identificadas como Tarifación en Historial y se pueden deshacer.</li>
+</ul>
+<h4 id="feriados-operativos"><code>feriados_operativos</code><a class="anchor" href="#feriados-operativos" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: registrar días no operativos que impactan en los días objetivo de proyecciones.</li>
+<li><strong>Campos clave</strong>: <code>year</code>, <code>fecha</code>, <code>nombre</code>, <code>tipo</code>, <code>activo</code>.</li>
+<li><strong>Obligatorio para iniciar</strong>: no, salvo que las proyecciones deban descontar feriados.</li>
+<li><strong>Clave funcional</strong>: <code>fecha</code>.</li>
+<li><strong>Reglas importantes</strong>: solo feriados activos impactan cálculos; al agregar o eliminar un feriado activo, se recalculan proyecciones del mes afectado.</li>
+</ul>
+<h4 id="historial-cambios"><code>historial_cambios</code><a class="anchor" href="#historial-cambios" aria-label="Enlace a esta sección">#</a></h4>
+<ul>
+<li><strong>Propósito</strong>: auditar operaciones relevantes y guardar snapshots para trazabilidad.</li>
+<li><strong>Campos clave</strong>: <code>usuario_id</code>, <code>usuario_nombre</code>, <code>usuario_email</code>, <code>accion</code>, <code>entidad</code>, <code>entidad_id</code>, <code>resumen</code>, <code>detalle</code>, <code>antes</code>, <code>despues</code>.</li>
+<li><strong>Obligatorio para iniciar</strong>: no se carga manualmente.</li>
+<li><strong>Reglas importantes</strong>: la aplicación lo completa automáticamente; permite revisar cambios y deshacer algunas operaciones soportadas.</li>
+<li><strong>Uso esperado</strong>: auditoría de creación, edición, eliminación, importaciones, inflación, precios, variables y proyecciones.</li>
+</ul>
+<h3 id="datos-minimos-para-iniciar">Datos mínimos para iniciar<a class="anchor" href="#datos-minimos-para-iniciar" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Para una base nueva, el orden recomendado de carga es:</p>
+<ol>
+<li><code>usuarios</code>: crear al menos un usuario <code>administrador</code>.</li>
+<li><code>asignaciones_comerciales</code>: cargar el maestro comercial base.</li>
+<li><code>facturacion_2026</code>: cargar registros reales si se quiere usar Dashboard, Control, Matriz, Comparativo y Justificaciones.</li>
+<li><code>feriados_operativos</code>: cargar feriados si las proyecciones deben descontar días no operativos.</li>
+<li><code>matriz_proyecciones</code>: cargar horas y dotaciones proyectadas por mes.</li>
+<li><code>personal_distribucion_horas</code>: configurar los porcentajes diurnos/nocturnos de PLP para el año correspondiente.</li>
+<li><code>matriz_precios</code>: cargar precios por mes para cruzar contra las horas proyectadas, incluyendo los nombres de nocturnidad cuando tengan un precio específico.</li>
+<li><code>variables_campanias</code>: cargar porcentajes variables una vez que exista Facturación horas.</li>
+<li><code>tarifaciones_campanias</code>: cargar ajustes monetarios mensuales positivos o negativos cuando correspondan.</li>
+</ol>
+<h3 id="usuarios-2"><code>usuarios</code><a class="anchor" href="#usuarios-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>nombre</code></td>
+<td>Nombre visible del usuario.</td>
+</tr>
+<tr>
+<td><code>email</code></td>
+<td>Email único para iniciar sesión.</td>
+</tr>
+<tr>
+<td><code>password_hash</code></td>
+<td>Contraseña hasheada, nunca texto plano.</td>
+</tr>
+<tr>
+<td><code>rol</code></td>
+<td>Rol del usuario. Valores usados: <code>administrador</code>, <code>superusuario</code>, <code>usuario</code>.</td>
+</tr>
+<tr>
+<td><code>activo</code></td>
+<td>Define si puede iniciar sesión.</td>
+</tr>
+</tbody></table></div>
+<p class="">Datos que necesitás agregar:</p>
+<ul>
+<li>al menos un administrador;</li>
+<li>usuarios operativos según quién cargue o consulte información.</li>
+</ul>
+<h3 id="asignaciones-comerciales-2"><code>asignaciones_comerciales</code><a class="anchor" href="#asignaciones-comerciales-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Es la tabla maestra más importante para ordenar la aplicación.</p>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>cliente</code></td>
+<td>Cliente comercial.</td>
+</tr>
+<tr>
+<td><code>gerente</code></td>
+<td>Gerencia o site principal usado para agrupación.</td>
+</tr>
+<tr>
+<td><code>jefe_site</code></td>
+<td>Responsable o jefe de site.</td>
+</tr>
+<tr>
+<td><code>campania</code></td>
+<td>Campaña, con soporte para acentos y Ñ.</td>
+</tr>
+<tr>
+<td><code>subcampania</code></td>
+<td>Subcampaña o apertura secundaria.</td>
+</tr>
+<tr>
+<td><code>tipo_negocio</code></td>
+<td>Clasificación operativa/comercial.</td>
+</tr>
+<tr>
+<td><code>activa</code></td>
+<td>Indica si aparece en formularios y filtros.</td>
+</tr>
+</tbody></table></div>
+<p class="">Datos que necesitás agregar:</p>
+<ul>
+<li>una fila por combinación comercial válida;</li>
+<li>cliente y campaña exactamente como se van a usar luego en facturación, proyecciones y precios;</li>
+<li>site/gerente correcto para que los filtros agrupen bien.</li>
+</ul>
+<p class="">Esta tabla alimenta formularios de carga, filtros, Matriz de proyecciones, Matriz de precios, Facturación horas, Variable y Control proyecciones.</p>
+<h4 id="cambios-de-jefe-de-site-con-vigencia-mensual">Cambios de jefe de site con vigencia mensual<a class="anchor" href="#cambios-de-jefe-de-site-con-vigencia-mensual" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Cuando una campaña cambia de responsable a partir de un mes determinado, no se debe pisar toda la asociación histórica. En Datos maestros se puede editar la asociación y completar <strong>Aplicar desde mes</strong> con formato <code>YYYY-MM</code>.</p>
+<p class="">Ejemplo:</p>
+<ul>
+<li><code>Santander Chat</code> estuvo bajo la jefatura de <code>Ismael Rissi</code> hasta <code>2026-05</code>.</li>
+<li>Desde <code>2026-06</code> pasa a <code>Mariela Ditto</code>.</li>
+</ul>
+<p class="">Al editar la asociación y cargar <code>2026-06</code> en <strong>Aplicar desde mes</strong>, el sistema:</p>
+<ul>
+<li>mantiene los registros anteriores a junio con <code>Ismael Rissi</code>;</li>
+<li>actualiza desde junio en adelante con <code>Mariela Ditto</code>;</li>
+<li>crea o activa una nueva asociación para la combinación vigente;</li>
+<li>registra la operación en Historial.</li>
+</ul>
+<p class="">Si <strong>Aplicar desde mes</strong> queda vacío, la edición se comporta como una actualización general de la asociación y de sus cargas vinculadas.</p>
+<h3 id="facturacion-2026-2"><code>facturacion_2026</code><a class="anchor" href="#facturacion-2026-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Guarda la facturación real.</p>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>fecha</code></td>
+<td>Fecha del registro.</td>
+</tr>
+<tr>
+<td><code>mes</code></td>
+<td>Mes de análisis.</td>
+</tr>
+<tr>
+<td><code>cliente</code>, <code>gerente</code>, <code>jefe_site</code>, <code>campania</code>, <code>subcampania</code>, <code>tipo_negocio</code></td>
+<td>Dimensiones comerciales.</td>
+</tr>
+<tr>
+<td><code>tipo_jornada</code></td>
+<td>Tipo de jornada o tipo VH.</td>
+</tr>
+<tr>
+<td><code>horas_objetivo</code></td>
+<td>Horas esperadas.</td>
+</tr>
+<tr>
+<td><code>horas_facturadas</code></td>
+<td>Horas efectivamente facturadas.</td>
+</tr>
+<tr>
+<td><code>horas_penalizadas</code></td>
+<td>Horas descontadas por penalización.</td>
+</tr>
+<tr>
+<td><code>valor_hora_objetivo</code></td>
+<td>Valor hora esperado.</td>
+</tr>
+<tr>
+<td><code>valor_hora</code></td>
+<td>Valor hora alcanzado/facturado.</td>
+</tr>
+<tr>
+<td><code>tarifacion</code></td>
+<td>Ajuste adicional de tarifación.</td>
+</tr>
+<tr>
+<td><code>importe_fijo</code></td>
+<td>Importe fijo si no aplica cálculo por horas.</td>
+</tr>
+<tr>
+<td><code>variable_objetivo</code></td>
+<td>Bono/variable objetivo.</td>
+</tr>
+<tr>
+<td><code>variable_productivo</code></td>
+<td>Variable productiva real.</td>
+</tr>
+<tr>
+<td><code>bonos</code></td>
+<td>Bonos facturados.</td>
+</tr>
+<tr>
+<td><code>penalizaciones</code></td>
+<td>Penalizaciones, tratadas como descuento.</td>
+</tr>
+<tr>
+<td><code>netx_gen</code>, <code>otros</code></td>
+<td>Otros importes de apertura.</td>
+</tr>
+</tbody></table></div>
+<p class="">Datos que necesitás agregar:</p>
+<ul>
+<li>registros reales por mes;</li>
+<li>horas e importes necesarios para calcular objetivo, real, desvío y cumplimiento;</li>
+<li>dimensiones comerciales consistentes con <code>asignaciones_comerciales</code>.</li>
+</ul>
+<p class="">Esta tabla alimenta Dashboard, Control, Comparativo, Matriz, Justificaciones y exportaciones.</p>
+<h3 id="justificaciones-ajustes-2"><code>justificaciones_ajustes</code><a class="anchor" href="#justificaciones-ajustes-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Guarda explicaciones o ajustes vinculados a un registro de <code>facturacion_2026</code>.</p>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>facturacion_id</code></td>
+<td>Registro de facturación asociado.</td>
+</tr>
+<tr>
+<td><code>tipo</code></td>
+<td>Tipo de ajuste, por ejemplo penalización, bono u otro concepto.</td>
+</tr>
+<tr>
+<td><code>cantidad</code></td>
+<td>Cantidad del ajuste.</td>
+</tr>
+<tr>
+<td><code>precio</code></td>
+<td>Precio unitario.</td>
+</tr>
+<tr>
+<td><code>importe</code></td>
+<td>Importe total.</td>
+</tr>
+<tr>
+<td><code>descripcion</code></td>
+<td>Explicación del ajuste.</td>
+</tr>
+</tbody></table></div>
+<p class="">Datos que necesitás agregar:</p>
+<ul>
+<li>solo cuando un registro necesita explicación, ajuste o soporte documental;</li>
+<li>en penalizaciones, el sistema interpreta el importe como descuento.</li>
+</ul>
+<h3 id="feriados-operativos-2"><code>feriados_operativos</code><a class="anchor" href="#feriados-operativos-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Guarda fechas no operativas para el cálculo de días objetivo.</p>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>year</code></td>
+<td>Año del feriado.</td>
+</tr>
+<tr>
+<td><code>fecha</code></td>
+<td>Fecha exacta.</td>
+</tr>
+<tr>
+<td><code>nombre</code></td>
+<td>Nombre o descripción.</td>
+</tr>
+<tr>
+<td><code>tipo</code></td>
+<td>Clasificación, por defecto <code>Manual</code>.</td>
+</tr>
+<tr>
+<td><code>activo</code></td>
+<td>Indica si impacta en cálculos.</td>
+</tr>
+</tbody></table></div>
+<p class="">Datos que necesitás agregar:</p>
+<ul>
+<li>feriados nacionales, propios o no operativos que deban descontarse;</li>
+<li>una fila por fecha.</li>
+</ul>
+<p class="">Cuando se agrega o elimina un feriado activo, se recalculan las proyecciones del mes afectado.</p>
+<h3 id="matriz-proyecciones-2"><code>matriz_proyecciones</code><a class="anchor" href="#matriz-proyecciones-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Guarda la planificación mensual de cada cliente/campaña.</p>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>cliente</code></td>
+<td>Cliente proyectado.</td>
+</tr>
+<tr>
+<td><code>campania</code></td>
+<td>Campaña proyectada.</td>
+</tr>
+<tr>
+<td><code>year</code></td>
+<td>Año de planificación.</td>
+</tr>
+<tr>
+<td><code>mes</code></td>
+<td>Mes en formato <code>YYYY-MM</code>.</td>
+</tr>
+<tr>
+<td><code>dotacion_requerida</code></td>
+<td>Dotación necesaria del mes.</td>
+</tr>
+<tr>
+<td><code>carga_semanal</code></td>
+<td>Esquema semanal, por ejemplo <code>L a V</code>.</td>
+</tr>
+<tr>
+<td><code>carga_horaria</code></td>
+<td>Horas por día o jornada.</td>
+</tr>
+<tr>
+<td><code>dias_objetivo</code></td>
+<td>Días operativos del mes.</td>
+</tr>
+<tr>
+<td><code>horas_requeridas</code></td>
+<td>Horas esperadas antes de cumplimiento.</td>
+</tr>
+<tr>
+<td><code>porcentaje_cumplimiento</code></td>
+<td>Porcentaje aplicado sobre horas requeridas.</td>
+</tr>
+<tr>
+<td><code>tiene_nocturnidad</code></td>
+<td>Indica si la proyección se abre en horas diurnas y nocturnas.</td>
+</tr>
+<tr>
+<td><code>porcentaje_nocturnidad</code></td>
+<td>Porcentaje nocturno aplicado; en PLP se obtiene desde la distribución mensual.</td>
+</tr>
+<tr>
+<td><code>tipo_plp</code></td>
+<td>Clasificación PLP: Personal CX, Personal, Personal Soporte o Personal SMB.</td>
+</tr>
+<tr>
+<td><code>horas_carga_manual</code></td>
+<td>Identifica que las horas fueron ingresadas directamente, como ocurre en PLP.</td>
+</tr>
+<tr>
+<td><code>dias_objetivo_manual</code></td>
+<td>Reemplazo opcional de los días calculados para campañas que operan solo una parte del mes.</td>
+</tr>
+<tr>
+<td><code>horas_requeridas_manual</code></td>
+<td>Reemplazo opcional del total calculado desde dotación, días y jornada.</td>
+</tr>
+</tbody></table></div>
+<p class="">Clave única:</p>
+<pre><code class="language-text">cliente + campania + mes</code></pre>
+<p class="">Datos que necesitás agregar:</p>
+<ul>
+<li>una fila por cliente/campaña/mes;</li>
+<li>dotación requerida para usar Control proyecciones en pestaña Dotaciones;</li>
+<li>horas requeridas y porcentaje de cumplimiento para calcular Horas;</li>
+<li>cliente y campaña alineados con <code>asignaciones_comerciales</code>.</li>
+</ul>
+<p class="">Esta tabla alimenta Matriz de proyecciones, Control proyecciones y Facturación horas.</p>
+<p class="">En el formulario general, <strong>Días hábiles manuales</strong> y <strong>Horas requeridas manuales</strong> son opcionales. Si quedan vacíos, se usa el cálculo automático. Si se informan, tienen prioridad y permanecen guardados al editar o recalcular la proyección. Esto permite representar altas a mitad de mes, cierres anticipados u otras ventanas operativas parciales.</p>
+<p class="">En PLP el <code>cliente</code> siempre se guarda como <code>Personal</code>. <code>tipo_plp</code> identifica la clasificación y <code>campania</code> conserva el nombre operativo importado, por ejemplo <code>MÓVIL TELEFÓNICO</code>. En pantalla, todos los servicios de una misma clasificación y mes se acumulan en dos renglones: la clasificación principal y la misma clasificación con el sufijo <code>nocturnidad</code>.</p>
+<h3 id="personal-distribucion-horas-2"><code>personal_distribucion_horas</code><a class="anchor" href="#personal-distribucion-horas-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>servicio</code></td>
+<td>Clasificación PLP: Personal CX, Personal, Personal Soporte o Personal SMB.</td>
+</tr>
+<tr>
+<td><code>year</code></td>
+<td>Año al que pertenece la distribución.</td>
+</tr>
+<tr>
+<td><code>mes</code></td>
+<td>Mes en formato <code>YYYY-MM</code>.</td>
+</tr>
+<tr>
+<td><code>porcentaje_diurno</code></td>
+<td>Proporción de horas que queda en el renglón principal.</td>
+</tr>
+<tr>
+<td><code>porcentaje_nocturno</code></td>
+<td>Valor calculado como <code>100 - porcentaje_diurno</code>; no se carga directamente.</td>
+</tr>
+</tbody></table></div>
+<p class="">Los porcentajes se administran desde <strong>Matriz de proyecciones &gt; PLP</strong>. Cambiar un porcentaje recalcula todas las proyecciones PLP coincidentes del mes. Los datos de años anteriores permanecen intactos.</p>
+<h3 id="matriz-proyecciones-jornadas-2"><code>matriz_proyecciones_jornadas</code><a class="anchor" href="#matriz-proyecciones-jornadas-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Guarda aperturas internas de jornada para una proyección.</p>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>proyeccion_id</code></td>
+<td>Proyección principal asociada.</td>
+</tr>
+<tr>
+<td><code>dotacion_requerida</code></td>
+<td>Dotación de esa jornada.</td>
+</tr>
+<tr>
+<td><code>carga_semanal</code></td>
+<td>Esquema semanal de esa jornada.</td>
+</tr>
+<tr>
+<td><code>carga_horaria</code></td>
+<td>Carga horaria de esa jornada.</td>
+</tr>
+<tr>
+<td><code>dias_objetivo</code></td>
+<td>Días objetivo de esa jornada.</td>
+</tr>
+<tr>
+<td><code>horas_requeridas</code></td>
+<td>Horas requeridas de esa jornada.</td>
+</tr>
+</tbody></table></div>
+<p class="">Datos que necesitás agregar:</p>
+<ul>
+<li>solo si una campaña tiene más de una jornada o configuración dentro del mismo mes;</li>
+<li>si no hay apertura, alcanza con <code>matriz_proyecciones</code>.</li>
+</ul>
+<h3 id="matriz-precios-2"><code>matriz_precios</code><a class="anchor" href="#matriz-precios-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Guarda precios mensuales para cruzar contra horas proyectadas.</p>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>site</code></td>
+<td>Site/gerencia usado para agrupación.</td>
+</tr>
+<tr>
+<td><code>cliente</code></td>
+<td>Cliente.</td>
+</tr>
+<tr>
+<td><code>campania</code></td>
+<td>Campaña.</td>
+</tr>
+<tr>
+<td><code>year</code></td>
+<td>Año.</td>
+</tr>
+<tr>
+<td><code>mes</code></td>
+<td>Mes en formato <code>YYYY-MM</code>.</td>
+</tr>
+<tr>
+<td><code>precio_base</code></td>
+<td>Precio cargado base.</td>
+</tr>
+<tr>
+<td><code>alcance_porcentaje</code></td>
+<td>Porcentaje de alcance aplicado al precio.</td>
+</tr>
+<tr>
+<td><code>precio_final</code></td>
+<td>Precio calculado.</td>
+</tr>
+<tr>
+<td><code>importe_fijo_mensual</code></td>
+<td>Importe fijo alternativo o adicional del mes.</td>
+</tr>
+</tbody></table></div>
+<p class="">Clave única:</p>
+<pre><code class="language-text">cliente + campania + mes</code></pre>
+<p class="">Datos que necesitás agregar:</p>
+<ul>
+<li>una fila por cliente/campaña/mes con precio;</li>
+<li><code>alcance_porcentaje</code> normalmente en <code>100</code>;</li>
+<li><code>importe_fijo_mensual</code> en <code>0</code> si no aplica;</li>
+<li>precios de todos los meses necesarios para que Facturación horas calcule completo.</li>
+</ul>
+<p class="">Esta tabla alimenta Facturación horas. También recibe impacto de inflación o deflación global desde un mes hacia adelante.</p>
+<h3 id="variables-campanias-2"><code>variables_campanias</code><a class="anchor" href="#variables-campanias-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Guarda el porcentaje variable mensual aplicado sobre Facturación horas.</p>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>site</code></td>
+<td>Site/gerencia de la campaña.</td>
+</tr>
+<tr>
+<td><code>cliente</code></td>
+<td>Cliente.</td>
+</tr>
+<tr>
+<td><code>campania</code></td>
+<td>Campaña.</td>
+</tr>
+<tr>
+<td><code>year</code></td>
+<td>Año.</td>
+</tr>
+<tr>
+<td><code>mes</code></td>
+<td>Mes en formato <code>YYYY-MM</code>.</td>
+</tr>
+<tr>
+<td><code>porcentaje</code></td>
+<td>Porcentaje variable aplicado.</td>
+</tr>
+</tbody></table></div>
+<p class="">Clave única:</p>
+<pre><code class="language-text">cliente + campania + mes</code></pre>
+<p class="">Datos que necesitás agregar:</p>
+<ul>
+<li>una fila por campaña/mes cuando tenga variable;</li>
+<li>se puede guardar <code>0</code>;</li>
+<li>la campaña debe existir en Facturación horas para ese año.</li>
+</ul>
+<p class="">Esta tabla alimenta el módulo Variable y puede deshacerse desde Historial.</p>
+<h3 id="tarifaciones-campanias-2"><code>tarifaciones_campanias</code><a class="anchor" href="#tarifaciones-campanias-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>site</code></td>
+<td>Site o gerencia de agrupación.</td>
+</tr>
+<tr>
+<td><code>cliente</code></td>
+<td>Cuenta comercial.</td>
+</tr>
+<tr>
+<td><code>campania</code></td>
+<td>Nombre que debe coincidir con la campaña de Facturación horas.</td>
+</tr>
+<tr>
+<td><code>concepto</code></td>
+<td>Etiqueta del ajuste, por ejemplo <code>Tarifación</code> o <code>Penalidad ADH</code>.</td>
+</tr>
+<tr>
+<td><code>year</code>, <code>mes</code></td>
+<td>Período del importe.</td>
+</tr>
+<tr>
+<td><code>monto</code></td>
+<td>Importe con signo: positivo suma y negativo resta.</td>
+</tr>
+</tbody></table></div>
+<p class="">La tabla no reemplaza el campo <code>tarifacion</code> de la facturación real: <code>tarifaciones_campanias</code> pertenece exclusivamente al circuito proyectado y se integra en Facturación horas.</p>
+<h3 id="historial-cambios-2"><code>historial_cambios</code><a class="anchor" href="#historial-cambios-2" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Guarda auditoría de operaciones.</p>
+<p class="">Campos principales:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Descripción</th>
+</tr></thead><tbody>
+<tr>
+<td><code>usuario_id</code>, <code>usuario_nombre</code>, <code>usuario_email</code></td>
+<td>Usuario que ejecutó la acción.</td>
+</tr>
+<tr>
+<td><code>accion</code></td>
+<td>Tipo de operación: creación, edición, eliminación, importación, etc.</td>
+</tr>
+<tr>
+<td><code>entidad</code></td>
+<td>Módulo afectado.</td>
+</tr>
+<tr>
+<td><code>entidad_id</code></td>
+<td>Identificador del registro o movimiento.</td>
+</tr>
+<tr>
+<td><code>resumen</code></td>
+<td>Texto corto para mostrar en Historial.</td>
+</tr>
+<tr>
+<td><code>detalle</code></td>
+<td>Detalle adicional.</td>
+</tr>
+<tr>
+<td><code>antes</code></td>
+<td>Snapshot anterior en JSON.</td>
+</tr>
+<tr>
+<td><code>despues</code></td>
+<td>Snapshot posterior en JSON.</td>
+</tr>
+</tbody></table></div>
+<p class="">Datos que necesitás agregar:</p>
+<ul>
+<li>normalmente ninguno manualmente;</li>
+<li>la aplicación lo completa automáticamente cuando se realizan cambios.</li>
+</ul>
+<h2 id="dependencias-entre-tablas">Dependencias entre tablas<a class="anchor" href="#dependencias-entre-tablas" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Para que los módulos funcionen correctamente:</p>
+<ul>
+<li><code>asignaciones_comerciales</code> debe cargarse antes de proyecciones, precios y variables.</li>
+<li><code>matriz_proyecciones</code> necesita cliente/campaña existentes en el maestro.</li>
+<li>Las proyecciones PLP siempre usan <code>Personal</code> como cliente y una de las cuatro clasificaciones admitidas en <code>tipo_plp</code>; el nombre operativo queda en <code>campania</code>.</li>
+<li><code>personal_distribucion_horas</code> divide las horas PLP en principal y nocturnidad antes del cruce con precios.</li>
+<li><code>matriz_precios</code> debe coincidir en cliente/campaña/mes con <code>matriz_proyecciones</code> para que Facturación horas calcule.</li>
+<li><code>variables_campanias</code> se carga sobre campañas que ya aparecen en Facturación horas.</li>
+<li><code>tarifaciones_campanias</code> se cruza por cliente/campaña/mes y suma o resta el monto al consolidado de Facturación horas.</li>
+<li><code>feriados_operativos</code> afecta el cálculo de días objetivo de <code>matriz_proyecciones</code>.</li>
+<li><code>historial_cambios</code> no es una tabla de carga manual: audita operaciones del sistema.</li>
+</ul>
+<h2 id="modulos-funcionales">Módulos funcionales<a class="anchor" href="#modulos-funcionales" aria-label="Enlace a esta sección">#</a></h2>
+<h3 id="dashboard">Dashboard<a class="anchor" href="#dashboard" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Pantalla ejecutiva para seguimiento general.</p>
+<p class="">Permite:</p>
+<ul>
+<li>ver KPIs de facturación;</li>
+<li>consultar total real, total teórico, desvío y cumplimiento;</li>
+<li>analizar evolución mensual;</li>
+<li>revisar alertas;</li>
+<li>filtrar por mes, cliente, gerente, jefe de site, campaña, subcampaña y tipo de negocio;</li>
+<li>abrir lecturas por cliente o por agrupaciones comerciales.</li>
+</ul>
+<h3 id="cargar-datos">Cargar datos<a class="anchor" href="#cargar-datos" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Módulo para ingresar registros de facturación real.</p>
+<p class="">Incluye:</p>
+<ul>
+<li>carga manual;</li>
+<li>carga masiva desde archivo;</li>
+<li>validación de fechas, importes, horas y datos comerciales;</li>
+<li>detección de registros existentes;</li>
+<li>reemplazo controlado;</li>
+<li>normalización de números con coma o punto;</li>
+<li>soporte para acentos, Ñ y nombres comerciales reales.</li>
+</ul>
+<p class="">La coincidencia para detectar posibles reemplazos se basa en campos comerciales y fecha del registro.</p>
+<h3 id="datos-maestros">Datos maestros<a class="anchor" href="#datos-maestros" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Administra las asociaciones comerciales que ordenan la información.</p>
+<p class="">Permite mantener:</p>
+<ul>
+<li>cliente;</li>
+<li>gerente;</li>
+<li>jefe de site;</li>
+<li>campaña;</li>
+<li>subcampaña;</li>
+<li>tipo de negocio;</li>
+<li>estado activo/inactivo.</li>
+</ul>
+<p class="">Cuando cambia el jefe de una campaña, permite indicar desde qué mes aplica el cambio para preservar el histórico mensual. Por ejemplo, si <code>Santander Chat</code> cambia de <code>Ismael Rissi</code> a <code>Mariela Ditto</code> desde junio, se edita la asociación, se cambia el jefe y se completa <strong>Aplicar desde mes</strong> con <code>2026-06</code>. Los meses anteriores quedan asociados al jefe anterior.</p>
+<p class="">Estas asociaciones alimentan filtros, formularios y agrupaciones de los módulos proyectados.</p>
+<h3 id="control">Control<a class="anchor" href="#control" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Vista detallada de registros reales cargados.</p>
+<p class="">Permite:</p>
+<ul>
+<li>buscar registros;</li>
+<li>filtrar por dimensiones comerciales;</li>
+<li>editar datos cargados;</li>
+<li>eliminar registros con control de permisos;</li>
+<li>exportar información;</li>
+<li>revisar importes calculados.</li>
+</ul>
+<h3 id="justificaciones">Justificaciones<a class="anchor" href="#justificaciones" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Módulo para documentar ajustes, desvíos o diferencias.</p>
+<p class="">Permite:</p>
+<ul>
+<li>asociar justificaciones a registros;</li>
+<li>cargar cantidad, precio e importe;</li>
+<li>controlar penalizaciones y ajustes;</li>
+<li>mantener explicación auditable de cambios o diferencias.</li>
+</ul>
+<h3 id="comparativo">Comparativo<a class="anchor" href="#comparativo" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Vista de análisis entre objetivo, real y desvíos.</p>
+<p class="">Sirve para:</p>
+<ul>
+<li>comparar cumplimiento;</li>
+<li>revisar diferencias por cliente o campaña;</li>
+<li>detectar desvíos relevantes;</li>
+<li>analizar meses o responsables específicos.</li>
+</ul>
+<h3 id="matriz">Matriz<a class="anchor" href="#matriz" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Vista matricial de facturación real.</p>
+<p class="">Permite analizar la información cargada en una estructura más compacta, útil para revisión mensual y cruces por dimensiones comerciales.</p>
+<h2 id="proyectados">Proyectados<a class="anchor" href="#proyectados" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Los módulos de Proyectados trabajan con planificación futura o estimada. Están pensados para construir un escenario mensual de horas, dotaciones, precios, variables y facturación esperada.</p>
+<h3 id="matriz-de-proyecciones">Matriz de proyecciones<a class="anchor" href="#matriz-de-proyecciones" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Carga la planificación mensual por cliente y campaña.</p>
+<p class="">Campos principales:</p>
+<ul>
+<li>año;</li>
+<li>mes;</li>
+<li>cliente;</li>
+<li>campaña;</li>
+<li>dotación requerida;</li>
+<li>carga semanal;</li>
+<li>carga horaria;</li>
+<li>días objetivo;</li>
+<li>horas requeridas;</li>
+<li>porcentaje de cumplimiento;</li>
+<li>horas proyectadas.</li>
+</ul>
+<p class="">Regla principal:</p>
+<pre><code class="language-text">horas proyectadas = horas requeridas * porcentaje de cumplimiento / 100</code></pre>
+<p class="">El módulo también considera calendario operativo y feriados para recalcular días objetivo cuando corresponde.</p>
+<p class="">Funciones disponibles:</p>
+<ul>
+<li>carga manual por campaña;</li>
+<li>importación desde plantilla;</li>
+<li>descarga de plantilla;</li>
+<li>eliminación individual;</li>
+<li>eliminación masiva del año;</li>
+<li>deshacer último cambio;</li>
+<li>registro en historial.</li>
+</ul>
+<h4 id="subpestana-plp">Subpestaña PLP<a class="anchor" href="#subpestana-plp" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Es el circuito exclusivo para campañas cuyo cliente es <code>Personal</code>. Las clasificaciones válidas son <code>Personal CX</code>, <code>Personal</code>, <code>Personal Soporte</code> y <code>Personal SMB</code>.</p>
+<p class="">Cada registro conserva el nombre operativo de la campaña, el mes y las horas cargadas, pero el listado acumula los nombres operativos de una misma clasificación. La apertura se muestra en dos renglones:</p>
+<ul>
+<li>clasificación principal: horas correspondientes al porcentaje diurno;</li>
+<li><code>clasificación nocturnidad</code>: horas restantes hasta completar el 100%.</li>
+</ul>
+<p class="">La jornada comienza predefinida en <code>L a V</code> y <code>6</code> horas, pero ambos campos son editables. Los días objetivo salen de los días laborales del mes, descontando feriados activos. La dotación se recalcula así:</p>
+<pre><code class="language-text">dotación requerida = horas requeridas / días laborales / horas de jornada</code></pre>
+<p class="">El porcentaje de cumplimiento es editable y afecta las horas proyectadas finales. El resumen mensual PLP acumula las horas base importadas al 100% para poder cotejarlas contra el archivo original.</p>
+<p class="">La importación anual acepta <code>.xlsx</code> o <code>.csv</code> con estas columnas:</p>
+<pre><code class="language-text">Clasificación PLP | MES | CAMPAÑA | HORAS | Carga semanal | Horas jornada | % cumplimiento</code></pre>
+<p class="">Si se vuelve a importar la misma combinación <code>clasificación + campaña + mes</code>, se actualiza el registro existente en lugar de duplicarlo.</p>
+<h3 id="calendario-operativo">Calendario operativo<a class="anchor" href="#calendario-operativo" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Administra feriados o días no operativos.</p>
+<p class="">Permite:</p>
+<ul>
+<li>cargar feriados por fecha;</li>
+<li>indicar descripción;</li>
+<li>activar o eliminar feriados;</li>
+<li>recalcular proyecciones afectadas;</li>
+<li>impactar en días objetivo y horas proyectadas.</li>
+</ul>
+<p class="">Cuando se agrega o elimina un feriado, el sistema recalcula las proyecciones del mes afectado.</p>
+<h3 id="matriz-de-precios">Matriz de precios<a class="anchor" href="#matriz-de-precios" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Carga precios mensuales por campaña.</p>
+<p class="">Permite:</p>
+<ul>
+<li>cargar precio por cliente/campaña/mes;</li>
+<li>cargar importe fijo mensual;</li>
+<li>importar desde plantilla;</li>
+<li>descargar plantilla;</li>
+<li>eliminar precios;</li>
+<li>aplicar inflación global desde un mes hacia adelante;</li>
+<li>usar índices positivos, cero o negativos.</li>
+</ul>
+<p class="">Regla de inflación:</p>
+<pre><code class="language-text">nuevo precio = precio actual + (precio actual * índice / 100)</code></pre>
+<p class="">El índice se aplica a todos los precios desde el mes elegido hacia adelante. Si el índice es negativo, funciona como deflación. Si es <code>0</code>, mantiene los precios sin cambios pero registra la operación cuando corresponde.</p>
+<p class="">Los cálculos monetarios usan redondeo consistente para evitar diferencias entre campañas con el mismo precio base.</p>
+<h3 id="facturacion-horas">Facturación horas<a class="anchor" href="#facturacion-horas" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Antes llamada Resumen. Muestra el cruce entre proyecciones y precios.</p>
+<p class="">Calcula:</p>
+<pre><code class="language-text">facturación horas = horas proyectadas * precio mensual</code></pre>
+<p class="">También contempla importes fijos cuando están cargados.</p>
+<p class="">La vista final consolida en una sola línea por campaña:</p>
+<pre><code class="language-text">total campaña = facturación de horas + estimación variable + tarifaciones</code></pre>
+<p class="">En PLP, las horas principales y nocturnas se calculan con su precio correspondiente y luego se consolidan bajo la clasificación base. La asociación de variables y tarifaciones ignora diferencias de mayúsculas, minúsculas y acentos. <code>Multicuentas</code> y <code>Gerencia Multicampaña</code> se presentan bajo la misma agrupación comercial.</p>
+<p class="">La identificación es editable directamente desde el lápiz de la columna <strong>Site</strong>. Allí se pueden regularizar el site, el cliente y la campaña. El cliente/campaña ingresado funciona como nombre canónico: si varias identificaciones de origen se asignan al mismo nombre, sus Horas, Variable, Tarifación y Next Gen se consolidan y suman en una única línea para cada mes. La regularización se guarda en <code>sites_proyecciones</code>, no modifica los nombres históricos de las tablas de origen, queda registrada en Historial y puede deshacerse.</p>
+<p class="">Las proyecciones comunes se calculan por cada apertura de campaña, respetando su precio y porcentaje variable, y después se consolidan bajo el cliente. Si una apertura no tiene proyección propia para un mes, se utiliza la proyección base del cliente como respaldo. PLP conserva como excepción sus clasificaciones Personal, Personal CX, Personal Soporte y Personal SMB.</p>
+<p class="">Los importes de <strong>Suma fija</strong> se guardan como <code>importe_fijo_mensual</code> dentro de <code>matriz_precios</code>. Facturación horas los incorpora como concepto <code>Fijo mensual</code>, separado de Horas, Variable, Tarifación y Next Gen. Para 2026 incluye los importes por dotación de Assurant, BBVA Seguros, OMINT y Qualia Cencosud, además de los importes fijos propios que ya existan, como Bice.</p>
+<p class="">Permite:</p>
+<ul>
+<li>filtrar por site, cliente, campaña y concepto;</li>
+<li>ver totales anuales;</li>
+<li>ver evolución mensual;</li>
+<li>revisar detalle por campaña;</li>
+<li>identificar campañas sin precio o sin cruce;</li>
+<li>usar la información como base para el cálculo de Variable.</li>
+</ul>
+<h3 id="variable">Variable<a class="anchor" href="#variable" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">El módulo tiene tres subpestañas relacionadas, pero cada una conserva su propio dato:</p>
+<ul>
+<li><strong>% Variable</strong>: porcentaje mensual guardado en <code>variables_campanias</code>.</li>
+<li><strong>Estimación variable</strong>: resultado monetario calculado; no es otra carga independiente.</li>
+<li><strong>Tarifación</strong>: monto mensual positivo o negativo guardado en <code>tarifaciones_campanias</code>.</li>
+<li><strong>Next Gen</strong>: cantidades mensuales en USD por producto, valorizadas con el dólar de cada mes.</li>
+</ul>
+<p class="">La subpestaña <strong>% Variable</strong> permite cargar un porcentaje mensual por campaña sobre el resultado de Facturación horas.</p>
+<p class="">La pantalla muestra solo campañas que existen en Facturación horas, para evitar cargar variables sobre campañas sin base de cálculo.</p>
+<p class="">Campos:</p>
+<ul>
+<li>campaña;</li>
+<li>mes;</li>
+<li>porcentaje variable.</li>
+</ul>
+<p class="">Regla:</p>
+<pre><code class="language-text">resultado variable = facturación horas del mes * porcentaje variable / 100</code></pre>
+<p class="">Características:</p>
+<ul>
+<li>el porcentaje puede ser <code>0</code>;</li>
+<li>el input selecciona el valor al hacer foco para facilitar la carga;</li>
+<li>los resultados se muestran por mes;</li>
+<li>los números se muestran centrados;</li>
+<li>se puede deshacer desde Historial;</li>
+<li>soporta acentos y Ñ en cliente, campaña y site.</li>
+</ul>
+<p class="">La plantilla anual de variables contiene <code>Cuenta</code>, <code>Site</code>, <code>Cliente</code> y una columna por mes. Acepta porcentajes como <code>5</code>, <code>5%</code> o el valor decimal de Excel <code>0,05</code>. Al reimportar, se actualiza la combinación de campaña y mes existente. Al seleccionar un año nuevo sin valores propios, se toman como propuesta los últimos porcentajes disponibles del año anterior; los cambios posteriores no alteran el histórico.</p>
+<h4 id="estimacion-variable">Estimación variable<a class="anchor" href="#estimacion-variable" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">No requiere una tabla adicional. Se calcula sobre la facturación de horas de la misma campaña y mes:</p>
+<pre><code class="language-text">estimación variable = facturación horas * porcentaje / 100</code></pre>
+<p class="">Para PLP, las campañas principales y nocturnas pueden tener porcentajes propios. El resultado se consolida finalmente en el renglón de su clasificación base.</p>
+<h4 id="tarifacion">Tarifación<a class="anchor" href="#tarifacion" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Permite ingresar o importar un monto adicional por campaña, concepto y mes:</p>
+<pre><code class="language-text">facturación consolidada = horas + estimación variable + monto de tarifación</code></pre>
+<p class="">Los montos negativos restan y los positivos suman. La plantilla anual incluye <code>Cuenta</code>, <code>Site</code>, <code>Cliente</code>, <code>Concepto</code> y los doce meses. Reimportar una misma combinación actualiza el valor existente.</p>
+<h4 id="next-gen">Next Gen<a class="anchor" href="#next-gen" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Permite editar el valor mensual del dólar y cargar uno o varios productos por campaña. Cada producto conserva su cantidad mensual en USD y muestra el resultado convertido a pesos:</p>
+<pre><code class="language-text">Next Gen en pesos = cantidad USD del producto * valor del dólar del mes</code></pre>
+<p class="">Los productos de una misma campaña se acumulan y el resultado se incorpora como concepto <code>Next Gen</code> en Facturación horas. La plantilla anual replica el cuadro operativo: una columna <code>CLIENTE</code> para identificar el producto y doce columnas mensuales en USD. El valor del dólar se administra por mes desde la parte superior de la pestaña. Al reimportar, el sistema conserva la campaña asociada al producto y actualiza cada mes existente.</p>
+<h3 id="control-proyecciones">Control proyecciones<a class="anchor" href="#control-proyecciones" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Módulo separado de Variable para revisar lo cargado en Matriz de proyecciones.</p>
+<p class="">Tiene dos pestañas:</p>
+<ul>
+<li><strong>Horas</strong>: muestra horas proyectadas por campaña y mes.</li>
+<li><strong>Dotaciones</strong>: muestra dotación requerida por campaña y mes.</li>
+</ul>
+<p class="">La información se trae directo desde las proyecciones cargadas. No calcula facturación ni variables: es una vista de control operativo para validar que la planificación mensual esté bien cargada.</p>
+<p class="">Permite:</p>
+<ul>
+<li>filtrar por site;</li>
+<li>filtrar por cliente;</li>
+<li>filtrar por campaña;</li>
+<li>buscar por texto;</li>
+<li>ver total anual;</li>
+<li>ver totales por mes;</li>
+<li>alternar entre horas y dotaciones sin salir del módulo.</li>
+</ul>
+<h2 id="historial-y-deshacer">Historial y deshacer<a class="anchor" href="#historial-y-deshacer" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">El sistema registra cambios relevantes en <code>HistorialCambio</code>.</p>
+<p class="">Se registran operaciones como:</p>
+<ul>
+<li>creación;</li>
+<li>edición;</li>
+<li>eliminación;</li>
+<li>importación;</li>
+<li>eliminación masiva;</li>
+<li>inflación aplicada;</li>
+<li>cambios de variable;</li>
+<li>cambios de proyecciones;</li>
+<li>cambios de precios.</li>
+<li>cambios e importaciones de porcentajes variables;</li>
+<li>cambios e importaciones de tarifación;</li>
+<li>importaciones PLP y cambios de distribución diurna/nocturna.</li>
+</ul>
+<p class="">Desde Historial se puede deshacer, cuando aplica, cambios de:</p>
+<ul>
+<li>Matriz de proyecciones;</li>
+<li>Matriz de precios;</li>
+<li>Variable.</li>
+<li>Tarifación.</li>
+</ul>
+<p class="">El deshacer restaura el estado anterior guardado en el snapshot del historial. Si el registro no existía, se recrea; si debía eliminarse, se elimina; si debía modificarse, se restaura el valor previo.</p>
+<h2 id="importaciones-y-plantillas">Importaciones y plantillas<a class="anchor" href="#importaciones-y-plantillas" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">El sistema ofrece plantillas para evitar errores de estructura.</p>
+<p class="">Plantillas disponibles:</p>
+<ul>
+<li>carga de facturación;</li>
+<li>matriz de proyecciones;</li>
+<li>matriz de precios.</li>
+<li>proyecciones anuales PLP;</li>
+<li>porcentajes variables anuales;</li>
+<li>tarifaciones anuales.</li>
+</ul>
+<p class="">Destino de cada importación:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Plantilla</th>
+<th>Tabla principal</th>
+<th>Pantalla de destino</th>
+<th>Resultado posterior</th>
+</tr></thead><tbody>
+<tr>
+<td>Facturación real</td>
+<td><code>facturacion_2026</code></td>
+<td>Cargar datos / Control</td>
+<td>Dashboard, Comparativo, Matriz y exportaciones.</td>
+</tr>
+<tr>
+<td>Matriz de proyecciones</td>
+<td><code>matriz_proyecciones</code> y, si aplica, <code>matriz_proyecciones_jornadas</code></td>
+<td>Proyectados &gt; Matriz de proyecciones</td>
+<td>Control proyecciones y Facturación horas.</td>
+</tr>
+<tr>
+<td>Proyecciones PLP</td>
+<td><code>matriz_proyecciones</code> con <code>cliente=Personal</code> y <code>tipo_plp</code></td>
+<td>Proyectados &gt; Matriz de proyecciones &gt; PLP</td>
+<td>Resumen PLP, aperturas diurnas/nocturnas y Facturación horas.</td>
+</tr>
+<tr>
+<td>Matriz de precios</td>
+<td><code>matriz_precios</code></td>
+<td>Proyectados &gt; Matriz de precios</td>
+<td>Precio de las horas y de las aperturas nocturnas.</td>
+</tr>
+<tr>
+<td>Variables</td>
+<td><code>variables_campanias</code></td>
+<td>Variable &gt; % Variable</td>
+<td>Variable &gt; Estimación variable y Facturación horas.</td>
+</tr>
+<tr>
+<td>Tarifación</td>
+<td><code>tarifaciones_campanias</code></td>
+<td>Variable &gt; Tarifación</td>
+<td>Suma o resta en Facturación horas.</td>
+</tr>
+<tr>
+<td>Next Gen</td>
+<td><code>next_gen_dolar</code> y <code>next_gen_productos</code></td>
+<td>Variable &gt; Next Gen</td>
+<td>Convierte USD a pesos y suma el resultado en Facturación horas.</td>
+</tr>
+</tbody></table></div>
+<p class="">Formatos soportados según el módulo:</p>
+<ul>
+<li><code>.xlsx</code>;</li>
+<li><code>.csv</code>;</li>
+<li>HTML tabular copiado desde Excel, cuando el parser lo permite.</li>
+</ul>
+<p class="">Las importaciones validan encabezados, meses y campos obligatorios antes de guardar.</p>
+<h2 id="exportaciones">Exportaciones<a class="anchor" href="#exportaciones" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">La aplicación permite exportar información a Excel desde módulos de control y análisis.</p>
+<p class="">Las exportaciones respetan filtros activos cuando el endpoint lo contempla.</p>
+<h2 id="calculos-principales">Cálculos principales<a class="anchor" href="#calculos-principales" aria-label="Enlace a esta sección">#</a></h2>
+<h3 id="facturacion-real">Facturación real<a class="anchor" href="#facturacion-real" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">El modelo de facturación calcula, entre otros:</p>
+<ul>
+<li>valor hora alcanzado;</li>
+<li>valor hora objetivo;</li>
+<li>objetivo de facturación horas;</li>
+<li>objetivo de facturación bono;</li>
+<li>facturado horas;</li>
+<li>facturado bono;</li>
+<li>variable productivo;</li>
+<li>penalizaciones;</li>
+<li>total real;</li>
+<li>total teórico;</li>
+<li>desvío;</li>
+<li>porcentaje de cumplimiento.</li>
+</ul>
+<h3 id="penalizaciones">Penalizaciones<a class="anchor" href="#penalizaciones" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Las penalizaciones impactan como descuento. Aunque se carguen como valor positivo, el cálculo las resta del total correspondiente.</p>
+<h3 id="redondeo-monetario">Redondeo monetario<a class="anchor" href="#redondeo-monetario" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Los importes monetarios proyectados usan redondeo centralizado para evitar diferencias pequeñas entre campañas con el mismo precio base.</p>
+<h3 id="proyeccion-plp">Proyección PLP<a class="anchor" href="#proyeccion-plp" aria-label="Enlace a esta sección">#</a></h3>
+<pre><code class="language-text">horas diurnas = horas base * porcentaje diurno / 100
+horas nocturnas = horas base * (100 - porcentaje diurno) / 100
+horas proyectadas finales = horas base * porcentaje de cumplimiento / 100
+dotación = horas base / días laborales / horas de jornada</code></pre>
+<p class="">Las aperturas diurna y nocturna se valorizan con el precio mensual que coincida con cada nombre. El resumen operativo PLP muestra las horas base al 100%; el cumplimiento se aplica en el circuito de proyección y facturación.</p>
+<h3 id="consolidado-proyectado">Consolidado proyectado<a class="anchor" href="#consolidado-proyectado" aria-label="Enlace a esta sección">#</a></h3>
+<pre><code class="language-text">importe horas = horas proyectadas * precio final
+estimación variable = importe horas * porcentaje variable / 100
+total campaña = importe horas + estimación variable + Next Gen + tarifaciones</code></pre>
+<p class="">Una tarifación negativa funciona como descuento. No se debe confundir con el porcentaje variable ni con el campo de tarifación de la facturación real.</p>
+<h2 id="apis-principales">APIs principales<a class="anchor" href="#apis-principales" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Rutas HTML:</p>
+<pre><code class="language-text">/login
+/
+/cargar
+/catalogos
+/control
+/justificaciones
+/comparativo
+/matriz
+/matriz-proyecciones
+/matriz-precios
+/suma-fija
+/resumen
+/variable
+/control-proyecciones
+/calendario-operativo
+/historial
+/usuarios</code></pre>
+<p class="">APIs destacadas:</p>
+<pre><code class="language-text">/api/auth/login
+/api/auth/logout
+/api/auth/me
+/api/datos
+/api/cargar
+/api/resumen
+/api/kpis
+/api/grafico
+/api/filtros
+/api/comparativo
+/api/matriz
+/api/matriz-proyecciones
+/api/proyecciones-plp/template
+/api/proyecciones-plp/importar
+/api/personal-distribucion
+/api/matriz-precios
+/api/matriz-precios/inflacion
+/api/suma-fija
+/api/resumen-proyeccion
+/api/variables
+/api/variables/template
+/api/variables/importar
+/api/tarifaciones
+/api/tarifaciones/template
+/api/tarifaciones/importar
+/api/next-gen
+/api/next-gen/template
+/api/next-gen/importar
+/api/sites-proyeccion
+/api/control-proyecciones
+/api/calendario-operativo
+/api/historial
+/api/historial/&lt;id&gt;/deshacer
+/api/exportar_excel
+/api/template_carga
+/api/importar_datos
+/api/asignaciones
+/api/clientes
+/api/gerentes
+/api/meses</code></pre>
+<h2 id="seguridad">Seguridad<a class="anchor" href="#seguridad" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Medidas incluidas:</p>
+<ul>
+<li>Flask escucha en <code>127.0.0.1</code> por defecto;</li>
+<li>sesiones con cookie <code>HttpOnly</code>;</li>
+<li><code>SameSite=Lax</code>;</li>
+<li>CSRF obligatorio en métodos de escritura;</li>
+<li>validación de <code>Origin</code>/<code>Referer</code>;</li>
+<li>CORS limitado a orígenes configurados;</li>
+<li>límite de tamaño de archivo;</li>
+<li>rate limit simple para intentos de login;</li>
+<li>headers de seguridad;</li>
+<li>permisos por rol;</li>
+<li>confirmaciones para acciones sensibles.</li>
+</ul>
+<p class="callout">Para producción:</p>
+<pre><code class="language-text">SECRET_KEY=generar-una-clave-segura
+SESSION_COOKIE_SECURE=1
+FLASK_DEBUG=0
+FLASK_RELOAD=0
+TEMPLATES_AUTO_RELOAD=0</code></pre>
+<p class="">Servir siempre detrás de HTTPS y con una base de datos administrada.</p>
+<h2 id="flujo-recomendado-de-uso">Flujo recomendado de uso<a class="anchor" href="#flujo-recomendado-de-uso" aria-label="Enlace a esta sección">#</a></h2>
+<ol>
+<li>Cargar o revisar Datos maestros.</li>
+<li>Cargar facturación real en Cargar datos.</li>
+<li>Controlar registros desde Control.</li>
+<li>Revisar Dashboard, Comparativo y Matriz.</li>
+<li>Cargar Matriz de proyecciones.</li>
+<li>Configurar Calendario operativo.</li>
+<li>Para Personal, seleccionar el año, revisar la distribución diurna/nocturna e importar las proyecciones PLP.</li>
+<li>Cargar Matriz de precios, incluyendo precios nocturnos cuando correspondan.</li>
+<li>Revisar Facturación horas.</li>
+<li>Descargar o importar la plantilla de <code>% Variable</code> y revisar Estimación variable.</li>
+<li>Cargar o importar Tarifación con el signo correspondiente.</li>
+<li>Volver a Facturación horas y validar el consolidado <code>Horas + Variable + Tarifación</code>.</li>
+<li>Revisar Control proyecciones para validar horas y dotaciones.</li>
+<li>Usar Historial para auditar o deshacer cambios.</li>
+</ol>
+<h2 id="problemas-frecuentes">Problemas frecuentes<a class="anchor" href="#problemas-frecuentes" aria-label="Enlace a esta sección">#</a></h2>
+<h3 id="npm-no-se-reconoce"><code>npm</code> no se reconoce<a class="anchor" href="#npm-no-se-reconoce" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Instalar Node.js o ejecutar:</p>
+<pre><code class="language-powershell">.\dev.ps1</code></pre>
+<h3 id="la-app-usa-otro-puerto">La app usa otro puerto<a class="anchor" href="#la-app-usa-otro-puerto" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Configurar <code>PORT</code> antes de iniciar Flask:</p>
+<pre><code class="language-powershell">$env:PORT=&quot;8010&quot;
+python run.py</code></pre>
+<h3 id="no-veo-cambios-en-templates">No veo cambios en templates<a class="anchor" href="#no-veo-cambios-en-templates" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">En desarrollo, activar recarga:</p>
+<pre><code class="language-powershell">$env:FLASK_RELOAD=&quot;1&quot;
+$env:TEMPLATES_AUTO_RELOAD=&quot;1&quot;
+python run.py</code></pre>
+<p class="">O reiniciar el servidor.</p>
+<h3 id="error-de-permisos-con-sqlite">Error de permisos con SQLite<a class="anchor" href="#error-de-permisos-con-sqlite" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Verificar que el proceso que ejecuta Flask tenga permiso de escritura sobre:</p>
+<pre><code class="language-text">instance/facturacion.db</code></pre>
+<h3 id="no-puedo-guardar-desde-el-navegador">No puedo guardar desde el navegador<a class="anchor" href="#no-puedo-guardar-desde-el-navegador" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Revisar:</p>
+<ul>
+<li>sesión iniciada;</li>
+<li>permisos del rol;</li>
+<li>token CSRF presente;</li>
+<li>origen permitido en <code>CORS_ORIGINS</code>;</li>
+<li>que se esté usando <code>127.0.0.1</code> o <code>localhost</code> según configuración.</li>
+</ul>
+<h2 id="notas-de-desarrollo">Notas de desarrollo<a class="anchor" href="#notas-de-desarrollo" aria-label="Enlace a esta sección">#</a></h2>
+<ul>
+<li>El backend está concentrado en <code>app/routes.py</code> y <code>app/models.py</code>.</li>
+<li>La base local se crea y ajusta automáticamente al iniciar la app.</li>
+<li>Las pantallas Flask usan templates Jinja en <code>app/templates</code>.</li>
+<li>El frontend Next.js vive en <code>next-app</code>.</li>
+<li>Evitar editar manualmente la base salvo que sea necesario.</li>
+<li>Mantener textos visibles en español con acentos y Ñ.</li>
+<li>No dejar cambios de <code>__pycache__</code> ni logs como parte de commits.</li>
+</ul>
+<p class="">---</p>
+<h2 id="guia-tecnica-integral-para-mantenimiento-y-transferencia">Guía técnica integral para mantenimiento y transferencia<a class="anchor" href="#guia-tecnica-integral-para-mantenimiento-y-transferencia" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Esta sección describe el estado técnico actual de la aplicación. Su objetivo es que una persona que no participó del desarrollo pueda identificar rápidamente:</p>
+<ul>
+<li>dónde se almacena cada dato;</li>
+<li>cuál es la fuente maestra;</li>
+<li>qué pantallas y APIs lo modifican;</li>
+<li>cómo se construyen los resultados;</li>
+<li>qué relaciones dependen de coincidencias de nombres;</li>
+<li>qué cambios son auditables y reversibles;</li>
+<li>cómo diagnosticar una diferencia contra el archivo de planificación.</li>
+</ul>
+<h3 id="arquitectura-de-ejecucion">Arquitectura de ejecución<a class="anchor" href="#arquitectura-de-ejecucion" aria-label="Enlace a esta sección">#</a></h3>
+<pre><code class="language-text">Navegador
+   │
+   ├─ Pantallas Flask/Jinja ───────────────┐
+   │                                       │
+   └─ Frontend Next.js en migración        │
+                                           ▼
+                                  API Flask / app/routes.py
+                                           │
+                         reglas, validaciones y consolidaciones
+                                           │
+                                           ▼
+                                  SQLAlchemy / app/models.py
+                                           │
+                         ┌─────────────────┴─────────────────┐
+                         ▼                                   ▼
+              SQLite instance/facturacion.db       PostgreSQL por DATABASE_URL</code></pre>
+<p class="">El backend Flask es la implementación operativa principal. Las rutas HTML y API están registradas sobre <code>main_bp</code> en <code>app/routes.py</code>. SQLAlchemy administra los modelos y la conexión. <code>create_app()</code> en <code>app/__init__.py</code> configura seguridad, sesión, CORS, CSRF, base de datos y ajustes simples de esquema.</p>
+<p class=""><code>run.py</code> inicia Flask usando:</p>
+<pre><code class="language-text">FLASK_HOST    dirección de escucha; 127.0.0.1 por defecto
+PORT          puerto; 8009 por defecto
+FLASK_DEBUG   activa debug cuando vale 1
+FLASK_RELOAD  activa el reloader cuando vale 1</code></pre>
+<p class="">El script <code>scripts/dev.mjs</code>, invocado con <code>npm run dev</code>, administra Flask y Next.js en desarrollo.</p>
+<h3 id="propiedad-y-flujo-de-los-datos">Propiedad y flujo de los datos<a class="anchor" href="#propiedad-y-flujo-de-los-datos" aria-label="Enlace a esta sección">#</a></h3>
+<div class="table-wrap"><table><thead><tr>
+<th>Dato</th>
+<th>Fuente maestra en la app</th>
+<th>Pantalla principal</th>
+<th>Resultado consumidor</th>
+</tr></thead><tbody>
+<tr>
+<td>Usuarios y roles</td>
+<td><code>usuarios</code></td>
+<td>Usuarios</td>
+<td>Autenticación y permisos</td>
+</tr>
+<tr>
+<td>Catálogo comercial</td>
+<td><code>asignaciones_comerciales</code></td>
+<td>Datos maestros</td>
+<td>Formularios, sites y filtros</td>
+</tr>
+<tr>
+<td>Facturación real</td>
+<td><code>facturacion_2026</code></td>
+<td>Cargar datos / Control</td>
+<td>Dashboard, Comparativo y Matriz</td>
+</tr>
+<tr>
+<td>Justificaciones reales</td>
+<td><code>justificaciones_ajustes</code></td>
+<td>Justificaciones</td>
+<td>Total real y trazabilidad</td>
+</tr>
+<tr>
+<td>Proyección de horas</td>
+<td><code>matriz_proyecciones</code></td>
+<td>Proyecciones</td>
+<td>Control proyecciones y Facturación horas</td>
+</tr>
+<tr>
+<td>Jornadas múltiples</td>
+<td><code>matriz_proyecciones_jornadas</code></td>
+<td>Proyecciones</td>
+<td>Cálculo de horas requeridas</td>
+</tr>
+<tr>
+<td>Distribución PLP</td>
+<td><code>personal_distribucion_horas</code></td>
+<td>Proyecciones / PLP</td>
+<td>Apertura diurna y nocturna</td>
+</tr>
+<tr>
+<td>Precio mensual</td>
+<td><code>matriz_precios.precio_final</code></td>
+<td>Precios</td>
+<td>Facturación horas</td>
+</tr>
+<tr>
+<td>Suma fija</td>
+<td><code>matriz_precios.importe_fijo_mensual</code></td>
+<td>Variable / Suma fija</td>
+<td>Facturación horas</td>
+</tr>
+<tr>
+<td>Porcentaje variable</td>
+<td><code>variables_campanias</code></td>
+<td>Variable / % Variable</td>
+<td>Estimación variable y Facturación horas</td>
+</tr>
+<tr>
+<td>Tarifación y adicionales</td>
+<td><code>tarifaciones_campanias</code></td>
+<td>Variable / Tarifación</td>
+<td>Facturación horas</td>
+</tr>
+<tr>
+<td>Dólar Next Gen</td>
+<td><code>next_gen_dolar</code></td>
+<td>Variable / Next Gen</td>
+<td>Valorización Next Gen</td>
+</tr>
+<tr>
+<td>Cantidades Next Gen</td>
+<td><code>next_gen_productos</code></td>
+<td>Variable / Next Gen</td>
+<td>Facturación horas</td>
+</tr>
+<tr>
+<td>Alias y consolidación</td>
+<td><code>sites_proyecciones</code></td>
+<td>Lápiz de Facturación horas</td>
+<td>Site, cliente y campaña canónicos</td>
+</tr>
+<tr>
+<td>Feriados</td>
+<td><code>feriados_operativos</code></td>
+<td>Calendario operativo</td>
+<td>Días objetivo</td>
+</tr>
+<tr>
+<td>Auditoría</td>
+<td><code>historial_cambios</code></td>
+<td>Historial</td>
+<td>Consulta y deshacer</td>
+</tr>
+</tbody></table></div>
+<p class="">Una salida calculada, como Facturación horas, no debe importarse nuevamente como si fuera una fuente maestra. Deben cargarse sus componentes: horas, precios, variables, sumas fijas, tarifaciones y Next Gen.</p>
+<h3 id="diccionario-completo-de-tablas">Diccionario completo de tablas<a class="anchor" href="#diccionario-completo-de-tablas" aria-label="Enlace a esta sección">#</a></h3>
+<h4 id="usuarios-3"><code>usuarios</code><a class="anchor" href="#usuarios-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>Usuario</code>.</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Tipo lógico</th>
+<th>Uso</th>
+</tr></thead><tbody>
+<tr>
+<td><code>id</code></td>
+<td>entero</td>
+<td>Clave primaria</td>
+</tr>
+<tr>
+<td><code>nombre</code></td>
+<td>texto</td>
+<td>Nombre mostrado</td>
+</tr>
+<tr>
+<td><code>email</code></td>
+<td>texto único</td>
+<td>Identificador de login</td>
+</tr>
+<tr>
+<td><code>password_hash</code></td>
+<td>texto</td>
+<td>Hash seguro de contraseña</td>
+</tr>
+<tr>
+<td><code>rol</code></td>
+<td>texto</td>
+<td>Rol y permisos</td>
+</tr>
+<tr>
+<td><code>activo</code></td>
+<td>booleano</td>
+<td>Habilita el acceso</td>
+</tr>
+<tr>
+<td><code>creado_en</code>, <code>actualizado_en</code></td>
+<td>fecha/hora</td>
+<td>Auditoría técnica</td>
+</tr>
+</tbody></table></div>
+<p class="">No se almacena la contraseña original. La baja lógica se realiza con <code>activo</code>.</p>
+<h4 id="historial-cambios-3"><code>historial_cambios</code><a class="anchor" href="#historial-cambios-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>HistorialCambio</code>.</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Uso</th>
+</tr></thead><tbody>
+<tr>
+<td><code>usuario_id</code>, <code>usuario_nombre</code>, <code>usuario_email</code></td>
+<td>Autor de la operación</td>
+</tr>
+<tr>
+<td><code>accion</code></td>
+<td>Creación, edición, eliminación, importación o deshacer</td>
+</tr>
+<tr>
+<td><code>entidad</code></td>
+<td>Familia técnica afectada</td>
+</tr>
+<tr>
+<td><code>entidad_id</code></td>
+<td>Identificador cuando existe uno único</td>
+</tr>
+<tr>
+<td><code>resumen</code></td>
+<td>Texto corto mostrado en Historial</td>
+</tr>
+<tr>
+<td><code>detalle</code></td>
+<td>Explicación funcional</td>
+</tr>
+<tr>
+<td><code>antes</code></td>
+<td>Snapshot JSON anterior</td>
+</tr>
+<tr>
+<td><code>despues</code></td>
+<td>Snapshot JSON posterior</td>
+</tr>
+<tr>
+<td><code>creado_en</code></td>
+<td>Momento de la operación</td>
+</tr>
+</tbody></table></div>
+<p class="">Las entidades reversibles actuales incluyen proyecciones, precios, variables, tarifaciones, Next Gen y regularizaciones de Facturación horas. Un deshacer aplica el snapshot anterior y crea otro movimiento de historial; no elimina la auditoría.</p>
+<h4 id="facturacion-2026-3"><code>facturacion_2026</code><a class="anchor" href="#facturacion-2026-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>Facturacion2026</code>.</p>
+<p class="">Contiene el escenario real. Sus dimensiones son fecha, mes, cliente, gerente, jefe de site, campaña, subcampaña, tipo de negocio y jornada. Sus medidas incluyen horas objetivo, horas facturadas, horas penalizadas, valor hora, tarifación, importe fijo, variables, bonos, penalizaciones, Next Gen y otros.</p>
+<p class="">Las propiedades calculadas del modelo producen:</p>
+<pre><code class="language-text">facturado horas
+facturado bono
+variable productivo
+penalizaciones
+total real
+total teórico
+desvío
+porcentaje de cumplimiento</code></pre>
+<p class="">Una penalización positiva cargada por el usuario se convierte en descuento durante el cálculo.</p>
+<h4 id="justificaciones-ajustes-3"><code>justificaciones_ajustes</code><a class="anchor" href="#justificaciones-ajustes-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>JustificacionAjuste</code>.</p>
+<p class="">Cada registro referencia <code>facturacion_2026.id</code>. Guarda tipo, cantidad, precio, importe y descripción. Su finalidad es explicar y respaldar ajustes del escenario real. Las penalizaciones se normalizan con signo negativo al calcular.</p>
+<h4 id="matriz-proyecciones-3"><code>matriz_proyecciones</code><a class="anchor" href="#matriz-proyecciones-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>ProyeccionMatriz</code>.</p>
+<p class="">Clave funcional:</p>
+<pre><code class="language-text">cliente + campaña + mes</code></pre>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Uso</th>
+</tr></thead><tbody>
+<tr>
+<td><code>cliente</code>, <code>campania</code></td>
+<td>Identidad de la apertura</td>
+</tr>
+<tr>
+<td><code>year</code>, <code>mes</code></td>
+<td>Período</td>
+</tr>
+<tr>
+<td><code>dotacion_requerida</code></td>
+<td>Personas requeridas</td>
+</tr>
+<tr>
+<td><code>carga_semanal</code></td>
+<td>Días operativos: L a V, L a V + S, etc.</td>
+</tr>
+<tr>
+<td><code>carga_horaria</code></td>
+<td>Horas diarias</td>
+</tr>
+<tr>
+<td><code>dias_objetivo</code></td>
+<td>Días laborales del mes</td>
+</tr>
+<tr>
+<td><code>horas_requeridas</code></td>
+<td>Base de horas</td>
+</tr>
+<tr>
+<td><code>porcentaje_cumplimiento</code></td>
+<td>Factor aplicado a las horas</td>
+</tr>
+<tr>
+<td><code>tiene_nocturnidad</code></td>
+<td>Indica apertura nocturna</td>
+</tr>
+<tr>
+<td><code>porcentaje_nocturnidad</code></td>
+<td>Parte nocturna</td>
+</tr>
+<tr>
+<td><code>tipo_plp</code></td>
+<td>Personal, Personal CX, Personal Soporte o Personal SMB</td>
+</tr>
+<tr>
+<td><code>horas_carga_manual</code></td>
+<td>Indica que las horas se ingresaron manualmente</td>
+</tr>
+<tr>
+<td><code>dias_objetivo_manual</code></td>
+<td>Reemplazo manual de días</td>
+</tr>
+<tr>
+<td><code>horas_requeridas_manual</code></td>
+<td>Reemplazo manual de horas</td>
+</tr>
+</tbody></table></div>
+<p class="">Propiedad principal:</p>
+<pre><code class="language-text">horas proyectadas = horas requeridas × porcentaje cumplimiento / 100</code></pre>
+<p class="">Cuando una campaña empieza o termina a mitad de mes se deben usar días u horas manuales. Esto evita que el calendario completo fuerce un valor incorrecto.</p>
+<h4 id="matriz-proyecciones-jornadas-3"><code>matriz_proyecciones_jornadas</code><a class="anchor" href="#matriz-proyecciones-jornadas-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>ProyeccionMatrizJornada</code>.</p>
+<p class="">Permite que una proyección tenga varias jornadas. Cada fila almacena dotación, carga semanal, carga horaria, días objetivo y horas requeridas. La relación usa <code>proyeccion_id</code> y eliminación en cascada.</p>
+<h4 id="personal-distribucion-horas-3"><code>personal_distribucion_horas</code><a class="anchor" href="#personal-distribucion-horas-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>PersonalDistribucionHoras</code>.</p>
+<p class="">Clave:</p>
+<pre><code class="language-text">servicio + mes</code></pre>
+<p class="">Guarda el porcentaje diurno para cada clasificación PLP. El porcentaje nocturno es calculado:</p>
+<pre><code class="language-text">porcentaje nocturno = 100 − porcentaje diurno</code></pre>
+<p class="">Los porcentajes pertenecen a un año. Crear 2027 puede copiar inicialmente 2026, pero los cambios de 2027 no deben modificar 2026.</p>
+<h4 id="matriz-precios-3"><code>matriz_precios</code><a class="anchor" href="#matriz-precios-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>ProyeccionPrecio</code>.</p>
+<p class="">Clave:</p>
+<pre><code class="language-text">cliente + campaña + mes</code></pre>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Uso</th>
+</tr></thead><tbody>
+<tr>
+<td><code>site</code></td>
+<td>Gerencia o site</td>
+</tr>
+<tr>
+<td><code>cliente</code>, <code>campania</code></td>
+<td>Identidad del precio</td>
+</tr>
+<tr>
+<td><code>year</code>, <code>mes</code></td>
+<td>Período</td>
+</tr>
+<tr>
+<td><code>precio_base</code></td>
+<td>Precio ingresado</td>
+</tr>
+<tr>
+<td><code>alcance_porcentaje</code></td>
+<td>Porcentaje aplicado</td>
+</tr>
+<tr>
+<td><code>precio_final</code></td>
+<td>Precio monetario calculado</td>
+</tr>
+<tr>
+<td><code>importe_fijo_mensual</code></td>
+<td>Suma fija asociada a dotación</td>
+</tr>
+</tbody></table></div>
+<pre><code class="language-text">precio final = precio base × alcance / 100</code></pre>
+<p class="">Una inflación global modifica precios desde el mes seleccionado hacia adelante. La suma fija no es un precio por hora: se suma una sola vez en el mes.</p>
+<h4 id="variables-campanias-3"><code>variables_campanias</code><a class="anchor" href="#variables-campanias-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>VariableCampania</code>.</p>
+<p class="">Guarda un porcentaje por cliente, campaña y mes. Puede ser positivo, negativo o cero. Para un año nuevo se puede partir del último año disponible y modificar manualmente las excepciones.</p>
+<pre><code class="language-text">importe variable = facturación de horas × porcentaje / 100</code></pre>
+<p class="">El porcentaje se aplica sobre el componente Horas de su apertura antes de la consolidación canónica. Esto permite que dos aperturas del mismo cliente tengan porcentajes diferentes.</p>
+<h4 id="tarifaciones-campanias-3"><code>tarifaciones_campanias</code><a class="anchor" href="#tarifaciones-campanias-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>TarifacionCampania</code>.</p>
+<p class="">Clave:</p>
+<pre><code class="language-text">cliente + campaña + concepto + mes</code></pre>
+<p class="">El monto conserva su signo:</p>
+<ul>
+<li>positivo: suma;</li>
+<li>negativo: resta;</li>
+<li>cero: no altera el resultado.</li>
+</ul>
+<p class="">También contiene el concepto técnico <code>Ajuste alineación Excel</code>. Este concepto mantiene la conciliación contra el archivo de referencia utilizado en 2026. Debe permanecer separado de Tarifación y Suma fija para que sea auditable.</p>
+<p class="">Si cambian datos maestros tanto en la app como en el Excel, se debe volver a ejecutar una comparación y recalcular la conciliación. No debe editarse el ajuste para ocultar un error de horas, precio o agrupación.</p>
+<h4 id="next-gen-dolar"><code>next_gen_dolar</code><a class="anchor" href="#next-gen-dolar" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>NextGenDolar</code>.</p>
+<p class="">Una fila por mes. Guarda el valor del dólar usado para convertir productos Next Gen a pesos. El año está incluido explícitamente y el mes usa <code>YYYY-MM</code>.</p>
+<h4 id="next-gen-productos"><code>next_gen_productos</code><a class="anchor" href="#next-gen-productos" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>NextGenProducto</code>.</p>
+<p class="">Guarda site, cliente, campaña, producto, año, mes y cantidad USD.</p>
+<pre><code class="language-text">Next Gen en pesos = cantidad USD × dólar del mes</code></pre>
+<p class="">Un producto debe consolidarse en la cuenta original, no aparecer como una cuenta independiente llamada Next Gen.</p>
+<h4 id="sites-proyecciones"><code>sites_proyecciones</code><a class="anchor" href="#sites-proyecciones" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>SiteProyeccion</code>.</p>
+<p class="">Es una tabla de normalización manual. Conserva:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Campo</th>
+<th>Uso</th>
+</tr></thead><tbody>
+<tr>
+<td><code>cliente</code>, <code>campania</code></td>
+<td>Identidad original</td>
+</tr>
+<tr>
+<td><code>site</code></td>
+<td>Site regularizado</td>
+</tr>
+<tr>
+<td><code>cliente_destino</code></td>
+<td>Cliente canónico</td>
+</tr>
+<tr>
+<td><code>campania_destino</code></td>
+<td>Campaña/cuenta canónica</td>
+</tr>
+</tbody></table></div>
+<p class="">Facturación horas consulta esta tabla antes de consolidar. Si dos orígenes apuntan al mismo cliente y campaña destino, sus componentes se suman en una sola línea. Los datos históricos originales no se renombran.</p>
+<p class="">Ejemplos de consolidación:</p>
+<pre><code class="language-text">Santander Getnet Supervisor exclusivo → Santander Getnet
+aperturas Naturgy BAN                → Naturgy
+aperturas Naturgy NOA                → GASNOR
+aperturas Energía San Juan           → ENERGIA SAN JUAN</code></pre>
+<h4 id="feriados-operativos-3"><code>feriados_operativos</code><a class="anchor" href="#feriados-operativos-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>FeriadoOperativo</code>.</p>
+<p class="">Guarda año, fecha, nombre, tipo y estado activo. Sólo los feriados activos afectan los días objetivo. Agregar o eliminar uno recalcula las proyecciones del mes alcanzado.</p>
+<h4 id="asignaciones-comerciales-3"><code>asignaciones_comerciales</code><a class="anchor" href="#asignaciones-comerciales-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>AsignacionComercial</code>.</p>
+<p class="">Es el catálogo transversal de cliente, gerente, jefe de site, campaña, subcampaña, tipo de negocio y estado. Debe mantenerse consistente con las cargas. La edición con “Aplicar desde mes” protege el histórico anterior.</p>
+<h3 id="pipeline-exacto-de-facturacion-horas">Pipeline exacto de Facturación horas<a class="anchor" href="#pipeline-exacto-de-facturacion-horas" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">El endpoint <code>/api/resumen-proyeccion</code> ejecuta conceptualmente este flujo:</p>
+<pre><code class="language-text">Proyección de cada apertura
+        │
+        ├─ horas proyectadas × precio final ───────────────► Horas
+        │
+        ├─ Horas × porcentaje variable ───────────────────► Variable
+        │
+        ├─ importe_fijo_mensual ──────────────────────────► Fijo mensual
+        │
+        ├─ tarifaciones_campanias ────────────────────────► Tarifación/adicional
+        │
+        └─ cantidad USD × dólar mensual ──────────────────► Next Gen
+                                                               │
+                                                               ▼
+                                        regularización de site/cuenta/campaña
+                                                               │
+                                                               ▼
+                                           consolidado por cuenta y por mes</code></pre>
+<p class="">Fórmula del total:</p>
+<pre><code class="language-text">total mensual de cuenta
+  = Horas
+  + Variable
+  + Fijo mensual
+  + Tarifación y otros conceptos
+  + Next Gen</code></pre>
+<p class="">La comparación de nombres ignora mayúsculas, minúsculas y acentos cuando la regla lo permite. La nocturnidad se reconoce como una apertura de la clasificación base.</p>
+<p class="">Para una apertura que no tenga proyección propia en un mes, el cálculo puede usar la proyección base del cliente cuando la relación apertura-cliente fue aprendida de otros meses. Esta regla resuelve, por ejemplo, aperturas que empiezan después de enero sin perder el cálculo del primer mes.</p>
+<h3 id="tratamiento-especial-plp">Tratamiento especial PLP<a class="anchor" href="#tratamiento-especial-plp" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">PLP identifica exclusivamente al cliente Personal y mantiene cuatro clasificaciones:</p>
+<pre><code class="language-text">Personal
+Personal CX
+Personal Soporte
+Personal SMB</code></pre>
+<p class="">Las campañas operativas se cargan debajo de una clasificación. El resumen PLP suma todas las campañas de una misma clasificación. Si existe nocturnidad:</p>
+<pre><code class="language-text">horas diurnas   = horas totales × porcentaje diurno
+horas nocturnas = horas totales × porcentaje nocturno</code></pre>
+<p class="">El cumplimiento afecta las horas finales de Facturación horas, pero el cuadro de control PLP puede mostrar la carga original al 100% cuando su finalidad es reconciliar el archivo operativo.</p>
+<p class="">La dotación informativa se calcula como:</p>
+<pre><code class="language-text">dotación = horas / días laborales / horas de jornada</code></pre>
+<p class="">Los valores predeterminados son Lunes a Viernes y seis horas por jornada, pero son editables.</p>
+<h3 id="suma-fija">Suma fija<a class="anchor" href="#suma-fija" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">La subpestaña está en:</p>
+<pre><code class="language-text">Proyectados → Variable → Suma fija</code></pre>
+<p class="">Ruta:</p>
+<pre><code class="language-text">/suma-fija</code></pre>
+<p class="">La pantalla no crea una tabla duplicada. Edita directamente <code>matriz_precios.importe_fijo_mensual</code>. Cada celda corresponde a un registro de precio existente para la campaña y el mes.</p>
+<p class="">Comportamiento:</p>
+<ul>
+<li>el cambio se guarda al salir del campo;</li>
+<li>sólo se permiten valores no negativos;</li>
+<li>Facturación horas lo incorpora como <code>Fijo mensual</code>;</li>
+<li>el movimiento queda en Historial bajo <code>matriz_precios</code>;</li>
+<li>deshacer restaura el valor anterior.</li>
+</ul>
+<p class="">Para 2026 se cargaron desde la hoja <code>Suma fija</code> los importes por dotación de Assurant, BBVA Seguros, OMINT y Qualia Cencosud. Bice conserva su propio importe fijo ya existente.</p>
+<h3 id="correspondencia-con-el-excel-de-planificacion">Correspondencia con el Excel de planificación<a class="anchor" href="#correspondencia-con-el-excel-de-planificacion" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">El libro de referencia usado durante la alineación contiene hojas maestras y hojas calculadas.</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Hoja Excel</th>
+<th>Naturaleza</th>
+<th>Destino en la app</th>
+</tr></thead><tbody>
+<tr>
+<td><code>Matriz</code></td>
+<td>Maestra</td>
+<td><code>matriz_proyecciones</code></td>
+</tr>
+<tr>
+<td><code>Precios</code></td>
+<td>Maestra</td>
+<td><code>matriz_precios</code></td>
+</tr>
+<tr>
+<td><code>Suma fija</code></td>
+<td>Maestra</td>
+<td><code>matriz_precios.importe_fijo_mensual</code></td>
+</tr>
+<tr>
+<td><code>Estimacion Variable</code></td>
+<td>Maestra</td>
+<td><code>variables_campanias</code></td>
+</tr>
+<tr>
+<td><code>Tarifacion</code></td>
+<td>Maestra</td>
+<td><code>tarifaciones_campanias</code></td>
+</tr>
+<tr>
+<td><code>Valores Next Gen</code></td>
+<td>Maestra</td>
+<td><code>next_gen_dolar</code> y <code>next_gen_productos</code></td>
+</tr>
+<tr>
+<td><code>Facturacion Horas</code></td>
+<td>Calculada</td>
+<td>Validación de Horas</td>
+</tr>
+<tr>
+<td><code>Variable</code></td>
+<td>Calculada</td>
+<td>Validación del importe variable</td>
+</tr>
+<tr>
+<td><code>Next Gen</code></td>
+<td>Calculada</td>
+<td>Validación de conversión a pesos</td>
+</tr>
+<tr>
+<td><code>RESUMEN</code></td>
+<td>Calculada</td>
+<td>Validación final por cuenta/mes</td>
+</tr>
+</tbody></table></div>
+<p class="">No se deben importar directamente <code>Facturacion Horas</code>, <code>Variable</code>, <code>Next Gen</code> o <code>RESUMEN</code> como bases. Sus valores pueden estar almacenados en caché por Excel y no reflejar cambios recientes de las hojas maestras hasta que Excel recalcule.</p>
+<p class="">La columna <code>Cuenta</code> del Excel es la identidad canónica del resultado. La columna <code>Cliente</code> puede representar una apertura. La relación entre ambas se refleja en <code>sites_proyecciones</code>.</p>
+<h3 id="conciliacion-2026">Conciliación 2026<a class="anchor" href="#conciliacion-2026" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">La alineación vigente fue validada contra las 47 cuentas y los doce meses del <code>RESUMEN</code> de referencia. El resultado quedó con una diferencia anual de $0,14, originada por acumulación de decimales inferiores al centavo.</p>
+<p class="">La conciliación no reemplaza las reglas del negocio:</p>
+<ol>
+<li>primero se corrigen horas, precios, porcentajes, sumas fijas y nombres;</li>
+<li>después se calcula la diferencia residual;</li>
+<li>el residual se guarda con concepto <code>Ajuste alineación Excel</code>;</li>
+<li>el ajuste queda visible, auditable y reversible.</li>
+</ol>
+<p class="">Si se cambia agosto en adelante:</p>
+<ol>
+<li>actualizar el dato maestro en la app;</li>
+<li>realizar el mismo cambio en el Excel si seguirá siendo la referencia;</li>
+<li>recalcular el libro;</li>
+<li>comparar nuevamente por cuenta y mes;</li>
+<li>reemplazar la conciliación anterior desde el mes modificado.</li>
+</ol>
+<h3 id="contratos-de-las-apis-de-proyectados">Contratos de las APIs de Proyectados<a class="anchor" href="#contratos-de-las-apis-de-proyectados" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Todas requieren sesión. Los métodos de escritura requieren CSRF y permisos.</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Endpoint</th>
+<th>Métodos</th>
+<th>Responsabilidad</th>
+</tr></thead><tbody>
+<tr>
+<td><code>/api/matriz-proyecciones</code></td>
+<td>GET, POST</td>
+<td>Consultar y guardar proyecciones</td>
+</tr>
+<tr>
+<td><code>/api/matriz-proyecciones/&lt;id&gt;</code></td>
+<td>DELETE</td>
+<td>Eliminar proyección</td>
+</tr>
+<tr>
+<td><code>/api/matriz-proyecciones/importar</code></td>
+<td>POST</td>
+<td>Importar matriz</td>
+</tr>
+<tr>
+<td><code>/api/matriz-proyecciones/template</code></td>
+<td>GET</td>
+<td>Descargar plantilla</td>
+</tr>
+<tr>
+<td><code>/api/proyecciones-plp/importar</code></td>
+<td>POST</td>
+<td>Importar PLP anual</td>
+</tr>
+<tr>
+<td><code>/api/proyecciones-plp/template</code></td>
+<td>GET</td>
+<td>Plantilla PLP</td>
+</tr>
+<tr>
+<td><code>/api/personal-distribucion</code></td>
+<td>GET, POST</td>
+<td>Porcentajes diurnos/nocturnos</td>
+</tr>
+<tr>
+<td><code>/api/matriz-precios</code></td>
+<td>GET, POST</td>
+<td>Consultar y guardar precios</td>
+</tr>
+<tr>
+<td><code>/api/matriz-precios/importar</code></td>
+<td>POST</td>
+<td>Importar precios</td>
+</tr>
+<tr>
+<td><code>/api/matriz-precios/inflacion</code></td>
+<td>POST</td>
+<td>Aplicar índice</td>
+</tr>
+<tr>
+<td><code>/api/suma-fija</code></td>
+<td>GET, POST</td>
+<td>Consultar y editar importes fijos</td>
+</tr>
+<tr>
+<td><code>/api/resumen-proyeccion</code></td>
+<td>GET</td>
+<td>Facturación horas consolidada</td>
+</tr>
+<tr>
+<td><code>/api/sites-proyeccion</code></td>
+<td>POST</td>
+<td>Regularizar site/cliente/campaña</td>
+</tr>
+<tr>
+<td><code>/api/variables</code></td>
+<td>GET, POST</td>
+<td>Porcentajes y estimaciones</td>
+</tr>
+<tr>
+<td><code>/api/variables/importar</code></td>
+<td>POST</td>
+<td>Importar variables</td>
+</tr>
+<tr>
+<td><code>/api/tarifaciones</code></td>
+<td>GET, POST</td>
+<td>Montos adicionales</td>
+</tr>
+<tr>
+<td><code>/api/tarifaciones/importar</code></td>
+<td>POST</td>
+<td>Importar tarifaciones</td>
+</tr>
+<tr>
+<td><code>/api/next-gen</code></td>
+<td>GET, POST</td>
+<td>Dólar y productos</td>
+</tr>
+<tr>
+<td><code>/api/next-gen/importar</code></td>
+<td>POST</td>
+<td>Importar Next Gen</td>
+</tr>
+<tr>
+<td><code>/api/control-proyecciones</code></td>
+<td>GET</td>
+<td>Control de horas y dotaciones</td>
+</tr>
+<tr>
+<td><code>/api/calendario-operativo</code></td>
+<td>GET, POST</td>
+<td>Feriados</td>
+</tr>
+</tbody></table></div>
+<p class="">Ejemplo de escritura de Suma fija:</p>
+<pre><code class="language-json">POST /api/suma-fija
+{
+  &quot;id&quot;: 123,
+  &quot;monto&quot;: 3750000
+}</code></pre>
+<p class="">El <code>id</code> corresponde al registro de <code>matriz_precios</code> del mes.</p>
+<p class="">Ejemplo conceptual de regularización:</p>
+<pre><code class="language-json">POST /api/sites-proyeccion
+{
+  &quot;site&quot;: &quot;Mariano Quesada&quot;,
+  &quot;cliente_destino&quot;: &quot;Santander Getnet&quot;,
+  &quot;campania_destino&quot;: &quot;Santander Getnet&quot;,
+  &quot;origenes&quot;: [
+    {
+      &quot;cliente&quot;: &quot;Santander Getnet&quot;,
+      &quot;campania&quot;: &quot;Santander Getnet Supervisor exclusivo&quot;
+    }
+  ]
+}</code></pre>
+<h3 id="seguridad-y-permisos-para-desarrolladores">Seguridad y permisos para desarrolladores<a class="anchor" href="#seguridad-y-permisos-para-desarrolladores" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Las escrituras desde navegador deben incluir:</p>
+<pre><code class="language-text">Cookie de sesión válida
+X-CSRF-Token o csrf_token válido
+Origin/Referer permitido
+Rol con permiso de edición</code></pre>
+<p class="">No se debe desactivar CSRF para resolver un <code>403</code>. Debe verificarse:</p>
+<ol>
+<li>que la sesión no haya vencido;</li>
+<li>que el <code>&lt;meta name="csrf-token"&gt;</code> esté presente;</li>
+<li>que <code>fetch</code> use <code>credentials: "same-origin"</code>;</li>
+<li>que envíe <code>X-CSRF-Token</code>;</li>
+<li>que el host utilizado esté incluido en <code>CORS_ORIGINS</code>.</li>
+</ol>
+<p class="">En producción:</p>
+<ul>
+<li>usar un <code>SECRET_KEY</code> persistente y seguro;</li>
+<li>activar <code>SESSION_COOKIE_SECURE=1</code>;</li>
+<li>publicar únicamente detrás de HTTPS;</li>
+<li>usar PostgreSQL administrado;</li>
+<li>no exponer el servidor de desarrollo;</li>
+<li>respaldar la base antes de importaciones masivas.</li>
+</ul>
+<h3 id="compartir-en-una-red-local">Compartir en una red local<a class="anchor" href="#compartir-en-una-red-local" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Para uso temporal dentro de una red privada:</p>
+<pre><code class="language-powershell">$env:FLASK_HOST=&quot;0.0.0.0&quot;
+$env:PORT=&quot;8009&quot;
+python run.py</code></pre>
+<p class="">La otra persona accede mediante:</p>
+<pre><code class="language-text">http://IP-PRIVADA-DEL-EQUIPO:8009</code></pre>
+<p class="">Esto no es una publicación segura en Internet. El equipo servidor debe permanecer encendido y ambos usuarios verán la misma base.</p>
+<h3 id="backups-y-recuperacion">Backups y recuperación<a class="anchor" href="#backups-y-recuperacion" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Para SQLite, detener la aplicación o garantizar que no haya escrituras y copiar:</p>
+<pre><code class="language-text">instance/facturacion.db</code></pre>
+<p class="">No reemplazar una base mientras Flask está escribiendo. Para restaurar:</p>
+<ol>
+<li>detener Flask;</li>
+<li>conservar una copia de la base actual;</li>
+<li>reemplazar <code>facturacion.db</code>;</li>
+<li>iniciar Flask;</li>
+<li>revisar login, Historial y Facturación horas.</li>
+</ol>
+<p class="">La carpeta <code>instance</code> puede contener respaldos operativos locales. No deben publicarse en repositorios si contienen información real.</p>
+<h3 id="guia-para-extender-un-modulo">Guía para extender un módulo<a class="anchor" href="#guia-para-extender-un-modulo" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Al agregar una nueva funcionalidad persistente:</p>
+<ol>
+<li>crear o ampliar el modelo en <code>app/models.py</code>;</li>
+<li>agregar compatibilidad de esquema en <code>ensure_schema()</code> si no hay migración;</li>
+<li>crear rutas HTML y API en <code>app/routes.py</code>;</li>
+<li>validar datos en backend, no sólo en JavaScript;</li>
+<li>proteger escrituras con sesión, rol y CSRF;</li>
+<li>registrar snapshots en Historial;</li>
+<li>habilitar deshacer cuando el cambio sea reversible;</li>
+<li>agregar la pantalla Jinja correspondiente;</li>
+<li>conectar el concepto al pipeline de cálculo;</li>
+<li>documentar tabla, fórmula, API, importador y procedimiento operativo;</li>
+<li>verificar que no se duplique al consolidar;</li>
+<li>probar SQLite y, si aplica, PostgreSQL.</li>
+</ol>
+<h3 id="checklist-de-verificacion-despues-de-un-cambio">Checklist de verificación después de un cambio<a class="anchor" href="#checklist-de-verificacion-despues-de-un-cambio" aria-label="Enlace a esta sección">#</a></h3>
+<pre><code class="language-text">[ ] La aplicación inicia sin errores.
+[ ] Login responde y mantiene sesión.
+[ ] Los GET no modifican datos.
+[ ] Los POST/PUT/PATCH/DELETE exigen CSRF.
+[ ] La pantalla guarda y vuelve a leer el mismo valor.
+[ ] Historial muestra módulo, entidad y detalle correctos.
+[ ] Deshacer restaura el snapshot anterior.
+[ ] Facturación horas no duplica cuentas o conceptos.
+[ ] Los doce meses suman el total anual.
+[ ] Mayúsculas, minúsculas, acentos y Ñ no rompen el matching.
+[ ] PLP conserva sus cuatro clasificaciones.
+[ ] Suma fija se aplica una vez por mes.
+[ ] Variable usa el porcentaje de la apertura correcta.
+[ ] Next Gen usa el dólar del mismo mes.
+[ ] No quedaron __pycache__, logs ni archivos temporales.</code></pre>
+<h3 id="diagnostico-de-desvios">Diagnóstico de desvíos<a class="anchor" href="#diagnostico-de-desvios" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Orden recomendado:</p>
+<ol>
+<li>comparar el total por mes;</li>
+<li>localizar la cuenta con diferencia;</li>
+<li>separar Horas, Variable, Fijo mensual, Tarifación y Next Gen;</li>
+<li>revisar nombres originales y destino en <code>sites_proyecciones</code>;</li>
+<li>comparar horas proyectadas contra <code>matriz_proyecciones</code>;</li>
+<li>verificar <code>precio_final</code>;</li>
+<li>revisar porcentaje variable;</li>
+<li>comprobar <code>importe_fijo_mensual</code>;</li>
+<li>sumar tarifaciones conservando el signo;</li>
+<li>verificar cantidad USD y dólar;</li>
+<li>revisar el ajuste de conciliación sólo al final.</li>
+</ol>
+<p class="">Una diferencia exactamente igual todos los meses suele indicar un fijo o una tarifación faltante. Una diferencia proporcional a las horas suele indicar un precio incorrecto. Una diferencia proporcional a Facturación horas suele indicar el porcentaje variable. Una diferencia que aparece sólo después de cierto mes suele indicar vigencia, inflación, cambio de campaña o una apertura nueva.</p></article>
+    <footer>Dashboard de Facturación · Documentación técnica</footer>
+  </main>
+  <a class="back" href="#indice">Índice ↑</a>
+</body>
+</html>

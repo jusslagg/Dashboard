@@ -9,6 +9,28 @@ La herramienta centraliza datos reales y proyectados para responder, de forma r�
 - qué horas, precios, dotaciones, feriados, variables o penalizaciones explican el resultado;
 - qué cambios se hicieron y cómo deshacerlos desde el historial.
 
+## Documentación disponible
+
+Este repositorio separa la documentación según su público:
+
+| Documento | Destinatario | Contenido |
+| --- | --- | --- |
+| `README.md` | Desarrollo, soporte y mantenimiento | Arquitectura, instalación, base de datos, APIs, reglas de cálculo y diagnóstico técnico. |
+| `docs/guia_usuario.html` | Usuarios operativos nuevos o habituales | Guía sencilla con índice y recorridos paso a paso para facturación real, proyectados, Facturación horas, PLP, variables, adicionales, importaciones e historial. |
+
+Con la aplicación iniciada, la guía funcional se abre desde **Ayuda > Guía de usuario** o desde:
+
+```text
+http://127.0.0.1:8009/guia-usuario
+```
+
+La guía puede descargarse directamente en PDF por cualquier usuario autenticado. La documentación técnica del README también puede descargarse en PDF, pero esa opción y su endpoint están reservados exclusivamente al rol `administrador`.
+
+```text
+/guia-usuario/descargar                 # Cualquier usuario autenticado
+/documentacion-tecnica/descargar        # Solo administrador
+```
+
 ## Estado del proyecto
 
 El proyecto tiene dos frentes:
@@ -1260,3 +1282,680 @@ Revisar:
 - Evitar editar manualmente la base salvo que sea necesario.
 - Mantener textos visibles en español con acentos y Ñ.
 - No dejar cambios de `__pycache__` ni logs como parte de commits.
+
+---
+
+## Guía técnica integral para mantenimiento y transferencia
+
+Esta sección describe el estado técnico actual de la aplicación. Su objetivo es que
+una persona que no participó del desarrollo pueda identificar rápidamente:
+
+- dónde se almacena cada dato;
+- cuál es la fuente maestra;
+- qué pantallas y APIs lo modifican;
+- cómo se construyen los resultados;
+- qué relaciones dependen de coincidencias de nombres;
+- qué cambios son auditables y reversibles;
+- cómo diagnosticar una diferencia contra el archivo de planificación.
+
+### Arquitectura de ejecución
+
+```text
+Navegador
+   │
+   ├─ Pantallas Flask/Jinja ───────────────┐
+   │                                       │
+   └─ Frontend Next.js en migración        │
+                                           ▼
+                                  API Flask / app/routes.py
+                                           │
+                         reglas, validaciones y consolidaciones
+                                           │
+                                           ▼
+                                  SQLAlchemy / app/models.py
+                                           │
+                         ┌─────────────────┴─────────────────┐
+                         ▼                                   ▼
+              SQLite instance/facturacion.db       PostgreSQL por DATABASE_URL
+```
+
+El backend Flask es la implementación operativa principal. Las rutas HTML y API
+están registradas sobre `main_bp` en `app/routes.py`. SQLAlchemy administra los
+modelos y la conexión. `create_app()` en `app/__init__.py` configura seguridad,
+sesión, CORS, CSRF, base de datos y ajustes simples de esquema.
+
+`run.py` inicia Flask usando:
+
+```text
+FLASK_HOST    dirección de escucha; 127.0.0.1 por defecto
+PORT          puerto; 8009 por defecto
+FLASK_DEBUG   activa debug cuando vale 1
+FLASK_RELOAD  activa el reloader cuando vale 1
+```
+
+El script `scripts/dev.mjs`, invocado con `npm run dev`, administra Flask y Next.js
+en desarrollo.
+
+### Propiedad y flujo de los datos
+
+| Dato | Fuente maestra en la app | Pantalla principal | Resultado consumidor |
+| --- | --- | --- | --- |
+| Usuarios y roles | `usuarios` | Usuarios | Autenticación y permisos |
+| Catálogo comercial | `asignaciones_comerciales` | Datos maestros | Formularios, sites y filtros |
+| Facturación real | `facturacion_2026` | Cargar datos / Control | Dashboard, Comparativo y Matriz |
+| Justificaciones reales | `justificaciones_ajustes` | Justificaciones | Total real y trazabilidad |
+| Proyección de horas | `matriz_proyecciones` | Proyecciones | Control proyecciones y Facturación horas |
+| Jornadas múltiples | `matriz_proyecciones_jornadas` | Proyecciones | Cálculo de horas requeridas |
+| Distribución PLP | `personal_distribucion_horas` | Proyecciones / PLP | Apertura diurna y nocturna |
+| Precio mensual | `matriz_precios.precio_final` | Precios | Facturación horas |
+| Suma fija | `matriz_precios.importe_fijo_mensual` | Variable / Suma fija | Facturación horas |
+| Porcentaje variable | `variables_campanias` | Variable / % Variable | Estimación variable y Facturación horas |
+| Tarifación y adicionales | `tarifaciones_campanias` | Variable / Tarifación | Facturación horas |
+| Dólar Next Gen | `next_gen_dolar` | Variable / Next Gen | Valorización Next Gen |
+| Cantidades Next Gen | `next_gen_productos` | Variable / Next Gen | Facturación horas |
+| Alias y consolidación | `sites_proyecciones` | Lápiz de Facturación horas | Site, cliente y campaña canónicos |
+| Feriados | `feriados_operativos` | Calendario operativo | Días objetivo |
+| Auditoría | `historial_cambios` | Historial | Consulta y deshacer |
+
+Una salida calculada, como Facturación horas, no debe importarse nuevamente como
+si fuera una fuente maestra. Deben cargarse sus componentes: horas, precios,
+variables, sumas fijas, tarifaciones y Next Gen.
+
+### Diccionario completo de tablas
+
+#### `usuarios`
+
+Modelo: `Usuario`.
+
+| Campo | Tipo lógico | Uso |
+| --- | --- | --- |
+| `id` | entero | Clave primaria |
+| `nombre` | texto | Nombre mostrado |
+| `email` | texto único | Identificador de login |
+| `password_hash` | texto | Hash seguro de contraseña |
+| `rol` | texto | Rol y permisos |
+| `activo` | booleano | Habilita el acceso |
+| `creado_en`, `actualizado_en` | fecha/hora | Auditoría técnica |
+
+No se almacena la contraseña original. La baja lógica se realiza con `activo`.
+
+#### `historial_cambios`
+
+Modelo: `HistorialCambio`.
+
+| Campo | Uso |
+| --- | --- |
+| `usuario_id`, `usuario_nombre`, `usuario_email` | Autor de la operación |
+| `accion` | Creación, edición, eliminación, importación o deshacer |
+| `entidad` | Familia técnica afectada |
+| `entidad_id` | Identificador cuando existe uno único |
+| `resumen` | Texto corto mostrado en Historial |
+| `detalle` | Explicación funcional |
+| `antes` | Snapshot JSON anterior |
+| `despues` | Snapshot JSON posterior |
+| `creado_en` | Momento de la operación |
+
+Las entidades reversibles actuales incluyen proyecciones, precios, variables,
+tarifaciones, Next Gen y regularizaciones de Facturación horas. Un deshacer aplica
+el snapshot anterior y crea otro movimiento de historial; no elimina la auditoría.
+
+#### `facturacion_2026`
+
+Modelo: `Facturacion2026`.
+
+Contiene el escenario real. Sus dimensiones son fecha, mes, cliente, gerente,
+jefe de site, campaña, subcampaña, tipo de negocio y jornada. Sus medidas incluyen
+horas objetivo, horas facturadas, horas penalizadas, valor hora, tarifación,
+importe fijo, variables, bonos, penalizaciones, Next Gen y otros.
+
+Las propiedades calculadas del modelo producen:
+
+```text
+facturado horas
+facturado bono
+variable productivo
+penalizaciones
+total real
+total teórico
+desvío
+porcentaje de cumplimiento
+```
+
+Una penalización positiva cargada por el usuario se convierte en descuento durante
+el cálculo.
+
+#### `justificaciones_ajustes`
+
+Modelo: `JustificacionAjuste`.
+
+Cada registro referencia `facturacion_2026.id`. Guarda tipo, cantidad, precio,
+importe y descripción. Su finalidad es explicar y respaldar ajustes del escenario
+real. Las penalizaciones se normalizan con signo negativo al calcular.
+
+#### `matriz_proyecciones`
+
+Modelo: `ProyeccionMatriz`.
+
+Clave funcional:
+
+```text
+cliente + campaña + mes
+```
+
+| Campo | Uso |
+| --- | --- |
+| `cliente`, `campania` | Identidad de la apertura |
+| `year`, `mes` | Período |
+| `dotacion_requerida` | Personas requeridas |
+| `carga_semanal` | Días operativos: L a V, L a V + S, etc. |
+| `carga_horaria` | Horas diarias |
+| `dias_objetivo` | Días laborales del mes |
+| `horas_requeridas` | Base de horas |
+| `porcentaje_cumplimiento` | Factor aplicado a las horas |
+| `tiene_nocturnidad` | Indica apertura nocturna |
+| `porcentaje_nocturnidad` | Parte nocturna |
+| `tipo_plp` | Personal, Personal CX, Personal Soporte o Personal SMB |
+| `horas_carga_manual` | Indica que las horas se ingresaron manualmente |
+| `dias_objetivo_manual` | Reemplazo manual de días |
+| `horas_requeridas_manual` | Reemplazo manual de horas |
+
+Propiedad principal:
+
+```text
+horas proyectadas = horas requeridas × porcentaje cumplimiento / 100
+```
+
+Cuando una campaña empieza o termina a mitad de mes se deben usar días u horas
+manuales. Esto evita que el calendario completo fuerce un valor incorrecto.
+
+#### `matriz_proyecciones_jornadas`
+
+Modelo: `ProyeccionMatrizJornada`.
+
+Permite que una proyección tenga varias jornadas. Cada fila almacena dotación,
+carga semanal, carga horaria, días objetivo y horas requeridas. La relación usa
+`proyeccion_id` y eliminación en cascada.
+
+#### `personal_distribucion_horas`
+
+Modelo: `PersonalDistribucionHoras`.
+
+Clave:
+
+```text
+servicio + mes
+```
+
+Guarda el porcentaje diurno para cada clasificación PLP. El porcentaje nocturno
+es calculado:
+
+```text
+porcentaje nocturno = 100 − porcentaje diurno
+```
+
+Los porcentajes pertenecen a un año. Crear 2027 puede copiar inicialmente 2026,
+pero los cambios de 2027 no deben modificar 2026.
+
+#### `matriz_precios`
+
+Modelo: `ProyeccionPrecio`.
+
+Clave:
+
+```text
+cliente + campaña + mes
+```
+
+| Campo | Uso |
+| --- | --- |
+| `site` | Gerencia o site |
+| `cliente`, `campania` | Identidad del precio |
+| `year`, `mes` | Período |
+| `precio_base` | Precio ingresado |
+| `alcance_porcentaje` | Porcentaje aplicado |
+| `precio_final` | Precio monetario calculado |
+| `importe_fijo_mensual` | Suma fija asociada a dotación |
+
+```text
+precio final = precio base × alcance / 100
+```
+
+Una inflación global modifica precios desde el mes seleccionado hacia adelante.
+La suma fija no es un precio por hora: se suma una sola vez en el mes.
+
+#### `variables_campanias`
+
+Modelo: `VariableCampania`.
+
+Guarda un porcentaje por cliente, campaña y mes. Puede ser positivo, negativo o
+cero. Para un año nuevo se puede partir del último año disponible y modificar
+manualmente las excepciones.
+
+```text
+importe variable = facturación de horas × porcentaje / 100
+```
+
+El porcentaje se aplica sobre el componente Horas de su apertura antes de la
+consolidación canónica. Esto permite que dos aperturas del mismo cliente tengan
+porcentajes diferentes.
+
+#### `tarifaciones_campanias`
+
+Modelo: `TarifacionCampania`.
+
+Clave:
+
+```text
+cliente + campaña + concepto + mes
+```
+
+El monto conserva su signo:
+
+- positivo: suma;
+- negativo: resta;
+- cero: no altera el resultado.
+
+También contiene el concepto técnico `Ajuste alineación Excel`. Este concepto
+mantiene la conciliación contra el archivo de referencia utilizado en 2026. Debe
+permanecer separado de Tarifación y Suma fija para que sea auditable.
+
+Si cambian datos maestros tanto en la app como en el Excel, se debe volver a
+ejecutar una comparación y recalcular la conciliación. No debe editarse el ajuste
+para ocultar un error de horas, precio o agrupación.
+
+#### `next_gen_dolar`
+
+Modelo: `NextGenDolar`.
+
+Una fila por mes. Guarda el valor del dólar usado para convertir productos Next
+Gen a pesos. El año está incluido explícitamente y el mes usa `YYYY-MM`.
+
+#### `next_gen_productos`
+
+Modelo: `NextGenProducto`.
+
+Guarda site, cliente, campaña, producto, año, mes y cantidad USD.
+
+```text
+Next Gen en pesos = cantidad USD × dólar del mes
+```
+
+Un producto debe consolidarse en la cuenta original, no aparecer como una cuenta
+independiente llamada Next Gen.
+
+#### `sites_proyecciones`
+
+Modelo: `SiteProyeccion`.
+
+Es una tabla de normalización manual. Conserva:
+
+| Campo | Uso |
+| --- | --- |
+| `cliente`, `campania` | Identidad original |
+| `site` | Site regularizado |
+| `cliente_destino` | Cliente canónico |
+| `campania_destino` | Campaña/cuenta canónica |
+
+Facturación horas consulta esta tabla antes de consolidar. Si dos orígenes apuntan
+al mismo cliente y campaña destino, sus componentes se suman en una sola línea.
+Los datos históricos originales no se renombran.
+
+Ejemplos de consolidación:
+
+```text
+Santander Getnet Supervisor exclusivo → Santander Getnet
+aperturas Naturgy BAN                → Naturgy
+aperturas Naturgy NOA                → GASNOR
+aperturas Energía San Juan           → ENERGIA SAN JUAN
+```
+
+#### `feriados_operativos`
+
+Modelo: `FeriadoOperativo`.
+
+Guarda año, fecha, nombre, tipo y estado activo. Sólo los feriados activos afectan
+los días objetivo. Agregar o eliminar uno recalcula las proyecciones del mes
+alcanzado.
+
+#### `asignaciones_comerciales`
+
+Modelo: `AsignacionComercial`.
+
+Es el catálogo transversal de cliente, gerente, jefe de site, campaña,
+subcampaña, tipo de negocio y estado. Debe mantenerse consistente con las cargas.
+La edición con “Aplicar desde mes” protege el histórico anterior.
+
+### Pipeline exacto de Facturación horas
+
+El endpoint `/api/resumen-proyeccion` ejecuta conceptualmente este flujo:
+
+```text
+Proyección de cada apertura
+        │
+        ├─ horas proyectadas × precio final ───────────────► Horas
+        │
+        ├─ Horas × porcentaje variable ───────────────────► Variable
+        │
+        ├─ importe_fijo_mensual ──────────────────────────► Fijo mensual
+        │
+        ├─ tarifaciones_campanias ────────────────────────► Tarifación/adicional
+        │
+        └─ cantidad USD × dólar mensual ──────────────────► Next Gen
+                                                               │
+                                                               ▼
+                                        regularización de site/cuenta/campaña
+                                                               │
+                                                               ▼
+                                           consolidado por cuenta y por mes
+```
+
+Fórmula del total:
+
+```text
+total mensual de cuenta
+  = Horas
+  + Variable
+  + Fijo mensual
+  + Tarifación y otros conceptos
+  + Next Gen
+```
+
+La comparación de nombres ignora mayúsculas, minúsculas y acentos cuando la regla
+lo permite. La nocturnidad se reconoce como una apertura de la clasificación base.
+
+Para una apertura que no tenga proyección propia en un mes, el cálculo puede usar
+la proyección base del cliente cuando la relación apertura-cliente fue aprendida
+de otros meses. Esta regla resuelve, por ejemplo, aperturas que empiezan después
+de enero sin perder el cálculo del primer mes.
+
+### Tratamiento especial PLP
+
+PLP identifica exclusivamente al cliente Personal y mantiene cuatro
+clasificaciones:
+
+```text
+Personal
+Personal CX
+Personal Soporte
+Personal SMB
+```
+
+Las campañas operativas se cargan debajo de una clasificación. El resumen PLP
+suma todas las campañas de una misma clasificación. Si existe nocturnidad:
+
+```text
+horas diurnas   = horas totales × porcentaje diurno
+horas nocturnas = horas totales × porcentaje nocturno
+```
+
+El cumplimiento afecta las horas finales de Facturación horas, pero el cuadro de
+control PLP puede mostrar la carga original al 100% cuando su finalidad es
+reconciliar el archivo operativo.
+
+La dotación informativa se calcula como:
+
+```text
+dotación = horas / días laborales / horas de jornada
+```
+
+Los valores predeterminados son Lunes a Viernes y seis horas por jornada, pero
+son editables.
+
+### Suma fija
+
+La subpestaña está en:
+
+```text
+Proyectados → Variable → Suma fija
+```
+
+Ruta:
+
+```text
+/suma-fija
+```
+
+La pantalla no crea una tabla duplicada. Edita directamente
+`matriz_precios.importe_fijo_mensual`. Cada celda corresponde a un registro de
+precio existente para la campaña y el mes.
+
+Comportamiento:
+
+- el cambio se guarda al salir del campo;
+- sólo se permiten valores no negativos;
+- Facturación horas lo incorpora como `Fijo mensual`;
+- el movimiento queda en Historial bajo `matriz_precios`;
+- deshacer restaura el valor anterior.
+
+Para 2026 se cargaron desde la hoja `Suma fija` los importes por dotación de
+Assurant, BBVA Seguros, OMINT y Qualia Cencosud. Bice conserva su propio importe
+fijo ya existente.
+
+### Correspondencia con el Excel de planificación
+
+El libro de referencia usado durante la alineación contiene hojas maestras y
+hojas calculadas.
+
+| Hoja Excel | Naturaleza | Destino en la app |
+| --- | --- | --- |
+| `Matriz` | Maestra | `matriz_proyecciones` |
+| `Precios` | Maestra | `matriz_precios` |
+| `Suma fija` | Maestra | `matriz_precios.importe_fijo_mensual` |
+| `Estimacion Variable` | Maestra | `variables_campanias` |
+| `Tarifacion` | Maestra | `tarifaciones_campanias` |
+| `Valores Next Gen` | Maestra | `next_gen_dolar` y `next_gen_productos` |
+| `Facturacion Horas` | Calculada | Validación de Horas |
+| `Variable` | Calculada | Validación del importe variable |
+| `Next Gen` | Calculada | Validación de conversión a pesos |
+| `RESUMEN` | Calculada | Validación final por cuenta/mes |
+
+No se deben importar directamente `Facturacion Horas`, `Variable`, `Next Gen` o
+`RESUMEN` como bases. Sus valores pueden estar almacenados en caché por Excel y no
+reflejar cambios recientes de las hojas maestras hasta que Excel recalcule.
+
+La columna `Cuenta` del Excel es la identidad canónica del resultado. La columna
+`Cliente` puede representar una apertura. La relación entre ambas se refleja en
+`sites_proyecciones`.
+
+### Conciliación 2026
+
+La alineación vigente fue validada contra las 47 cuentas y los doce meses del
+`RESUMEN` de referencia. El resultado quedó con una diferencia anual de $0,14,
+originada por acumulación de decimales inferiores al centavo.
+
+La conciliación no reemplaza las reglas del negocio:
+
+1. primero se corrigen horas, precios, porcentajes, sumas fijas y nombres;
+2. después se calcula la diferencia residual;
+3. el residual se guarda con concepto `Ajuste alineación Excel`;
+4. el ajuste queda visible, auditable y reversible.
+
+Si se cambia agosto en adelante:
+
+1. actualizar el dato maestro en la app;
+2. realizar el mismo cambio en el Excel si seguirá siendo la referencia;
+3. recalcular el libro;
+4. comparar nuevamente por cuenta y mes;
+5. reemplazar la conciliación anterior desde el mes modificado.
+
+### Contratos de las APIs de Proyectados
+
+Todas requieren sesión. Los métodos de escritura requieren CSRF y permisos.
+
+| Endpoint | Métodos | Responsabilidad |
+| --- | --- | --- |
+| `/api/matriz-proyecciones` | GET, POST | Consultar y guardar proyecciones |
+| `/api/matriz-proyecciones/<id>` | DELETE | Eliminar proyección |
+| `/api/matriz-proyecciones/importar` | POST | Importar matriz |
+| `/api/matriz-proyecciones/template` | GET | Descargar plantilla |
+| `/api/proyecciones-plp/importar` | POST | Importar PLP anual |
+| `/api/proyecciones-plp/template` | GET | Plantilla PLP |
+| `/api/personal-distribucion` | GET, POST | Porcentajes diurnos/nocturnos |
+| `/api/matriz-precios` | GET, POST | Consultar y guardar precios |
+| `/api/matriz-precios/importar` | POST | Importar precios |
+| `/api/matriz-precios/inflacion` | POST | Aplicar índice |
+| `/api/suma-fija` | GET, POST | Consultar y editar importes fijos |
+| `/api/resumen-proyeccion` | GET | Facturación horas consolidada |
+| `/api/sites-proyeccion` | POST | Regularizar site/cliente/campaña |
+| `/api/variables` | GET, POST | Porcentajes y estimaciones |
+| `/api/variables/importar` | POST | Importar variables |
+| `/api/tarifaciones` | GET, POST | Montos adicionales |
+| `/api/tarifaciones/importar` | POST | Importar tarifaciones |
+| `/api/next-gen` | GET, POST | Dólar y productos |
+| `/api/next-gen/importar` | POST | Importar Next Gen |
+| `/api/control-proyecciones` | GET | Control de horas y dotaciones |
+| `/api/calendario-operativo` | GET, POST | Feriados |
+
+Ejemplo de escritura de Suma fija:
+
+```json
+POST /api/suma-fija
+{
+  "id": 123,
+  "monto": 3750000
+}
+```
+
+El `id` corresponde al registro de `matriz_precios` del mes.
+
+Ejemplo conceptual de regularización:
+
+```json
+POST /api/sites-proyeccion
+{
+  "site": "Mariano Quesada",
+  "cliente_destino": "Santander Getnet",
+  "campania_destino": "Santander Getnet",
+  "origenes": [
+    {
+      "cliente": "Santander Getnet",
+      "campania": "Santander Getnet Supervisor exclusivo"
+    }
+  ]
+}
+```
+
+### Seguridad y permisos para desarrolladores
+
+Las escrituras desde navegador deben incluir:
+
+```text
+Cookie de sesión válida
+X-CSRF-Token o csrf_token válido
+Origin/Referer permitido
+Rol con permiso de edición
+```
+
+No se debe desactivar CSRF para resolver un `403`. Debe verificarse:
+
+1. que la sesión no haya vencido;
+2. que el `<meta name="csrf-token">` esté presente;
+3. que `fetch` use `credentials: "same-origin"`;
+4. que envíe `X-CSRF-Token`;
+5. que el host utilizado esté incluido en `CORS_ORIGINS`.
+
+En producción:
+
+- usar un `SECRET_KEY` persistente y seguro;
+- activar `SESSION_COOKIE_SECURE=1`;
+- publicar únicamente detrás de HTTPS;
+- usar PostgreSQL administrado;
+- no exponer el servidor de desarrollo;
+- respaldar la base antes de importaciones masivas.
+
+### Compartir en una red local
+
+Para uso temporal dentro de una red privada:
+
+```powershell
+$env:FLASK_HOST="0.0.0.0"
+$env:PORT="8009"
+python run.py
+```
+
+La otra persona accede mediante:
+
+```text
+http://IP-PRIVADA-DEL-EQUIPO:8009
+```
+
+Esto no es una publicación segura en Internet. El equipo servidor debe permanecer
+encendido y ambos usuarios verán la misma base.
+
+### Backups y recuperación
+
+Para SQLite, detener la aplicación o garantizar que no haya escrituras y copiar:
+
+```text
+instance/facturacion.db
+```
+
+No reemplazar una base mientras Flask está escribiendo. Para restaurar:
+
+1. detener Flask;
+2. conservar una copia de la base actual;
+3. reemplazar `facturacion.db`;
+4. iniciar Flask;
+5. revisar login, Historial y Facturación horas.
+
+La carpeta `instance` puede contener respaldos operativos locales. No deben
+publicarse en repositorios si contienen información real.
+
+### Guía para extender un módulo
+
+Al agregar una nueva funcionalidad persistente:
+
+1. crear o ampliar el modelo en `app/models.py`;
+2. agregar compatibilidad de esquema en `ensure_schema()` si no hay migración;
+3. crear rutas HTML y API en `app/routes.py`;
+4. validar datos en backend, no sólo en JavaScript;
+5. proteger escrituras con sesión, rol y CSRF;
+6. registrar snapshots en Historial;
+7. habilitar deshacer cuando el cambio sea reversible;
+8. agregar la pantalla Jinja correspondiente;
+9. conectar el concepto al pipeline de cálculo;
+10. documentar tabla, fórmula, API, importador y procedimiento operativo;
+11. verificar que no se duplique al consolidar;
+12. probar SQLite y, si aplica, PostgreSQL.
+
+### Checklist de verificación después de un cambio
+
+```text
+[ ] La aplicación inicia sin errores.
+[ ] Login responde y mantiene sesión.
+[ ] Los GET no modifican datos.
+[ ] Los POST/PUT/PATCH/DELETE exigen CSRF.
+[ ] La pantalla guarda y vuelve a leer el mismo valor.
+[ ] Historial muestra módulo, entidad y detalle correctos.
+[ ] Deshacer restaura el snapshot anterior.
+[ ] Facturación horas no duplica cuentas o conceptos.
+[ ] Los doce meses suman el total anual.
+[ ] Mayúsculas, minúsculas, acentos y Ñ no rompen el matching.
+[ ] PLP conserva sus cuatro clasificaciones.
+[ ] Suma fija se aplica una vez por mes.
+[ ] Variable usa el porcentaje de la apertura correcta.
+[ ] Next Gen usa el dólar del mismo mes.
+[ ] No quedaron __pycache__, logs ni archivos temporales.
+```
+
+### Diagnóstico de desvíos
+
+Orden recomendado:
+
+1. comparar el total por mes;
+2. localizar la cuenta con diferencia;
+3. separar Horas, Variable, Fijo mensual, Tarifación y Next Gen;
+4. revisar nombres originales y destino en `sites_proyecciones`;
+5. comparar horas proyectadas contra `matriz_proyecciones`;
+6. verificar `precio_final`;
+7. revisar porcentaje variable;
+8. comprobar `importe_fijo_mensual`;
+9. sumar tarifaciones conservando el signo;
+10. verificar cantidad USD y dólar;
+11. revisar el ajuste de conciliación sólo al final.
+
+Una diferencia exactamente igual todos los meses suele indicar un fijo o una
+tarifación faltante. Una diferencia proporcional a las horas suele indicar un
+precio incorrecto. Una diferencia proporcional a Facturación horas suele indicar
+el porcentaje variable. Una diferencia que aparece sólo después de cierto mes
+suele indicar vigencia, inflación, cambio de campaña o una apertura nueva.

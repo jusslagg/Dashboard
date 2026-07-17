@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guía de usuario - Dashboard de Facturación</title>
+  <style>
+    :root { --navy:#0f2747; --blue:#2563eb; --green:#059669; --ink:#172033; --muted:#5f6b7a; --line:#dbe4ef; --soft:#f4f7fb; --warn:#fff7df; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; color:var(--ink); background:var(--soft); font:16px/1.6 Arial, sans-serif; }
+    a { color:#1859ba; }
+    .top { position:sticky; top:0; z-index:5; display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px max(18px, calc((100% - 1120px)/2)); color:white; background:var(--navy); }
+    .top a { color:white; text-decoration:none; }
+    .buttons { display:flex; gap:8px; flex-wrap:wrap; }
+    .button { display:inline-block; padding:8px 13px; border:1px solid #7fa1ce; border-radius:7px; background:#173b69; font-weight:bold; }
+    .button.primary { border-color:#34d399; background:#047857; }
+    .page { max-width:1120px; margin:24px auto 60px; padding:0 18px; }
+    .cover, section, nav.toc { margin-bottom:20px; padding:28px; border:1px solid var(--line); border-radius:12px; background:white; box-shadow:0 4px 18px rgba(15,39,71,.05); }
+    .cover { padding:42px; background:linear-gradient(135deg,#0f2747,#174b83); color:white; }
+    .cover h1 { margin:0 0 10px; font-size:clamp(30px,5vw,48px); line-height:1.15; }
+    .cover p { max-width:760px; font-size:19px; }
+    h2 { margin:0 0 15px; color:var(--navy); font-size:26px; }
+    h3 { margin:25px 0 8px; color:#174b83; }
+    h4 { margin-bottom:4px; }
+    p { margin:7px 0 13px; }
+    ul, ol { padding-left:25px; }
+    li { margin:5px 0; }
+    .toc ol { columns:2; column-gap:45px; }
+    .toc a { text-decoration:none; }
+    .note, .warning, .success { margin:16px 0; padding:14px 17px; border-left:5px solid var(--blue); border-radius:6px; background:#eef5ff; }
+    .warning { border-color:#e5a100; background:var(--warn); }
+    .success { border-color:var(--green); background:#ecfdf5; }
+    .steps { counter-reset:step; list-style:none; padding:0; }
+    .steps li { position:relative; min-height:38px; margin:12px 0; padding-left:46px; }
+    .steps li::before { counter-increment:step; content:counter(step); position:absolute; left:0; top:0; width:30px; height:30px; border-radius:50%; color:white; background:var(--blue); text-align:center; font-weight:bold; line-height:30px; }
+    table { width:100%; border-collapse:collapse; margin:14px 0; }
+    th, td { padding:10px; border:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { background:#edf3fa; color:var(--navy); }
+    code { padding:2px 5px; border-radius:4px; background:#edf1f6; }
+    .back { display:block; margin-top:22px; text-align:right; font-size:14px; }
+    footer { color:var(--muted); text-align:center; }
+    @media (max-width:700px) { .toc ol { columns:1; } .cover, section, nav.toc { padding:20px; } .top { align-items:flex-start; } }
+    @media print {
+      body { background:white; font-size:11pt; }
+      .top, .back { display:none; }
+      .page { max-width:none; margin:0; }
+      .cover, section, nav.toc { box-shadow:none; break-inside:avoid; }
+      section { break-before:page; }
+      nav.toc a { color:#1859ba; text-decoration:underline; font-weight:600; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <strong>Guía de usuario</strong>
+    <div class="buttons">
+      <a class="button" href="/">Volver a la aplicación</a>
+      <a class="button primary" href="/guia-usuario/descargar">Descargar guía PDF</a>
+    </div>
+  </div>
+
+  <main class="page">
+    <header class="cover">
+      <h1>Dashboard de Facturación</h1>
+      <p>Guía sencilla para cargar información, preparar proyecciones y controlar los resultados.</p>
+      <p><strong>Incluye:</strong> facturación real, Facturación horas, PLP, precios, variables, tarifación, Next Gen, suma fija, historial e importaciones.</p>
+      <small>Guía funcional para usuarios · Actualizada en julio de 2026</small>
+    </header>
+
+    <nav class="toc" id="indice">
+      <h2>Índice</h2>
+      <ol>
+        <li><a href="#inicio">Antes de empezar</a></li>
+        <li><a href="#menu">Qué contiene el menú</a></li>
+        <li><a href="#flujo">Flujo recomendado</a></li>
+        <li><a href="#maestros">Datos maestros</a></li>
+        <li><a href="#real">Facturación real</a></li>
+        <li><a href="#analisis">Dashboard y análisis</a></li>
+        <li><a href="#proyecciones">Matriz de proyecciones</a></li>
+        <li><a href="#plp">Proyecciones PLP</a></li>
+        <li><a href="#calendario">Calendario operativo</a></li>
+        <li><a href="#precios">Matriz de precios</a></li>
+        <li><a href="#adicionales">Variables y adicionales</a></li>
+        <li><a href="#facturacion-horas">Facturación horas</a></li>
+        <li><a href="#control-proyecciones">Control proyecciones</a></li>
+        <li><a href="#importaciones">Plantillas e importaciones</a></li>
+        <li><a href="#historial">Historial y deshacer</a></li>
+        <li><a href="#problemas">Problemas frecuentes</a></li>
+        <li><a href="#glosario">Glosario</a></li>
+        <li><a href="#checklist">Lista rápida de control</a></li>
+      </ol>
+    </nav>
+
+    <section id="inicio">
+      <h2>1. Antes de empezar</h2>
+      <p>La aplicación reúne dos circuitos relacionados, pero diferentes:</p>
+      <table>
+        <tr><th>Circuito</th><th>Para qué sirve</th><th>De dónde obtiene los datos</th></tr>
+        <tr><td><strong>Facturación real</strong></td><td>Controla lo que realmente ocurrió.</td><td>Cargas manuales o importaciones de registros reales.</td></tr>
+        <tr><td><strong>Facturación horas</strong></td><td>Calcula la estimación proyectada.</td><td>Horas proyectadas, precios, variable, tarifación, Next Gen y suma fija.</td></tr>
+      </table>
+      <div class="note"><strong>Importante:</strong> cambiar un proyectado no modifica la facturación real. Cada circuito conserva sus propios datos.</div>
+      <h3>Ingreso y permisos</h3>
+      <p>Iniciá sesión con tu correo y contraseña. Según tu rol, podrás consultar, editar, eliminar o administrar usuarios. Si una opción no aparece o no permite guardar, consultá con un administrador.</p>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="menu">
+      <h2>2. Qué contiene el menú</h2>
+      <table>
+        <tr><th>Opción</th><th>Uso principal</th></tr>
+        <tr><td>Dashboard</td><td>Indicadores y evolución de la facturación real.</td></tr>
+        <tr><td>Cargar datos</td><td>Alta manual o masiva de información real.</td></tr>
+        <tr><td>Datos maestros</td><td>Clientes, campañas, responsables, sites y clasificaciones.</td></tr>
+        <tr><td>Control / Comparativo / Matriz</td><td>Revisión detallada y análisis de los datos reales.</td></tr>
+        <tr><td>Proyectados</td><td>Horas, PLP, calendario, precios y control operativo.</td></tr>
+        <tr><td>Facturación horas</td><td>Resultado monetario proyectado consolidado.</td></tr>
+        <tr><td>Variable</td><td>Porcentajes variables, tarifación, Next Gen y suma fija.</td></tr>
+        <tr><td>Historial</td><td>Auditoría y deshacer cambios admitidos.</td></tr>
+        <tr><td>Ayuda</td><td>Esta guía de usuario.</td></tr>
+      </table>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="flujo">
+      <h2>3. Flujo recomendado</h2>
+      <ol class="steps">
+        <li>Revisá que el cliente y la campaña existan en <strong>Datos maestros</strong>.</li>
+        <li>Cargá la <strong>facturación real</strong> si vas a controlar resultados ya ocurridos.</li>
+        <li>Cargá las <strong>proyecciones</strong> y el calendario operativo.</li>
+        <li>Cargá los <strong>precios</strong> del mismo cliente, campaña y mes.</li>
+        <li>Completá los adicionales que correspondan: variable, tarifación, Next Gen o suma fija.</li>
+        <li>Revisá el resultado en <strong>Facturación horas</strong>.</li>
+        <li>Validá totales y nombres antes de exportar o continuar con el mes siguiente.</li>
+      </ol>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="maestros">
+      <h2>4. Datos maestros</h2>
+      <p>Es el catálogo que vincula cliente, campaña, gerente o site, jefe, subcampaña y tipo de negocio.</p>
+      <h3>Cómo crear o corregir una asociación</h3>
+      <ol class="steps">
+        <li>Abrí <strong>Datos maestros</strong>.</li>
+        <li>Buscá primero para evitar duplicados.</li>
+        <li>Completá los nombres exactamente como se usarán en los archivos.</li>
+        <li>Guardá y verificá que la asociación quede activa.</li>
+      </ol>
+      <div class="warning">Un espacio, una abreviatura o una palabra adicional puede impedir que una campaña coincida con sus precios o adicionales.</div>
+      <h3>Cambio de responsable desde un mes</h3>
+      <p>Usá <strong>Aplicar desde mes</strong> cuando el cambio tenga vigencia desde una fecha. Así se conserva el responsable histórico de los meses anteriores.</p>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="real">
+      <h2>5. Facturación real</h2>
+      <p>Este circuito registra horas, valores, bonos, variables, penalizaciones y otros importes que ya ocurrieron.</p>
+      <h3>Carga manual</h3>
+      <ol class="steps">
+        <li>Entrá en <strong>Cargar datos</strong>.</li>
+        <li>Seleccioná fecha, mes, cliente y campaña.</li>
+        <li>Completá horas e importes aplicables.</li>
+        <li>Revisá el resumen calculado y guardá.</li>
+        <li>Confirmá el registro desde <strong>Control</strong>.</li>
+      </ol>
+      <h3>Carga por archivo</h3>
+      <p>Descargá la plantilla del módulo, respetá los encabezados y luego importala. Si se detectan registros existentes, revisá cuidadosamente si corresponde reemplazarlos.</p>
+      <div class="note"><strong>Penalizaciones:</strong> se cargan como valor positivo cuando la plantilla así lo pide, pero el sistema las descuenta del total.</div>
+      <h3>Justificaciones</h3>
+      <p>Usá esta pantalla para explicar ajustes, bonos, penalizaciones o diferencias. La justificación queda asociada al registro real.</p>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="analisis">
+      <h2>6. Dashboard y análisis</h2>
+      <h3>Dashboard</h3>
+      <p>Muestra total real, total teórico, desvío, cumplimiento y evolución mensual. Aplicá filtros para encontrar qué cliente o campaña explica una diferencia.</p>
+      <h3>Control</h3>
+      <p>Lista los registros reales. Desde aquí podés buscar, editar, eliminar o exportar según tus permisos.</p>
+      <h3>Comparativo y Matriz</h3>
+      <p>Comparativo enfrenta objetivo contra real. Matriz organiza la información en una vista mensual compacta.</p>
+      <div class="success"><strong>Consejo:</strong> si un total parece incorrecto, quitá primero todos los filtros y luego aplicalos de a uno.</div>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="proyecciones">
+      <h2>7. Matriz de proyecciones</h2>
+      <p>Define las horas y dotaciones planificadas por cliente, campaña y mes.</p>
+      <h3>Cálculo habitual</h3>
+      <p><code>Horas requeridas = dotación × días objetivo × horas de jornada</code></p>
+      <p><code>Horas proyectadas = horas requeridas × % de cumplimiento</code></p>
+      <h3>Horas manuales</h3>
+      <p>Si una campaña empieza a mitad de mes, termina antes o tiene una excepción, podés escribir las horas requeridas manualmente. Ese valor reemplaza el cálculo automático para ese caso.</p>
+      <h3>Qué revisar</h3>
+      <ul>
+        <li>El año y mes correctos.</li>
+        <li>La jornada y cantidad de días hábiles.</li>
+        <li>Si el cumplimiento llegó como <code>98</code> o <code>98%</code>; ambos deben representar 98%.</li>
+        <li>Que cliente y campaña coincidan con Datos maestros.</li>
+      </ul>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="plp">
+      <h2>8. Proyecciones PLP</h2>
+      <p>PLP es el tratamiento especial de los servicios de Personal. El cliente se guarda como <strong>Personal</strong> y la clasificación identifica:</p>
+      <ul><li>Personal CX</li><li>Personal</li><li>Personal Soporte</li><li>Personal SMB</li></ul>
+      <p>Los porcentajes diurnos se guardan por año y mes. La nocturnidad es la diferencia hasta 100%.</p>
+      <h3>Ejemplo</h3>
+      <p>Si un servicio tiene 10.000 horas y 94% diurno, el resumen acumula 9.400 horas en su clasificación principal y 600 horas en “nocturnidad”.</p>
+      <div class="note">El resumen PLP muestra las horas base al 100%. El porcentaje de cumplimiento pertenece a la proyección operativa y no debe alterar ese resumen de distribución.</div>
+      <h3>Año siguiente</h3>
+      <p>Podés repetir los porcentajes del año anterior y luego corregir solo los meses necesarios. Cambiar 2027 no modifica 2026.</p>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="calendario">
+      <h2>9. Calendario operativo</h2>
+      <p>Registra feriados y días no operativos. Los feriados activos descuentan días objetivo y pueden recalcular las proyecciones del mes.</p>
+      <ol class="steps">
+        <li>Elegí la fecha y escribí una descripción.</li>
+        <li>Guardá el feriado como activo.</li>
+        <li>Revisá las proyecciones afectadas.</li>
+      </ol>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="precios">
+      <h2>10. Matriz de precios</h2>
+      <p>Guarda el precio mensual que se multiplica por las horas proyectadas.</p>
+      <p><code>Importe de horas = horas proyectadas × precio final</code></p>
+      <p>El alcance modifica el precio base. También puede aplicarse inflación o deflación desde un mes hacia adelante.</p>
+      <div class="warning">Para obtener un cruce correcto deben coincidir cliente, campaña y mes entre la proyección y el precio.</div>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="adicionales">
+      <h2>11. Variables y adicionales</h2>
+      <p>Estas opciones están agrupadas bajo <strong>Variable</strong>, pero cada una guarda un concepto diferente.</p>
+      <table>
+        <tr><th>Subpestaña</th><th>Qué se carga</th><th>Cómo impacta</th></tr>
+        <tr><td>% Variable</td><td>Porcentaje mensual por cliente o campaña.</td><td>Calcula un importe sobre la facturación de horas.</td></tr>
+        <tr><td>Estimación variable</td><td>Porcentajes previstos por año.</td><td>Permite proyectar la variable y repetir el año anterior.</td></tr>
+        <tr><td>Tarifación</td><td>Monto mensual positivo o negativo.</td><td>Se suma o resta del consolidado.</td></tr>
+        <tr><td>Next Gen</td><td>Productos en dólares y cotización mensual.</td><td>Convierte cada producto a pesos y lo suma a su cuenta original.</td></tr>
+        <tr><td>Suma fija</td><td>Importe fijo mensual.</td><td>Se agrega sin depender de las horas.</td></tr>
+      </table>
+      <h3>Next Gen</h3>
+      <p>Primero cargá el valor del dólar del mes. Después cargá el valor en dólares del producto. El sistema calcula:</p>
+      <p><code>Next Gen en pesos = producto en USD × dólar del mes</code></p>
+      <p>Next Gen no crea una cuenta separada en Facturación horas: se consolida dentro del cliente o campaña correspondiente.</p>
+      <h3>Suma fija</h3>
+      <p>Usala cuando el acuerdo es un monto fijo asociado a la dotación o al servicio del mes. Puede editarse manualmente o importarse.</p>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="facturacion-horas">
+      <h2>12. Facturación horas</h2>
+      <p>Es el resultado proyectado y consolidado. Incluye los componentes que correspondan a cada cliente:</p>
+      <p><code>Total = horas × precio + variable ± tarifación + Next Gen + suma fija</code></p>
+      <p>Un cliente debe aparecer en una misma línea consolidada aunque tenga varios conceptos. Los nombres se comparan sin distinguir mayúsculas y minúsculas, pero deben representar realmente la misma cuenta.</p>
+      <h3>Cómo controlar un desvío</h3>
+      <ol class="steps">
+        <li>Compará primero las horas proyectadas.</li>
+        <li>Revisá el precio del mismo mes.</li>
+        <li>Controlá el porcentaje e importe variable.</li>
+        <li>Revisá tarifación, Next Gen y suma fija.</li>
+        <li>Confirmá que no exista el mismo cliente con dos nombres diferentes.</li>
+      </ol>
+      <div class="success"><strong>Respuesta a la consulta principal:</strong> sí, esta guía y la documentación técnica contemplan Facturación horas y también la facturación real.</div>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="control-proyecciones">
+      <h2>13. Control proyecciones</h2>
+      <p>Es una vista de validación operativa. La pestaña <strong>Horas</strong> muestra horas proyectadas; <strong>Dotaciones</strong> muestra dotación requerida. No calcula importes monetarios.</p>
+      <p>Usá los filtros de site, cliente, campaña y texto para detectar datos faltantes o fuera de escala.</p>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="importaciones">
+      <h2>14. Plantillas e importaciones</h2>
+      <ol class="steps">
+        <li>Descargá siempre la plantilla desde la pestaña que vas a cargar.</li>
+        <li>No cambies los encabezados ni combines celdas.</li>
+        <li>Usá una fila por registro y meses válidos.</li>
+        <li>Guardá el archivo como <code>.xlsx</code> o el formato indicado.</li>
+        <li>Importá y leé el mensaje final: creados, actualizados y errores.</li>
+        <li>Verificá una muestra y los totales antes de continuar.</li>
+      </ol>
+      <div class="note"><strong>Reimportación:</strong> cuando la clave ya existe, el importador debe actualizarla. Por eso es importante que cliente, campaña, año y mes sean idénticos.</div>
+      <h3>Archivos anuales</h3>
+      <p>Las plantillas matriciales permiten cargar los doce meses juntos en los módulos que lo admiten. Los valores quedan separados por año.</p>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="historial">
+      <h2>15. Historial y deshacer</h2>
+      <p>El historial indica quién hizo el cambio, cuándo, en qué pestaña y qué valores había antes y después.</p>
+      <ol class="steps">
+        <li>Abrí <strong>Historial</strong>.</li>
+        <li>Buscá el módulo y la fecha de la operación.</li>
+        <li>Abrí el detalle antes de decidir.</li>
+        <li>Usá <strong>Deshacer</strong> solo si la operación lo admite.</li>
+        <li>Volvé al módulo y confirmá el resultado.</li>
+      </ol>
+      <div class="warning">Deshacer revierte una operación completa. No elijas únicamente por la hora: revisá siempre la pestaña, la entidad y el resumen.</div>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="problemas">
+      <h2>16. Problemas frecuentes</h2>
+      <table>
+        <tr><th>Problema</th><th>Qué revisar</th></tr>
+        <tr><td>No puedo iniciar sesión</td><td>Correo, contraseña, usuario activo y dirección correcta del servidor.</td></tr>
+        <tr><td>Error 403 al importar</td><td>Volvé a iniciar sesión, recargá la pantalla y repetí la importación. La sesión o el token de seguridad pueden haber vencido.</td></tr>
+        <tr><td>La importación no carga nada</td><td>Encabezados, formato del mes, año, hoja correcta y mensaje de errores.</td></tr>
+        <tr><td>El cumplimiento no cambia</td><td>Confirmá que la columna contenga porcentaje y que la clave del registro existente coincida.</td></tr>
+        <tr><td>Hay una fila “Sin site”</td><td>Corregí la asociación en Datos maestros y unificá el nombre si ya existe otra campaña equivalente.</td></tr>
+        <tr><td>Una cuenta aparece duplicada</td><td>Revisá diferencias de nombre, cliente y campaña. Unificá con la asociación correcta.</td></tr>
+        <tr><td>El total no coincide</td><td>Separá horas, variable, tarifación, Next Gen y suma fija para encontrar el componente diferente.</td></tr>
+      </table>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="glosario">
+      <h2>17. Glosario</h2>
+      <table>
+        <tr><th>Término</th><th>Significado sencillo</th></tr>
+        <tr><td>Cliente</td><td>Cuenta comercial principal.</td></tr>
+        <tr><td>Campaña</td><td>Servicio o apertura dentro de un cliente.</td></tr>
+        <tr><td>Site / Gerencia</td><td>Agrupación responsable de la cuenta.</td></tr>
+        <tr><td>Dotación</td><td>Cantidad de personas requeridas.</td></tr>
+        <tr><td>Horas requeridas</td><td>Horas base necesarias para operar.</td></tr>
+        <tr><td>Cumplimiento</td><td>Porcentaje aplicado a las horas requeridas.</td></tr>
+        <tr><td>PLP</td><td>Tratamiento de Personal con apertura diurna y nocturna.</td></tr>
+        <tr><td>Tarifación</td><td>Ajuste monetario que puede sumar o restar.</td></tr>
+        <tr><td>Next Gen</td><td>Producto valorizado en dólares y convertido a pesos por mes.</td></tr>
+        <tr><td>Suma fija</td><td>Importe mensual que no depende del cálculo de horas.</td></tr>
+      </table>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <section id="checklist">
+      <h2>18. Lista rápida de control</h2>
+      <ul>
+        <li>☐ Cliente y campaña existen y están activos.</li>
+        <li>☐ Año y mes son correctos.</li>
+        <li>☐ Horas, días, jornada y cumplimiento fueron revisados.</li>
+        <li>☐ Existe precio para el mismo cliente, campaña y mes.</li>
+        <li>☐ Variable y tarifación tienen el signo correcto.</li>
+        <li>☐ Next Gen tiene cotización de dólar.</li>
+        <li>☐ La suma fija corresponde al mes revisado.</li>
+        <li>☐ No hay cuentas duplicadas ni “Sin site”.</li>
+        <li>☐ El total fue comparado después de importar.</li>
+      </ul>
+      <div class="note"><strong>Guardar o imprimir:</strong> usá “Descargar guía PDF” en la parte superior. El archivo funciona sin conexión. También podés imprimir esta versión web con <strong>Ctrl + P</strong>.</div>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
+    <footer>
+      <p>Dashboard de Facturación · Guía funcional para usuarios</p>
+    </footer>
+  </main>
+</body>
+</html>
