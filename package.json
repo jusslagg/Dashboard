@@ -7,6 +7,8 @@
     "dev": "node scripts/dev.mjs",
     "flask:dev": "python run.py",
     "next:dev": "npm --prefix next-app run dev",
+    "build": "npm --prefix next-app run build",
+    "verify:python": "python scripts/verificar_entrega.py",
     "start": "node scripts/dev.mjs"
   }
 }

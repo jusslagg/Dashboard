@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Filters from '@/components/Filters';
-import { formatMoney, formatMonth, formatNumber, formatPercent, getJson } from '@/lib/api';
+import { flaskUrl, formatMoney, formatMonth, formatNumber, formatPercent, getJson } from '@/lib/api';
 
 export default function DashboardPage() {
   const [filters, setFilters] = useState({});
@@ -46,7 +46,7 @@ export default function DashboardPage() {
           <h2>Dashboard de Facturacion</h2>
           <p>Vista ejecutiva migrada a Next.js usando tus datos actuales.</p>
         </div>
-        <a className="button" href="http://127.0.0.1:8009/api/exportar_excel">Exportar Excel</a>
+        <a className="button" href={flaskUrl('/api/exportar_excel')}>Exportar Excel</a>
       </header>
 
       <Filters value={filters} onChange={setFilters} />

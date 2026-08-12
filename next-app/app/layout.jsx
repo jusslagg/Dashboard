@@ -1,9 +1,10 @@
 import './globals.css';
 import Link from 'next/link';
 import { BarChart3, Database, LayoutDashboard, Table2 } from 'lucide-react';
+import { flaskUrl } from '@/lib/api';
 
 export const metadata = {
-  title: 'Facturacion 2026',
+  title: 'Facturacion',
   description: 'Control ejecutivo de facturacion migrado a Next.js',
 };
 
@@ -32,11 +33,11 @@ export default function RootLayout({ children }) {
                   </Link>
                 );
               })}
-              <a className="nav-link" href="http://127.0.0.1:8009/cargar">
+              <a className="nav-link" href={flaskUrl('/cargar')}>
                 <Database size={18} />
                 <span>Cargar Datos</span>
               </a>
-              <a className="nav-link" href="http://127.0.0.1:8009/catalogos">
+              <a className="nav-link" href={flaskUrl('/catalogos')}>
                 <Database size={18} />
                 <span>Datos Maestros</span>
               </a>

@@ -151,6 +151,24 @@ def construir_indice(indice):
 
 def main():
     cuerpo, indice = render_markdown(ORIGEN.read_text(encoding="utf-8"))
+    anexos = [
+        ("anexo-ddl-sqlite", "Anexo DDL completo - SQLite", RAIZ / "docs" / "esquema_base_datos_sqlite.sql"),
+        ("anexo-ddl-postgresql", "Anexo DDL completo - PostgreSQL", RAIZ / "docs" / "esquema_base_datos_postgresql.sql"),
+    ]
+    bloques_anexos = []
+    for identificador, titulo, ruta in anexos:
+        if not ruta.exists():
+            continue
+        indice.append((2, identificador, titulo))
+        ddl = html.escape(ruta.read_text(encoding="utf-8"))
+        bloques_anexos.append(
+            f'<h2 id="{identificador}">{html.escape(titulo)}'
+            f'<a class="anchor" href="#{identificador}" aria-label="Enlace a esta sección">#</a></h2>'
+            f'<p>Definición física generada desde <code>app/models.py</code>.</p>'
+            f'<pre><code class="language-sql">{ddl}</code></pre>'
+        )
+    if bloques_anexos:
+        cuerpo += "\n" + "\n".join(bloques_anexos)
     documento = f"""<!doctype html>
 <html lang="es">
 <head>
@@ -184,7 +202,7 @@ def main():
   </style>
 </head>
 <body>
-  <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/descargar">Descargar PDF</a></div></div>
+  <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/esquema/pdf">Esquema BD en PDF</a><a class="button" href="/documentacion-tecnica/esquema/sqlite">SQL SQLite</a><a class="button" href="/documentacion-tecnica/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/documentacion-tecnica/descargar">Documentación completa PDF</a></div></div>
   <main class="page">
     <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Julio de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice técnico</h2><ol>{construir_indice(indice)}</ol></nav>

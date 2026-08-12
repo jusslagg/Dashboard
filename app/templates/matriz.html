@@ -11,7 +11,7 @@
     </div>
     <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[110px_150px_repeat(5,minmax(150px,1fr))_160px_minmax(170px,1fr)]">
         <select id="yearSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
-            <option value="2026">2026</option>
+            {% for year in anios_disponibles %}<option value="{{ year }}"{% if year == anio_actual %} selected{% endif %}>{{ year }}</option>{% endfor %}
         </select>
         <select id="mesFiltro" onchange="renderDesdeEstado()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todos los meses</option>

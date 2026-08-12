@@ -1,10 +1,10 @@
 ﻿# filepath: app/routes.py
 from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
 from app import db, get_csrf_token
-from app.models import AsignacionComercial, Facturacion2026, FeriadoOperativo, HistorialCambio, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, ROLES_USUARIO, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
+from app.models import AsignacionComercial, Campania, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, HistorialCambio, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, ROLES_USUARIO, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
 import calendar
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from html import escape
 from html.parser import HTMLParser
 from functools import wraps
@@ -41,28 +41,22 @@ TIPOS_VH = [
 ]
 
 COLUMNAS_IMPORTACION = [
-    ('fecha', 'Fecha de carga'),
-    ('mes', 'Mes facturacion'),
-    ('cliente', 'Cliente'),
-    ('gerente', 'Gerente'),
-    ('jefe_site', 'Jefe de Site'),
-    ('campania', 'Campaña'),
+    ('cliente', 'Cuenta'),
     ('subcampania', 'Sub campaña'),
-    ('tipo_negocio', 'Tipo de negocio'),
-    ('tipo_jornada', 'Tipo de VH'),
-    ('horas_objetivo', 'Horas objetivo'),
-    ('horas_facturadas', 'Horas facturadas'),
-    ('horas_penalizadas', 'Horas Penalizacion ADH'),
-    ('valor_hora_objetivo', 'Valor hora objetivo'),
-    ('valor_hora', 'Valor hora facturado'),
+    ('tipo_jornada', 'Tipo VH'),
+    ('mes', 'Mes'),
+    ('horas_objetivo', 'Objetivo Horas'),
+    ('horas_facturadas', 'Horas Facturadas'),
+    ('valor_hora', 'Valor Hora'),
+    ('facturado_horas_manual', 'Facturado Horas'),
     ('tarifacion', 'Tarificacion'),
-    ('importe_fijo', 'Importe fijo facturado'),
-    ('variable_objetivo', 'Variable Objetivo'),
-    ('variable_productivo', 'Variable Productivo'),
-    ('bonos', 'Bonos'),
-    ('penalizaciones', 'Penalizaciones'),
-    ('netx_gen', 'Next Gen'),
+    ('unidad', 'Unidad'),
+    ('porcentaje_variable', '% Variable'),
+    ('variable_productivo', 'Variable productivo'),
+    ('ajuste_bono_penalizacion', 'Penalizaciones bonos'),
+    ('netx_gen', 'Facturacion Next Gen'),
     ('otros', 'Otros'),
+    ('total_facturado_informado', 'Total Facturado'),
 ]
 
 ALIAS_IMPORTACION = {
@@ -72,6 +66,7 @@ ALIAS_IMPORTACION = {
     'mes facturacion': 'mes',
     'mes facturación': 'mes',
     'cliente': 'cliente',
+    'cuenta': 'cliente',
     'gerente': 'gerente',
     'jefe de site': 'jefe_site',
     'jefe_site': 'jefe_site',
@@ -89,6 +84,7 @@ ALIAS_IMPORTACION = {
     'tipo vh': 'tipo_jornada',
     'tipo_jornada': 'tipo_jornada',
     'horas objetivo': 'horas_objetivo',
+    'objetivo horas': 'horas_objetivo',
     'horas_objetivo': 'horas_objetivo',
     'horas facturadas': 'horas_facturadas',
     'horas_facturadas': 'horas_facturadas',
@@ -103,6 +99,9 @@ ALIAS_IMPORTACION = {
     'valor hora facturado': 'valor_hora',
     'valor hora': 'valor_hora',
     'valor_hora': 'valor_hora',
+    'facturado en horas': 'facturado_horas_manual',
+    'facturado horas': 'facturado_horas_manual',
+    'facturado_horas_manual': 'facturado_horas_manual',
     'tarifacion': 'tarifacion',
     'tarificacion': 'tarifacion',
     'tarifacion adicional': 'tarifacion',
@@ -122,14 +121,20 @@ ALIAS_IMPORTACION = {
     'facturado bono': 'bonos',
     'penalizaciones': 'penalizaciones',
     'penalizacion': 'penalizaciones',
-    'penalizaciones bonos': 'penalizaciones',
-    'penalizaciones/bonos': 'penalizaciones',
+    'penalizaciones bonos': 'ajuste_bono_penalizacion',
+    'penalizaciones/bonos': 'ajuste_bono_penalizacion',
     'penalizaciones por incumplimientos': 'penalizaciones',
     'penalizacion por incumplimientos': 'penalizaciones',
     'netx gen': 'netx_gen',
     'next gen': 'netx_gen',
+    'facturacion next gen': 'netx_gen',
+    'facturación next gen': 'netx_gen',
     'netx_gen': 'netx_gen',
     'otros': 'otros',
+    'unidad': 'unidad',
+    '% variable': 'porcentaje_variable',
+    'porcentaje variable': 'porcentaje_variable',
+    'total facturado': 'total_facturado_informado',
 }
 
 class TablaHTMLParser(HTMLParser):
@@ -435,6 +440,7 @@ def filtrar_valores_exactos(query, columna, valores):
 
 def aplicar_filtros(
     query,
+    year=None,
     mes=None,
     cliente=None,
     gerente=None,
@@ -447,6 +453,10 @@ def aplicar_filtros(
     horas_facturadas_min=None,
     horas_facturadas_max=None,
 ):
+    if year:
+        years = year if isinstance(year, list) else [year]
+        condiciones = [Facturacion2026.mes.like(f'{valor}-%') for valor in years]
+        query = query.filter(or_(*condiciones))
     if mes:
         if isinstance(mes, list):
             query = query.filter(Facturacion2026.mes.in_(mes))
@@ -522,8 +532,24 @@ def normalizar_site(valor):
 
 def normalizar_tipo_vh(valor):
     texto = str(valor or '').strip()
-    if normalizar_header(texto) == 'personal cobranzas':
-        return TIPO_VH_PERSONAL_COBRANZAS
+    clave = normalizar_header(texto)
+    equivalencias = {
+        'diurna': 'Diurna', 'diurnas': 'Diurna', 'diurno': 'Diurna', 'horas diurnas': 'Diurna',
+        'horas': 'Diurna',
+        'nocturna': 'Nocturna', 'nocturnas': 'Nocturna', 'nocturno': 'Nocturna', 'horas nocturnas': 'Nocturna',
+        'feriado': 'Feriado', 'feriados': 'Feriado',
+        'horas feriado': 'Feriado',
+        'capacitacion': 'Capacitación', 'capacitaciones': 'Capacitación',
+        'diurna feriado': 'Diurnas Feriado', 'diurnas feriado': 'Diurnas Feriado',
+        'diurna f': 'Diurnas Feriado', 'diurnas f': 'Diurnas Feriado',
+        'nocturna feriado': 'Nocturnas Feriado', 'nocturnas feriado': 'Nocturnas Feriado',
+        'nocturna f': 'Nocturnas Feriado', 'nocturnas f': 'Nocturnas Feriado',
+        'horas lider': 'horas líder', 'hora lider': 'horas líder',
+        'radio': 'radio',
+        'personal cobranzas': TIPO_VH_PERSONAL_COBRANZAS,
+    }
+    if clave in equivalencias:
+        return equivalencias[clave]
     return texto
 
 
@@ -621,12 +647,84 @@ def parse_fecha(valor):
     raise ValueError('Fecha invalida. Use YYYY-MM-DD o DD/MM/YYYY')
 
 
-def crear_registro_facturacion(data):
+def obtener_excepcion_calculo(cliente, campania):
+    return ExcepcionCalculo.query.filter(
+        func.lower(ExcepcionCalculo.cliente) == str(cliente or '').strip().lower(),
+        func.lower(ExcepcionCalculo.campania) == str(campania or '').strip().lower(),
+        ExcepcionCalculo.activa.is_(True),
+    ).first()
+
+
+def obtener_configuracion_campania(cliente, campania):
+    return Campania.query.filter(
+        func.lower(Campania.cliente) == str(cliente or '').strip().lower(),
+        func.lower(Campania.nombre) == str(campania or '').strip().lower(),
+    ).first()
+
+
+def aplicar_configuracion_valor_hora(data, exigir_configuracion=True):
+    campania = obtener_configuracion_campania(data.get('cliente'), data.get('campania'))
+    if (not campania or campania.valor_hora_variable is None) and exigir_configuracion:
+        raise ValueError('Debe indicar una sola vez si el valor hora de esta campaña es variable')
+    if not campania or campania.valor_hora_variable is None:
+        return campania
+    if campania.valor_hora_variable is False:
+        data['valor_hora'] = data.get('valor_hora_objetivo')
+    return campania
+
+
+def aplicar_excepcion_calculo(data, exigir_configuracion=True, preservar_facturado_manual=False):
+    if data.get('es_next_gen'):
+        data['facturado_horas_manual'] = None
+        return None
+    # Una importación ya conciliada es la fuente definitiva: no se recalculan
+    # valores hora ni se aplican porcentajes configurados para la carga manual.
+    if preservar_facturado_manual:
+        if data.get('facturado_horas_manual') not in (None, '') and parse_numero(data.get('facturado_horas_manual')) < 0:
+            raise ValueError('Facturado en horas no puede ser negativo')
+        data['importe_fijo'] = None
+        return obtener_excepcion_calculo(data.get('cliente'), data.get('campania'))
+    if data.get('_excepcion_calculo_aplicada'):
+        return obtener_excepcion_calculo(data.get('cliente'), data.get('campania'))
+    aplicar_configuracion_valor_hora(data, exigir_configuracion=exigir_configuracion)
+    excepcion = obtener_excepcion_calculo(data.get('cliente'), data.get('campania'))
+    if not excepcion or excepcion.tipo_calculo not in ('facturado_horas_manual', 'facturado_manual_ajustes_vh'):
+        data['facturado_horas_manual'] = None
+        return None
+    if not data.get('_excepcion_calculo_aplicada'):
+        if excepcion.tipo_calculo == 'facturado_manual_ajustes_vh':
+            vh_objetivo_base = parse_numero(data.get('valor_hora_objetivo') or data.get('valor_hora'))
+            vh_alcanzado_base = parse_numero(data.get('valor_hora'))
+            data['valor_hora_objetivo'] = vh_objetivo_base * (1 + (excepcion.ajuste_vh_objetivo_pct or 0) / 100)
+            data['valor_hora'] = vh_alcanzado_base * (1 + (excepcion.ajuste_vh_alcanzado_pct or 0) / 100)
+            data['variable_objetivo'] = parse_numero(data.get('horas_objetivo')) * (
+                data['valor_hora_objetivo'] - data['valor_hora']
+            )
+            data['objetivo_separar_ajuste_vh'] = True
+        data['_excepcion_calculo_aplicada'] = True
+    horas = parse_numero(data.get('horas_facturadas'))
+    facturado = parse_numero(data.get('facturado_horas_manual'))
+    if horas <= 0:
+        raise ValueError('Las horas facturadas deben ser mayores a 0 para calcular el valor hora')
+    if facturado < 0:
+        raise ValueError('Facturado en horas no puede ser negativo')
+    if excepcion.tipo_calculo == 'facturado_horas_manual':
+        data['valor_hora'] = facturado / horas
+    data['importe_fijo'] = None
+    return excepcion
+
+
+def crear_registro_facturacion(data, exigir_configuracion_valor_hora=True, preservar_facturado_manual=False):
     fecha = parse_fecha(data['fecha'])
     mes = mes_valido(data.get('mes'))
     if not mes:
         raise ValueError('El mes de facturacion no es valido')
 
+    aplicar_excepcion_calculo(
+        data,
+        exigir_configuracion=exigir_configuracion_valor_hora,
+        preservar_facturado_manual=preservar_facturado_manual,
+    )
     registro = Facturacion2026(
         fecha=fecha,
         mes=mes,
@@ -636,12 +734,15 @@ def crear_registro_facturacion(data):
         campania=data.get('campania', '').strip(),
         subcampania=data.get('subcampania', '').strip(),
         tipo_negocio=str(data.get('tipo_negocio') or '').strip() or None,
+        es_next_gen=bool(data.get('es_next_gen')),
+        objetivo_separar_ajuste_vh=bool(data.get('objetivo_separar_ajuste_vh')),
         tipo_jornada=normalizar_tipo_vh(data['tipo_jornada']),
         horas_objetivo=parse_numero(data.get('horas_objetivo')),
         horas_facturadas=parse_numero(data.get('horas_facturadas')),
         horas_penalizadas=parse_numero(data.get('horas_penalizadas')),
         valor_hora_objetivo=parse_numero(data.get('valor_hora_objetivo') or data.get('valor_hora')),
         valor_hora=parse_numero(data.get('valor_hora')),
+        facturado_horas_manual=parse_numero(data.get('facturado_horas_manual')) if data.get('facturado_horas_manual') not in (None, '') else None,
         tarifacion=parse_numero(data.get('tarifacion')) if data.get('tarifacion') not in (None, '') else None,
         importe_fijo=parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None,
         variable_objetivo=parse_numero(data.get('variable_objetivo')),
@@ -657,12 +758,17 @@ def crear_registro_facturacion(data):
     return registro
 
 
-def actualizar_registro_facturacion(registro, data):
+def actualizar_registro_facturacion(registro, data, exigir_configuracion_valor_hora=True, preservar_facturado_manual=False):
     fecha = parse_fecha(data['fecha'])
     mes = mes_valido(data.get('mes'))
     if not mes:
         raise ValueError('El mes de facturacion no es valido')
 
+    aplicar_excepcion_calculo(
+        data,
+        exigir_configuracion=exigir_configuracion_valor_hora,
+        preservar_facturado_manual=preservar_facturado_manual,
+    )
     registro.fecha = fecha
     registro.mes = mes
     registro.cliente = data['cliente'].strip()
@@ -671,12 +777,15 @@ def actualizar_registro_facturacion(registro, data):
     registro.campania = data.get('campania', '').strip()
     registro.subcampania = data.get('subcampania', '').strip()
     registro.tipo_negocio = str(data.get('tipo_negocio') or '').strip() or None
+    registro.es_next_gen = bool(data.get('es_next_gen'))
+    registro.objetivo_separar_ajuste_vh = bool(data.get('objetivo_separar_ajuste_vh'))
     registro.tipo_jornada = normalizar_tipo_vh(data['tipo_jornada'])
     registro.horas_objetivo = parse_numero(data.get('horas_objetivo'))
     registro.horas_facturadas = parse_numero(data.get('horas_facturadas'))
     registro.horas_penalizadas = parse_numero(data.get('horas_penalizadas'))
     registro.valor_hora_objetivo = parse_numero(data.get('valor_hora_objetivo') or data.get('valor_hora'))
     registro.valor_hora = parse_numero(data.get('valor_hora'))
+    registro.facturado_horas_manual = parse_numero(data.get('facturado_horas_manual')) if data.get('facturado_horas_manual') not in (None, '') else None
     registro.tarifacion = parse_numero(data.get('tarifacion')) if data.get('tarifacion') not in (None, '') else None
     registro.importe_fijo = parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None
     registro.variable_objetivo = parse_numero(data.get('variable_objetivo'))
@@ -831,6 +940,267 @@ def datos_desde_filas(filas):
     return datos
 
 
+def resolver_asignacion_importacion(item):
+    """Completa gerente y jefe desde Datos Maestros, sin confiar en el archivo."""
+    cliente = str(item.get('cliente') or '').strip()
+    campania = str(item.get('campania') or '').strip()
+    subcampania = str(item.get('subcampania') or '').strip()
+    tipo_negocio = str(item.get('tipo_negocio') or '').strip()
+
+    cliente_clave = normalizar_header(cliente)
+    subcampania_clave = normalizar_header(subcampania)
+    campania_clave = normalizar_header(campania)
+    tipo_clave = normalizar_header(tipo_negocio)
+    compactar = lambda valor: normalizar_header(valor).replace(' ', '')
+    cuenta_compacta = compactar(cliente)
+    subcampania_partes = [parte.strip() for parte in re.split(r'\s*/\s*', subcampania) if parte.strip()]
+    subclaves = {normalizar_header(subcampania), *(normalizar_header(p) for p in subcampania_partes)}
+    subcompactas = {clave.replace(' ', '') for clave in subclaves}
+
+    coincidencias_cuenta = []
+    coincidencias_subcampania = []
+    coincidencias_sub_exacta = []
+    maestras_activas = AsignacionComercial.query.filter_by(activa=True).order_by(AsignacionComercial.id).all()
+    for asignacion in maestras_activas:
+        cliente_maestro = normalizar_header(asignacion.cliente)
+        campania_maestra = normalizar_header(asignacion.campania)
+        sub_maestra = normalizar_header(asignacion.subcampania)
+        cuenta_coincide_servicio = (
+            cliente_clave in (campania_maestra, sub_maestra)
+            or cuenta_compacta in (campania_maestra.replace(' ', ''), sub_maestra.replace(' ', ''))
+        )
+        cuenta_coincide_cliente = (
+            cliente_clave == cliente_maestro or cuenta_compacta == cliente_maestro.replace(' ', '')
+        )
+        sub_coincide = (
+            campania_maestra in subclaves or sub_maestra in subclaves
+            or campania_maestra.replace(' ', '') in subcompactas
+            or sub_maestra.replace(' ', '') in subcompactas
+        )
+        if not (cuenta_coincide_servicio or sub_coincide or (cuenta_coincide_cliente and sub_coincide)):
+            continue
+        if campania_clave and campania_maestra != campania_clave:
+            continue
+        if tipo_clave and normalizar_header(asignacion.tipo_negocio) != tipo_clave:
+            continue
+        if sub_coincide:
+            coincidencias_subcampania.append(asignacion)
+        if sub_maestra == subcampania_clave or sub_maestra.replace(' ', '') == subcampania_clave.replace(' ', ''):
+            coincidencias_sub_exacta.append(asignacion)
+        if cuenta_coincide_servicio:
+            coincidencias_cuenta.append(asignacion)
+    coincidencias = coincidencias_sub_exacta or coincidencias_subcampania or coincidencias_cuenta
+    if not coincidencias_subcampania and len(coincidencias_cuenta) > 1:
+        opciones = ', '.join(dict.fromkeys(a.subcampania for a in coincidencias_cuenta))
+        return None, (
+            f'no existe en Datos Maestros la Sub campaña {subcampania} para {cliente}. '
+            f'Opciones disponibles: {opciones}'
+        )
+    if len(coincidencias) > 1:
+        # Si la única diferencia es el jefe, se trata como una vigencia histórica.
+        firmas_sin_jefe = {
+            (a.cliente, a.gerente, a.campania, a.subcampania, a.tipo_negocio, bool(a.es_next_gen))
+            for a in coincidencias
+        }
+        if len(firmas_sin_jefe) == 1:
+            mes_objetivo = mes_valido(item.get('mes'))
+            historicos = Facturacion2026.query.filter(
+                func.lower(Facturacion2026.cliente) == cliente.lower(),
+                func.lower(Facturacion2026.subcampania) == subcampania.lower(),
+                Facturacion2026.jefe_site.in_([a.jefe_site for a in coincidencias]),
+            ).order_by(Facturacion2026.mes).all()
+            por_mes = {}
+            for registro in historicos:
+                por_mes.setdefault(registro.mes, registro.jefe_site)
+            if mes_objetivo and por_mes:
+                meses_anteriores = [mes for mes in por_mes if mes <= mes_objetivo]
+                mes_referencia = max(meses_anteriores) if meses_anteriores else min(por_mes)
+                jefe_referencia = por_mes[mes_referencia]
+                candidatas = [a for a in coincidencias if a.jefe_site == jefe_referencia]
+                if len(candidatas) == 1:
+                    coincidencias = candidatas
+
+    if len(coincidencias) > 1:
+        # Altas duplicadas con exactamente la misma clasificación son equivalentes.
+        firmas = {
+            (a.cliente, a.gerente, a.jefe_site, a.campania, a.subcampania, a.tipo_negocio, bool(a.es_next_gen))
+            for a in coincidencias
+        }
+        if len(firmas) == 1:
+            coincidencias = [coincidencias[0]]
+    if len(coincidencias) == 1:
+        asignacion = coincidencias[0]
+        item.update({
+            'cliente': asignacion.cliente,
+            'gerente': asignacion.gerente,
+            'jefe_site': asignacion.jefe_site,
+            'campania': asignacion.campania,
+            'subcampania': asignacion.subcampania,
+            'tipo_negocio': asignacion.tipo_negocio,
+            'es_next_gen': bool(asignacion.es_next_gen),
+        })
+        return asignacion, None
+
+    identidad = f'{cliente or "(sin cuenta)"} / {subcampania or "(sin subcampaña)"}'
+    if campania:
+        identidad += f' / {campania}'
+    if tipo_negocio:
+        identidad += f' / {tipo_negocio}'
+    if not coincidencias:
+        maestras_cliente = [
+            a for a in AsignacionComercial.query.filter_by(activa=True).all()
+            if normalizar_header(a.cliente) == cliente_clave
+        ]
+        sugeridas = sorted(
+            maestras_cliente,
+            key=lambda a: SequenceMatcher(None, subcampania_clave, normalizar_header(a.subcampania)).ratio(),
+            reverse=True,
+        )[:3]
+        sugerencia = ''
+        if sugeridas:
+            opciones = ', '.join(dict.fromkeys(a.subcampania for a in sugeridas))
+            sugerencia = f'. Opciones cercanas: {opciones}'
+        return None, f'no existe en Datos Maestros: {identidad}{sugerencia}'
+    alternativas = '; '.join(
+        f'{a.gerente} / {a.jefe_site}' + (f' / {a.tipo_negocio}' if a.tipo_negocio else '')
+        for a in coincidencias[:5]
+    )
+    return None, f'hay {len(coincidencias)} coincidencias en Datos Maestros para {identidad}: {alternativas}. Informe Tipo de negocio o revise el maestro'
+
+
+def aplicar_asignacion_a_fila(item, asignacion):
+    item.update({
+        'cliente': asignacion.cliente,
+        'gerente': asignacion.gerente,
+        'jefe_site': asignacion.jefe_site,
+        'campania': asignacion.campania,
+        'subcampania': asignacion.subcampania,
+        'tipo_negocio': asignacion.tipo_negocio,
+        'es_next_gen': bool(asignacion.es_next_gen),
+    })
+
+
+def opciones_maestro_para_fila(item):
+    cuenta = str(item.get('cliente') or '').strip()
+    subcampania = str(item.get('subcampania') or '').strip()
+    cuenta_clave = normalizar_header(cuenta).replace(' ', '')
+    sub_clave = normalizar_header(subcampania).replace(' ', '')
+    maestras = AsignacionComercial.query.filter_by(activa=True).all()
+    puntuadas = []
+    for asignacion in maestras:
+        campos = [asignacion.cliente, asignacion.campania, asignacion.subcampania]
+        claves = [normalizar_header(valor).replace(' ', '') for valor in campos]
+        puntaje = max(
+            max(SequenceMatcher(None, cuenta_clave, clave).ratio() for clave in claves),
+            max(SequenceMatcher(None, sub_clave, clave).ratio() for clave in claves),
+        )
+        if puntaje >= 0.45:
+            puntuadas.append((puntaje, asignacion))
+    puntuadas.sort(key=lambda par: (-par[0], par[1].id))
+    return [
+        {
+            'id': asignacion.id,
+            'label': asignacion.label,
+            'cliente': asignacion.cliente,
+            'campania': asignacion.campania,
+            'subcampania': asignacion.subcampania,
+            'gerente': asignacion.gerente,
+            'jefe_site': asignacion.jefe_site,
+        }
+        for _, asignacion in puntuadas[:6]
+    ]
+
+
+def preparar_fila_migracion_facturacion(item):
+    """Traduce el formato operativo reducido al modelo de facturación."""
+    item['mes'] = mes_valido(item.get('mes')) or item.get('mes')
+    if not item.get('fecha'):
+        item['fecha'] = date.today().isoformat()
+    item.setdefault('horas_penalizadas', 0)
+    item.setdefault('importe_fijo', None)
+    item.setdefault('variable_objetivo', 0)
+    item.setdefault('otros', 0)
+    item.setdefault('tarifacion', 0)
+    item.setdefault('netx_gen', 0)
+    item['valor_hora_objetivo'] = item.get('valor_hora')
+
+    es_next_gen_sin_horas = (
+        parse_numero(item.get('netx_gen')) > 0
+        and parse_numero(item.get('horas_objetivo')) == 0
+        and parse_numero(item.get('horas_facturadas')) == 0
+        and parse_numero(item.get('valor_hora')) == 0
+    )
+    item['_es_next_gen_sin_horas'] = es_next_gen_sin_horas
+    if es_next_gen_sin_horas:
+        item['es_next_gen'] = True
+        item['tipo_jornada'] = 'NextGen'
+
+    ajuste = parse_numero(item.get('ajuste_bono_penalizacion'))
+    item['bonos'] = ajuste if ajuste > 0 else 0
+    item['penalizaciones'] = ajuste if ajuste < 0 else 0
+
+    if item.get('variable_productivo') in (None, ''):
+        unidad = parse_numero(item.get('unidad'))
+        porcentaje = parse_numero(item.get('porcentaje_variable'))
+        item['variable_productivo'] = unidad * porcentaje / 100
+    else:
+        item['variable_productivo'] = parse_numero(item.get('variable_productivo'))
+
+
+def validar_total_fila_migracion(item):
+    informado = item.get('total_facturado_informado')
+    if informado in (None, ''):
+        return None
+    horas_netas = max(parse_numero(item.get('horas_facturadas')) - parse_numero(item.get('horas_penalizadas')), 0)
+    facturado_horas = (
+        parse_numero(item.get('facturado_horas_manual'))
+        if item.get('facturado_horas_manual') not in (None, '')
+        else horas_netas * parse_numero(item.get('valor_hora'))
+    )
+    calculado = (
+        facturado_horas
+        + parse_numero(item.get('tarifacion'))
+        + parse_numero(item.get('bonos'))
+        + parse_numero(item.get('variable_productivo'))
+        - abs(parse_numero(item.get('penalizaciones')))
+        + parse_numero(item.get('netx_gen'))
+        + parse_numero(item.get('otros'))
+    )
+    total_informado = parse_numero(informado)
+    if abs(calculado - total_informado) > 1:
+        return f'Total Facturado informado {total_informado:.2f} no coincide con el calculado {calculado:.2f}'
+    return None
+
+
+def validar_variable_fila_migracion(item):
+    if item.get('unidad') in (None, '') or item.get('porcentaje_variable') in (None, ''):
+        return None
+    esperado = parse_numero(item.get('unidad')) * parse_numero(item.get('porcentaje_variable')) / 100
+    informado = parse_numero(item.get('variable_productivo'))
+    if abs(esperado - informado) > 1:
+        return f'Variable productivo {informado:.2f} no coincide con Unidad × % Variable ({esperado:.2f})'
+    return None
+
+
+def guardar_porcentaje_variable_importado(item):
+    if item.get('porcentaje_variable') in (None, ''):
+        return
+    mes = mes_valido(item.get('mes'))
+    porcentaje = parse_numero(item.get('porcentaje_variable'))
+    registro = VariableCampania.query.filter_by(
+        cliente=item['cliente'], campania=item['campania'], mes=mes
+    ).first()
+    if not registro:
+        registro = VariableCampania(
+            cliente=item['cliente'], campania=item['campania'], mes=mes,
+            year=int(mes[:4]), site=item.get('gerente'), porcentaje=porcentaje,
+        )
+        db.session.add(registro)
+    else:
+        registro.site = item.get('gerente')
+        registro.porcentaje = porcentaje
+
+
 def valores_request(nombre):
     valores = request.args.getlist(nombre)
     if not valores:
@@ -844,6 +1214,7 @@ def valores_request(nombre):
 
 def filtros_request():
     return {
+        'year': valores_request('year'),
         'mes': valores_request('mes'),
         'cliente': valores_request('cliente'),
         'gerente': valores_request('gerente'),
@@ -858,6 +1229,8 @@ def opciones_filtro(filtros, campo):
     filtros_base = dict(filtros)
     filtros_base[campo] = None
     registros = aplicar_filtros(Facturacion2026.query, **filtros_base).all()
+    if campo == 'year':
+        return sorted({registro.mes[:4] for registro in registros if registro.mes and len(registro.mes) >= 4})
     return sorted({
         getattr(registro, campo)
         for registro in registros
@@ -899,11 +1272,28 @@ def obtener_o_crear_asignacion(campos):
     asignacion = AsignacionComercial.query.filter_by(**campos).first()
     if asignacion:
         asignacion.activa = True
+        if not asignacion.campania_id:
+            asignacion.campania_catalogo = obtener_o_crear_campania(campos['cliente'], campos['campania'])
         return asignacion, False
-    asignacion = AsignacionComercial(**campos)
+    campania = obtener_o_crear_campania(campos['cliente'], campos['campania'])
+    asignacion = AsignacionComercial(**campos, campania_catalogo=campania)
     db.session.add(asignacion)
     db.session.flush()
     return asignacion, True
+
+
+def obtener_o_crear_campania(cliente, nombre):
+    """Devuelve el ID canónico para la combinación cliente + campaña."""
+    cliente = str(cliente or '').strip()
+    nombre = str(nombre or '').strip()
+    campania = Campania.query.filter_by(cliente=cliente, nombre=nombre).first()
+    if campania:
+        campania.activa = True
+        return campania
+    campania = Campania(cliente=cliente, nombre=nombre, activa=True)
+    db.session.add(campania)
+    db.session.flush()
+    return campania
 
 
 TIPOS_JUSTIFICACION = {
@@ -1027,9 +1417,11 @@ def resumen_registros(registros):
 def resumen_dashboard(registros):
     resumen = resumen_registros(registros)
     total_facturado = sum(r.total_dashboard for r in registros)
-    total_teorico = sum(r.total_teorico for r in registros)
-    desvio = total_facturado - total_teorico
-    porcentaje = (total_facturado / total_teorico * 100) if total_teorico > 0 else 0
+    registros_con_objetivo = [r for r in registros if not r.es_next_gen]
+    total_comparable = sum(r.total_dashboard for r in registros_con_objetivo)
+    total_teorico = sum(r.total_teorico for r in registros_con_objetivo)
+    desvio = total_comparable - total_teorico
+    porcentaje = (total_comparable / total_teorico * 100) if total_teorico > 0 else 0
     horas_objetivo = sum(r.horas_objetivo or 0 for r in registros)
     horas_facturadas = sum(r.horas_facturadas or 0 for r in registros)
     horas_penalizadas = sum(r.horas_penalizadas or 0 for r in registros)
@@ -1798,8 +2190,13 @@ def matriz_grupos(registros, campo, meses):
     return salida
 
 
-def validar_payload_facturacion(data):
+def validar_payload_facturacion(data, exigir_configuracion_valor_hora=True):
     errores = []
+    es_next_gen = bool(data.get('es_next_gen'))
+    try:
+        aplicar_excepcion_calculo(data, exigir_configuracion=exigir_configuracion_valor_hora)
+    except ValueError as error:
+        errores.append(str(error))
     tipo_jornada = normalizar_tipo_vh(data.get('tipo_jornada'))
     sin_restriccion_horas = tipo_jornada == TIPO_VH_PERSONAL_COBRANZAS
     for campo, mensaje in [
@@ -1812,6 +2209,8 @@ def validar_payload_facturacion(data):
         ('subcampania', 'La sub campaña es obligatoria'),
         ('tipo_jornada', 'El tipo de VH es obligatorio'),
     ]:
+        if es_next_gen and campo not in ('fecha', 'mes', 'cliente'):
+            continue
         if not str(data.get(campo, '')).strip():
             errores.append(mensaje)
 
@@ -1836,18 +2235,18 @@ def validar_payload_facturacion(data):
         errores.append('Las horas facturadas no pueden ser negativas')
     if horas_penalizadas < 0:
         errores.append('Las horas penalizadas no pueden ser negativas')
-    if not sin_restriccion_horas and horas_penalizadas > horas_facturadas:
+    if not es_next_gen and not sin_restriccion_horas and horas_penalizadas > horas_facturadas:
         errores.append('Las horas penalizadas no pueden superar las horas facturadas')
-    if not sin_restriccion_horas and valor_hora <= 0:
+    if not es_next_gen and not sin_restriccion_horas and valor_hora <= 0:
         errores.append('El valor hora debe ser mayor a 0')
-    if not sin_restriccion_horas and valor_hora_objetivo <= 0:
+    if not es_next_gen and not sin_restriccion_horas and valor_hora_objetivo <= 0:
         errores.append('El valor hora objetivo debe ser mayor a 0')
     if importe_fijo is not None and importe_fijo < 0:
         errores.append('El importe fijo facturado no puede ser negativo')
     if variable_objetivo < 0:
         errores.append('Variable Objetivo no puede ser negativo')
-    if tipo_jornada and tipo_jornada not in TIPOS_VH:
-        errores.append('El tipo de VH no es válido')
+    if tipo_jornada and tipo_jornada not in TIPOS_VH and not es_next_gen:
+        errores.append(f'El tipo de VH "{data.get("tipo_jornada", "")}" no es válido')
     if data.get('mes') and not mes_valido(data.get('mes')):
         errores.append('El mes de facturacion no es valido')
     return errores
@@ -1861,14 +2260,18 @@ def asegurar_asignacion_desde_registro(registro):
         'campania': registro.campania,
         'subcampania': registro.subcampania,
         'tipo_negocio': registro.tipo_negocio,
+        'es_next_gen': bool(registro.es_next_gen),
     }
     if not all(valor for campo, valor in campos.items() if campo != 'tipo_negocio'):
         return None
     existente = AsignacionComercial.query.filter_by(**campos).first()
     if existente:
         existente.activa = True
+        if not existente.campania_id:
+            existente.campania_catalogo = obtener_o_crear_campania(registro.cliente, registro.campania)
         return existente
-    asignacion = AsignacionComercial(**campos)
+    campania = obtener_o_crear_campania(registro.cliente, registro.campania)
+    asignacion = AsignacionComercial(**campos, campania_catalogo=campania)
     db.session.add(asignacion)
     return asignacion
 
@@ -2144,6 +2547,34 @@ def descargar_documentacion_tecnica():
         mimetype='application/pdf',
         as_attachment=True,
         download_name='Documentacion_tecnica_Dashboard_Facturacion.pdf',
+    )
+
+
+@main_bp.route('/documentacion-tecnica/esquema/<motor>')
+@admin_requerido
+def descargar_esquema_base_datos(motor):
+    """Descarga el DDL completo entregable al responsable de la base."""
+    if str(motor or '').lower() == 'pdf':
+        ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'esquema_base_datos.pdf'))
+        return send_file(
+            ruta,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='Esquema_Base_Datos_Dashboard.pdf',
+        )
+    archivos = {
+        'sqlite': 'esquema_base_datos_sqlite.sql',
+        'postgresql': 'esquema_base_datos_postgresql.sql',
+    }
+    nombre = archivos.get(str(motor or '').lower())
+    if not nombre:
+        abort(404)
+    ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', nombre))
+    return send_file(
+        ruta,
+        mimetype='application/sql',
+        as_attachment=True,
+        download_name=nombre,
     )
 
 
@@ -2459,7 +2890,17 @@ def api_cargar():
     data['campania'] = data.get('campania', '').strip()
     data['subcampania'] = data.get('subcampania', '').strip()
     data['mes'] = data.get('mes', '').strip()
-    
+    data['es_next_gen'] = bool(data.get('es_next_gen'))
+    if data['es_next_gen']:
+        nombre_next_gen = data['cliente']
+        data.update({
+            'gerente': 'NextGen',
+            'jefe_site': 'NextGen',
+            'campania': nombre_next_gen,
+            'subcampania': nombre_next_gen,
+            'tipo_negocio': 'NextGen',
+            'tipo_jornada': 'NextGen',
+        })
     # Validaciones
     errores = []
     tipo_jornada = normalizar_tipo_vh(data.get('tipo_jornada'))
@@ -2473,17 +2914,22 @@ def api_cargar():
         errores.append('El mes de facturacion no es valido')
     if not data.get('cliente'):
         errores.append('El cliente es obligatorio')
-    if not data.get('tipo_jornada'):
+    if not data.get('tipo_jornada') and not data['es_next_gen']:
         errores.append('El tipo de VH es obligatorio')
     # Validar gerente
-    if not data.get('gerente'):
+    if not data.get('gerente') and not data['es_next_gen']:
         errores.append('El gerente es obligatorio')
-    if not data.get('jefe_site'):
+    if not data.get('jefe_site') and not data['es_next_gen']:
         errores.append('El jefe de site es obligatorio')
-    if not data.get('campania'):
+    if not data.get('campania') and not data['es_next_gen']:
         errores.append('La campaña es obligatoria')
-    if not data.get('subcampania'):
+    if not data.get('subcampania') and not data['es_next_gen']:
         errores.append('La sub campaña es obligatoria')
+    if data.get('cliente') and data.get('campania'):
+        try:
+            aplicar_excepcion_calculo(data)
+        except ValueError as error:
+            errores.append(str(error))
     
     try:
         horas_objetivo = parse_numero(data.get('horas_objetivo'))
@@ -2509,16 +2955,16 @@ def api_cargar():
         errores.append('Las horas penalizadas no pueden ser negativas')
     if not sin_restriccion_horas and horas_penalizadas > horas_facturadas:
         errores.append('Las horas penalizadas no pueden superar las horas facturadas')
-    if not sin_restriccion_horas and valor_hora <= 0:
+    if not data['es_next_gen'] and not sin_restriccion_horas and valor_hora <= 0:
         errores.append('El valor hora debe ser mayor a 0')
-    if not sin_restriccion_horas and valor_hora_objetivo <= 0:
+    if not data['es_next_gen'] and not sin_restriccion_horas and valor_hora_objetivo <= 0:
         errores.append('El valor hora objetivo debe ser mayor a 0')
     if importe_fijo is not None and importe_fijo < 0:
         errores.append('El importe fijo facturado no puede ser negativo')
     if variable_objetivo < 0:
         errores.append('Variable Objetivo no puede ser negativo')
-    if tipo_jornada and tipo_jornada not in TIPOS_VH:
-        errores.append('El tipo de VH no es válido')
+    if tipo_jornada and tipo_jornada not in TIPOS_VH and not data['es_next_gen']:
+        errores.append(f'El tipo de VH "{data.get("tipo_jornada", "")}" no es válido')
     
     errores.extend(validar_justificaciones(data))
 
@@ -2531,8 +2977,10 @@ def api_cargar():
         
         return jsonify({
             'success': True,
-            'mensaje': 'Datos cargados correctamente',
-            'id': nuevo_registro.id
+            'mensaje': f'Datos cargados para {nuevo_registro.mes} con fecha de carga {nuevo_registro.fecha.strftime("%d/%m/%Y")}',
+            'id': nuevo_registro.id,
+            'mes': nuevo_registro.mes,
+            'fecha': nuevo_registro.fecha.isoformat(),
         })
         
     except Exception as e:
@@ -2590,7 +3038,12 @@ def api_actualizar_dato(registro_id):
 
     registro = Facturacion2026.query.get_or_404(registro_id)
     antes = snapshot_modelo(registro)
-    errores = validar_payload_facturacion(data)
+    data['es_next_gen'] = bool(data.get('es_next_gen') or registro.es_next_gen)
+    if data['es_next_gen']:
+        nombre_next_gen = str(data.get('cliente') or registro.cliente).strip()
+        data.update(gerente='NextGen', jefe_site='NextGen', campania=nombre_next_gen,
+                    subcampania=nombre_next_gen, tipo_negocio='NextGen', tipo_jornada='NextGen')
+    errores = validar_payload_facturacion(data, exigir_configuracion_valor_hora=False)
     if errores:
         return jsonify({'success': False, 'errores': errores}), 400
 
@@ -2604,6 +3057,7 @@ def api_actualizar_dato(registro_id):
         registro.campania = data['campania'].strip()
         registro.subcampania = data['subcampania'].strip()
         registro.tipo_negocio = str(data.get('tipo_negocio') or '').strip() or None
+        registro.es_next_gen = bool(data.get('es_next_gen'))
         registro.tipo_jornada = normalizar_tipo_vh(data['tipo_jornada'])
         registro.horas_objetivo = parse_numero(data.get('horas_objetivo'))
         registro.horas_facturadas = parse_numero(data.get('horas_facturadas'))
@@ -2793,6 +3247,7 @@ def api_filtros():
     return jsonify({
         'success': True,
         'filtros': {
+            'years': opciones_filtro(filtros, 'year'),
             'meses': opciones_filtro(filtros, 'mes'),
             'clientes': opciones_filtro(filtros, 'cliente'),
             'gerentes': opciones_filtro(filtros, 'gerente'),
@@ -2904,14 +3359,27 @@ def api_comparativo():
 @login_requerido
 def api_matriz():
     """Matriz mensual de cumplimiento por gerencia y apertura por jefe de site."""
-    year = request.args.get('year') or '2026'
+    year = request.args.get('year', str(current_app.config['DEFAULT_YEAR'])).strip()
+    try:
+        year_number = int(year)
+    except ValueError:
+        year_number = 0
+    if not 2020 <= year_number <= 2100:
+        return jsonify({'success': False, 'errores': ['El anio debe estar entre 2020 y 2100.']}), 400
+    year = str(year_number)
     filtros = filtros_request()
     meses = [f'{year}-{numero}' for numero, _ in MESES_MATRIZ]
     columnas = [{'key': mes, 'label': f'{label}-{year[-2:]}'} for mes, (_, label) in zip(meses, MESES_MATRIZ)]
 
-    base_year = Facturacion2026.query.filter(Facturacion2026.mes.in_(meses))
+    base_year = Facturacion2026.query.filter(
+        Facturacion2026.mes.in_(meses),
+        Facturacion2026.es_next_gen.is_(False),
+    )
     registros_year = aplicar_filtros(base_year, **filtros).all()
-    registros_sin_filtros = Facturacion2026.query.filter(Facturacion2026.mes.in_(meses)).all()
+    registros_sin_filtros = Facturacion2026.query.filter(
+        Facturacion2026.mes.in_(meses),
+        Facturacion2026.es_next_gen.is_(False),
+    ).all()
     jefe_site = filtros.get('jefe_site')
     jefe_site_unico = jefe_site if isinstance(jefe_site, str) else ''
 
@@ -3853,7 +4321,10 @@ def construir_resumen_proyeccion_data(year):
     # El cruce ignora mayúsculas, minúsculas, acentos y alias de nocturnidad.
     variables_year = VariableCampania.query.filter(VariableCampania.year <= year).all()
     filas_horas = [item for item in filas if item['concepto'] == 'Horas']
-    for base in filas_horas:
+    # La planilla aplica el porcentaje sobre toda la base facturable de la
+    # campaña. Esto incluye el fijo mensual cuando existe, no solamente horas.
+    filas_base_variable = [item for item in filas if item['concepto'] in ('Horas', 'Fijo mensual')]
+    for base in filas_base_variable:
         for mes in meses:
             candidatas = [item for item in variables_year
                 if normalizar_nombre_variable(item.campania) == normalizar_nombre_variable(base['campania'])
@@ -4369,7 +4840,7 @@ def api_tarifaciones():
 
 
 @main_bp.route('/api/tarifaciones', methods=['POST'])
-@login_requerido
+@edicion_requerida
 def api_guardar_tarifacion():
     data = request.get_json(silent=True) or {}
     mes = mes_valido(data.get('mes'))
@@ -4400,6 +4871,79 @@ def api_guardar_tarifacion():
     )
     db.session.commit()
     return jsonify({'success': True, 'mensaje': 'Tarifación guardada y aplicada en Facturación horas'})
+
+
+@main_bp.route('/api/tarifaciones/edicion-masiva', methods=['POST'])
+@edicion_requerida
+def api_edicion_masiva_tarifaciones():
+    """Guarda una grilla de tarifaciones en una sola transacción."""
+    data = request.get_json(silent=True) or {}
+    entradas = data.get('cambios') if isinstance(data.get('cambios'), list) else []
+    if not entradas:
+        return jsonify({'success': False, 'errores': ['No hay cambios para guardar']}), 400
+    if len(entradas) > 1000:
+        return jsonify({'success': False, 'errores': ['La edición admite hasta 1000 importes por operación']}), 400
+
+    errores = []
+    cambios = []
+    claves = set()
+    for numero, entrada in enumerate(entradas, start=1):
+        cliente = str(entrada.get('cliente') or '').strip()
+        campania = str(entrada.get('campania') or '').strip()
+        concepto = str(entrada.get('concepto') or 'Tarifación').strip() or 'Tarifación'
+        site = str(entrada.get('site') or '').strip()
+        mes = mes_valido(entrada.get('mes'))
+        try:
+            monto = parse_numero(entrada.get('monto'))
+        except (TypeError, ValueError):
+            monto = None
+        clave = (cliente, campania, concepto, mes)
+        if not cliente or not campania or not mes:
+            errores.append(f'Celda {numero}: cliente, campaña y mes son obligatorios')
+        elif monto is None:
+            errores.append(f'Celda {numero}: el monto no es válido')
+        elif clave in claves:
+            errores.append(f'Celda {numero}: el importe está repetido')
+        else:
+            claves.add(clave)
+            cambios.append((site, cliente, campania, concepto, mes, monto))
+    if errores:
+        return jsonify({'success': False, 'errores': errores[:30]}), 400
+
+    antes = []
+    despues = []
+    for site, cliente, campania, concepto, mes, monto in cambios:
+        registro = TarifacionCampania.query.filter_by(
+            cliente=cliente, campania=campania, concepto=concepto, mes=mes,
+        ).first()
+        snapshot = registro.to_dict() if registro else None
+        antes.append(snapshot)
+        if monto == 0:
+            if registro:
+                db.session.delete(registro)
+            despues.append(None)
+            continue
+        if not registro:
+            registro = TarifacionCampania(
+                cliente=cliente, campania=campania, concepto=concepto, mes=mes,
+            )
+            db.session.add(registro)
+        registro.site = site
+        registro.year = int(mes[:4])
+        registro.monto = monto
+        db.session.flush()
+        despues.append(registro.to_dict())
+
+    registrar_historial(
+        'edicion', 'tarifaciones', str(data.get('year') or ''),
+        f'Edición en grilla de tarifaciones: {len(cambios)} importe(s)',
+        antes={'tarifaciones': antes}, despues={'tarifaciones': despues},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'{len(cambios)} importe(s) guardado(s) y aplicado(s) en Facturación horas',
+    })
 
 
 @main_bp.route('/api/tarifaciones/template', methods=['GET'])
@@ -5095,6 +5639,153 @@ def api_personal_distribucion():
     })
 
 
+@main_bp.route('/api/proyecciones-plp/edicion-masiva', methods=['POST'])
+@edicion_requerida
+def api_edicion_masiva_proyecciones_plp():
+    """Actualiza varias filas PLP en una sola transacción, como una planilla."""
+    data = request.get_json(silent=True) or {}
+    try:
+        year = int(data.get('year'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
+    if not 2020 <= year <= 2100:
+        return jsonify({'success': False, 'errores': ['El año debe estar entre 2020 y 2100']}), 400
+
+    entradas = data.get('filas') if isinstance(data.get('filas'), list) else []
+    if not entradas:
+        return jsonify({'success': False, 'errores': ['No hay filas PLP para guardar']}), 400
+    if len(entradas) > 500:
+        return jsonify({'success': False, 'errores': ['La edición masiva admite hasta 500 filas por operación']}), 400
+
+    errores = []
+    normalizadas = []
+    ids_recibidos = set()
+    ids_a_eliminar = set()
+    claves_recibidas = set()
+    for numero, entrada in enumerate(entradas, start=1):
+        try:
+            registro_id = int(entrada['id']) if entrada.get('id') not in (None, '') else None
+        except (TypeError, ValueError):
+            registro_id = -1
+        eliminar = entrada.get('eliminar') is True
+        if eliminar:
+            if not registro_id or registro_id == -1 or registro_id in ids_recibidos:
+                errores.append(f'Fila {numero}: no se puede eliminar una fila sin identificador válido')
+            else:
+                ids_recibidos.add(registro_id)
+                ids_a_eliminar.add(registro_id)
+                normalizadas.append((registro_id, True, None, None, None, None, None, None, None))
+            continue
+        tipo = str(entrada.get('tipo_plp') or '').strip()
+        mes = mes_valido(entrada.get('mes'))
+        campania = str(entrada.get('campania') or '').strip()
+        try:
+            horas = parse_numero(entrada.get('horas'))
+            carga_horaria = parse_numero(entrada.get('carga_horaria'))
+            cumplimiento = parse_numero(entrada.get('porcentaje_cumplimiento'))
+        except (TypeError, ValueError):
+            horas, carga_horaria, cumplimiento = -1, -1, -1
+        carga_semanal = normalizar_carga_semanal(entrada.get('carga_semanal') or 'L a V')
+        clave = (tipo, mes, normalizar_header(campania))
+
+        if registro_id == -1 or (registro_id and registro_id in ids_recibidos):
+            errores.append(f'Fila {numero}: identificador inválido o repetido')
+        elif tipo not in SERVICIOS_PERSONAL:
+            errores.append(f'Fila {numero}: clasificación PLP no válida')
+        elif not mes or int(mes[:4]) != year:
+            errores.append(f'Fila {numero}: el mes no corresponde a {year}')
+        elif not campania:
+            errores.append(f'Fila {numero}: falta el nombre de campaña')
+        elif len(campania) > 100:
+            errores.append(f'Fila {numero}: la campaña supera los 100 caracteres')
+        elif horas < 0:
+            errores.append(f'Fila {numero}: las horas no pueden ser negativas')
+        elif carga_horaria <= 0:
+            errores.append(f'Fila {numero}: las horas de jornada deben ser mayores a cero')
+        elif not 0 <= cumplimiento <= 1000:
+            errores.append(f'Fila {numero}: el porcentaje de cumplimiento debe estar entre 0 y 1000')
+        elif clave in claves_recibidas:
+            errores.append(f'Fila {numero}: la campaña está repetida para la misma clasificación y mes')
+        else:
+            if registro_id:
+                ids_recibidos.add(registro_id)
+            claves_recibidas.add(clave)
+            normalizadas.append((registro_id, False, tipo, mes, campania, horas, carga_semanal, carga_horaria, cumplimiento))
+    if errores:
+        return jsonify({'success': False, 'errores': errores[:30]}), 400
+
+    registros_por_id = {}
+    if ids_recibidos:
+        registros_por_id = {
+            registro.id: registro
+            for registro in ProyeccionMatriz.query.filter(ProyeccionMatriz.id.in_(ids_recibidos)).all()
+        }
+        faltantes = sorted(ids_recibidos - set(registros_por_id))
+        if faltantes:
+            return jsonify({'success': False, 'errores': [f'No existen las proyecciones: {faltantes}']}), 404
+        if any(not registro.tipo_plp or registro.year != year for registro in registros_por_id.values()):
+            return jsonify({'success': False, 'errores': ['Una fila no pertenece al año o al módulo PLP seleccionado']}), 400
+
+    antes = []
+    guardadas = []
+    eliminadas = []
+    feriados = fechas_feriadas_activas(year)
+    for registro_id in ids_a_eliminar:
+        proyeccion = registros_por_id[registro_id]
+        antes.append(snapshot_proyeccion(proyeccion))
+        eliminadas.append(proyeccion.id)
+        db.session.delete(proyeccion)
+    if eliminadas:
+        db.session.flush()
+    for registro_id, eliminar, tipo, mes, campania, horas, carga_semanal, carga_horaria, cumplimiento in normalizadas:
+        if eliminar:
+            continue
+        proyeccion = registros_por_id.get(registro_id) if registro_id else None
+        duplicada = buscar_proyeccion_plp(tipo, campania, mes)
+        if duplicada and duplicada.id != registro_id and duplicada.id not in ids_a_eliminar:
+            # La grilla funciona como una planilla: la clave
+            # clasificación + campaña + mes identifica el registro. Si el
+            # usuario vuelve a cargar esa clave, se actualiza la fila existente
+            # en lugar de rechazarla como duplicada.
+            if proyeccion:
+                antes.append(snapshot_proyeccion(proyeccion))
+                eliminadas.append(proyeccion.id)
+                db.session.delete(proyeccion)
+                db.session.flush()
+            proyeccion = duplicada
+        antes.append(snapshot_proyeccion(proyeccion))
+        if not proyeccion:
+            proyeccion = ProyeccionMatriz()
+            db.session.add(proyeccion)
+        aplicar_calculo_proyeccion(proyeccion, {
+            'cliente': 'Personal',
+            'campania': campania,
+            'tipo_plp': tipo,
+            'horas_carga_manual': True,
+            'horas_requeridas_manual': horas,
+            'carga_semanal_plp': carga_semanal,
+            'carga_horaria_plp': carga_horaria,
+            'porcentaje_cumplimiento': cumplimiento,
+            'jornadas': [],
+        }, mes, feriados)
+        guardadas.append(proyeccion)
+
+    db.session.flush()
+    registrar_historial(
+        'edicion', 'proyeccion_matriz', str(year),
+        f'Edición rápida PLP {year}: {len(guardadas)} guardada(s), {len(eliminadas)} eliminada(s)',
+        antes={'proyecciones': antes},
+        despues={'proyecciones': [snapshot_proyeccion(item) for item in guardadas], 'ids_eliminados': eliminadas},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'PLP actualizado: {len(guardadas)} guardada(s) y {len(eliminadas)} eliminada(s)',
+        'proyecciones': [item.to_dict() for item in guardadas],
+        'eliminadas': eliminadas,
+    })
+
+
 @main_bp.route('/api/proyecciones-plp/template', methods=['GET'])
 @login_requerido
 def api_template_proyecciones_plp():
@@ -5697,7 +6388,7 @@ def api_exportar_excel():
 
     headers = [
         'Fecha', 'Mes', 'Cliente', 'Gerente', 'Jefe de Site', 'Campaña', 'Sub campaña', 'Tipo de negocio', 'Tipo de VH', 'Horas objetivo',
-        'Horas facturadas', 'Horas Penalizacion ADH', 'Valor hora objetivo', 'Valor hora alcanzado', 'Tarificacion', 'Importe fijo facturado', 'Variable Objetivo', 'Variable Productivo',
+        'Horas facturadas', 'Horas Penalizacion ADH', 'Valor hora objetivo', 'Valor hora alcanzado', 'Facturado en horas manual', 'Tarificacion', 'Importe fijo facturado', 'Variable Objetivo', 'Variable Productivo',
         '% cumplimiento horas',
         'Objetivo facturacion horas', 'Objetivo facturacion bono', 'Facturacion objetivo',
         'Facturado horas', 'Facturado bono', 'Variable Productivo', 'Penalizaciones por incumplimientos',
@@ -5711,6 +6402,7 @@ def api_exportar_excel():
             r.horas_objetivo, r.horas_facturadas, r.horas_penalizadas or 0,
             r.valor_hora_objetivo if r.valor_hora_objetivo else r.valor_hora,
             r.valor_hora_alcanzado,
+            r.facturado_horas_manual if r.facturado_horas_manual is not None else '',
             r.tarifacion or 0,
             r.importe_fijo if r.importe_fijo is not None else '',
             r.variable_objetivo or 0,
@@ -5749,20 +6441,19 @@ def api_template_carga():
     """Descarga una plantilla xlsx para carga masiva."""
     headers = [label for _, label in COLUMNAS_IMPORTACION]
     ayuda_por_campo = {
-        'fecha': 'YYYY-MM-DD o DD/MM/YYYY',
-        'mes': 'YYYY-MM',
-        'cliente': 'Texto',
-        'gerente': 'Texto',
-        'jefe_site': 'Texto',
-        'campania': 'Texto',
-        'subcampania': 'Texto',
-        'tipo_negocio': 'Opcional',
+        'cliente': 'Debe existir en Datos Maestros',
+        'subcampania': 'Debe hacer match único con Cuenta',
         'tipo_jornada': 'Diurna, Nocturna, Feriado, Capacitación, Diurnas Feriado, Nocturnas Feriado, horas líder o radio',
+        'mes': 'YYYY-MM, MM/YYYY o fecha Excel',
         'horas_objetivo': 'Número',
         'horas_facturadas': 'Número',
-        'horas_penalizadas': 'Opcional',
-        'valor_hora_objetivo': 'Número',
         'valor_hora': 'Número',
+        'facturado_horas_manual': 'Opcional; si está vacío se calcula Horas × Valor Hora',
+        'unidad': 'Base para calcular Variable productivo',
+        'porcentaje_variable': 'Porcentaje; se guarda para la campaña y el mes',
+        'variable_productivo': 'Opcional; si está vacío se calcula Unidad × % Variable',
+        'ajuste_bono_penalizacion': 'Positivo = bono; negativo = penalización',
+        'total_facturado_informado': 'Control: debe coincidir con el total calculado',
     }
     ayuda = [ayuda_por_campo.get(campo, 'Opcional') for campo, _ in COLUMNAS_IMPORTACION]
     contenido = crear_xlsx(headers, [ayuda])
@@ -5807,13 +6498,28 @@ def api_importar_datos():
             return jsonify({'success': False, 'errores': ['No se encontraron filas para importar. Revise que el archivo tenga encabezados y datos.']}), 400
 
         confirmar_reemplazo = request.form.get('confirmar_reemplazo') == '1'
+        try:
+            resoluciones = json.loads(request.form.get('resoluciones') or '{}')
+        except json.JSONDecodeError:
+            resoluciones = {}
         creados = 0
         reemplazados = 0
         errores = []
         items_validos = []
         conflictos_por_clave = {}
+        porcentajes_por_clave = {}
+        resoluciones_pendientes = []
         for indice, item in enumerate(datos, start=2):
-            if indice == 2 and str(item.get('fecha', '')).startswith('YYYY'):
+            if indice == 2 and (
+                str(item.get('fecha', '')).startswith('YYYY')
+                or str(item.get('cliente', '')).startswith('Debe existir en Datos Maestros')
+            ):
+                continue
+
+            try:
+                preparar_fila_migracion_facturacion(item)
+            except (TypeError, ValueError) as exc:
+                errores.append(f'Fila {indice}: valores inválidos: {exc}')
                 continue
 
             item.setdefault('bonos', 0)
@@ -5827,7 +6533,73 @@ def api_importar_datos():
             item.setdefault('variable_productivo', 0)
             item.setdefault('valor_hora_objetivo', item.get('valor_hora'))
 
-            errores_fila = validar_payload_facturacion(item)
+            cuenta_original = str(item.get('cliente') or '').strip()
+            subcampania_original = str(item.get('subcampania') or '').strip()
+            resolucion = resoluciones.get(str(indice)) or {}
+            if resolucion.get('accion') == 'vincular':
+                asignacion_resuelta = db.session.get(AsignacionComercial, int(resolucion.get('asignacion_id') or 0))
+                if not asignacion_resuelta or not asignacion_resuelta.activa:
+                    errores.append(f'Fila {indice}: la asociación elegida ya no está disponible')
+                    continue
+                aplicar_asignacion_a_fila(item, asignacion_resuelta)
+                error_asignacion = None
+            elif resolucion.get('accion') == 'crear':
+                gerente = str(resolucion.get('gerente') or '').strip()
+                jefe_site = str(resolucion.get('jefe_site') or '').strip()
+                if not gerente or not jefe_site:
+                    errores.append(f'Fila {indice}: para crear el maestro debe indicar gerente y jefe de site')
+                    continue
+                cliente_nuevo = str(resolucion.get('cliente') or cuenta_original).strip()
+                campania_nueva = str(resolucion.get('campania') or cuenta_original).strip()
+                campos_nuevos = {
+                    'cliente': cliente_nuevo,
+                    'gerente': gerente,
+                    'jefe_site': jefe_site,
+                    'campania': campania_nueva,
+                    'subcampania': subcampania_original,
+                    'tipo_negocio': str(resolucion.get('tipo_negocio') or '').strip() or None,
+                    'es_next_gen': bool(item.get('_es_next_gen_sin_horas')),
+                }
+                asignacion_resuelta, _ = obtener_o_crear_asignacion(campos_nuevos)
+                aplicar_asignacion_a_fila(item, asignacion_resuelta)
+                error_asignacion = None
+            else:
+                _, error_asignacion = resolver_asignacion_importacion(item)
+            if error_asignacion:
+                resoluciones_pendientes.append({
+                    'fila': indice,
+                    'cuenta': cuenta_original,
+                    'subcampania': subcampania_original,
+                    'mensaje': error_asignacion,
+                    'opciones': opciones_maestro_para_fila(item),
+                })
+                continue
+
+            if item.get('_es_next_gen_sin_horas'):
+                item['es_next_gen'] = True
+                item['tipo_jornada'] = 'NextGen'
+
+            error_total = validar_total_fila_migracion(item)
+            if error_total:
+                errores.append(f'Fila {indice}: {error_total}')
+                continue
+            error_variable = validar_variable_fila_migracion(item)
+            if error_variable:
+                errores.append(f'Fila {indice}: {error_variable}')
+                continue
+            if item.get('porcentaje_variable') not in (None, ''):
+                clave_porcentaje = (item['cliente'], item['campania'], item['mes'])
+                porcentaje = parse_numero(item.get('porcentaje_variable'))
+                anterior = porcentajes_por_clave.get(clave_porcentaje)
+                if anterior is not None and abs(anterior - porcentaje) > 0.0001:
+                    errores.append(
+                        f'Fila {indice}: el % Variable {porcentaje} contradice otro valor {anterior} '
+                        f'para {item["cliente"]} / {item["campania"]} / {item["mes"]}'
+                    )
+                    continue
+                porcentajes_por_clave[clave_porcentaje] = porcentaje
+
+            errores_fila = validar_payload_facturacion(item, exigir_configuracion_valor_hora=False)
             if errores_fila:
                 errores.append(f'Fila {indice}: ' + '; '.join(errores_fila))
                 continue
@@ -5842,6 +6614,16 @@ def api_importar_datos():
                 items_validos.append((indice, item, existentes))
             except Exception as exc:
                 errores.append(f'Fila {indice}: {exc}')
+
+        if resoluciones_pendientes:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'requiere_resolucion_maestros': True,
+                'mensaje': 'Hay servicios que necesitan vincularse o darse de alta.',
+                'pendientes': resoluciones_pendientes,
+                'errores': errores[:50],
+            }), 409
 
         if errores:
             db.session.rollback()
@@ -5861,7 +6643,12 @@ def api_importar_datos():
                 principal = existentes[0]
                 antes = snapshot_modelo(principal)
                 try:
-                    actualizar_registro_facturacion(principal, item)
+                    actualizar_registro_facturacion(
+                        principal,
+                        item,
+                        exigir_configuracion_valor_hora=False,
+                        preservar_facturado_manual=True,
+                    )
                     for duplicado in existentes[1:]:
                         db.session.delete(duplicado)
                     despues = snapshot_modelo(principal)
@@ -5874,13 +6661,19 @@ def api_importar_datos():
                         despues=despues,
                         detalle=f'Fila {indice}. Coincidencia exacta por fecha y nombres comerciales.',
                     )
+                    guardar_porcentaje_variable_importado(item)
                     reemplazados += 1
                 except Exception as exc:
                     errores.append(f'Fila {indice}: {exc}')
                 continue
 
             try:
-                crear_registro_facturacion(item)
+                crear_registro_facturacion(
+                    item,
+                    exigir_configuracion_valor_hora=False,
+                    preservar_facturado_manual=True,
+                )
+                guardar_porcentaje_variable_importado(item)
                 creados += 1
             except Exception as exc:
                 errores.append(f'Fila {indice}: {exc}')
@@ -5919,6 +6712,70 @@ def api_importar_datos():
         return jsonify({'success': False, 'errores': [str(exc)]}), 500
 
 
+@main_bp.route('/api/excepciones-calculo', methods=['GET'])
+@edicion_requerida
+def api_excepciones_calculo():
+    excepciones = ExcepcionCalculo.query.order_by(ExcepcionCalculo.cliente, ExcepcionCalculo.campania).all()
+    return jsonify({'success': True, 'excepciones': [item.to_dict() for item in excepciones]})
+
+
+@main_bp.route('/api/excepciones-calculo', methods=['POST'])
+@edicion_requerida
+def api_crear_excepcion_calculo():
+    data = request.get_json() or {}
+    cliente = str(data.get('cliente') or '').strip()
+    campania = str(data.get('campania') or '').strip()
+    tipo = str(data.get('tipo_calculo') or 'facturado_horas_manual').strip()
+    try:
+        ajuste_objetivo = parse_numero(data.get('ajuste_vh_objetivo_pct'))
+        ajuste_alcanzado = parse_numero(data.get('ajuste_vh_alcanzado_pct'))
+    except ValueError:
+        return jsonify({'success': False, 'errores': ['Los porcentajes de ajuste no son válidos']}), 400
+    if not cliente or not campania:
+        return jsonify({'success': False, 'errores': ['Cliente y campaña son obligatorios']}), 400
+    if tipo not in ('facturado_horas_manual', 'facturado_manual_ajustes_vh'):
+        return jsonify({'success': False, 'errores': ['El tipo de cálculo no es válido']}), 400
+    excepcion = ExcepcionCalculo.query.filter(
+        func.lower(ExcepcionCalculo.cliente) == cliente.lower(),
+        func.lower(ExcepcionCalculo.campania) == campania.lower(),
+    ).first()
+    es_nueva = excepcion is None
+    if excepcion:
+        excepcion.tipo_calculo = tipo
+        excepcion.ajuste_vh_objetivo_pct = ajuste_objetivo
+        excepcion.ajuste_vh_alcanzado_pct = ajuste_alcanzado
+        excepcion.activa = True
+    else:
+        excepcion = ExcepcionCalculo(cliente=cliente, campania=campania, tipo_calculo=tipo, ajuste_vh_objetivo_pct=ajuste_objetivo, ajuste_vh_alcanzado_pct=ajuste_alcanzado)
+        db.session.add(excepcion)
+    db.session.flush()
+    registrar_historial(
+        'creacion' if es_nueva else 'edicion',
+        'excepcion_calculo',
+        excepcion.id,
+        f'Excepción de cálculo: {cliente} / {campania}',
+        despues=excepcion.to_dict(),
+    )
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Excepción guardada', 'excepcion': excepcion.to_dict()})
+
+
+@main_bp.route('/api/excepciones-calculo/<int:excepcion_id>', methods=['DELETE'])
+@eliminacion_requerida
+def api_eliminar_excepcion_calculo(excepcion_id):
+    excepcion = db.session.get(ExcepcionCalculo, excepcion_id)
+    if not excepcion:
+        return jsonify({'success': False, 'errores': ['La excepción no existe']}), 404
+    antes = excepcion.to_dict()
+    db.session.delete(excepcion)
+    registrar_historial(
+        'eliminacion', 'excepcion_calculo', excepcion_id,
+        f'Excepción eliminada: {antes["cliente"]} / {antes["campania"]}', antes=antes,
+    )
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Excepción eliminada'})
+
+
 @main_bp.route('/api/asignaciones', methods=['GET'])
 @edicion_requerida
 def api_asignaciones():
@@ -5935,6 +6792,48 @@ def api_asignaciones():
     return jsonify({
         'success': True,
         'asignaciones': [asignacion.to_dict() for asignacion in asignaciones]
+    })
+
+
+@main_bp.route('/api/campanias', methods=['GET'])
+@edicion_requerida
+def api_campanias():
+    """Lista el catálogo canónico y su ID estable por cliente + campaña."""
+    solo_activas = request.args.get('activas', '1') != '0'
+    query = Campania.query
+    if solo_activas:
+        query = query.filter_by(activa=True)
+    campanias = query.order_by(Campania.cliente, Campania.nombre).all()
+    return jsonify({
+        'success': True,
+        'campanias': [campania.to_dict() for campania in campanias],
+    })
+
+
+@main_bp.route('/api/campanias/<int:campania_id>/valor-hora', methods=['PATCH'])
+@edicion_requerida
+def api_configurar_valor_hora_campania(campania_id):
+    campania = db.session.get(Campania, campania_id)
+    if not campania:
+        return jsonify({'success': False, 'errores': ['La campaña no existe']}), 404
+    data = request.get_json() or {}
+    if not isinstance(data.get('valor_hora_variable'), bool):
+        return jsonify({'success': False, 'errores': ['Debe indicar Sí o No']}), 400
+    antes = campania.to_dict()
+    campania.valor_hora_variable = data['valor_hora_variable']
+    db.session.flush()
+    despues = campania.to_dict()
+    registrar_historial(
+        'edicion', 'campania', campania.id,
+        f'Configuración de valor hora: {campania.cliente} / {campania.nombre}',
+        antes=antes, despues=despues,
+        detalle='Variable' if campania.valor_hora_variable else 'Repite valor hora objetivo',
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': 'Configuración de valor hora guardada',
+        'campania': campania.to_dict(),
     })
 
 
@@ -5963,6 +6862,8 @@ def api_crear_asignacion_catalogos():
 def crear_asignacion_desde_request():
     try:
         data = request.get_json(silent=True) or request.form.to_dict() or {}
+        es_next_gen = str(data.get('es_next_gen') or '').lower() in ('1', 'true', 'on', 'si', 'sí')
+        nombre_next_gen = str(data.get('nombre_next_gen') or data.get('cliente') or '').strip()
         campos = {
             'cliente': str(data.get('cliente') or '').strip(),
             'gerente': str(data.get('gerente') or '').strip(),
@@ -5970,18 +6871,25 @@ def crear_asignacion_desde_request():
             'campania': str(data.get('campania') or '').strip(),
             'subcampania': str(data.get('subcampania') or '').strip(),
             'tipo_negocio': str(data.get('tipo_negocio') or '').strip() or None,
+            'es_next_gen': es_next_gen,
         }
-        errores = [f'{campo} es obligatorio' for campo, valor in campos.items() if campo != 'tipo_negocio' and not valor]
+        if es_next_gen:
+            campos.update(cliente=nombre_next_gen, gerente='NextGen', jefe_site='NextGen',
+                          campania=nombre_next_gen, subcampania=nombre_next_gen, tipo_negocio='NextGen')
+        errores = [f'{campo} es obligatorio' for campo, valor in campos.items() if campo not in ('tipo_negocio', 'es_next_gen') and not valor]
         if errores:
             return jsonify({'success': False, 'errores': errores}), 400
 
         existente = AsignacionComercial.query.filter_by(**campos).first()
         if existente:
             existente.activa = True
+            if not existente.campania_id:
+                existente.campania_catalogo = obtener_o_crear_campania(campos['cliente'], campos['campania'])
             db.session.commit()
             return jsonify({'success': True, 'mensaje': 'La asociacion ya existia y quedo activa', 'asignacion': existente.to_dict()})
 
-        asignacion = AsignacionComercial(**campos)
+        campania = obtener_o_crear_campania(campos['cliente'], campos['campania'])
+        asignacion = AsignacionComercial(**campos, campania_catalogo=campania)
         db.session.add(asignacion)
         db.session.flush()
         try:
@@ -6010,15 +6918,22 @@ def api_actualizar_asignacion(asignacion_id):
         return jsonify({'success': False, 'errores': ['La confirmacion no es valida']}), 403
 
     asignacion = AsignacionComercial.query.get_or_404(asignacion_id)
+    if data.get('es_next_gen'):
+        nombre_next_gen = str(data.get('nombre_next_gen') or data.get('cliente') or asignacion.cliente).strip()
+        data.update(cliente=nombre_next_gen, gerente='NextGen', jefe_site='NextGen',
+                    campania=nombre_next_gen, subcampania=nombre_next_gen, tipo_negocio='NextGen', es_next_gen=True)
     antes = snapshot_modelo(asignacion)
     valores_anteriores = filtros_asignacion(asignacion)
     nuevos_valores = {}
-    campos_asociacion = ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio']
+    campos_asociacion = ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio', 'es_next_gen']
     vigencia_desde_raw = data.get('vigencia_desde')
     vigencia_desde = mes_valido(vigencia_desde_raw) if vigencia_desde_raw else None
 
     for campo in campos_asociacion:
         if campo in data:
+            if campo == 'es_next_gen':
+                nuevos_valores[campo] = bool(data.get(campo))
+                continue
             valor = str(data.get(campo) or '').strip()
             if campo == 'tipo_negocio':
                 nuevos_valores[campo] = valor or None
@@ -6081,6 +6996,9 @@ def api_actualizar_asignacion(asignacion_id):
                 setattr(registro, campo, valor)
         for campo, valor in valores_finales.items():
             setattr(asignacion, campo, valor)
+        asignacion.campania_catalogo = obtener_o_crear_campania(
+            valores_finales['cliente'], valores_finales['campania']
+        )
     else:
         registros_asociados = []
 
@@ -6256,7 +7174,9 @@ def api_seed():
                 subcampania=subcampania
             ).first()
             if not existe_asignacion:
+                campania_catalogo = obtener_o_crear_campania(d['cliente'], campania)
                 db.session.add(AsignacionComercial(
+                    campania_catalogo=campania_catalogo,
                     cliente=d['cliente'],
                     gerente=gerentes_por_cliente.get(d['cliente'], 'Sin asignar'),
                     jefe_site=jefes_site_por_cliente.get(d['cliente'], 'Sin asignar'),

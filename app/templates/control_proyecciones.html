@@ -11,7 +11,7 @@
     </div>
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
         <select id="yearFiltro" onchange="cargarControl()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
-            <option value="2026">2026</option>
+            {% for year in anios_disponibles %}<option value="{{ year }}"{% if year == anio_actual %} selected{% endif %}>{{ year }}</option>{% endfor %}
             <option value="2027">2027</option>
             <option value="2028">2028</option>
         </select>
@@ -204,7 +204,7 @@ function tabClass(activa) {
 }
 
 function formatoNumero(valor) {
-    return Number(valor || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+    return Number(valor || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function normalizar(valor) {

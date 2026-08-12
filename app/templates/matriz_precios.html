@@ -10,7 +10,7 @@
     </div>
     <div class="flex flex-col gap-2 sm:flex-row">
         <select id="yearFiltro" onchange="cargarPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
-            <option value="2026">2026</option>
+            {% for year in anios_disponibles %}<option value="{{ year }}"{% if year == anio_actual %} selected{% endif %}>{{ year }}</option>{% endfor %}
             <option value="2027">2027</option>
             <option value="2028">2028</option>
         </select>
@@ -75,7 +75,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Anio *</label>
-                    <input id="year" required type="number" min="2020" max="2100" value="2026" onchange="sincronizarMesesFormulario(); actualizarPrecioPrevio()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input id="year" required type="number" min="2020" max="2100" value="{{ anio_actual }}" onchange="sincronizarMesesFormulario(); actualizarPrecioPrevio()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Mes *</label>
@@ -540,7 +540,7 @@ function formatCurrency(value) {
 }
 
 function formatPercent(value) {
-    return `${Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })}%`;
+    return `${Number(value || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
 
 function normalizar(value) {

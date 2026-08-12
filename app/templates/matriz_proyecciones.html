@@ -10,7 +10,7 @@
     </div>
     <div class="flex flex-col gap-2 sm:flex-row">
         <select id="yearFiltro" onchange="cargarProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
-            <option value="2026">2026</option>
+            {% for year in anios_disponibles %}<option value="{{ year }}"{% if year == anio_actual %} selected{% endif %}>{{ year }}</option>{% endfor %}
             <option value="2027">2027</option>
             <option value="2028">2028</option>
         </select>
@@ -55,6 +55,38 @@
         <table class="w-full min-w-[860px] border-collapse text-sm">
             <thead><tr id="theadDistribucionPersonal" class="bg-indigo-50 text-indigo-950"></tr></thead>
             <tbody id="tbodyDistribucionPersonal"></tbody>
+        </table>
+    </div>
+</section>
+
+<section id="panelEditorPLP" class="mb-5 hidden rounded-lg border border-amber-200 bg-white shadow">
+    <div class="flex flex-col gap-3 border-b border-amber-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h2 class="font-semibold text-amber-950">Edición rápida de horas PLP</h2>
+            <p class="mt-1 text-xs text-amber-700">Editá varias campañas como en una planilla y guardá todos los cambios juntos.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <label class="flex h-10 items-center gap-2 rounded bg-amber-50 px-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200">
+                <span>Mes</span>
+                <select id="filtroMesEditorPLP" onchange="renderEditorPLP(); renderResumenPLP()" class="h-8 min-w-32 rounded border border-amber-300 bg-white px-2 font-normal"></select>
+            </label>
+            <button type="button" onclick="agregarFilaEditorPLP()" class="inline-flex h-10 items-center gap-2 rounded bg-white px-4 text-sm font-semibold text-amber-900 ring-1 ring-amber-300 hover:bg-amber-50"><i class="fas fa-plus"></i> Agregar fila</button>
+            <button type="button" onclick="guardarEditorPLP()" class="inline-flex h-10 items-center gap-2 rounded bg-amber-600 px-4 text-sm font-semibold text-white hover:bg-amber-700"><i class="fas fa-save"></i> Guardar cambios</button>
+        </div>
+    </div>
+    <div class="overflow-x-auto p-4">
+        <table class="w-full min-w-[980px] border-collapse text-sm">
+            <thead class="bg-amber-50 text-amber-950"><tr>
+                <th class="border border-amber-100 px-3 py-2 text-left">Clasificación PLP</th>
+                <th class="border border-amber-100 px-3 py-2 text-left">Mes</th>
+                <th class="border border-amber-100 px-3 py-2 text-left">Campaña</th>
+                <th class="border border-amber-100 px-3 py-2 text-right">Horas</th>
+                <th class="border border-amber-100 px-3 py-2 text-center">Carga semanal</th>
+                <th class="border border-amber-100 px-3 py-2 text-right">Horas jornada</th>
+                <th class="border border-amber-100 px-3 py-2 text-right">% cumplimiento</th>
+                <th class="border border-amber-100 px-3 py-2 text-center">Acción</th>
+            </tr></thead>
+            <tbody id="tbodyEditorPLP"></tbody>
         </table>
     </div>
 </section>
@@ -161,7 +193,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Año *</label>
-                    <input id="year" required type="number" min="2020" max="2100" value="2026" onchange="sincronizarMesesFormulario(); actualizarProyectadas()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input id="year" required type="number" min="2020" max="2100" value="{{ anio_actual }}" onchange="sincronizarMesesFormulario(); actualizarProyectadas()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Mes *</label>
@@ -284,6 +316,9 @@ let serviciosPersonal = [];
 let distribucionesPersonal = [];
 
 document.addEventListener('DOMContentLoaded', () => {
+    const resumen = document.getElementById('panelResumenPLP');
+    const editor = document.getElementById('panelEditorPLP');
+    editor.parentNode.insertBefore(resumen, editor);
     document.getElementById('formProyeccion').addEventListener('submit', guardarProyeccion);
     cargarProyecciones();
 });
@@ -450,6 +485,7 @@ function cambiarPestania(pestania) {
     pestaniaActual = pestania;
     document.getElementById('panelDistribucionPersonal').classList.toggle('hidden', pestania !== 'personal');
     document.getElementById('panelResumenPLP').classList.toggle('hidden', pestania !== 'personal');
+    document.getElementById('panelEditorPLP').classList.toggle('hidden', pestania !== 'personal');
     document.getElementById('bloqueCargaPLP').classList.toggle('hidden', pestania !== 'personal');
     document.getElementById('configuracionJornadas').classList.toggle('hidden', pestania === 'personal');
     document.getElementById('ajustesManualesProyeccion').classList.toggle('hidden', pestania === 'personal');
@@ -464,36 +500,135 @@ function cambiarPestania(pestania) {
     document.getElementById('horasPLP').required = pestania === 'personal';
     actualizarProyectadas();
     renderProyecciones();
+    renderEditorPLP();
+}
+
+function opcionesEditorPLP(valores, actual) {
+    return valores.map(item => `<option value="${escapeHtml(item.value)}" ${item.value === actual ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('');
+}
+
+function filaEditorPLP(item = {}) {
+    const tipos = serviciosPersonal.length ? serviciosPersonal : ['Personal', 'Personal CX', 'Personal Soporte', 'Personal SMB'];
+    const cargas = cargasSemanales.map(valor => ({ value: valor, label: valor }));
+    return `<tr data-plp-id="${item.id || ''}" class="hover:bg-amber-50/40">
+        <td class="border border-slate-200 p-1"><select data-plp="tipo_plp" onchange="marcarFilaPLP(this)" class="h-9 w-full min-w-40 rounded border border-slate-300 bg-white px-2">${opcionesEditorPLP(tipos.map(valor => ({ value: valor, label: valor })), item.tipo_plp || 'Personal')}</select></td>
+        <td class="border border-slate-200 p-1"><select data-plp="mes" onchange="marcarFilaPLP(this)" class="h-9 w-full min-w-28 rounded border border-slate-300 bg-white px-2">${opcionesEditorPLP(meses, item.mes || meses[0]?.value || '')}</select></td>
+        <td class="border border-slate-200 p-1"><input data-plp="campania" oninput="marcarFilaPLP(this)" value="${escapeHtml(item.campania || '')}" class="h-9 w-full min-w-64 rounded border border-slate-300 px-2" placeholder="Nombre de campaña"></td>
+        <td class="border border-slate-200 p-1"><input data-plp="horas" oninput="marcarFilaPLP(this)" type="number" min="0" step="0.01" value="${Number(item.horas_requeridas || 0)}" class="h-9 w-28 rounded border border-slate-300 px-2 text-right font-semibold tabular-nums"></td>
+        <td class="border border-slate-200 p-1"><select data-plp="carga_semanal" onchange="marcarFilaPLP(this)" class="h-9 w-full min-w-28 rounded border border-slate-300 bg-white px-2">${opcionesEditorPLP(cargas, item.carga_semanal || 'L a V')}</select></td>
+        <td class="border border-slate-200 p-1"><input data-plp="carga_horaria" oninput="marcarFilaPLP(this)" type="number" min="0.01" step="0.01" value="${Number(item.carga_horaria || 6)}" class="h-9 w-24 rounded border border-slate-300 px-2 text-right"></td>
+        <td class="border border-slate-200 p-1"><input data-plp="cumplimiento" oninput="marcarFilaPLP(this)" type="number" min="0" step="0.01" value="${Number(item.porcentaje_cumplimiento ?? 100)}" class="h-9 w-24 rounded border border-slate-300 px-2 text-right"></td>
+        <td class="border border-slate-200 p-1 text-center"><button type="button" onclick="alternarEliminarFilaPLP(this)" class="rounded bg-rose-600 px-2 py-1 text-xs font-semibold text-white hover:bg-rose-700"><i class="fas fa-trash"></i> Eliminar</button></td>
+    </tr>`;
+}
+
+function renderEditorPLP() {
+    const tbody = document.getElementById('tbodyEditorPLP');
+    if (!tbody) return;
+    const filtro = document.getElementById('filtroMesEditorPLP');
+    const mesActual = filtro.value;
+    filtro.innerHTML = '<option value="">Todos los meses</option>' + meses.map(mes => `<option value="${escapeHtml(mes.value)}" ${mes.value === mesActual ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`).join('');
+    const mesSeleccionado = filtro.value;
+    const filas = proyecciones.filter(item => item.tipo_plp && (!mesSeleccionado || item.mes === mesSeleccionado)).sort((a, b) => `${a.mes}|${a.tipo_plp}|${a.campania}`.localeCompare(`${b.mes}|${b.tipo_plp}|${b.campania}`));
+    tbody.innerHTML = filas.length
+        ? filas.map(filaEditorPLP).join('')
+        : '<tr><td colspan="8" class="border border-slate-200 px-4 py-8 text-center text-slate-500">No hay campañas PLP para el mes seleccionado. Usá “Agregar fila” para crear una.</td></tr>';
+}
+
+function marcarFilaPLP(control) {
+    control.closest('tr').dataset.plpDirty = '1';
+    control.classList.add('border-amber-500', 'bg-amber-50');
+}
+
+function alternarEliminarFilaPLP(button) {
+    const fila = button.closest('tr');
+    if (!fila.dataset.plpId) {
+        fila.remove();
+        if (!document.querySelector('#tbodyEditorPLP tr')) renderEditorPLP();
+        return;
+    }
+    const eliminar = fila.dataset.plpDeleted !== '1';
+    fila.dataset.plpDeleted = eliminar ? '1' : '0';
+    fila.dataset.plpDirty = '1';
+    fila.classList.toggle('bg-rose-50', eliminar);
+    fila.classList.toggle('opacity-60', eliminar);
+    fila.querySelectorAll('[data-plp]').forEach(control => { control.disabled = eliminar; });
+    button.innerHTML = eliminar ? '<i class="fas fa-undo"></i> Restaurar' : '<i class="fas fa-trash"></i> Eliminar';
+    button.className = eliminar
+        ? 'rounded bg-slate-600 px-2 py-1 text-xs font-semibold text-white hover:bg-slate-700'
+        : 'rounded bg-rose-600 px-2 py-1 text-xs font-semibold text-white hover:bg-rose-700';
+}
+
+function agregarFilaEditorPLP() {
+    const mesSeleccionado = document.getElementById('filtroMesEditorPLP').value;
+    const tbody = document.getElementById('tbodyEditorPLP');
+    if (!tbody.querySelector('tr[data-plp-id]')) tbody.innerHTML = '';
+    tbody.insertAdjacentHTML('beforeend', filaEditorPLP({ mes: mesSeleccionado || meses[0]?.value }));
+    const fila = tbody.lastElementChild;
+    fila.dataset.plpDirty = '1';
+    fila.querySelector('[data-plp="campania"]').focus();
+}
+
+async function guardarEditorPLP() {
+    const filas = [...document.querySelectorAll('#tbodyEditorPLP tr[data-plp-dirty="1"]')].map(fila => ({
+        id: fila.dataset.plpId || null,
+        eliminar: fila.dataset.plpDeleted === '1',
+        tipo_plp: fila.querySelector('[data-plp="tipo_plp"]').value,
+        mes: fila.querySelector('[data-plp="mes"]').value,
+        campania: fila.querySelector('[data-plp="campania"]').value.trim(),
+        horas: fila.querySelector('[data-plp="horas"]').value,
+        carga_semanal: fila.querySelector('[data-plp="carga_semanal"]').value,
+        carga_horaria: fila.querySelector('[data-plp="carga_horaria"]').value,
+        porcentaje_cumplimiento: fila.querySelector('[data-plp="cumplimiento"]').value,
+    }));
+    if (!filas.length) return mostrarMensaje('No hay cambios PLP para guardar', 'info');
+    const response = await fetch('/api/proyecciones-plp/edicion-masiva', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ year: document.getElementById('yearFiltro').value, filas }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        const mensaje = (data.errores || ['No se pudieron guardar los cambios PLP']).join(' | ');
+        mostrarMensaje(mensaje, 'error');
+        return alert(mensaje);
+    }
+    mostrarMensaje(data.mensaje, 'success');
+    alert(`Guardado confirmado\n\n${data.mensaje}`);
+    await cargarProyecciones();
 }
 
 function renderResumenPLP() {
     const tipos = ['Personal CX', 'Personal', 'Personal Soporte', 'Personal SMB'];
+    const mesFiltrado = document.getElementById('filtroMesEditorPLP')?.value || '';
     const acumulados = Object.fromEntries(meses.map(mes => [mes.value, Object.fromEntries(tipos.map(tipo => [tipo, 0]))]));
     proyecciones.filter(item => item.tipo_plp && acumulados[item.mes]).forEach(item => {
         // Este cuadro resume la carga PLP al 100%; el cumplimiento se controla
         // por separado y solo afecta las horas proyectadas de cada registro.
         if (tipos.includes(item.tipo_plp)) acumulados[item.mes][item.tipo_plp] += Number(item.horas_requeridas || 0);
     });
-    // Excepción operativa PLP: Soporte de febrero 2026 incorpora 1.800 horas.
-    const filas = meses.map(mes => {
+    // Toda hora adicional debe existir como fila PLP visible; el resumen no
+    // incorpora excepciones ocultas ni importes hardcodeados.
+    const filas = meses.filter(mes => !mesFiltrado || mes.value === mesFiltrado).map(mes => {
         const valores = acumulados[mes.value] || {};
-        const cx = Math.round(Number(valores['Personal CX'] || 0));
-        const personal = Math.round(Number(valores.Personal || 0));
-        const soporte = Math.round(Number(valores['Personal Soporte'] || 0));
-        const smb = Math.round(Number(valores['Personal SMB'] || 0));
+        const cx = Number(valores['Personal CX'] || 0);
+        const personal = Number(valores.Personal || 0);
+        const soporte = Number(valores['Personal Soporte'] || 0);
+        const smb = Number(valores['Personal SMB'] || 0);
         const totalPersonal = cx + personal + soporte;
         return { mes, cx, personal, soporte, totalPersonal, porcentaje: totalPersonal ? soporte / totalPersonal * 100 : 0, smb, total: totalPersonal + smb };
     });
     document.getElementById('tbodyResumenPLP').innerHTML = filas.map(fila => `
         <tr class="hover:bg-emerald-50/50">
             <td class="border border-slate-200 px-3 py-2 font-semibold text-slate-700">${escapeHtml(fila.mes.label)}</td>
-            <td class="border border-slate-200 bg-emerald-50 px-3 py-2 text-right tabular-nums">${formatNumber(fila.cx)}</td>
-            <td class="border border-slate-200 bg-emerald-50 px-3 py-2 text-right tabular-nums">${formatNumber(fila.personal)}</td>
-            <td class="border border-slate-200 bg-emerald-50 px-3 py-2 text-right tabular-nums">${formatNumber(fila.soporte)}</td>
-            <td class="border border-slate-200 px-3 py-2 text-right font-semibold tabular-nums">${formatNumber(fila.totalPersonal)}</td>
+            <td class="border border-slate-200 bg-emerald-50 px-3 py-2 text-right tabular-nums">${formatHorasResumen(fila.cx)}</td>
+            <td class="border border-slate-200 bg-emerald-50 px-3 py-2 text-right tabular-nums">${formatHorasResumen(fila.personal)}</td>
+            <td class="border border-slate-200 bg-emerald-50 px-3 py-2 text-right tabular-nums">${formatHorasResumen(fila.soporte)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right font-semibold tabular-nums">${formatHorasResumen(fila.totalPersonal)}</td>
             <td class="border border-slate-200 px-3 py-2 text-right tabular-nums">${formatPercent(fila.porcentaje)}</td>
-            <td class="border border-slate-200 px-3 py-2 text-right tabular-nums">${formatNumber(fila.smb)}</td>
-            <td class="border border-slate-200 bg-blue-50 px-3 py-2 text-right font-bold text-blue-950 tabular-nums">${formatNumber(fila.total)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right tabular-nums">${formatHorasResumen(fila.smb)}</td>
+            <td class="border border-slate-200 bg-blue-50 px-3 py-2 text-right font-bold text-blue-950 tabular-nums">${formatHorasResumen(fila.total)}</td>
         </tr>
     `).join('');
     const total = campo => filas.reduce((suma, fila) => suma + fila[campo], 0);
@@ -502,13 +637,13 @@ function renderResumenPLP() {
     document.getElementById('tfootResumenPLP').innerHTML = `
         <tr class="bg-slate-100 font-bold text-slate-900">
             <td class="border border-slate-200 px-3 py-2">TOTAL</td>
-            <td class="border border-slate-200 px-3 py-2 text-right">${formatNumber(total('cx'))}</td>
-            <td class="border border-slate-200 px-3 py-2 text-right">${formatNumber(total('personal'))}</td>
-            <td class="border border-slate-200 px-3 py-2 text-right">${formatNumber(totalSoporte)}</td>
-            <td class="border border-slate-200 px-3 py-2 text-right">${formatNumber(totalPersonal)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right">${formatHorasResumen(total('cx'))}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right">${formatHorasResumen(total('personal'))}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right">${formatHorasResumen(totalSoporte)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right">${formatHorasResumen(totalPersonal)}</td>
             <td class="border border-slate-200 px-3 py-2 text-right">${formatPercent(totalPersonal ? totalSoporte / totalPersonal * 100 : 0)}</td>
-            <td class="border border-slate-200 px-3 py-2 text-right">${formatNumber(total('smb'))}</td>
-            <td class="border border-slate-200 bg-blue-100 px-3 py-2 text-right text-blue-950">${formatNumber(total('total'))}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right">${formatHorasResumen(total('smb'))}</td>
+            <td class="border border-slate-200 bg-blue-100 px-3 py-2 text-right text-blue-950">${formatHorasResumen(total('total'))}</td>
         </tr>`;
 }
 
@@ -578,7 +713,8 @@ function renderDistribucionPersonal() {
             ${serviciosPersonal.map(servicio => {
                 const fila = distribucionesPersonal.find(item => item.servicio === servicio && item.mes === mes.value);
                 const valor = fila ? fila.porcentaje_diurno : 100;
-                return `<td class="border border-slate-200 p-2"><div class="flex items-center justify-center gap-2"><input data-personal-servicio="${escapeHtml(servicio)}" data-personal-mes="${escapeHtml(mes.value)}" type="number" min="0" max="100" step="0.01" value="${valor}" oninput="actualizarNocturnoInput(this)" class="h-9 w-20 rounded border border-slate-300 px-2 text-right"><span class="text-xs text-slate-500">${formatPercent(100 - Number(valor))} noct.</span></div></td>`;
+                const valorVisible = Number(valor).toFixed(2);
+                return `<td class="border border-slate-200 p-2"><div class="flex items-center justify-center gap-2"><input data-personal-servicio="${escapeHtml(servicio)}" data-personal-mes="${escapeHtml(mes.value)}" data-personal-original="${valor}" data-personal-dirty="0" type="number" min="0" max="100" step="0.01" value="${valorVisible}" oninput="actualizarNocturnoInput(this)" class="h-9 w-20 rounded border border-slate-300 px-2 text-right"><span class="text-xs text-slate-500">${formatPercent2(100 - Number(valorVisible))} noct.</span></div></td>`;
             }).join('')}
         </tr>
     `).join('');
@@ -586,14 +722,15 @@ function renderDistribucionPersonal() {
 
 function actualizarNocturnoInput(input) {
     const diurno = Math.max(0, Math.min(100, numero(input.value)));
-    input.nextElementSibling.textContent = `${formatPercent(100 - diurno)} noct.`;
+    input.dataset.personalDirty = '1';
+    input.nextElementSibling.textContent = `${formatPercent2(100 - diurno)} noct.`;
 }
 
 async function guardarDistribucionPersonal() {
     const distribuciones = [...document.querySelectorAll('[data-personal-servicio]')].map(input => ({
         servicio: input.dataset.personalServicio,
         mes: input.dataset.personalMes,
-        porcentaje_diurno: input.value,
+        porcentaje_diurno: input.dataset.personalDirty === '1' ? input.value : input.dataset.personalOriginal,
     }));
     const response = await fetch('/api/personal-distribucion', {
         method: 'POST',
@@ -1057,8 +1194,22 @@ function formatNumber(value) {
     return Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
 }
 
+function formatHorasResumen(value) {
+    return Number(value || 0).toLocaleString('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+}
+
 function formatPercent(value) {
     return `${Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })}%`;
+}
+
+function formatPercent2(value) {
+    return `${Number(value || 0).toLocaleString('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })}%`;
 }
 
 function jornadasDeItem(item) {

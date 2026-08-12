@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Filters from '@/components/Filters';
-import { formatMoneyFull, formatMonth, formatNumber, formatPercent, getJson } from '@/lib/api';
+import { flaskUrl, formatMoneyFull, formatMonth, formatNumber, formatPercent, getJson } from '@/lib/api';
 
 export default function ControlPage() {
   const [filters, setFilters] = useState({});
@@ -26,7 +26,7 @@ export default function ControlPage() {
           <h2>Control de Facturacion</h2>
           <p>Lectura operativa en Next.js. La edicion completa sigue disponible en Flask durante la migracion.</p>
         </div>
-        <a className="button" href="http://127.0.0.1:8009/control">Editar en Flask</a>
+        <a className="button" href={flaskUrl('/control')}>Editar en Flask</a>
       </header>
 
       <Filters value={filters} onChange={setFilters} compact />

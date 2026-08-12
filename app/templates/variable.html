@@ -11,7 +11,7 @@
     </div>
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
         <select id="yearFiltro" onchange="cargarVariable()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
-            <option value="2026">2026</option>
+            {% for year in anios_disponibles %}<option value="{{ year }}"{% if year == anio_actual %} selected{% endif %}>{{ year }}</option>{% endfor %}
             <option value="2027">2027</option>
             <option value="2028">2028</option>
         </select>
@@ -69,6 +69,7 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div><h2 class="font-semibold text-gray-950">Tarifación mensual</h2><p class="text-xs text-slate-500">Los importes positivos suman y los negativos restan a Facturación horas.</p></div>
         <div class="flex gap-2">
+            <button id="guardarGrillaTarifacion" type="button" onclick="guardarGrillaTarifacion()" disabled class="inline-flex h-9 items-center gap-2 rounded-md bg-slate-300 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed"><i class="fas fa-floppy-disk"></i> Guardar cambios</button>
             <button type="button" onclick="descargarTemplateTarifaciones()" class="inline-flex h-9 items-center gap-2 rounded-md border border-amber-600 px-4 text-sm font-semibold text-amber-700"><i class="fas fa-download"></i> Descargar template</button>
             <input id="archivoTarifaciones" type="file" accept=".xlsx,.csv" class="hidden" onchange="importarTarifaciones()">
             <button type="button" onclick="document.getElementById('archivoTarifaciones').click()" class="inline-flex h-9 items-center gap-2 rounded-md bg-amber-600 px-4 text-sm font-semibold text-white"><i class="fas fa-file-import"></i> Importar tarifación</button>
@@ -138,6 +139,7 @@ let filas = [];
 let campanias = [];
 let modoVista = 'porcentajes';
 let filasTarifacion = [];
+const cambiosTarifacion = new Map();
 let dataNextGen = {dolares: {}, filas: [], total_usd: {meses: {}, total: 0}, total_pesos: {meses: {}, total: 0}};
 
 document.addEventListener('DOMContentLoaded', cargarVariable);
@@ -319,6 +321,40 @@ async function guardarTarifacion(event) {
     if (response.ok && data.success) await cargarVariable();
 }
 
+function editarTarifacion(raw, mes, valor) {
+    const item = JSON.parse(decodeURIComponent(raw));
+    const clave = `${item.cliente}\u0000${item.campania}\u0000${item.concepto}\u0000${mes}`;
+    cambiosTarifacion.set(clave, {...item, mes, monto: valor});
+    const boton = document.getElementById('guardarGrillaTarifacion');
+    boton.disabled = false;
+    boton.className = 'inline-flex h-9 items-center gap-2 rounded-md bg-amber-600 px-4 text-sm font-semibold text-white hover:bg-amber-700';
+}
+
+async function guardarGrillaTarifacion() {
+    if (!cambiosTarifacion.size) return;
+    const boton = document.getElementById('guardarGrillaTarifacion');
+    boton.disabled = true;
+    const response = await fetch('/api/tarifaciones/edicion-masiva', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify({
+            year: document.getElementById('yearFiltro').value,
+            cambios: [...cambiosTarifacion.values()],
+        }),
+    });
+    const data = await response.json();
+    mostrarMensaje(data.mensaje || (data.errores || []).join(' | '), response.ok && data.success);
+    if (response.ok && data.success) {
+        cambiosTarifacion.clear();
+        await cargarVariable();
+    } else {
+        boton.disabled = false;
+    }
+}
+
 function popularFiltros() {
     const clienteActual = document.getElementById('filtroCliente').value;
     const campaniaActual = document.getElementById('filtroCampania').value;
@@ -454,13 +490,16 @@ function renderTarifacion() {
         <th class="border-b border-r border-slate-200 px-3 py-3 text-left">Concepto</th>
         <th class="border-b border-r border-amber-200 bg-amber-100 px-3 py-3 text-center">Total tarifación</th>
         ${meses.map(mes => `<th class="border-b border-r border-slate-200 px-3 py-3 text-center">${escapeHtml(mes.label)}</th>`).join('')}`;
-    const rows = visibles.map(item => `<tr class="hover:bg-amber-50/40">
+    const rows = visibles.map(item => {
+        const raw = encodeURIComponent(JSON.stringify({site: item.site, cliente: item.cliente, campania: item.campania, concepto: item.concepto}));
+        return `<tr class="hover:bg-amber-50/40">
         <td class="border-b border-r border-slate-200 px-3 py-3">${escapeHtml(item.site)}</td>
         <td class="border-b border-r border-slate-200 px-3 py-3"><div>${escapeHtml(item.cliente)}</div><div class="font-semibold">${escapeHtml(item.campania)}</div></td>
         <td class="border-b border-r border-slate-200 px-3 py-3">${escapeHtml(item.concepto)}</td>
         <td class="border-b border-r border-amber-200 bg-amber-50 px-3 py-3 text-center font-semibold">${formatoMoneda(item.total_monto)}</td>
-        ${meses.map(mes => `<td class="border-b border-r border-slate-200 px-3 py-2 text-center font-semibold ${(item.montos || {})[mes.value] < 0 ? 'text-red-600' : 'text-emerald-700'}">${formatoMoneda((item.montos || {})[mes.value] || 0)}</td>`).join('')}
-    </tr>`).join('');
+        ${meses.map(mes => `<td class="border-b border-r border-slate-200 px-2 py-2"><input type="number" step="0.01" value="${Number((item.montos || {})[mes.value] || 0)}" onclick="this.select()" onchange="editarTarifacion('${raw}', '${mes.value}', this.value)" class="h-9 w-full rounded border border-amber-200 bg-white px-2 text-right text-xs tabular-nums focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100"></td>`).join('')}
+    </tr>`;
+    }).join('');
     document.getElementById('tbodyVariable').innerHTML = rows || `<tr><td colspan="${meses.length + 4}" class="px-4 py-8 text-center text-slate-500">Sin tarifaciones para mostrar.</td></tr>`;
     document.getElementById('contadorVariable').textContent = `${visibles.length} campaña(s); estos montos se integran en Facturación horas`;
 }
@@ -504,11 +543,14 @@ function mostrarMensaje(texto, ok) {
 }
 
 function formatoMoneda(valor) {
-    return '$ ' + Math.round(Number(valor || 0)).toLocaleString('es-AR');
+    return '$ ' + Number(valor || 0).toLocaleString('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
 }
 
 function formatoPorcentaje(valor) {
-    return `${Number(valor || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })}%`;
+    return `${Number(valor || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
 
 function normalizar(valor) {

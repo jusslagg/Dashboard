@@ -10,7 +10,7 @@
     </div>
     <div class="flex flex-col gap-2 sm:flex-row">
         <select id="yearFiltro" onchange="cargarFeriados()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
-            <option value="2026">2026</option>
+            {% for year in anios_disponibles %}<option value="{{ year }}"{% if year == anio_actual %} selected{% endif %}>{{ year }}</option>{% endfor %}
             <option value="2027">2027</option>
             <option value="2028">2028</option>
         </select>

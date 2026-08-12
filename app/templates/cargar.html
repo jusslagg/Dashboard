@@ -8,6 +8,17 @@
     <p class="text-gray-600 mt-2">Ingrese los datos del registro</p>
 </div>
 
+<div class="mb-5 inline-flex rounded-lg bg-slate-200 p-1">
+    <button id="tabCargaDatos" type="button" onclick="cambiarPestaniaCarga('carga')" class="rounded-md bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm">
+        <i class="fas fa-file-invoice mr-2"></i>Cargar datos
+    </button>
+    <button id="tabExcepciones" type="button" onclick="cambiarPestaniaCarga('excepciones')" class="rounded-md px-4 py-2 text-sm font-semibold text-slate-600">
+        <i class="fas fa-calculator mr-2"></i>Excepciones
+    </button>
+</div>
+
+<div id="panelCargaDatos">
+
 <div class="bg-white rounded-lg shadow p-4 mb-5">
     <div class="grid grid-cols-1 xl:grid-cols-[minmax(280px,1fr)_auto_minmax(420px,1.4fr)] gap-4 xl:items-center">
         <div>
@@ -31,11 +42,51 @@
         </form>
     </div>
     <div id="mensajeImportar" class="mt-4 hidden"></div>
+    <div id="panelResolucionMaestros" class="hidden fixed inset-3 z-[100] overflow-auto rounded-xl border border-amber-300 bg-amber-50 p-6 shadow-2xl ring-[9999px] ring-slate-950/60 sm:inset-6 lg:inset-10">
+        <div class="mb-3">
+            <h3 class="text-2xl font-bold text-amber-950">Resolver servicios individualmente</h3>
+            <p class="mt-1 text-sm text-amber-800">Elegí para cada fila si se vincula con un maestro existente o si se crea como un servicio independiente.</p>
+        </div>
+        <div class="max-h-[calc(100vh-230px)] overflow-auto rounded-lg border border-amber-200 bg-white">
+            <table class="w-full min-w-[1450px] table-fixed text-sm">
+                <colgroup><col class="w-20"><col class="w-[28%]"><col class="w-[36%]"><col class="w-[36%]"></colgroup>
+                <thead class="sticky top-0 z-10 bg-amber-100 text-amber-950"><tr><th class="px-4 py-3 text-left">Fila</th><th class="px-4 py-3 text-left">Dato del archivo y diagnóstico</th><th class="px-4 py-3 text-left">Decisión individual</th><th class="px-4 py-3 text-left">Datos para alta independiente</th></tr></thead>
+                <tbody id="tablaResolucionMaestros"></tbody>
+            </table>
+        </div>
+        <div class="sticky bottom-0 mt-4 flex justify-end gap-3 border-t border-amber-200 bg-amber-50 py-4">
+            <button type="button" onclick="cancelarResolucionMaestros()" class="rounded border border-amber-400 bg-white px-4 py-2 font-medium text-amber-900">Cancelar</button>
+            <button type="button" onclick="continuarImportacionResuelta()" class="rounded bg-amber-700 px-6 py-3 font-semibold text-white hover:bg-amber-800">Continuar importación</button>
+        </div>
+    </div>
 </div>
 
 <div class="bg-white rounded-lg shadow p-5">
     <form id="formCargar" onsubmit="guardarDatos(event)">
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+            <label class="flex items-center justify-between rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
+                <span><strong class="block text-sm text-cyan-950">¿Es NextGen?</strong><span class="text-xs text-cyan-700">Activá para una carga rápida</span></span>
+                <input id="es_next_gen" type="checkbox" onchange="actualizarModoNextGenCarga()" class="h-5 w-5 rounded border-cyan-400 text-cyan-700 focus:ring-cyan-500">
+            </label>
+
+            <div id="grupoNombreNextGenCarga" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Nombre NextGen *</label>
+                <select id="nombre_next_gen" class="w-full border border-cyan-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                    <option value="">Seleccionar nombre...</option>
+                </select>
+            </div>
+
+            <div id="grupoImporteNextGenCarga" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Valor facturado NextGen *</label>
+                <input id="next_gen_importe" type="number" min="0.01" step="0.01" placeholder="0.00" class="w-full border border-cyan-300 rounded px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-cyan-500">
+            </div>
+
+            <div id="grupoBotonNextGenCarga" class="hidden sm:self-end">
+                <button type="button" onclick="guardarNextGenRapido()" class="w-full rounded bg-cyan-700 px-4 py-2 font-semibold text-white hover:bg-cyan-800">
+                    <i class="fas fa-save mr-2"></i>Guardar NextGen
+                </button>
+            </div>
+
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Mes de facturacion *</label>
                 <input type="month" id="mes" name="mes" required
@@ -143,6 +194,12 @@
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
+            <div id="grupoFacturadoHorasManual" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Facturado en horas *</label>
+                <input type="number" id="facturado_horas_manual" name="facturado_horas_manual" min="0" step="0.01" placeholder="Importe sin adicionales"
+                    class="w-full border border-amber-300 bg-amber-50 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Tarificacion</label>
                 <input type="number" id="tarifacion" name="tarifacion" min="0" step="0.01" placeholder="Importe adicional"
@@ -191,6 +248,9 @@
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
+        </div>
+        <div id="avisoExcepcion" class="mt-4 hidden rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <i class="fas fa-calculator mr-2"></i><strong>Excepción aplicada:</strong> el valor hora facturado se calcula automáticamente como Facturado en horas ÷ Horas facturadas. Los adicionales no forman parte de ese importe.
         </div>
 
         <div class="mt-5 p-4 bg-slate-50 rounded-lg border border-slate-200">
@@ -346,14 +406,77 @@
 
     <div id="mensaje" class="mt-4 hidden"></div>
 </div>
+</div>
+
+<div id="panelExcepciones" class="hidden rounded-lg bg-white p-5 shadow">
+    <div class="mb-5">
+        <h2 class="text-xl font-bold text-gray-800">Excepciones de cálculo</h2>
+        <p class="mt-1 text-sm text-gray-500">Configurá una regla por cliente y campaña. Se aplicará automáticamente cuando cargues esa combinación.</p>
+    </div>
+    <form id="formExcepcionCarga" class="grid grid-cols-1 gap-4 lg:grid-cols-6 lg:items-end">
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Cliente *</label>
+            <select id="excepcionCargaCliente" required onchange="poblarCampaniasExcepcionCarga()" class="w-full rounded border border-gray-300 bg-white px-3 py-2"></select>
+        </div>
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Campaña *</label>
+            <select id="excepcionCargaCampania" required class="w-full rounded border border-gray-300 bg-white px-3 py-2"></select>
+        </div>
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Tipo de cálculo *</label>
+            <select id="excepcionCargaTipo" class="w-full rounded border border-gray-300 bg-white px-3 py-2">
+                <option value="facturado_horas_manual">Facturado en horas ÷ horas realizadas</option>
+                <option value="facturado_manual_ajustes_vh">Facturado manual con ajustes de VH</option>
+            </select>
+        </div>
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Ajuste VH objetivo %</label>
+            <input id="excepcionCargaAjusteObjetivo" type="number" step="0.01" value="0" class="w-full rounded border border-gray-300 px-3 py-2">
+        </div>
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Ajuste VH alcanzado %</label>
+            <input id="excepcionCargaAjusteAlcanzado" type="number" step="0.01" value="0" class="w-full rounded border border-gray-300 px-3 py-2">
+        </div>
+        <button type="submit" class="rounded bg-amber-600 px-4 py-2 font-semibold text-white hover:bg-amber-700"><i class="fas fa-save mr-2"></i>Guardar excepción</button>
+    </form>
+    <div class="mt-6 overflow-x-auto rounded border border-slate-200">
+        <table class="w-full min-w-[720px] text-sm">
+            <thead class="bg-slate-50"><tr><th class="px-4 py-3 text-left">Cliente</th><th class="px-4 py-3 text-left">Campaña</th><th class="px-4 py-3 text-left">Cálculo aplicado</th><th class="px-4 py-3 text-center">Acción</th></tr></thead>
+            <tbody id="tablaExcepcionesCarga"><tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">Cargando excepciones...</td></tr></tbody>
+        </table>
+    </div>
+    <div id="mensajeExcepciones" class="mt-4 hidden"></div>
+</div>
+
+<div id="modalValorHoraVariable" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4">
+    <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
+        <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 text-blue-700"><i class="fas fa-circle-question text-xl"></i></div>
+        <h2 class="text-xl font-bold text-slate-900">¿Esta campaña tiene valor hora variable?</h2>
+        <p id="textoModalValorHora" class="mt-2 text-sm text-slate-600"></p>
+        <div class="mt-5 rounded border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
+            <strong>Sí:</strong> Valor Hora Facturado se carga por separado.<br>
+            <strong>No:</strong> se copia automáticamente el Valor Hora Objetivo.
+        </div>
+        <p class="mt-3 text-xs text-slate-500">Esta pregunta aparece una sola vez. Luego puede modificarse desde Datos Maestros.</p>
+        <div class="mt-6 grid grid-cols-2 gap-3">
+            <button type="button" onclick="guardarValorHoraVariable(true)" class="rounded bg-amber-600 px-4 py-2 font-semibold text-white hover:bg-amber-700">Sí, es variable</button>
+            <button type="button" onclick="guardarValorHoraVariable(false)" class="rounded bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">No, repetir objetivo</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 let asignaciones = [];
+let excepcionesCalculo = [];
+let campaniasConfiguracion = [];
+let campaniaPendienteConfiguracion = null;
+let excepcionActiva = null;
 let justificacionIndex = 0;
 let lineasPendientes = [];
 const TIPO_VH_PERSONAL_COBRANZAS = 'Personal Cobranzas';
+const puedeEliminarExcepciones = {% if usuario_actual and usuario_actual.puede_eliminar %}true{% else %}false{% endif %};
 
 const camposLinea = [
     'tipo_jornada',
@@ -362,6 +485,7 @@ const camposLinea = [
     'horas_penalizadas',
     'valor_hora_objetivo',
     'valor_hora',
+    'facturado_horas_manual',
     'tarifacion',
     'importe_fijo',
     'variable_objetivo',
@@ -386,9 +510,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     completarFechasIniciales();
     document.getElementById('formImportar').addEventListener('submit', importarDatos);
     await cargarAsignaciones();
+    await cargarConfiguracionCampanias();
+    await cargarExcepcionesCalculo();
+    document.getElementById('formExcepcionCarga').addEventListener('submit', guardarExcepcionCarga);
     agregarJustificacion();
     document.querySelectorAll('#formCargar input, #formCargar select').forEach(input => {
-        input.addEventListener('input', calcularPreview);
+        input.addEventListener('input', input.id === 'valor_hora_objetivo' ? aplicarModoValorHora : calcularPreview);
     });
     actualizarModoTipoVH();
 });
@@ -428,6 +555,8 @@ async function cargarAsignaciones() {
 
         asignaciones = data.asignaciones;
         camposAsociacion.forEach(campo => popularSelect(campo, opcionesDisponibles(campo), placeholderCampo(campo)));
+        popularSelect('nombre_next_gen', asignaciones.filter(item => item.es_next_gen).map(item => item.cliente), 'Seleccionar nombre...');
+        poblarClientesExcepcionCarga();
     } catch (error) {
         mostrarMensaje('No se pudieron cargar los datos maestros', 'error');
     }
@@ -444,6 +573,198 @@ function actualizarOpciones(campoCambiado) {
         const opciones = opcionesDisponibles(campo);
         popularSelect(campo, opciones, placeholderCampo(campo), valorActual);
     });
+    aplicarExcepcionSeleccionada();
+    procesarConfiguracionCampania();
+}
+
+const camposOcultosNextGen = [
+    'cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio', 'tipo_jornada',
+    'horas_objetivo', 'horas_facturadas', 'horas_penalizadas', 'valor_hora_objetivo', 'valor_hora',
+    'facturado_horas_manual', 'tarifacion', 'importe_fijo', 'variable_objetivo', 'bonos',
+    'variable_productivo', 'penalizaciones', 'netx_gen', 'otros'
+];
+
+function esModoNextGen() {
+    return document.getElementById('es_next_gen').checked;
+}
+
+function actualizarModoNextGenCarga() {
+    const activo = esModoNextGen();
+    document.getElementById('grupoNombreNextGenCarga').classList.toggle('hidden', !activo);
+    document.getElementById('grupoImporteNextGenCarga').classList.toggle('hidden', !activo);
+    document.getElementById('grupoBotonNextGenCarga').classList.toggle('hidden', !activo);
+    document.getElementById('nombre_next_gen').required = activo;
+    document.getElementById('next_gen_importe').required = activo;
+    camposOcultosNextGen.forEach(id => {
+        const campo = document.getElementById(id);
+        if (!campo) return;
+        campo.closest('div').classList.toggle('hidden', activo);
+        campo.required = !activo && ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_jornada', 'horas_objetivo', 'horas_facturadas', 'valor_hora_objetivo', 'valor_hora'].includes(id);
+    });
+    if (activo) {
+        camposOcultosNextGen.filter(id => !['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio', 'tipo_jornada'].includes(id))
+            .forEach(id => { const campo = document.getElementById(id); if (campo) campo.value = '0'; });
+    }
+    if (activo) calcularPreview();
+    else aplicarExcepcionSeleccionada();
+}
+
+function guardarNextGenRapido() {
+    guardarDatos({ preventDefault() {} });
+}
+
+async function cargarConfiguracionCampanias() {
+    try {
+        const data = await fetch('/api/campanias').then(response => response.json());
+        campaniasConfiguracion = data.success ? (data.campanias || []) : [];
+        aplicarModoValorHora();
+    } catch (_) { campaniasConfiguracion = []; }
+}
+
+function configuracionCampaniaSeleccionada() {
+    const cliente = document.getElementById('cliente').value.trim().toLowerCase();
+    const campania = document.getElementById('campania').value.trim().toLowerCase();
+    if (!cliente || !campania) return null;
+    return campaniasConfiguracion.find(item => item.cliente.trim().toLowerCase() === cliente && item.nombre.trim().toLowerCase() === campania) || null;
+}
+
+function procesarConfiguracionCampania() {
+    const configuracion = configuracionCampaniaSeleccionada();
+    if (!configuracion) return;
+    if (configuracion.valor_hora_variable === null || configuracion.valor_hora_variable === undefined) {
+        campaniaPendienteConfiguracion = configuracion;
+        document.getElementById('textoModalValorHora').textContent = `${configuracion.cliente} / ${configuracion.nombre}`;
+        const modal = document.getElementById('modalValorHoraVariable');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        return;
+    }
+    aplicarModoValorHora();
+}
+
+async function guardarValorHoraVariable(esVariable) {
+    if (!campaniaPendienteConfiguracion) return;
+    try {
+        const response = await fetch(`/api/campanias/${campaniaPendienteConfiguracion.id}/valor-hora`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor_hora_variable: esVariable }) });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudo guardar']).join(', '));
+        const indice = campaniasConfiguracion.findIndex(item => item.id === data.campania.id);
+        if (indice >= 0) campaniasConfiguracion[indice] = data.campania;
+        campaniaPendienteConfiguracion = null;
+        const modal = document.getElementById('modalValorHoraVariable');
+        modal.classList.add('hidden'); modal.classList.remove('flex');
+        aplicarModoValorHora();
+        aplicarExcepcionSeleccionada();
+    } catch (error) { mostrarMensaje(error.message, 'error'); }
+}
+
+function aplicarModoValorHora() {
+    const configuracion = configuracionCampaniaSeleccionada();
+    const valorHora = document.getElementById('valor_hora');
+    const objetivo = document.getElementById('valor_hora_objetivo');
+    const noVariable = configuracion?.valor_hora_variable === false;
+    if (noVariable) valorHora.value = objetivo.value;
+    valorHora.readOnly = noVariable;
+    valorHora.classList.toggle('bg-gray-100', noVariable);
+    calcularPreview();
+}
+
+async function cargarExcepcionesCalculo() {
+    try {
+        const response = await fetch('/api/excepciones-calculo');
+        const data = await response.json();
+        excepcionesCalculo = data.success ? (data.excepciones || []).filter(item => item.activa) : [];
+        renderExcepcionesCarga();
+        aplicarExcepcionSeleccionada();
+    } catch (_) {
+        excepcionesCalculo = [];
+    }
+}
+
+function cambiarPestaniaCarga(pestania) {
+    const excepciones = pestania === 'excepciones';
+    document.getElementById('panelCargaDatos').classList.toggle('hidden', excepciones);
+    document.getElementById('panelExcepciones').classList.toggle('hidden', !excepciones);
+    document.getElementById('tabCargaDatos').className = `rounded-md px-4 py-2 text-sm font-semibold ${excepciones ? 'text-slate-600' : 'bg-white text-blue-700 shadow-sm'}`;
+    document.getElementById('tabExcepciones').className = `rounded-md px-4 py-2 text-sm font-semibold ${excepciones ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-600'}`;
+    if (excepciones) cargarExcepcionesCalculo();
+}
+
+function poblarClientesExcepcionCarga() {
+    const clientes = [...new Set(asignaciones.map(item => item.cliente).filter(Boolean))].sort();
+    document.getElementById('excepcionCargaCliente').innerHTML = '<option value="">Seleccionar cliente...</option>' + clientes.map(valor => `<option value="${escapeHtml(valor)}">${escapeHtml(valor)}</option>`).join('');
+    poblarCampaniasExcepcionCarga();
+}
+
+function poblarCampaniasExcepcionCarga() {
+    const cliente = document.getElementById('excepcionCargaCliente').value;
+    const campanias = [...new Set(asignaciones.filter(item => item.cliente === cliente).map(item => item.campania).filter(Boolean))].sort();
+    document.getElementById('excepcionCargaCampania').innerHTML = '<option value="">Seleccionar campaña...</option>' + campanias.map(valor => `<option value="${escapeHtml(valor)}">${escapeHtml(valor)}</option>`).join('');
+}
+
+function renderExcepcionesCarga() {
+    const tbody = document.getElementById('tablaExcepcionesCarga');
+    if (!tbody) return;
+    tbody.innerHTML = excepcionesCalculo.length ? excepcionesCalculo.map(item => `
+        <tr class="border-t hover:bg-amber-50/40"><td class="px-4 py-3 font-medium">${escapeHtml(item.cliente)}</td><td class="px-4 py-3">${escapeHtml(item.campania)}</td><td class="px-4 py-3">${item.tipo_calculo === 'facturado_horas_manual' ? 'Facturado en horas ÷ horas realizadas' : `Facturado manual; VH objetivo ${Number(item.ajuste_vh_objetivo_pct || 0) >= 0 ? '+' : ''}${Number(item.ajuste_vh_objetivo_pct || 0)}%; VH alcanzado ${Number(item.ajuste_vh_alcanzado_pct || 0) >= 0 ? '+' : ''}${Number(item.ajuste_vh_alcanzado_pct || 0)}%`}</td><td class="px-4 py-3 text-center">${puedeEliminarExcepciones ? `<button type="button" onclick="eliminarExcepcionCarga(${item.id})" class="rounded bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-700"><i class="fas fa-trash mr-1"></i>Eliminar</button>` : '<span class="text-xs text-slate-400">Sin permiso</span>'}</td></tr>
+    `).join('') : '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">No hay excepciones configuradas</td></tr>';
+}
+
+function mensajeExcepcion(texto, tipo) {
+    const div = document.getElementById('mensajeExcepciones');
+    div.className = `mt-4 rounded p-3 ${tipo === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+    div.textContent = texto;
+}
+
+async function guardarExcepcionCarga(event) {
+    event.preventDefault();
+    const payload = { cliente: document.getElementById('excepcionCargaCliente').value, campania: document.getElementById('excepcionCargaCampania').value, tipo_calculo: document.getElementById('excepcionCargaTipo').value, ajuste_vh_objetivo_pct: parseNumeroCampo('excepcionCargaAjusteObjetivo'), ajuste_vh_alcanzado_pct: parseNumeroCampo('excepcionCargaAjusteAlcanzado') };
+    try {
+        const response = await fetch('/api/excepciones-calculo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudo guardar']).join(', '));
+        mensajeExcepcion(data.mensaje, 'success');
+        await cargarExcepcionesCalculo();
+    } catch (error) { mensajeExcepcion(error.message, 'error'); }
+}
+
+async function eliminarExcepcionCarga(id) {
+    if (!confirm('¿Eliminar esta excepción de cálculo?')) return;
+    try {
+        const response = await fetch(`/api/excepciones-calculo/${id}`, { method: 'DELETE' });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudo eliminar']).join(', '));
+        mensajeExcepcion(data.mensaje, 'success');
+        await cargarExcepcionesCalculo();
+    } catch (error) { mensajeExcepcion(error.message, 'error'); }
+}
+
+function aplicarExcepcionSeleccionada() {
+    aplicarModoValorHora();
+    const cliente = document.getElementById('cliente').value.trim().toLowerCase();
+    const campania = document.getElementById('campania').value.trim().toLowerCase();
+    excepcionActiva = excepcionesCalculo.find(item => item.cliente.trim().toLowerCase() === cliente && item.campania.trim().toLowerCase() === campania) || null;
+    const activa = Boolean(excepcionActiva);
+    const calculaVhDesdeImporte = excepcionActiva?.tipo_calculo === 'facturado_horas_manual';
+    document.getElementById('grupoFacturadoHorasManual').classList.toggle('hidden', !activa);
+    document.getElementById('avisoExcepcion').classList.toggle('hidden', !activa);
+    const manual = document.getElementById('facturado_horas_manual');
+    const valorHora = document.getElementById('valor_hora');
+    const noVariable = configuracionCampaniaSeleccionada()?.valor_hora_variable === false;
+    manual.required = activa;
+    valorHora.readOnly = calculaVhDesdeImporte || noVariable;
+    valorHora.classList.toggle('bg-gray-100', calculaVhDesdeImporte || noVariable);
+    const importeFijo = document.getElementById('importe_fijo');
+    importeFijo.disabled = activa;
+    if (activa) {
+        if (!manual.value && importeFijo.value) manual.value = importeFijo.value;
+        importeFijo.value = '';
+        document.getElementById('avisoExcepcion').innerHTML = calculaVhDesdeImporte
+            ? '<i class="fas fa-calculator mr-2"></i><strong>Excepción aplicada:</strong> Facturado en horas es manual y el VH alcanzado se calcula dividiendo ese importe por las horas facturadas.'
+            : `<i class="fas fa-calculator mr-2"></i><strong>Excepción aplicada:</strong> Facturado en horas es manual; VH objetivo ${Number(excepcionActiva.ajuste_vh_objetivo_pct || 0)}% y VH alcanzado ${Number(excepcionActiva.ajuste_vh_alcanzado_pct || 0)}%.`;
+    }
+    else manual.value = '';
+    calcularPreview();
 }
 
 function opcionesDisponibles(campoObjetivo) {
@@ -615,13 +936,14 @@ function capturarLineaActual() {
         horas_penalizadas: parseNumeroCampo('horas_penalizadas'),
         valor_hora_objetivo: parseNumeroCampo('valor_hora_objetivo'),
         valor_hora: parseNumeroCampo('valor_hora'),
+        facturado_horas_manual: excepcionActiva ? parseNumeroCampo('facturado_horas_manual') : null,
         tarifacion: parseNumeroCampo('tarifacion') || null,
         importe_fijo: document.getElementById('importe_fijo').value === '' ? null : parseNumeroCampo('importe_fijo'),
         variable_objetivo: parseNumeroCampo('variable_objetivo'),
         variable_productivo: parseNumeroCampo('variable_productivo'),
         bonos: parseNumeroCampo('bonos'),
         penalizaciones: parseNumeroCampo('penalizaciones'),
-        netx_gen: parseNumeroCampo('netx_gen'),
+        netx_gen: esModoNextGen() ? parseNumeroCampo('next_gen_importe') : parseNumeroCampo('netx_gen'),
         otros: parseNumeroCampo('otros'),
         justificaciones: obtenerJustificaciones()
     };
@@ -646,6 +968,10 @@ function lineaTieneDatos(linea) {
 function validarLinea(linea, indice = 1) {
     const prefijo = `Linea ${indice}: `;
     const errores = [];
+    if (esModoNextGen()) {
+        if (linea.netx_gen <= 0) errores.push(prefijo + 'el importe NextGen debe ser mayor a 0');
+        return errores;
+    }
     const sinRestriccionHoras = esPersonalCobranzas(linea.tipo_jornada);
     if (!linea.tipo_jornada) errores.push(prefijo + 'el tipo de VH es obligatorio');
     if (linea.horas_objetivo < 0 || linea.horas_facturadas < 0 || linea.horas_penalizadas < 0) {
@@ -656,6 +982,9 @@ function validarLinea(linea, indice = 1) {
     }
     if (!sinRestriccionHoras && (linea.valor_hora_objetivo <= 0 || linea.valor_hora <= 0)) {
         errores.push(prefijo + 'los valores hora deben ser mayores a 0');
+    }
+    if (excepcionActiva && linea.facturado_horas_manual <= 0) {
+        errores.push(prefijo + 'Facturado en horas debe ser mayor a 0 para esta excepción');
     }
     validarJustificacionesFrontend(linea).forEach(error => errores.push(prefijo + error));
     return errores;
@@ -688,7 +1017,7 @@ function renderLineasPendientes() {
     tbody.innerHTML = lineasPendientes.map((linea, index) => {
         const valorHoraAlcanzado = linea.valor_hora;
         const horasNetas = Math.max(linea.horas_facturadas - linea.horas_penalizadas, 0);
-        const facturadoHoras = linea.importe_fijo !== null ? linea.importe_fijo : horasNetas * valorHoraAlcanzado;
+        const facturadoHoras = linea.facturado_horas_manual !== null ? linea.facturado_horas_manual : (linea.importe_fijo !== null ? linea.importe_fijo : horasNetas * valorHoraAlcanzado);
         const totalReal = linea.importe_fijo !== null
             ? linea.importe_fijo + linea.bonos + linea.penalizaciones
             : facturadoHoras + linea.bonos + linea.penalizaciones;
@@ -734,8 +1063,16 @@ function calcularPreview() {
     const horasFacturadas = parseNumeroCampo('horas_facturadas');
     const horasObjetivo = parseNumeroCampo('horas_objetivo');
     const horasPenalizadas = parseNumeroCampo('horas_penalizadas');
-    const valorHoraObjetivo = parseNumeroCampo('valor_hora_objetivo');
-    const valorHora = parseNumeroCampo('valor_hora');
+    const valorHoraObjetivoBase = parseNumeroCampo('valor_hora_objetivo');
+    const usaAjustesVH = excepcionActiva?.tipo_calculo === 'facturado_manual_ajustes_vh';
+    const valorHoraObjetivo = valorHoraObjetivoBase * (1 + (usaAjustesVH ? Number(excepcionActiva?.ajuste_vh_objetivo_pct || 0) : 0) / 100);
+    const facturadoHorasManual = excepcionActiva ? parseNumeroCampo('facturado_horas_manual') : null;
+    let valorHora = parseNumeroCampo('valor_hora');
+    if (excepcionActiva?.tipo_calculo === 'facturado_horas_manual') {
+        valorHora = horasFacturadas > 0 ? facturadoHorasManual / horasFacturadas : 0;
+    } else if (usaAjustesVH) {
+        valorHora *= 1 + Number(excepcionActiva?.ajuste_vh_alcanzado_pct || 0) / 100;
+    }
     const tarifacion = parseNumeroCampo('tarifacion');
     const importeFijoInput = document.getElementById('importe_fijo').value;
     const importeFijo = importeFijoInput === '' ? null : parseFloat(String(importeFijoInput).replace(',', '.'));
@@ -749,13 +1086,13 @@ function calcularPreview() {
     const valorHoraAlcanzado = valorHora;
     const horasNetas = Math.max(horasFacturadas - horasPenalizadas, 0);
     const usaImporteFijo = importeFijo !== null && !Number.isNaN(importeFijo);
-    const objetivoHoras = usaImporteFijo ? importeFijo : horasObjetivo * valorHoraObjetivo;
-    const objetivoBono = variableObjetivo;
+    const objetivoHoras = usaImporteFijo ? importeFijo : horasObjetivo * (usaAjustesVH ? valorHoraAlcanzado : valorHoraObjetivo);
+    const objetivoBono = usaAjustesVH ? horasObjetivo * (valorHoraObjetivo - valorHoraAlcanzado) : variableObjetivo;
     const facturacionObjetivo = objetivoHoras + objetivoBono;
-    const facturadoHoras = usaImporteFijo ? importeFijo : horasNetas * valorHoraAlcanzado;
+    const facturadoHoras = excepcionActiva ? facturadoHorasManual : (usaImporteFijo ? importeFijo : horasNetas * valorHoraAlcanzado);
     const facturadoBono = bonos;
-    const totalReal = usaImporteFijo ? importeFijo + facturadoBono + penalizaciones : facturadoHoras + facturadoBono + penalizaciones;
-    const montoFinalTarifacion = totalReal + tarifacion + variableProductivo + netxGen + otros;
+    const totalReal = (usaImporteFijo ? importeFijo : facturadoHoras) + facturadoBono + variableProductivo + penalizaciones + tarifacion + netxGen + otros;
+    const montoFinalTarifacion = totalReal;
     const totalTeorico = facturacionObjetivo;
     const desvioHoras = facturadoHoras - objetivoHoras;
     const desvio = totalReal - totalTeorico;
@@ -790,13 +1127,15 @@ function calcularPreview() {
 async function guardarDatos(event) {
     event.preventDefault();
 
-    const asociacion = obtenerAsignacionSeleccionada();
+    const asociacion = esModoNextGen()
+        ? asignaciones.find(item => item.es_next_gen && item.cliente === document.getElementById('nombre_next_gen').value)
+        : obtenerAsignacionSeleccionada();
     if (!asociacion) {
         mostrarMensaje('La combinación seleccionada no existe en Datos Maestros', 'error');
         return;
     }
 
-    const seleccion = valoresSeleccionados();
+    const seleccion = asociacion;
     const cabecera = {
         fecha: document.getElementById('fecha').value,
         mes: document.getElementById('mes').value,
@@ -806,10 +1145,11 @@ async function guardarDatos(event) {
         campania: seleccion.campania,
         subcampania: seleccion.subcampania,
         tipo_negocio: seleccion.tipo_negocio,
+        es_next_gen: Boolean(asociacion.es_next_gen),
     };
 
     const lineaActual = capturarLineaActual();
-    const lineasAGuardar = [...lineasPendientes];
+    const lineasAGuardar = esModoNextGen() ? [] : [...lineasPendientes];
     if (lineaTieneDatos(lineaActual)) {
         lineasAGuardar.push(lineaActual);
     }
@@ -837,7 +1177,17 @@ async function guardarDatos(event) {
                 return;
             }
         }
-        mostrarMensaje(`${lineasAGuardar.length} linea(s) guardadas correctamente`, 'success');
+        const [anioPeriodo, mesPeriodo] = cabecera.mes.split('-');
+        const periodoLegible = new Intl.DateTimeFormat('es-AR', {
+            month: 'long',
+            year: 'numeric',
+            timeZone: 'UTC',
+        }).format(new Date(Date.UTC(Number(anioPeriodo), Number(mesPeriodo) - 1, 1)));
+        const [anioCarga, mesCarga, diaCarga] = cabecera.fecha.split('-');
+        mostrarMensaje(
+            `${lineasAGuardar.length} línea(s) guardadas en ${periodoLegible}; fecha de carga ${diaCarga}/${mesCarga}/${anioCarga}`,
+            'success'
+        );
         limpiarFormulario();
     } catch (error) {
         mostrarMensaje('Error al guardar los datos', 'error');
@@ -846,6 +1196,9 @@ async function guardarDatos(event) {
 
 async function importarDatos(event) {
     event.preventDefault();
+    window.resolucionesImportacion = {};
+    document.getElementById('panelResolucionMaestros').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
     await enviarImportacion(false);
 }
 
@@ -859,6 +1212,9 @@ async function enviarImportacion(confirmarReemplazo) {
     const formData = new FormData();
     formData.append('archivo', archivo);
     if (confirmarReemplazo) formData.append('confirmar_reemplazo', '1');
+    if (Object.keys(window.resolucionesImportacion || {}).length) {
+        formData.append('resoluciones', JSON.stringify(window.resolucionesImportacion));
+    }
     const boton = document.getElementById('btnImportar');
 
     try {
@@ -875,6 +1231,10 @@ async function enviarImportacion(confirmarReemplazo) {
             document.getElementById('formImportar').reset();
             await cargarAsignaciones();
         } else {
+            if (result.requiere_resolucion_maestros) {
+                mostrarResolucionesMaestros(result.pendientes || [], confirmarReemplazo);
+                return;
+            }
             if (result.requiere_confirmacion) {
                 mostrarAlertaReemplazo(result);
                 return;
@@ -887,6 +1247,85 @@ async function enviarImportacion(confirmarReemplazo) {
         boton.disabled = false;
         boton.classList.remove('opacity-60', 'cursor-not-allowed');
     }
+}
+
+function mostrarResolucionesMaestros(pendientes, confirmarReemplazo) {
+    window.pendientesResolucionMaestros = pendientes;
+    window.confirmarReemplazoTrasResolucion = confirmarReemplazo;
+    const tbody = document.getElementById('tablaResolucionMaestros');
+    tbody.innerHTML = pendientes.map(pendiente => {
+        const opciones = pendiente.opciones || [];
+        const referencia = opciones[0] || {};
+        return `
+            <tr class="border-t border-amber-200 bg-white" data-fila-resolucion="${pendiente.fila}">
+                <td class="px-3 py-3 align-top font-bold">${pendiente.fila}</td>
+                <td class="px-3 py-3 align-top min-w-64">
+                    <div class="font-semibold">${escapeHtml(pendiente.cuenta)} / ${escapeHtml(pendiente.subcampania)}</div>
+                    <div class="mt-1 text-xs text-red-700">${escapeHtml(pendiente.mensaje)}</div>
+                </td>
+                <td class="px-3 py-3 align-top min-w-96">
+                    <select data-resolucion="accion" onchange="cambiarAccionResolucion(this)" class="h-12 w-full rounded-lg border border-amber-400 bg-white px-4 text-base">
+                        <option value="">Seleccionar para esta fila...</option>
+                        ${opciones.map(opcion => `<option value="vincular:${opcion.id}">Unir con: ${escapeHtml(opcion.label)}</option>`).join('')}
+                        <option value="crear">Crear como servicio independiente</option>
+                    </select>
+                </td>
+                <td class="px-3 py-3 align-top min-w-80">
+                    <div data-resolucion-alta class="hidden grid grid-cols-2 gap-3">
+                        <input data-resolucion="cliente" value="${escapeHtml(referencia.cliente || pendiente.cuenta)}" placeholder="Cliente" class="h-11 rounded border border-gray-300 px-3 py-2">
+                        <input data-resolucion="campania" value="${escapeHtml(referencia.campania || pendiente.cuenta)}" placeholder="Campaña" class="h-11 rounded border border-gray-300 px-3 py-2">
+                        <input data-resolucion="gerente" value="${escapeHtml(referencia.gerente || '')}" placeholder="Gerente *" class="h-11 rounded border border-gray-300 px-3 py-2">
+                        <input data-resolucion="jefe_site" value="${escapeHtml(referencia.jefe_site || '')}" placeholder="Jefe de Site *" class="h-11 rounded border border-gray-300 px-3 py-2">
+                        <input data-resolucion="tipo_negocio" placeholder="Tipo de negocio (opcional)" class="col-span-2 h-11 rounded border border-gray-300 px-3 py-2">
+                    </div>
+                </td>
+            </tr>`;
+    }).join('');
+    document.getElementById('panelResolucionMaestros').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    document.getElementById('panelResolucionMaestros').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    mostrarMensajeImportar('Resolvé cada fila y luego presioná Continuar importación.', 'info', false);
+}
+
+function cambiarAccionResolucion(select) {
+    const fila = select.closest('[data-fila-resolucion]');
+    fila.querySelector('[data-resolucion-alta]').classList.toggle('hidden', select.value !== 'crear');
+}
+
+async function continuarImportacionResuelta() {
+    const nuevasResoluciones = { ...(window.resolucionesImportacion || {}) };
+    for (const fila of document.querySelectorAll('[data-fila-resolucion]')) {
+        const numeroFila = fila.dataset.filaResolucion;
+        const accion = fila.querySelector('[data-resolucion="accion"]').value;
+        if (!accion) {
+            alert(`Seleccioná una decisión para la fila ${numeroFila}.`);
+            return;
+        }
+        if (accion.startsWith('vincular:')) {
+            nuevasResoluciones[numeroFila] = { accion: 'vincular', asignacion_id: Number(accion.split(':')[1]) };
+            continue;
+        }
+        const leer = campo => fila.querySelector(`[data-resolucion="${campo}"]`).value.trim();
+        if (!leer('gerente') || !leer('jefe_site')) {
+            alert(`Completá gerente y jefe de Site para la fila ${numeroFila}.`);
+            return;
+        }
+        nuevasResoluciones[numeroFila] = {
+            accion: 'crear', cliente: leer('cliente'), campania: leer('campania'),
+            gerente: leer('gerente'), jefe_site: leer('jefe_site'), tipo_negocio: leer('tipo_negocio')
+        };
+    }
+    window.resolucionesImportacion = nuevasResoluciones;
+    document.getElementById('panelResolucionMaestros').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+    await enviarImportacion(Boolean(window.confirmarReemplazoTrasResolucion));
+}
+
+function cancelarResolucionMaestros() {
+    window.resolucionesImportacion = {};
+    document.getElementById('panelResolucionMaestros').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+    mostrarMensajeImportar('Importación cancelada. No se guardaron cambios.', 'info', false);
 }
 
 function mostrarAlertaReemplazo(result) {
@@ -918,6 +1357,7 @@ function limpiarFormulario() {
     agregarJustificacion();
     lineasPendientes = [];
     renderLineasPendientes();
+    actualizarModoNextGenCarga();
     calcularPreview();
 }
 
@@ -954,7 +1394,7 @@ function formatCurrency(value) {
 }
 
 function formatNumber(value) {
-    return Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+    return Number(value || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function escapeHtml(value) {

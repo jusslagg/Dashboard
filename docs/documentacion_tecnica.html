@@ -31,7 +31,7 @@
   </style>
 </head>
 <body>
-  <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/descargar">Descargar PDF</a></div></div>
+  <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/esquema/pdf">Esquema BD en PDF</a><a class="button" href="/documentacion-tecnica/esquema/sqlite">SQL SQLite</a><a class="button" href="/documentacion-tecnica/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/documentacion-tecnica/descargar">Documentación completa PDF</a></div></div>
   <main class="page">
     <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Julio de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice técnico</h2><ol><li class=""><a href="#documentacion-disponible">Documentación disponible</a></li>
@@ -53,7 +53,7 @@
 <li class="sub"><a href="#datos-minimos-para-iniciar">Datos mínimos para iniciar</a></li>
 <li class="sub"><a href="#usuarios-2">usuarios</a></li>
 <li class="sub"><a href="#asignaciones-comerciales-2">asignaciones_comerciales</a></li>
-<li class="sub"><a href="#facturacion-2026-2">facturacion_2026</a></li>
+<li class="sub"><a href="#facturacion-anio-2">facturacion_anio</a></li>
 <li class="sub"><a href="#justificaciones-ajustes-2">justificaciones_ajustes</a></li>
 <li class="sub"><a href="#feriados-operativos-2">feriados_operativos</a></li>
 <li class="sub"><a href="#matriz-proyecciones-2">matriz_proyecciones</a></li>
@@ -113,7 +113,9 @@
 <li class="sub"><a href="#backups-y-recuperacion">Backups y recuperación</a></li>
 <li class="sub"><a href="#guia-para-extender-un-modulo">Guía para extender un módulo</a></li>
 <li class="sub"><a href="#checklist-de-verificacion-despues-de-un-cambio">Checklist de verificación después de un cambio</a></li>
-<li class="sub"><a href="#diagnostico-de-desvios">Diagnóstico de desvíos</a></li></ol></nav>
+<li class="sub"><a href="#diagnostico-de-desvios">Diagnóstico de desvíos</a></li>
+<li class=""><a href="#anexo-ddl-sqlite">Anexo DDL completo - SQLite</a></li>
+<li class=""><a href="#anexo-ddl-postgresql">Anexo DDL completo - PostgreSQL</a></li></ol></nav>
     <article class="content"><h1 id="dashboard-de-facturacion">Dashboard de Facturación<a class="anchor" href="#dashboard-de-facturacion" aria-label="Enlace a esta sección">#</a></h1>
 <p class="">Aplicación web para controlar facturación, proyecciones, precios, dotaciones, horas operativas y desvíos comerciales. El sistema combina un backend Flask con base SQLite/PostgreSQL y una experiencia web pensada para uso interno de finanzas, operaciones y control de gestión.</p>
 <p class="">La herramienta centraliza datos reales y proyectados para responder, de forma rápida, preguntas como:</p>
@@ -213,11 +215,17 @@ python run.py</code></pre>
 <pre><code class="language-powershell">npm run dev        # Flask + Next.js
 npm run flask:dev  # Solo Flask
 npm run next:dev   # Solo Next.js
+npm run build      # Build de producción de Next.js
+npm run verify:python  # Esquema, seguridad, rutas Flask y DDL SQLite
 npm run start      # Alias de npm run dev</code></pre>
 <h2 id="variables-de-entorno-principales">Variables de entorno principales<a class="anchor" href="#variables-de-entorno-principales" aria-label="Enlace a esta sección">#</a></h2>
 <pre><code class="language-text">SECRET_KEY=clave-secreta-local
+APP_ENV=development
+APP_DEFAULT_YEAR=2026
+PLP_BASE_YEAR=2026
 DATABASE_URL=sqlite:///facturacion.db
 CORS_ORIGINS=http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:8009,http://localhost:8009
+NEXT_PUBLIC_API_BASE=http://127.0.0.1:8009
 FLASK_HOST=127.0.0.1
 PORT=8009
 FLASK_DEBUG=0
@@ -226,6 +234,14 @@ TEMPLATES_AUTO_RELOAD=0
 SESSION_COOKIE_SECURE=0
 SESSION_MINUTES=60
 MAX_CONTENT_LENGTH=10485760</code></pre>
+<ul>
+<li><code>APP_ENV</code>: use <code>development</code> localmente y <code>production</code> en el ambiente entregado. En producción, la aplicación rechaza una <code>SECRET_KEY</code> ausente o de ejemplo.</li>
+<li><code>APP_DEFAULT_YEAR</code>: período seleccionado por defecto en pantallas y APIs; no limita ni elimina datos de otros años.</li>
+<li><code>PLP_BASE_YEAR</code>: año al que pertenece la matriz histórica PLP incluida. Está separado del período operativo para no reinterpretar esos porcentajes como datos de un año nuevo.</li>
+<li><code>DATABASE_URL</code>: conexión SQLAlchemy; permite cambiar SQLite por PostgreSQL sin modificar el código.</li>
+<li><code>CORS_ORIGINS</code>: orígenes autorizados, separados por coma. También alimentan la política <code>connect-src</code> de Flask.</li>
+<li><code>NEXT_PUBLIC_API_BASE</code>: URL pública del backend usada por Next para consultas y enlaces hacia Flask.</li>
+</ul>
 <p class="">Para PostgreSQL:</p>
 <pre><code class="language-text">DATABASE_URL=postgresql+psycopg://usuario:password@host:5432/facturacion</code></pre>
 <h2 id="usuarios-y-permisos">Usuarios y permisos<a class="anchor" href="#usuarios-y-permisos" aria-label="Enlace a esta sección">#</a></h2>
@@ -258,9 +274,14 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <td>Registra cambios, snapshots anteriores/posteriores y permite deshacer operaciones soportadas.</td>
 </tr>
 <tr>
-<td><code>facturacion_2026</code></td>
-<td><code>Facturacion2026</code></td>
-<td>Guarda la facturación real cargada: horas, importes, bonos, penalizaciones, variables y datos comerciales.</td>
+<td><code>campanias</code></td>
+<td><code>Campania</code></td>
+<td>Catálogo canónico que asigna un ID estable a cada combinación cliente + campaña.</td>
+</tr>
+<tr>
+<td><code>facturacion_anio</code></td>
+<td><code>FacturacionAnio</code></td>
+<td>Guarda la facturación real histórica y futura desde 2020, sin limitarla a un año fijo.</td>
 </tr>
 <tr>
 <td><code>justificaciones_ajustes</code></td>
@@ -335,19 +356,24 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <td>Login, sesiones, permisos e identificación del historial.</td>
 </tr>
 <tr>
+<td><code>campanias</code></td>
+<td>Automática al crear o migrar una asignación</td>
+<td>ID canónico utilizado por asignaciones e integraciones nuevas.</td>
+</tr>
+<tr>
 <td><code>asignaciones_comerciales</code></td>
 <td>Datos maestros</td>
 <td>Formularios, filtros, sites, clientes y campañas de todos los módulos.</td>
 </tr>
 <tr>
-<td><code>facturacion_2026</code></td>
+<td><code>facturacion_anio</code></td>
 <td>Cargar datos, importación de facturación o edición en Control</td>
 <td>Dashboard, Control, Comparativo, Matriz, Justificaciones y exportaciones reales.</td>
 </tr>
 <tr>
 <td><code>justificaciones_ajustes</code></td>
 <td>Justificaciones</td>
-<td>Un registro concreto de <code>facturacion_2026</code>; ajusta y explica bonos, penalizaciones u otros conceptos.</td>
+<td>Un registro concreto de <code>facturacion_anio</code>; ajusta y explica bonos, penalizaciones u otros conceptos.</td>
 </tr>
 <tr>
 <td><code>feriados_operativos</code></td>
@@ -407,6 +433,280 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 </tbody></table></div>
 <h3 id="ficha-de-colecciones-para-la-base-de-datos">Ficha de colecciones para la base de datos<a class="anchor" href="#ficha-de-colecciones-para-la-base-de-datos" aria-label="Enlace a esta sección">#</a></h3>
 <p class="">Esta sección resume qué necesita cada tabla/colección para que la base quede armada correctamente.</p>
+<h4 id="contrato-de-precision-numerica">Contrato de precisión numérica<a class="anchor" href="#contrato-de-precision-numerica" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Los campos numéricos persistentes no utilizan <code>FLOAT</code>. La base declara precisión y escala explícitas para evitar diferencias binarias, especialmente en dinero.</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Categoría</th>
+<th>Tipo SQL</th>
+<th>Alcance</th>
+</tr></thead><tbody>
+<tr>
+<td>Dinero</td>
+<td><code>NUMERIC(18,2)</code></td>
+<td>Hasta 16 enteros y 2 decimales</td>
+</tr>
+<tr>
+<td>Cantidades</td>
+<td><code>NUMERIC(18,4)</code></td>
+<td>Hasta 14 enteros y 4 decimales</td>
+</tr>
+<tr>
+<td>Horas y dotación</td>
+<td><code>NUMERIC(12,2)</code></td>
+<td>Hasta 10 enteros y 2 decimales</td>
+</tr>
+<tr>
+<td>Porcentajes</td>
+<td><code>NUMERIC(9,4)</code></td>
+<td>Hasta 5 enteros y 4 decimales</td>
+</tr>
+<tr>
+<td>Cotización monetaria</td>
+<td><code>NUMERIC(18,6)</code></td>
+<td>Hasta 12 enteros y 6 decimales</td>
+</tr>
+</tbody></table></div>
+<p class="">Aplicación por campo:</p>
+<pre><code class="language-text">NUMERIC(18,2) Dinero
+  facturacion_anio.valor_hora_objetivo
+  facturacion_anio.valor_hora
+  facturacion_anio.tarifacion
+  facturacion_anio.importe_fijo
+  facturacion_anio.variable_objetivo
+  facturacion_anio.variable_productivo
+  facturacion_anio.bonos
+  facturacion_anio.penalizaciones
+  facturacion_anio.netx_gen
+  facturacion_anio.otros
+  justificaciones_ajustes.precio
+  justificaciones_ajustes.importe
+  matriz_precios.precio_base
+  matriz_precios.precio_final
+  matriz_precios.importe_fijo_mensual
+  tarifaciones_campanias.monto
+  next_gen_productos.cantidad_usd
+
+NUMERIC(18,4) Cantidades
+  justificaciones_ajustes.cantidad
+
+NUMERIC(12,2) Horas y dotación
+  facturacion_anio.horas_objetivo
+  facturacion_anio.horas_facturadas
+  facturacion_anio.horas_penalizadas
+  matriz_proyecciones.dotacion_requerida
+  matriz_proyecciones.carga_horaria
+  matriz_proyecciones.horas_requeridas
+  matriz_proyecciones.horas_requeridas_manual
+  matriz_proyecciones_jornadas.dotacion_requerida
+  matriz_proyecciones_jornadas.carga_horaria
+  matriz_proyecciones_jornadas.horas_requeridas
+
+NUMERIC(9,4) Porcentajes
+  matriz_proyecciones.porcentaje_cumplimiento
+  matriz_proyecciones.porcentaje_nocturnidad
+  personal_distribucion_horas.porcentaje_diurno
+  matriz_precios.alcance_porcentaje
+  variables_campanias.porcentaje
+
+NUMERIC(18,6) Cotización
+  next_gen_dolar.valor</code></pre>
+<p class="">En PostgreSQL, el arranque convierte columnas históricas con <code>ALTER COLUMN ... TYPE NUMERIC(...)</code>. En SQLite, los DDL nuevos declaran <code>NUMERIC</code>, aunque SQLite mantiene afinidad dinámica y no aplica precisión/escala con la misma rigidez que PostgreSQL. Para la base definitiva creada por un tercero, el contrato autoritativo es el DDL PostgreSQL.</p>
+<h4 id="campanias"><code>campanias</code><a class="anchor" href="#campanias" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>Campania</code>.</p>
+<p class="">Es el catálogo canónico de campañas. Cada fila tiene una clave primaria numérica autoincremental en <code>campanias.id</code>. La identidad funcional se define por la combinación <code>cliente + nombre</code>, no solamente por el texto del nombre.</p>
+<pre><code class="language-text">campanias.id = ID técnico estable
+campanias.cliente + campanias.nombre = identidad funcional única</code></pre>
+<h4 id="como-se-genera-la-numeracion">Cómo se genera la numeración<a class="anchor" href="#como-se-genera-la-numeracion" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">La numeración no debe ingresarla el usuario. La genera automáticamente la base de datos cuando se crea por primera vez una combinación <code>cliente + campaña</code>:</p>
+<pre><code class="language-text">Primera campaña nueva  -&gt; id 1
+Segunda campaña nueva  -&gt; id 2
+Tercera campaña nueva  -&gt; id 3
+Siguiente campaña      -&gt; id 4</code></pre>
+<p class="">Si una campaña ya existe, se reutiliza su ID y no se consume otro número. Si el último ID existente fuera <code>92</code>, la próxima campaña nueva recibiría normalmente el ID <code>93</code>. Los IDs son identificadores técnicos: pueden quedar saltos si una fila se elimina y no deben renumerarse ni reutilizarse para cerrar esos saltos.</p>
+<p class="">Al incorporar esta estructura a una base local que ya tiene datos, <code>ensure_schema()</code> enumera las campañas históricas existentes, crea el catálogo y completa <code>asignaciones_comerciales.campania_id</code>. Por lo tanto, no hace falta volver a crear manualmente las campañas que ya estaban cargadas.</p>
+<div class="table-wrap"><table><thead><tr>
+<th>id</th>
+<th>cliente</th>
+<th>nombre</th>
+<th>activa</th>
+</tr></thead><tbody>
+<tr>
+<td>1</td>
+<td>Cliente A</td>
+<td>Ventas</td>
+<td>true</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Cliente A</td>
+<td>Retención</td>
+<td>true</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Cliente B</td>
+<td>Ventas</td>
+<td>true</td>
+</tr>
+</tbody></table></div>
+<p class="">Los registros 1 y 3 pueden compartir <code>Ventas</code> porque pertenecen a clientes distintos. La restricción <code>uq_campanias_cliente_nombre</code> impide duplicar el mismo nombre dentro del mismo cliente.</p>
+<p class=""><code>asignaciones_comerciales.campania_id</code> referencia este ID. La columna textual <code>asignaciones_comerciales.campania</code> se conserva durante la transición para no romper filtros, importadores, históricos ni módulos que todavía trabajan por nombre. Las integraciones nuevas deben usar <code>campania_id</code> como clave técnica.</p>
+<p class="">Reglas de creación y mantenimiento:</p>
+<ol>
+<li>al crear una asignación se busca el mismo cliente y nombre en <code>campanias</code>;</li>
+<li>si existe, se reutiliza su ID y la campaña se reactiva;</li>
+<li>si no existe, se inserta una fila y la base genera el siguiente ID;</li>
+<li>si cambia cliente o campaña en una asignación, se vuelve a resolver el ID;</li>
+<li><code>ensure_schema()</code> crea campañas faltantes y completa el ID de asignaciones históricas;</li>
+<li>el ID nunca debe calcularse desde el nombre ni asignarse manualmente.</li>
+</ol>
+<p class="">Ejemplo del contrato JSON del catálogo:</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: 1,
+  &quot;cliente&quot;: &quot;Cliente A&quot;,
+  &quot;nombre&quot;: &quot;Ventas&quot;,
+  &quot;activa&quot;: true,
+  &quot;creado_en&quot;: &quot;2026-07-22T12:00:00&quot;
+}</code></pre>
+<p class="">Durante la transición, las asignaciones publican el ID y el nombre:</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: 25,
+  &quot;campania_id&quot;: 1,
+  &quot;cliente&quot;: &quot;Cliente A&quot;,
+  &quot;campania&quot;: &quot;Ventas&quot;
+}</code></pre>
+<p class="">El ID también es visible en la pantalla <strong>Datos maestros</strong>, en la columna <code>ID campaña</code>. Ese valor corresponde a <code>campanias.id</code>; no debe confundirse con el ID propio de la asignación comercial utilizado para editar la fila.</p>
+<p class="">API de consulta:</p>
+<pre><code class="language-text">GET /api/campanias             # Sólo activas
+GET /api/campanias?activas=0   # Activas e inactivas</code></pre>
+<p class="">Ambas variantes requieren una sesión con permiso de edición.</p>
+<h4 id="especificacion-tecnica-para-crear-y-revisar-la-base">Especificación técnica para crear y revisar la base<a class="anchor" href="#especificacion-tecnica-para-crear-y-revisar-la-base" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Esta es la definición que debe utilizar el responsable de base de datos. Para el destino PostgreSQL, <code>campanias.id</code> es una identidad generada por la base y <code>asignaciones_comerciales.campania_id</code> es su clave foránea.</p>
+<p class="">DDL recomendado para PostgreSQL:</p>
+<pre><code class="language-sql">CREATE TABLE campanias (
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    cliente VARCHAR(100) NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    activa BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_campanias_cliente_nombre UNIQUE (cliente, nombre)
+);
+
+ALTER TABLE asignaciones_comerciales
+    ADD COLUMN campania_id INTEGER;
+
+ALTER TABLE asignaciones_comerciales
+    ADD CONSTRAINT fk_asignaciones_campania
+    FOREIGN KEY (campania_id) REFERENCES campanias(id);
+
+CREATE INDEX ix_asignaciones_comerciales_campania_id
+    ON asignaciones_comerciales (campania_id);</code></pre>
+<p class="">Para una base nueva creada directamente por SQLAlchemy, el modelo de <code>app/models.py</code> genera la tabla, el índice y la clave foránea. Para una base con datos históricos, primero se crea y completa el catálogo, después se valida que no existan referencias nulas o inválidas y recién entonces se recomienda cambiar <code>campania_id</code> a <code>NOT NULL</code>:</p>
+<pre><code class="language-sql">ALTER TABLE asignaciones_comerciales
+    ALTER COLUMN campania_id SET NOT NULL;</code></pre>
+<p class="">Definición equivalente del catálogo para SQLite local:</p>
+<pre><code class="language-sql">CREATE TABLE campanias (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente VARCHAR(100) NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    activa BOOLEAN NOT NULL DEFAULT 1,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_campanias_cliente_nombre UNIQUE (cliente, nombre)
+);
+
+ALTER TABLE asignaciones_comerciales ADD COLUMN campania_id INTEGER;
+
+CREATE INDEX ix_asignaciones_comerciales_campania_id
+    ON asignaciones_comerciales (campania_id);</code></pre>
+<p class="callout">Importante: SQLite no permite agregar una clave foránea física a una tabla existente con un <code>ALTER TABLE</code> simple. En la base local histórica la relación se completa y controla desde la aplicación. Una base nueva sí recibe la clave foránea declarada por SQLAlchemy. PostgreSQL debe tener la restricción física <code>fk_asignaciones_campania</code> indicada arriba.</p>
+<p class="">Consultas obligatorias de revisión:</p>
+<pre><code class="language-sql">-- 1. No debe haber cliente + nombre duplicados.
+SELECT cliente, nombre, COUNT(*) AS cantidad
+FROM campanias
+GROUP BY cliente, nombre
+HAVING COUNT(*) &gt; 1;
+
+-- 2. No debe haber asignaciones sin ID de campaña.
+SELECT COUNT(*) AS asignaciones_sin_campania_id
+FROM asignaciones_comerciales
+WHERE campania_id IS NULL;
+
+-- 3. No debe haber IDs que apunten a una campaña inexistente.
+SELECT a.id, a.campania_id
+FROM asignaciones_comerciales a
+LEFT JOIN campanias c ON c.id = a.campania_id
+WHERE a.campania_id IS NOT NULL AND c.id IS NULL;
+
+-- 4. El ID debe corresponder al mismo cliente y nombre conservados en la asignación.
+SELECT a.id, a.cliente, a.campania, a.campania_id,
+       c.cliente AS cliente_catalogo, c.nombre AS campania_catalogo
+FROM asignaciones_comerciales a
+JOIN campanias c ON c.id = a.campania_id
+WHERE a.cliente &lt;&gt; c.cliente OR a.campania &lt;&gt; c.nombre;</code></pre>
+<p class="">Criterio de aceptación para aprobar la base:</p>
+<pre><code class="language-text">[ ] campanias.id es clave primaria y se genera automáticamente.
+[ ] Existe unicidad para cliente + nombre.
+[ ] asignaciones_comerciales.campania_id está indexado.
+[ ] En PostgreSQL existe la clave foránea fk_asignaciones_campania.
+[ ] Las cuatro consultas de revisión no devuelven anomalías.
+[ ] Crear la misma combinación cliente + campaña reutiliza el mismo ID.
+[ ] Crear una combinación nueva genera un ID nuevo.
+[ ] Datos maestros muestra el mismo valor en la columna ID campaña.</code></pre>
+<h4 id="entregable-completo-de-creacion-para-terceros">Entregable completo de creación para terceros<a class="anchor" href="#entregable-completo-de-creacion-para-terceros" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">El tercero responsable de crear o revisar la base debe recibir uno de estos archivos, según el motor acordado:</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Motor</th>
+<th>Archivo contractual</th>
+<th>Descarga desde la aplicación</th>
+</tr></thead><tbody>
+<tr>
+<td>SQLite local</td>
+<td><code>docs/esquema_base_datos_sqlite.sql</code></td>
+<td><code>/documentacion-tecnica/esquema/sqlite</code></td>
+</tr>
+<tr>
+<td>PostgreSQL</td>
+<td><code>docs/esquema_base_datos_postgresql.sql</code></td>
+<td><code>/documentacion-tecnica/esquema/postgresql</code></td>
+</tr>
+</tbody></table></div>
+<p class="">Quien necesite revisar el esquema sin abrir archivos <code>.sql</code> puede descargar el PDF asociado a la documentación técnica:</p>
+<pre><code class="language-text">/documentacion-tecnica/esquema/pdf</code></pre>
+<p class="">El archivo entregado es <code>Esquema_Base_Datos_Dashboard.pdf</code> e incluye juntos los DDL completos de SQLite y PostgreSQL.</p>
+<p class="">Los scripts contienen, tabla por tabla, la definición física en formato <code>CREATE TABLE</code> y <code>CREATE INDEX</code>, tal como se entrega a un DBA:</p>
+<ul>
+<li>nombre exacto de cada tabla;</li>
+<li>todas las columnas y sus tipos;</li>
+<li>longitud de los <code>VARCHAR</code>;</li>
+<li>columnas obligatorias mediante <code>NOT NULL</code>;</li>
+<li>valores <code>DEFAULT</code> físicos, cuando estén definidos en el servidor;</li>
+<li>claves primarias;</li>
+<li>claves foráneas y tablas referenciadas;</li>
+<li>restricciones <code>UNIQUE</code>;</li>
+<li>índices y columnas indexadas.</li>
+</ul>
+<p class="">El esquema incluye las 16 tablas vigentes:</p>
+<pre><code class="language-text">usuarios
+historial_cambios
+facturacion_anio
+justificaciones_ajustes
+matriz_proyecciones
+matriz_proyecciones_jornadas
+personal_distribucion_horas
+matriz_precios
+variables_campanias
+tarifaciones_campanias
+next_gen_dolar
+next_gen_productos
+sites_proyecciones
+feriados_operativos
+campanias
+asignaciones_comerciales</code></pre>
+<p class="">Estos archivos se generan directamente desde <code>app/models.py</code>; por eso son la fuente técnica para construir una base nueva y evitan copiar accidentalmente datos reales de <code>instance/facturacion.db</code>. Cada cambio de modelos exige volver a generar los scripts y la documentación:</p>
+<p class="callout">Nota: varios valores predeterminados actuales son aplicados por SQLAlchemy desde Python y no son <code>DEFAULT</code> físicos del motor. El DDL muestra deliberadamente sólo las garantías que la base puede imponer por sí misma; esto permite que el tercero distinga las restricciones de base de las reglas ejecutadas por la aplicación.</p>
+<pre><code class="language-powershell">python scripts\generar_esquema_base_datos.py
+python scripts\generar_documentacion_tecnica.py</code></pre>
+<p class="">Para PostgreSQL debe utilizarse el archivo PostgreSQL, no convertir manualmente el de SQLite: autoincrementos, booleanos, fechas y tipos se expresan de manera diferente en cada motor.</p>
 <h4 id="usuarios"><code>usuarios</code><a class="anchor" href="#usuarios" aria-label="Enlace a esta sección">#</a></h4>
 <ul>
 <li><strong>Propósito</strong>: administrar acceso, roles y estado de los usuarios.</li>
@@ -423,9 +723,10 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <li><strong>Reglas importantes</strong>: cliente y campaña deben escribirse igual que en facturación, proyecciones y precios; una asociación inactiva no debería usarse para cargas nuevas.</li>
 <li><strong>Uso histórico</strong>: si cambia el jefe desde un mes puntual, usar <strong>Aplicar desde mes</strong> para no pisar meses anteriores.</li>
 </ul>
-<h4 id="facturacion-2026"><code>facturacion_2026</code><a class="anchor" href="#facturacion-2026" aria-label="Enlace a esta sección">#</a></h4>
+<h4 id="facturacion-anio"><code>facturacion_anio</code><a class="anchor" href="#facturacion-anio" aria-label="Enlace a esta sección">#</a></h4>
 <ul>
 <li><strong>Propósito</strong>: guardar la facturación real cargada por mes y dimensión comercial.</li>
+<li><strong>Cobertura temporal</strong>: admite información desde 2020 en adelante y no está vinculada a un año fijo.</li>
 <li><strong>Campos clave</strong>: <code>fecha</code>, <code>mes</code>, <code>cliente</code>, <code>gerente</code>, <code>jefe_site</code>, <code>campania</code>, <code>subcampania</code>, <code>tipo_negocio</code>, <code>tipo_jornada</code>, horas e importes.</li>
 <li><strong>Obligatorio para iniciar</strong>: sí, si se quiere usar Dashboard, Control, Comparativo, Matriz, Justificaciones y exportaciones.</li>
 <li><strong>Reglas importantes</strong>: <code>mes</code> debe estar en formato <code>YYYY-MM</code>; las dimensiones comerciales deben coincidir con <code>asignaciones_comerciales</code>; penalizaciones se tratan como descuento.</li>
@@ -436,7 +737,7 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <li><strong>Propósito</strong>: explicar ajustes, bonos, penalizaciones u otros conceptos asociados a una carga real.</li>
 <li><strong>Campos clave</strong>: <code>facturacion_id</code>, <code>tipo</code>, <code>cantidad</code>, <code>precio</code>, <code>importe</code>, <code>descripcion</code>.</li>
 <li><strong>Obligatorio para iniciar</strong>: no.</li>
-<li><strong>Reglas importantes</strong>: cada justificación debe apuntar a un registro existente de <code>facturacion_2026</code>; en penalizaciones, el importe impacta como descuento.</li>
+<li><strong>Reglas importantes</strong>: cada justificación debe apuntar a un registro existente de <code>facturacion_anio</code>; en penalizaciones, el importe impacta como descuento.</li>
 <li><strong>Carga manual recomendada</strong>: solo cuando un desvío o ajuste necesite respaldo.</li>
 </ul>
 <h4 id="matriz-proyecciones"><code>matriz_proyecciones</code><a class="anchor" href="#matriz-proyecciones" aria-label="Enlace a esta sección">#</a></h4>
@@ -513,7 +814,7 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <ol>
 <li><code>usuarios</code>: crear al menos un usuario <code>administrador</code>.</li>
 <li><code>asignaciones_comerciales</code>: cargar el maestro comercial base.</li>
-<li><code>facturacion_2026</code>: cargar registros reales si se quiere usar Dashboard, Control, Matriz, Comparativo y Justificaciones.</li>
+<li><code>facturacion_anio</code>: cargar registros reales si se quiere usar Dashboard, Control, Matriz, Comparativo y Justificaciones.</li>
 <li><code>feriados_operativos</code>: cargar feriados si las proyecciones deben descontar días no operativos.</li>
 <li><code>matriz_proyecciones</code>: cargar horas y dotaciones proyectadas por mes.</li>
 <li><code>personal_distribucion_horas</code>: configurar los porcentajes diurnos/nocturnos de PLP para el año correspondiente.</li>
@@ -611,7 +912,7 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <li>registra la operación en Historial.</li>
 </ul>
 <p class="">Si <strong>Aplicar desde mes</strong> queda vacío, la edición se comporta como una actualización general de la asociación y de sus cargas vinculadas.</p>
-<h3 id="facturacion-2026-2"><code>facturacion_2026</code><a class="anchor" href="#facturacion-2026-2" aria-label="Enlace a esta sección">#</a></h3>
+<h3 id="facturacion-anio-2"><code>facturacion_anio</code><a class="anchor" href="#facturacion-anio-2" aria-label="Enlace a esta sección">#</a></h3>
 <p class="">Guarda la facturación real.</p>
 <p class="">Campos principales:</p>
 <div class="table-wrap"><table><thead><tr>
@@ -691,7 +992,7 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 </ul>
 <p class="">Esta tabla alimenta Dashboard, Control, Comparativo, Matriz, Justificaciones y exportaciones.</p>
 <h3 id="justificaciones-ajustes-2"><code>justificaciones_ajustes</code><a class="anchor" href="#justificaciones-ajustes-2" aria-label="Enlace a esta sección">#</a></h3>
-<p class="">Guarda explicaciones o ajustes vinculados a un registro de <code>facturacion_2026</code>.</p>
+<p class="">Guarda explicaciones o ajustes vinculados a un registro de <code>facturacion_anio</code>.</p>
 <p class="">Campos principales:</p>
 <div class="table-wrap"><table><thead><tr>
 <th>Campo</th>
@@ -873,6 +1174,7 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 </tr>
 </tbody></table></div>
 <p class="">Los porcentajes se administran desde <strong>Matriz de proyecciones &gt; PLP</strong>. Cambiar un porcentaje recalcula todas las proyecciones PLP coincidentes del mes. Los datos de años anteriores permanecen intactos.</p>
+<p class="">La tabla <strong>Distribución de horas Personal</strong> muestra los porcentajes diurnos y nocturnos con dos decimales. La precisión histórica almacenada se conserva mientras una celda no sea editada; al modificarla, el paso permitido es de <code>0,01</code> puntos porcentuales.</p>
 <h3 id="matriz-proyecciones-jornadas-2"><code>matriz_proyecciones_jornadas</code><a class="anchor" href="#matriz-proyecciones-jornadas-2" aria-label="Enlace a esta sección">#</a></h3>
 <p class="">Guarda aperturas internas de jornada para una proyección.</p>
 <p class="">Campos principales:</p>
@@ -1207,6 +1509,8 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <p class="">La jornada comienza predefinida en <code>L a V</code> y <code>6</code> horas, pero ambos campos son editables. Los días objetivo salen de los días laborales del mes, descontando feriados activos. La dotación se recalcula así:</p>
 <pre><code class="language-text">dotación requerida = horas requeridas / días laborales / horas de jornada</code></pre>
 <p class="">El porcentaje de cumplimiento es editable y afecta las horas proyectadas finales. El resumen mensual PLP acumula las horas base importadas al 100% para poder cotejarlas contra el archivo original.</p>
+<p class="">El <strong>Resumen mensual PLP</strong> aparece antes de la edición para cotejar Personal CX, Personal, Personal Soporte, Total Personal, porcentaje de Soporte, Personal SMB y Total contra el archivo de control. Las horas y los totales se muestran siempre con dos decimales y se calculan sin redondear previamente cada clasificación. La sección <strong>Edición rápida de horas PLP</strong> presenta luego una grilla tipo planilla con una fila por campaña. Su filtro <strong>Mes</strong> permite trabajar con un período puntual o seleccionar <strong>Todos los meses</strong>, y limita tanto el resumen como la grilla. Permite modificar clasificación, mes, campaña, horas, carga semanal, jornada y cumplimiento en varias filas antes de presionar <strong>Guardar cambios</strong> una sola vez. Al finalizar correctamente, la pantalla muestra una confirmación explícita con la cantidad de filas guardadas y eliminadas. <strong>Agregar fila</strong> incorpora campañas nuevas sin abandonar la grilla. Si la combinación clasificación + campaña + mes ya existe, sus valores se reemplazan; no se crea una fila duplicada. <strong>Eliminar</strong> marca una campaña existente para quitarla y ofrece <strong>Restaurar</strong> antes de guardar; las filas nuevas se retiran inmediatamente. La operación es transaccional: si alguna fila es inválida o la misma clave aparece repetida dentro del lote enviado, ninguna modificación ni eliminación se confirma.</p>
+<p class="">Para una conciliación anual controlada puede ejecutarse <code>python scripts/sincronizar_porcentajes_personal.py RUTA_EXCEL --year AAAA</code>. El proceso lee las hojas <code>Desglose HORAS PERSONAL</code>, <code>Horas</code>, <code>Precios</code>, <code>Variable</code> y <code>Tarifacion</code>; conserva la precisión interna del archivo, recalcula distribuciones y porcentajes y registra el cambio en Historial. No genera ajustes residuales.</p>
 <p class="">La importación anual acepta <code>.xlsx</code> o <code>.csv</code> con estas columnas:</p>
 <pre><code class="language-text">Clasificación PLP | MES | CAMPAÑA | HORAS | Carga semanal | Horas jornada | % cumplimiento</code></pre>
 <p class="">Si se vuelve a importar la misma combinación <code>clasificación + campaña + mes</code>, se actualiza el registro existente en lugar de duplicarlo.</p>
@@ -1360,7 +1664,7 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 </tr></thead><tbody>
 <tr>
 <td>Facturación real</td>
-<td><code>facturacion_2026</code></td>
+<td><code>facturacion_anio</code></td>
 <td>Cargar datos / Control</td>
 <td>Dashboard, Comparativo, Matriz y exportaciones.</td>
 </tr>
@@ -1635,7 +1939,7 @@ FLASK_RELOAD  activa el reloader cuando vale 1</code></pre>
 </tr>
 <tr>
 <td>Facturación real</td>
-<td><code>facturacion_2026</code></td>
+<td><code>facturacion_anio</code></td>
 <td>Cargar datos / Control</td>
 <td>Dashboard, Comparativo y Matriz</td>
 </tr>
@@ -1808,9 +2112,10 @@ FLASK_RELOAD  activa el reloader cuando vale 1</code></pre>
 </tr>
 </tbody></table></div>
 <p class="">Las entidades reversibles actuales incluyen proyecciones, precios, variables, tarifaciones, Next Gen y regularizaciones de Facturación horas. Un deshacer aplica el snapshot anterior y crea otro movimiento de historial; no elimina la auditoría.</p>
-<h4 id="facturacion-2026-3"><code>facturacion_2026</code><a class="anchor" href="#facturacion-2026-3" aria-label="Enlace a esta sección">#</a></h4>
-<p class="">Modelo: <code>Facturacion2026</code>.</p>
+<h4 id="facturacion-anio-3"><code>facturacion_anio</code><a class="anchor" href="#facturacion-anio-3" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">Modelo: <code>FacturacionAnio</code>.</p>
 <p class="">Contiene el escenario real. Sus dimensiones son fecha, mes, cliente, gerente, jefe de site, campaña, subcampaña, tipo de negocio y jornada. Sus medidas incluyen horas objetivo, horas facturadas, horas penalizadas, valor hora, tarifación, importe fijo, variables, bonos, penalizaciones, Next Gen y otros.</p>
+<p class="">La tabla se llamó anteriormente <code>facturacion_2026</code>. Durante el primer arranque posterior al cambio, la aplicación ejecuta un <code>ALTER TABLE ... RENAME TO facturacion_anio</code>, conservando IDs, registros y la referencia <code>justificaciones_ajustes.facturacion_id</code>. Si las dos tablas existieran al mismo tiempo, el inicio se detiene para exigir una conciliación manual y evitar pérdida o duplicación de datos.</p>
 <p class="">Las propiedades calculadas del modelo producen:</p>
 <pre><code class="language-text">facturado horas
 facturado bono
@@ -1823,7 +2128,7 @@ porcentaje de cumplimiento</code></pre>
 <p class="">Una penalización positiva cargada por el usuario se convierte en descuento durante el cálculo.</p>
 <h4 id="justificaciones-ajustes-3"><code>justificaciones_ajustes</code><a class="anchor" href="#justificaciones-ajustes-3" aria-label="Enlace a esta sección">#</a></h4>
 <p class="">Modelo: <code>JustificacionAjuste</code>.</p>
-<p class="">Cada registro referencia <code>facturacion_2026.id</code>. Guarda tipo, cantidad, precio, importe y descripción. Su finalidad es explicar y respaldar ajustes del escenario real. Las penalizaciones se normalizan con signo negativo al calcular.</p>
+<p class="">Cada registro referencia <code>facturacion_anio.id</code>. Guarda tipo, cantidad, precio, importe y descripción. Su finalidad es explicar y respaldar ajustes del escenario real. Las penalizaciones se normalizan con signo negativo al calcular.</p>
 <h4 id="matriz-proyecciones-3"><code>matriz_proyecciones</code><a class="anchor" href="#matriz-proyecciones-3" aria-label="Enlace a esta sección">#</a></h4>
 <p class="">Modelo: <code>ProyeccionMatriz</code>.</p>
 <p class="">Clave funcional:</p>
@@ -1956,7 +2261,7 @@ porcentaje de cumplimiento</code></pre>
 <li>negativo: resta;</li>
 <li>cero: no altera el resultado.</li>
 </ul>
-<p class="">También contiene el concepto técnico <code>Ajuste alineación Excel</code>. Este concepto mantiene la conciliación contra el archivo de referencia utilizado en 2026. Debe permanecer separado de Tarifación y Suma fija para que sea auditable.</p>
+<p class="">Solo deben almacenarse conceptos e importes presentes en la fuente operativa. No se deben crear residuales técnicos para forzar la conciliación: cualquier diferencia debe corregirse en horas, precios, porcentajes variables o tarifaciones de origen.</p>
 <p class="">Si cambian datos maestros tanto en la app como en el Excel, se debe volver a ejecutar una comparación y recalcular la conciliación. No debe editarse el ajuste para ocultar un error de horas, precio o agrupación.</p>
 <h4 id="next-gen-dolar"><code>next_gen_dolar</code><a class="anchor" href="#next-gen-dolar" aria-label="Enlace a esta sección">#</a></h4>
 <p class="">Modelo: <code>NextGenDolar</code>.</p>
@@ -2124,7 +2429,7 @@ horas nocturnas = horas totales × porcentaje nocturno</code></pre>
 <ol>
 <li>primero se corrigen horas, precios, porcentajes, sumas fijas y nombres;</li>
 <li>después se calcula la diferencia residual;</li>
-<li>el residual se guarda con concepto <code>Ajuste alineación Excel</code>;</li>
+<li>cualquier residual se informa para corregir su componente de origen, sin generar ajustes artificiales;</li>
 <li>el ajuste queda visible, auditable y reversible.</li>
 </ol>
 <p class="">Si se cambia agosto en adelante:</p>
@@ -2146,6 +2451,11 @@ horas nocturnas = horas totales × porcentaje nocturno</code></pre>
 <td><code>/api/matriz-proyecciones</code></td>
 <td>GET, POST</td>
 <td>Consultar y guardar proyecciones</td>
+</tr>
+<tr>
+<td><code>/api/campanias</code></td>
+<td>GET</td>
+<td>Consultar IDs canónicos por cliente + campaña</td>
 </tr>
 <tr>
 <td><code>/api/matriz-proyecciones/&lt;id&gt;</code></td>
@@ -2284,6 +2594,7 @@ Rol con permiso de edición</code></pre>
 </ol>
 <p class="">En producción:</p>
 <ul>
+<li>configurar <code>APP_ENV=production</code>;</li>
 <li>usar un <code>SECRET_KEY</code> persistente y seguro;</li>
 <li>activar <code>SESSION_COOKIE_SECURE=1</code>;</li>
 <li>publicar únicamente detrás de HTTPS;</li>
@@ -2358,7 +2669,673 @@ python run.py</code></pre>
 <li>verificar cantidad USD y dólar;</li>
 <li>revisar el ajuste de conciliación sólo al final.</li>
 </ol>
-<p class="">Una diferencia exactamente igual todos los meses suele indicar un fijo o una tarifación faltante. Una diferencia proporcional a las horas suele indicar un precio incorrecto. Una diferencia proporcional a Facturación horas suele indicar el porcentaje variable. Una diferencia que aparece sólo después de cierto mes suele indicar vigencia, inflación, cambio de campaña o una apertura nueva.</p></article>
+<p class="">Una diferencia exactamente igual todos los meses suele indicar un fijo o una tarifación faltante. Una diferencia proporcional a las horas suele indicar un precio incorrecto. Una diferencia proporcional a Facturación horas suele indicar el porcentaje variable. Una diferencia que aparece sólo después de cierto mes suele indicar vigencia, inflación, cambio de campaña o una apertura nueva.</p>
+<h2 id="anexo-ddl-sqlite">Anexo DDL completo - SQLite<a class="anchor" href="#anexo-ddl-sqlite" aria-label="Enlace a esta sección">#</a></h2><p>Definición física generada desde <code>app/models.py</code>.</p><pre><code class="language-sql">-- Dashboard de Facturación
+-- Esquema físico completo para SQLITE
+-- Generado desde app/models.py. No editar manualmente.
+
+-- ============================================================
+-- TABLA: campanias
+-- ============================================================
+CREATE TABLE campanias (
+	id INTEGER NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	nombre VARCHAR(100) NOT NULL,
+	activa BOOLEAN NOT NULL,
+	creado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_campanias_cliente_nombre UNIQUE (cliente, nombre)
+);
+
+-- ============================================================
+-- TABLA: facturacion_anio
+-- ============================================================
+CREATE TABLE facturacion_anio (
+	id INTEGER NOT NULL,
+	fecha DATE NOT NULL,
+	mes VARCHAR(20) NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	gerente VARCHAR(100),
+	jefe_site VARCHAR(100),
+	campania VARCHAR(100),
+	subcampania VARCHAR(100),
+	tipo_negocio VARCHAR(100),
+	tipo_jornada VARCHAR(50) NOT NULL,
+	horas_objetivo NUMERIC(12, 2) NOT NULL,
+	horas_facturadas NUMERIC(12, 2) NOT NULL,
+	horas_penalizadas NUMERIC(12, 2),
+	valor_hora_objetivo NUMERIC(18, 2),
+	valor_hora NUMERIC(18, 2) NOT NULL,
+	tarifacion NUMERIC(18, 2),
+	importe_fijo NUMERIC(18, 2),
+	variable_objetivo NUMERIC(18, 2),
+	variable_productivo NUMERIC(18, 2),
+	bonos NUMERIC(18, 2),
+	penalizaciones NUMERIC(18, 2),
+	netx_gen NUMERIC(18, 2),
+	otros NUMERIC(18, 2),
+	PRIMARY KEY (id)
+);
+
+-- ============================================================
+-- TABLA: feriados_operativos
+-- ============================================================
+CREATE TABLE feriados_operativos (
+	id INTEGER NOT NULL,
+	year INTEGER NOT NULL,
+	fecha DATE NOT NULL,
+	nombre VARCHAR(160) NOT NULL,
+	tipo VARCHAR(30) NOT NULL,
+	activo BOOLEAN NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_feriados_operativos_fecha UNIQUE (fecha)
+);
+
+CREATE INDEX ix_feriados_operativos_fecha ON feriados_operativos (fecha);
+
+CREATE INDEX ix_feriados_operativos_year ON feriados_operativos (year);
+
+-- ============================================================
+-- TABLA: matriz_precios
+-- ============================================================
+CREATE TABLE matriz_precios (
+	id INTEGER NOT NULL,
+	site VARCHAR(100),
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	precio_base NUMERIC(18, 2) NOT NULL,
+	alcance_porcentaje NUMERIC(9, 4) NOT NULL,
+	precio_final NUMERIC(18, 2) NOT NULL,
+	importe_fijo_mensual NUMERIC(18, 2) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_matriz_precios_cliente_campania_mes UNIQUE (cliente, campania, mes)
+);
+
+CREATE INDEX ix_matriz_precios_mes ON matriz_precios (mes);
+
+CREATE INDEX ix_matriz_precios_year ON matriz_precios (year);
+
+-- ============================================================
+-- TABLA: matriz_proyecciones
+-- ============================================================
+CREATE TABLE matriz_proyecciones (
+	id INTEGER NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	dotacion_requerida NUMERIC(12, 2) NOT NULL,
+	carga_semanal VARCHAR(20) NOT NULL,
+	carga_horaria NUMERIC(12, 2) NOT NULL,
+	dias_objetivo INTEGER NOT NULL,
+	horas_requeridas NUMERIC(12, 2) NOT NULL,
+	porcentaje_cumplimiento NUMERIC(9, 4) NOT NULL,
+	tiene_nocturnidad BOOLEAN NOT NULL,
+	porcentaje_nocturnidad NUMERIC(9, 4) NOT NULL,
+	tipo_plp VARCHAR(30),
+	horas_carga_manual BOOLEAN NOT NULL,
+	dias_objetivo_manual INTEGER,
+	horas_requeridas_manual NUMERIC(12, 2),
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_matriz_proyecciones_cliente_campania_mes UNIQUE (cliente, campania, mes)
+);
+
+CREATE INDEX ix_matriz_proyecciones_mes ON matriz_proyecciones (mes);
+
+CREATE INDEX ix_matriz_proyecciones_year ON matriz_proyecciones (year);
+
+-- ============================================================
+-- TABLA: next_gen_dolar
+-- ============================================================
+CREATE TABLE next_gen_dolar (
+	id INTEGER NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	valor NUMERIC(18, 6) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_next_gen_dolar_mes ON next_gen_dolar (mes);
+
+CREATE INDEX ix_next_gen_dolar_year ON next_gen_dolar (year);
+
+-- ============================================================
+-- TABLA: next_gen_productos
+-- ============================================================
+CREATE TABLE next_gen_productos (
+	id INTEGER NOT NULL,
+	site VARCHAR(100),
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	producto VARCHAR(160) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	cantidad_usd NUMERIC(18, 2) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_next_gen_producto_mes UNIQUE (cliente, campania, producto, mes)
+);
+
+CREATE INDEX ix_next_gen_productos_mes ON next_gen_productos (mes);
+
+CREATE INDEX ix_next_gen_productos_year ON next_gen_productos (year);
+
+-- ============================================================
+-- TABLA: personal_distribucion_horas
+-- ============================================================
+CREATE TABLE personal_distribucion_horas (
+	id INTEGER NOT NULL,
+	servicio VARCHAR(100) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	porcentaje_diurno NUMERIC(9, 4) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_personal_distribucion_servicio_mes UNIQUE (servicio, mes)
+);
+
+CREATE INDEX ix_personal_distribucion_horas_mes ON personal_distribucion_horas (mes);
+
+CREATE INDEX ix_personal_distribucion_horas_servicio ON personal_distribucion_horas (servicio);
+
+CREATE INDEX ix_personal_distribucion_horas_year ON personal_distribucion_horas (year);
+
+-- ============================================================
+-- TABLA: sites_proyecciones
+-- ============================================================
+CREATE TABLE sites_proyecciones (
+	id INTEGER NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(160) NOT NULL,
+	site VARCHAR(100) NOT NULL,
+	cliente_destino VARCHAR(100),
+	campania_destino VARCHAR(160),
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_site_proyeccion_cliente_campania UNIQUE (cliente, campania)
+);
+
+-- ============================================================
+-- TABLA: tarifaciones_campanias
+-- ============================================================
+CREATE TABLE tarifaciones_campanias (
+	id INTEGER NOT NULL,
+	site VARCHAR(100),
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	concepto VARCHAR(100) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	monto NUMERIC(18, 2) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_tarifacion_campania_concepto_mes UNIQUE (cliente, campania, concepto, mes)
+);
+
+CREATE INDEX ix_tarifaciones_campanias_mes ON tarifaciones_campanias (mes);
+
+CREATE INDEX ix_tarifaciones_campanias_year ON tarifaciones_campanias (year);
+
+-- ============================================================
+-- TABLA: usuarios
+-- ============================================================
+CREATE TABLE usuarios (
+	id INTEGER NOT NULL,
+	nombre VARCHAR(120) NOT NULL,
+	email VARCHAR(160) NOT NULL,
+	password_hash VARCHAR(255) NOT NULL,
+	rol VARCHAR(30) NOT NULL,
+	activo BOOLEAN NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_usuarios_email ON usuarios (email);
+
+-- ============================================================
+-- TABLA: variables_campanias
+-- ============================================================
+CREATE TABLE variables_campanias (
+	id INTEGER NOT NULL,
+	site VARCHAR(100),
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	porcentaje NUMERIC(9, 4) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_variables_cliente_campania_mes UNIQUE (cliente, campania, mes)
+);
+
+CREATE INDEX ix_variables_campanias_mes ON variables_campanias (mes);
+
+CREATE INDEX ix_variables_campanias_year ON variables_campanias (year);
+
+-- ============================================================
+-- TABLA: asignaciones_comerciales
+-- ============================================================
+CREATE TABLE asignaciones_comerciales (
+	id INTEGER NOT NULL,
+	campania_id INTEGER NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	gerente VARCHAR(100) NOT NULL,
+	jefe_site VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	subcampania VARCHAR(100) NOT NULL,
+	tipo_negocio VARCHAR(100),
+	activa BOOLEAN NOT NULL,
+	creado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT fk_asignaciones_campania FOREIGN KEY(campania_id) REFERENCES campanias (id)
+);
+
+CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
+
+-- ============================================================
+-- TABLA: historial_cambios
+-- ============================================================
+CREATE TABLE historial_cambios (
+	id INTEGER NOT NULL,
+	usuario_id INTEGER,
+	usuario_nombre VARCHAR(120),
+	usuario_email VARCHAR(160),
+	accion VARCHAR(30) NOT NULL,
+	entidad VARCHAR(80) NOT NULL,
+	entidad_id VARCHAR(50),
+	resumen VARCHAR(255) NOT NULL,
+	detalle TEXT,
+	antes TEXT,
+	despues TEXT,
+	creado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(usuario_id) REFERENCES usuarios (id)
+);
+
+CREATE INDEX ix_historial_cambios_creado_en ON historial_cambios (creado_en);
+
+-- ============================================================
+-- TABLA: justificaciones_ajustes
+-- ============================================================
+CREATE TABLE justificaciones_ajustes (
+	id INTEGER NOT NULL,
+	facturacion_id INTEGER NOT NULL,
+	tipo VARCHAR(30) NOT NULL,
+	cantidad NUMERIC(18, 4),
+	precio NUMERIC(18, 2),
+	importe NUMERIC(18, 2) NOT NULL,
+	descripcion TEXT NOT NULL,
+	creado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(facturacion_id) REFERENCES facturacion_anio (id)
+);
+
+-- ============================================================
+-- TABLA: matriz_proyecciones_jornadas
+-- ============================================================
+CREATE TABLE matriz_proyecciones_jornadas (
+	id INTEGER NOT NULL,
+	proyeccion_id INTEGER NOT NULL,
+	dotacion_requerida NUMERIC(12, 2) NOT NULL,
+	carga_semanal VARCHAR(30) NOT NULL,
+	carga_horaria NUMERIC(12, 2) NOT NULL,
+	dias_objetivo INTEGER NOT NULL,
+	horas_requeridas NUMERIC(12, 2) NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(proyeccion_id) REFERENCES matriz_proyecciones (id)
+);
+
+CREATE INDEX ix_matriz_proyecciones_jornadas_proyeccion_id ON matriz_proyecciones_jornadas (proyeccion_id);
+</code></pre>
+<h2 id="anexo-ddl-postgresql">Anexo DDL completo - PostgreSQL<a class="anchor" href="#anexo-ddl-postgresql" aria-label="Enlace a esta sección">#</a></h2><p>Definición física generada desde <code>app/models.py</code>.</p><pre><code class="language-sql">-- Dashboard de Facturación
+-- Esquema físico completo para POSTGRESQL
+-- Generado desde app/models.py. No editar manualmente.
+
+-- ============================================================
+-- TABLA: campanias
+-- ============================================================
+CREATE TABLE campanias (
+	id SERIAL NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	nombre VARCHAR(100) NOT NULL,
+	activa BOOLEAN NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_campanias_cliente_nombre UNIQUE (cliente, nombre)
+);
+
+-- ============================================================
+-- TABLA: facturacion_anio
+-- ============================================================
+CREATE TABLE facturacion_anio (
+	id SERIAL NOT NULL,
+	fecha DATE NOT NULL,
+	mes VARCHAR(20) NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	gerente VARCHAR(100),
+	jefe_site VARCHAR(100),
+	campania VARCHAR(100),
+	subcampania VARCHAR(100),
+	tipo_negocio VARCHAR(100),
+	tipo_jornada VARCHAR(50) NOT NULL,
+	horas_objetivo NUMERIC(12, 2) NOT NULL,
+	horas_facturadas NUMERIC(12, 2) NOT NULL,
+	horas_penalizadas NUMERIC(12, 2),
+	valor_hora_objetivo NUMERIC(18, 2),
+	valor_hora NUMERIC(18, 2) NOT NULL,
+	tarifacion NUMERIC(18, 2),
+	importe_fijo NUMERIC(18, 2),
+	variable_objetivo NUMERIC(18, 2),
+	variable_productivo NUMERIC(18, 2),
+	bonos NUMERIC(18, 2),
+	penalizaciones NUMERIC(18, 2),
+	netx_gen NUMERIC(18, 2),
+	otros NUMERIC(18, 2),
+	PRIMARY KEY (id)
+);
+
+-- ============================================================
+-- TABLA: feriados_operativos
+-- ============================================================
+CREATE TABLE feriados_operativos (
+	id SERIAL NOT NULL,
+	year INTEGER NOT NULL,
+	fecha DATE NOT NULL,
+	nombre VARCHAR(160) NOT NULL,
+	tipo VARCHAR(30) NOT NULL,
+	activo BOOLEAN NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_feriados_operativos_fecha UNIQUE (fecha)
+);
+
+CREATE INDEX ix_feriados_operativos_fecha ON feriados_operativos (fecha);
+
+CREATE INDEX ix_feriados_operativos_year ON feriados_operativos (year);
+
+-- ============================================================
+-- TABLA: matriz_precios
+-- ============================================================
+CREATE TABLE matriz_precios (
+	id SERIAL NOT NULL,
+	site VARCHAR(100),
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	precio_base NUMERIC(18, 2) NOT NULL,
+	alcance_porcentaje NUMERIC(9, 4) NOT NULL,
+	precio_final NUMERIC(18, 2) NOT NULL,
+	importe_fijo_mensual NUMERIC(18, 2) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_matriz_precios_cliente_campania_mes UNIQUE (cliente, campania, mes)
+);
+
+CREATE INDEX ix_matriz_precios_mes ON matriz_precios (mes);
+
+CREATE INDEX ix_matriz_precios_year ON matriz_precios (year);
+
+-- ============================================================
+-- TABLA: matriz_proyecciones
+-- ============================================================
+CREATE TABLE matriz_proyecciones (
+	id SERIAL NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	dotacion_requerida NUMERIC(12, 2) NOT NULL,
+	carga_semanal VARCHAR(20) NOT NULL,
+	carga_horaria NUMERIC(12, 2) NOT NULL,
+	dias_objetivo INTEGER NOT NULL,
+	horas_requeridas NUMERIC(12, 2) NOT NULL,
+	porcentaje_cumplimiento NUMERIC(9, 4) NOT NULL,
+	tiene_nocturnidad BOOLEAN NOT NULL,
+	porcentaje_nocturnidad NUMERIC(9, 4) NOT NULL,
+	tipo_plp VARCHAR(30),
+	horas_carga_manual BOOLEAN NOT NULL,
+	dias_objetivo_manual INTEGER,
+	horas_requeridas_manual NUMERIC(12, 2),
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_matriz_proyecciones_cliente_campania_mes UNIQUE (cliente, campania, mes)
+);
+
+CREATE INDEX ix_matriz_proyecciones_mes ON matriz_proyecciones (mes);
+
+CREATE INDEX ix_matriz_proyecciones_year ON matriz_proyecciones (year);
+
+-- ============================================================
+-- TABLA: next_gen_dolar
+-- ============================================================
+CREATE TABLE next_gen_dolar (
+	id SERIAL NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	valor NUMERIC(18, 6) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_next_gen_dolar_mes ON next_gen_dolar (mes);
+
+CREATE INDEX ix_next_gen_dolar_year ON next_gen_dolar (year);
+
+-- ============================================================
+-- TABLA: next_gen_productos
+-- ============================================================
+CREATE TABLE next_gen_productos (
+	id SERIAL NOT NULL,
+	site VARCHAR(100),
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	producto VARCHAR(160) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	cantidad_usd NUMERIC(18, 2) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_next_gen_producto_mes UNIQUE (cliente, campania, producto, mes)
+);
+
+CREATE INDEX ix_next_gen_productos_mes ON next_gen_productos (mes);
+
+CREATE INDEX ix_next_gen_productos_year ON next_gen_productos (year);
+
+-- ============================================================
+-- TABLA: personal_distribucion_horas
+-- ============================================================
+CREATE TABLE personal_distribucion_horas (
+	id SERIAL NOT NULL,
+	servicio VARCHAR(100) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	porcentaje_diurno NUMERIC(9, 4) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_personal_distribucion_servicio_mes UNIQUE (servicio, mes)
+);
+
+CREATE INDEX ix_personal_distribucion_horas_mes ON personal_distribucion_horas (mes);
+
+CREATE INDEX ix_personal_distribucion_horas_servicio ON personal_distribucion_horas (servicio);
+
+CREATE INDEX ix_personal_distribucion_horas_year ON personal_distribucion_horas (year);
+
+-- ============================================================
+-- TABLA: sites_proyecciones
+-- ============================================================
+CREATE TABLE sites_proyecciones (
+	id SERIAL NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(160) NOT NULL,
+	site VARCHAR(100) NOT NULL,
+	cliente_destino VARCHAR(100),
+	campania_destino VARCHAR(160),
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_site_proyeccion_cliente_campania UNIQUE (cliente, campania)
+);
+
+-- ============================================================
+-- TABLA: tarifaciones_campanias
+-- ============================================================
+CREATE TABLE tarifaciones_campanias (
+	id SERIAL NOT NULL,
+	site VARCHAR(100),
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	concepto VARCHAR(100) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	monto NUMERIC(18, 2) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_tarifacion_campania_concepto_mes UNIQUE (cliente, campania, concepto, mes)
+);
+
+CREATE INDEX ix_tarifaciones_campanias_mes ON tarifaciones_campanias (mes);
+
+CREATE INDEX ix_tarifaciones_campanias_year ON tarifaciones_campanias (year);
+
+-- ============================================================
+-- TABLA: usuarios
+-- ============================================================
+CREATE TABLE usuarios (
+	id SERIAL NOT NULL,
+	nombre VARCHAR(120) NOT NULL,
+	email VARCHAR(160) NOT NULL,
+	password_hash VARCHAR(255) NOT NULL,
+	rol VARCHAR(30) NOT NULL,
+	activo BOOLEAN NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_usuarios_email ON usuarios (email);
+
+-- ============================================================
+-- TABLA: variables_campanias
+-- ============================================================
+CREATE TABLE variables_campanias (
+	id SERIAL NOT NULL,
+	site VARCHAR(100),
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	porcentaje NUMERIC(9, 4) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_variables_cliente_campania_mes UNIQUE (cliente, campania, mes)
+);
+
+CREATE INDEX ix_variables_campanias_mes ON variables_campanias (mes);
+
+CREATE INDEX ix_variables_campanias_year ON variables_campanias (year);
+
+-- ============================================================
+-- TABLA: asignaciones_comerciales
+-- ============================================================
+CREATE TABLE asignaciones_comerciales (
+	id SERIAL NOT NULL,
+	campania_id INTEGER NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	gerente VARCHAR(100) NOT NULL,
+	jefe_site VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	subcampania VARCHAR(100) NOT NULL,
+	tipo_negocio VARCHAR(100),
+	activa BOOLEAN NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT fk_asignaciones_campania FOREIGN KEY(campania_id) REFERENCES campanias (id)
+);
+
+CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
+
+-- ============================================================
+-- TABLA: historial_cambios
+-- ============================================================
+CREATE TABLE historial_cambios (
+	id SERIAL NOT NULL,
+	usuario_id INTEGER,
+	usuario_nombre VARCHAR(120),
+	usuario_email VARCHAR(160),
+	accion VARCHAR(30) NOT NULL,
+	entidad VARCHAR(80) NOT NULL,
+	entidad_id VARCHAR(50),
+	resumen VARCHAR(255) NOT NULL,
+	detalle TEXT,
+	antes TEXT,
+	despues TEXT,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(usuario_id) REFERENCES usuarios (id)
+);
+
+CREATE INDEX ix_historial_cambios_creado_en ON historial_cambios (creado_en);
+
+-- ============================================================
+-- TABLA: justificaciones_ajustes
+-- ============================================================
+CREATE TABLE justificaciones_ajustes (
+	id SERIAL NOT NULL,
+	facturacion_id INTEGER NOT NULL,
+	tipo VARCHAR(30) NOT NULL,
+	cantidad NUMERIC(18, 4),
+	precio NUMERIC(18, 2),
+	importe NUMERIC(18, 2) NOT NULL,
+	descripcion TEXT NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(facturacion_id) REFERENCES facturacion_anio (id)
+);
+
+-- ============================================================
+-- TABLA: matriz_proyecciones_jornadas
+-- ============================================================
+CREATE TABLE matriz_proyecciones_jornadas (
+	id SERIAL NOT NULL,
+	proyeccion_id INTEGER NOT NULL,
+	dotacion_requerida NUMERIC(12, 2) NOT NULL,
+	carga_semanal VARCHAR(30) NOT NULL,
+	carga_horaria NUMERIC(12, 2) NOT NULL,
+	dias_objetivo INTEGER NOT NULL,
+	horas_requeridas NUMERIC(12, 2) NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(proyeccion_id) REFERENCES matriz_proyecciones (id)
+);
+
+CREATE INDEX ix_matriz_proyecciones_jornadas_proyeccion_id ON matriz_proyecciones_jornadas (proyeccion_id);
+</code></pre></article>
     <footer>Dashboard de Facturación · Documentación técnica</footer>
   </main>
   <a class="back" href="#indice">Índice ↑</a>

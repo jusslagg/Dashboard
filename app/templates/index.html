@@ -15,7 +15,19 @@
 
 <!-- Filtros -->
 <div class="bg-white rounded-lg shadow p-4 mb-6">
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-8 gap-4 items-end">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-9 gap-4 items-end">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Año</label>
+            <div class="relative" data-dropdown-multiple="true">
+                <button type="button" onclick="toggleListaMultiple('panelYear')" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span id="resumenYear">Todos</span>
+                    <i class="fas fa-chevron-down float-right mt-1 text-gray-400"></i>
+                </button>
+                <div id="panelYear" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg p-3">
+                    <div id="filtroYear" data-lista-multiple="true" data-resumen="resumenYear" data-placeholder="Todos" class="text-sm max-h-44 overflow-y-auto bg-white"></div>
+                </div>
+            </div>
+        </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Mes</label>
             <div class="relative" data-dropdown-multiple="true">
@@ -259,6 +271,7 @@ document.addEventListener('click', function(event) {
 
 function getFiltros() {
     return {
+        year: getSelectedValues('filtroYear'),
         mes: getSelectedValues('filtroMes'),
         cliente: getSelectedValues('filtroCliente'),
         gerente: getSelectedValues('filtroGerente'),
@@ -272,6 +285,7 @@ function getFiltros() {
 function buildQuery() {
     const filtros = getFiltros();
     const params = new URLSearchParams();
+    agregarParam(params, 'year', filtros.year);
     agregarParam(params, 'mes', filtros.mes);
     agregarParam(params, 'cliente', filtros.cliente);
     agregarParam(params, 'gerente', filtros.gerente);
@@ -299,6 +313,7 @@ async function cargarFiltrosDashboard(mantenerSeleccion = false) {
     const data = await response.json();
     if (!data.success) return;
 
+    popularSelect('filtroYear', data.filtros.years, 'Todos', value => value, seleccion.year);
     popularSelect('filtroMes', data.filtros.meses, 'Todos', formatMes, seleccion.mes);
     popularSelect('filtroCliente', data.filtros.clientes, 'Todos', value => value, seleccion.cliente);
     popularSelect('filtroGerente', data.filtros.gerentes, 'Todos', value => value, seleccion.gerente);
@@ -603,7 +618,7 @@ function actualizarTablaResumen(resumen) {
 }
 
 function limpiarFiltros() {
-    ['filtroMes', 'filtroCliente', 'filtroGerente', 'filtroJefeSite', 'filtroCampania', 'filtroSubcampania', 'filtroTipoNegocio'].forEach(id => {
+    ['filtroYear', 'filtroMes', 'filtroCliente', 'filtroGerente', 'filtroJefeSite', 'filtroCampania', 'filtroSubcampania', 'filtroTipoNegocio'].forEach(id => {
         document.querySelectorAll(`#${id} input[type="checkbox"]`).forEach(input => input.checked = false);
         actualizarResumenMultiple(id);
     });

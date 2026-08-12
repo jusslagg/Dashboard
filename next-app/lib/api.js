@@ -1,4 +1,8 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8009';
+export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8009').replace(/\/$/, '');
+
+export function flaskUrl(path) {
+  return new URL(path, `${API_BASE}/`).toString();
+}
 
 export async function getJson(path, params) {
   const url = new URL(path, API_BASE);

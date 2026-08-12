@@ -1,7 +1,7 @@
 # filepath: app/__init__.py
 import os
 import secrets
-from datetime import timedelta
+from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 from flask import Flask, abort, request, session
@@ -25,7 +25,12 @@ def create_app():
     load_dotenv()
     app = Flask(__name__)
 
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or secrets.token_urlsafe(48)
+    environment = os.getenv('APP_ENV', 'development').strip().lower()
+    secret_key = os.getenv('SECRET_KEY', '').strip()
+    if environment == 'production' and (not secret_key or secret_key.startswith('generar-')):
+        raise RuntimeError('SECRET_KEY debe configurarse con un valor seguro y persistente en produccion.')
+    app.config['APP_ENV'] = environment
+    app.config['SECRET_KEY'] = secret_key or secrets.token_urlsafe(48)
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///facturacion.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JSON_AS_ASCII'] = False
@@ -35,6 +40,8 @@ def create_app():
     app.config['SESSION_COOKIE_SAMESITE'] = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
     app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', '0') == '1'
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=int(os.getenv('SESSION_MINUTES', '60')))
+    app.config['DEFAULT_YEAR'] = configured_year('APP_DEFAULT_YEAR', datetime.now().year)
+    app.config['PLP_BASE_YEAR'] = configured_year('PLP_BASE_YEAR', 2026)
     app.json.ensure_ascii = False
 
     origins = configured_origins()
@@ -66,6 +73,7 @@ def create_app():
         response.headers.setdefault('Referrer-Policy', 'same-origin')
         response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
         response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+        connect_sources = ' '.join(sorted(app.config['TRUSTED_ORIGINS']))
         response.headers.setdefault(
             'Content-Security-Policy',
             "default-src 'self'; "
@@ -73,7 +81,7 @@ def create_app():
             "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
             "img-src 'self' data:; "
             "font-src 'self' data: https://cdnjs.cloudflare.com; "
-            "connect-src 'self' http://127.0.0.1:8009 http://localhost:8009; "
+            f"connect-src 'self' {connect_sources}; "
             "frame-ancestors 'none'; "
             "base-uri 'self'; "
             "form-action 'self'"
@@ -88,10 +96,17 @@ def create_app():
         from app.models import Usuario
         usuario_id = session.get('usuario_id')
         usuario = Usuario.query.get(usuario_id) if usuario_id else None
-        return {'usuario_actual': usuario, 'csrf_token': get_csrf_token()}
+        return {
+            'usuario_actual': usuario,
+            'csrf_token': get_csrf_token(),
+            'anio_actual': app.config['DEFAULT_YEAR'],
+            'anios_disponibles': range(2020, max(datetime.now().year, app.config['DEFAULT_YEAR']) + 3),
+        }
     
     with app.app_context():
+        migrar_tabla_facturacion_legacy()
         db.create_all()
+        migrar_tipos_numericos_postgresql()
         ensure_schema()
     
     return app
@@ -103,6 +118,17 @@ def configured_origins():
         return list(DEFAULT_TRUSTED_ORIGINS)
     origins = [origin.strip().rstrip('/') for origin in configured.split(',') if origin.strip()]
     return origins or list(DEFAULT_TRUSTED_ORIGINS)
+
+
+def configured_year(variable, default):
+    raw_value = os.getenv(variable, str(default)).strip()
+    try:
+        year = int(raw_value)
+    except ValueError as exc:
+        raise RuntimeError(f'{variable} debe ser un anio numerico.') from exc
+    if not 2020 <= year <= 2100:
+        raise RuntimeError(f'{variable} debe estar entre 2020 y 2100.')
+    return year
 
 
 def origin_is_allowed(value):
@@ -139,10 +165,72 @@ def csrf_token_is_valid():
     return bool(expected and supplied and secrets.compare_digest(str(expected), str(supplied)))
 
 
+def migrar_tabla_facturacion_legacy():
+    """Renombra la tabla 2026 conservando IDs, datos y referencias existentes."""
+    inspector = inspect(db.engine)
+    existe_legacy = inspector.has_table('facturacion_2026')
+    existe_anual = inspector.has_table('facturacion_anio')
+    if not existe_legacy:
+        return
+    if existe_anual:
+        raise RuntimeError(
+            'Existen simultáneamente facturacion_2026 y facturacion_anio; '
+            'se requiere conciliación manual antes de iniciar.'
+        )
+    db.session.execute(text('ALTER TABLE facturacion_2026 RENAME TO facturacion_anio'))
+    db.session.commit()
+
+
+def migrar_tipos_numericos_postgresql():
+    """Aplica precisión y escala al migrar una base PostgreSQL existente."""
+    if db.engine.dialect.name != 'postgresql':
+        return
+    contrato = {
+        'facturacion_anio': {
+            'horas_objetivo': (12, 2), 'horas_facturadas': (12, 2), 'horas_penalizadas': (12, 2),
+            'valor_hora_objetivo': (18, 2), 'valor_hora': (18, 2), 'facturado_horas_manual': (18, 2), 'tarifacion': (18, 2),
+            'importe_fijo': (18, 2), 'variable_objetivo': (18, 2), 'variable_productivo': (18, 2),
+            'bonos': (18, 2), 'penalizaciones': (18, 2), 'netx_gen': (18, 2), 'otros': (18, 2),
+        },
+        'justificaciones_ajustes': {'cantidad': (18, 4), 'precio': (18, 2), 'importe': (18, 2)},
+        'matriz_proyecciones': {
+            'dotacion_requerida': (12, 2), 'carga_horaria': (12, 2), 'horas_requeridas': (12, 2),
+            'porcentaje_cumplimiento': (9, 4), 'porcentaje_nocturnidad': (9, 4),
+            'horas_requeridas_manual': (12, 2),
+        },
+        'matriz_proyecciones_jornadas': {
+            'dotacion_requerida': (12, 2), 'carga_horaria': (12, 2), 'horas_requeridas': (12, 2),
+        },
+        'personal_distribucion_horas': {'porcentaje_diurno': (9, 4)},
+        'matriz_precios': {
+            'precio_base': (18, 2), 'alcance_porcentaje': (9, 4), 'precio_final': (18, 2),
+            'importe_fijo_mensual': (18, 2),
+        },
+        'variables_campanias': {'porcentaje': (9, 4)},
+        'tarifaciones_campanias': {'monto': (18, 2)},
+        'next_gen_dolar': {'valor': (18, 6)},
+        'next_gen_productos': {'cantidad_usd': (18, 2)},
+    }
+    inspector = inspect(db.engine)
+    for tabla, columnas in contrato.items():
+        if not inspector.has_table(tabla):
+            continue
+        actuales = {columna['name']: columna['type'] for columna in inspector.get_columns(tabla)}
+        for columna, (precision, escala) in columnas.items():
+            tipo = actuales.get(columna)
+            if tipo is None or (getattr(tipo, 'precision', None), getattr(tipo, 'scale', None)) == (precision, escala):
+                continue
+            db.session.execute(text(
+                f'ALTER TABLE {tabla} ALTER COLUMN {columna} '
+                f'TYPE NUMERIC({precision},{escala}) USING {columna}::numeric({precision},{escala})'
+            ))
+    db.session.commit()
+
+
 def ensure_schema():
     inspector = inspect(db.engine)
     asegurar_administrador_inicial_db()
-    if not inspector.has_table('facturacion_2026'):
+    if not inspector.has_table('facturacion_anio'):
         return
 
     asignacion_columns = {column['name'] for column in inspector.get_columns('asignaciones_comerciales')} if inspector.has_table('asignaciones_comerciales') else set()
@@ -150,7 +238,45 @@ def ensure_schema():
         db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN jefe_site VARCHAR(100)"))
     if asignacion_columns and 'tipo_negocio' not in asignacion_columns:
         db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN tipo_negocio VARCHAR(100)"))
+    if asignacion_columns and 'es_next_gen' not in asignacion_columns:
+        db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN es_next_gen BOOLEAN DEFAULT 0 NOT NULL"))
     if inspector.has_table('asignaciones_comerciales'):
+        asignacion_columns = {column['name'] for column in inspector.get_columns('asignaciones_comerciales')}
+        if 'campania_id' not in asignacion_columns:
+            db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN campania_id INTEGER"))
+        db.session.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_asignaciones_comerciales_campania_id "
+            "ON asignaciones_comerciales (campania_id)"
+        ))
+        db.session.execute(text("""
+            INSERT INTO campanias (cliente, nombre, activa, creado_en)
+            SELECT DISTINCT a.cliente, a.campania, 1, CURRENT_TIMESTAMP
+            FROM asignaciones_comerciales a
+            WHERE a.cliente IS NOT NULL
+              AND a.cliente != ''
+              AND a.campania IS NOT NULL
+              AND a.campania != ''
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM campanias c
+                  WHERE c.cliente = a.cliente AND c.nombre = a.campania
+              )
+        """))
+    if inspector.has_table('campanias'):
+        campania_columns = {column['name'] for column in inspector.get_columns('campanias')}
+        if 'valor_hora_variable' not in campania_columns:
+            db.session.execute(text("ALTER TABLE campanias ADD COLUMN valor_hora_variable BOOLEAN"))
+        db.session.execute(text("""
+            UPDATE asignaciones_comerciales
+            SET campania_id = (
+                SELECT c.id
+                FROM campanias c
+                WHERE c.cliente = asignaciones_comerciales.cliente
+                  AND c.nombre = asignaciones_comerciales.campania
+                LIMIT 1
+            )
+            WHERE campania_id IS NULL
+        """))
         db.session.execute(text("""
             UPDATE asignaciones_comerciales
             SET jefe_site = 'Sin asignar'
@@ -162,6 +288,12 @@ def ensure_schema():
             db.session.execute(text("ALTER TABLE justificaciones_ajustes ADD COLUMN cantidad FLOAT DEFAULT 1"))
         if 'precio' not in justificacion_columns:
             db.session.execute(text("ALTER TABLE justificaciones_ajustes ADD COLUMN precio FLOAT DEFAULT 0"))
+    if inspector.has_table('excepciones_calculo'):
+        excepcion_columns = {column['name'] for column in inspector.get_columns('excepciones_calculo')}
+        if 'ajuste_vh_objetivo_pct' not in excepcion_columns:
+            db.session.execute(text("ALTER TABLE excepciones_calculo ADD COLUMN ajuste_vh_objetivo_pct NUMERIC(9,4) DEFAULT 0 NOT NULL"))
+        if 'ajuste_vh_alcanzado_pct' not in excepcion_columns:
+            db.session.execute(text("ALTER TABLE excepciones_calculo ADD COLUMN ajuste_vh_alcanzado_pct NUMERIC(9,4) DEFAULT 0 NOT NULL"))
         db.session.execute(text("""
             UPDATE justificaciones_ajustes
             SET cantidad = 1
@@ -177,14 +309,14 @@ def ensure_schema():
         proyeccion_columns = {column['name'] for column in inspector.get_columns('matriz_proyecciones')}
         proyeccion_missing_columns = {
             'carga_semanal': "ALTER TABLE matriz_proyecciones ADD COLUMN carga_semanal VARCHAR(20) DEFAULT 'L a V'",
-            'carga_horaria': 'ALTER TABLE matriz_proyecciones ADD COLUMN carga_horaria FLOAT DEFAULT 0',
+            'carga_horaria': 'ALTER TABLE matriz_proyecciones ADD COLUMN carga_horaria NUMERIC(12,2) DEFAULT 0',
             'dias_objetivo': 'ALTER TABLE matriz_proyecciones ADD COLUMN dias_objetivo INTEGER DEFAULT 0',
             'tiene_nocturnidad': 'ALTER TABLE matriz_proyecciones ADD COLUMN tiene_nocturnidad BOOLEAN DEFAULT 0',
-            'porcentaje_nocturnidad': 'ALTER TABLE matriz_proyecciones ADD COLUMN porcentaje_nocturnidad FLOAT DEFAULT 0',
+            'porcentaje_nocturnidad': 'ALTER TABLE matriz_proyecciones ADD COLUMN porcentaje_nocturnidad NUMERIC(9,4) DEFAULT 0',
             'tipo_plp': 'ALTER TABLE matriz_proyecciones ADD COLUMN tipo_plp VARCHAR(30)',
             'horas_carga_manual': 'ALTER TABLE matriz_proyecciones ADD COLUMN horas_carga_manual BOOLEAN DEFAULT 0',
             'dias_objetivo_manual': 'ALTER TABLE matriz_proyecciones ADD COLUMN dias_objetivo_manual INTEGER',
-            'horas_requeridas_manual': 'ALTER TABLE matriz_proyecciones ADD COLUMN horas_requeridas_manual FLOAT',
+            'horas_requeridas_manual': 'ALTER TABLE matriz_proyecciones ADD COLUMN horas_requeridas_manual NUMERIC(12,2)',
         }
         for column, statement in proyeccion_missing_columns.items():
             if column not in proyeccion_columns:
@@ -229,7 +361,7 @@ def ensure_schema():
         if 'site' not in precio_columns:
             db.session.execute(text("ALTER TABLE matriz_precios ADD COLUMN site VARCHAR(100)"))
         if 'importe_fijo_mensual' not in precio_columns:
-            db.session.execute(text("ALTER TABLE matriz_precios ADD COLUMN importe_fijo_mensual FLOAT DEFAULT 0"))
+            db.session.execute(text("ALTER TABLE matriz_precios ADD COLUMN importe_fijo_mensual NUMERIC(18,2) DEFAULT 0"))
         db.session.execute(text("""
             UPDATE matriz_precios
             SET importe_fijo_mensual = 0
@@ -241,7 +373,7 @@ def ensure_schema():
                 SET site = (
                     SELECT COALESCE(a.gerente, a.jefe_site, '')
                     FROM asignaciones_comerciales a
-                    WHERE a.activa = 1
+                    WHERE a.activa = TRUE
                       AND a.cliente = matriz_precios.cliente
                       AND a.campania = matriz_precios.campania
                     LIMIT 1
@@ -256,61 +388,64 @@ def ensure_schema():
         if 'campania_destino' not in site_columns:
             db.session.execute(text("ALTER TABLE sites_proyecciones ADD COLUMN campania_destino VARCHAR(160)"))
 
-    columns = {column['name'] for column in inspector.get_columns('facturacion_2026')}
+    columns = {column['name'] for column in inspector.get_columns('facturacion_anio')}
     missing_columns = {
-        'gerente': 'ALTER TABLE facturacion_2026 ADD COLUMN gerente VARCHAR(100)',
-        'jefe_site': 'ALTER TABLE facturacion_2026 ADD COLUMN jefe_site VARCHAR(100)',
-        'campania': 'ALTER TABLE facturacion_2026 ADD COLUMN campania VARCHAR(100)',
-        'subcampania': 'ALTER TABLE facturacion_2026 ADD COLUMN subcampania VARCHAR(100)',
-        'tipo_negocio': 'ALTER TABLE facturacion_2026 ADD COLUMN tipo_negocio VARCHAR(100)',
-        'horas_penalizadas': 'ALTER TABLE facturacion_2026 ADD COLUMN horas_penalizadas FLOAT DEFAULT 0',
-        'valor_hora_objetivo': 'ALTER TABLE facturacion_2026 ADD COLUMN valor_hora_objetivo FLOAT',
-        'importe_fijo': 'ALTER TABLE facturacion_2026 ADD COLUMN importe_fijo FLOAT',
-        'variable_objetivo': 'ALTER TABLE facturacion_2026 ADD COLUMN variable_objetivo FLOAT DEFAULT 0',
-        'variable_productivo': 'ALTER TABLE facturacion_2026 ADD COLUMN variable_productivo FLOAT DEFAULT 0',
+        'gerente': 'ALTER TABLE facturacion_anio ADD COLUMN gerente VARCHAR(100)',
+        'jefe_site': 'ALTER TABLE facturacion_anio ADD COLUMN jefe_site VARCHAR(100)',
+        'campania': 'ALTER TABLE facturacion_anio ADD COLUMN campania VARCHAR(100)',
+        'subcampania': 'ALTER TABLE facturacion_anio ADD COLUMN subcampania VARCHAR(100)',
+        'tipo_negocio': 'ALTER TABLE facturacion_anio ADD COLUMN tipo_negocio VARCHAR(100)',
+        'es_next_gen': 'ALTER TABLE facturacion_anio ADD COLUMN es_next_gen BOOLEAN DEFAULT 0 NOT NULL',
+        'objetivo_separar_ajuste_vh': 'ALTER TABLE facturacion_anio ADD COLUMN objetivo_separar_ajuste_vh BOOLEAN DEFAULT 0 NOT NULL',
+        'horas_penalizadas': 'ALTER TABLE facturacion_anio ADD COLUMN horas_penalizadas NUMERIC(12,2) DEFAULT 0',
+        'valor_hora_objetivo': 'ALTER TABLE facturacion_anio ADD COLUMN valor_hora_objetivo NUMERIC(18,2)',
+        'facturado_horas_manual': 'ALTER TABLE facturacion_anio ADD COLUMN facturado_horas_manual NUMERIC(18,2)',
+        'importe_fijo': 'ALTER TABLE facturacion_anio ADD COLUMN importe_fijo NUMERIC(18,2)',
+        'variable_objetivo': 'ALTER TABLE facturacion_anio ADD COLUMN variable_objetivo NUMERIC(18,2) DEFAULT 0',
+        'variable_productivo': 'ALTER TABLE facturacion_anio ADD COLUMN variable_productivo NUMERIC(18,2) DEFAULT 0',
     }
     for column, statement in missing_columns.items():
         if column not in columns:
             db.session.execute(text(statement))
     db.session.execute(text("""
-        UPDATE facturacion_2026
+        UPDATE facturacion_anio
         SET jefe_site = 'Sin asignar'
         WHERE jefe_site IS NULL OR jefe_site = ''
     """))
     db.session.execute(text("""
-        UPDATE facturacion_2026
-        SET campania = 'Operacion 2026'
+        UPDATE facturacion_anio
+        SET campania = 'Operacion'
         WHERE campania IS NULL OR campania = ''
     """))
     db.session.execute(text("""
-        UPDATE facturacion_2026
+        UPDATE facturacion_anio
         SET subcampania = cliente
         WHERE subcampania IS NULL OR subcampania = ''
     """))
     db.session.execute(text("""
-        UPDATE facturacion_2026
+        UPDATE facturacion_anio
         SET valor_hora_objetivo = valor_hora
         WHERE valor_hora_objetivo IS NULL
     """))
     db.session.execute(text("""
-        UPDATE facturacion_2026
+        UPDATE facturacion_anio
         SET horas_penalizadas = 0
         WHERE horas_penalizadas IS NULL
     """))
     db.session.execute(text("""
-        UPDATE facturacion_2026
+        UPDATE facturacion_anio
         SET variable_productivo = 0
         WHERE variable_productivo IS NULL
     """))
     db.session.execute(text("""
-        UPDATE facturacion_2026
+        UPDATE facturacion_anio
         SET variable_objetivo = 0
         WHERE variable_objetivo IS NULL
     """))
     db.session.execute(text("""
         INSERT INTO asignaciones_comerciales (cliente, gerente, jefe_site, campania, subcampania, tipo_negocio, activa, creado_en)
         SELECT DISTINCT cliente, COALESCE(gerente, 'Sin asignar'), COALESCE(jefe_site, 'Sin asignar'), campania, subcampania, tipo_negocio, 1, CURRENT_TIMESTAMP
-        FROM facturacion_2026
+        FROM facturacion_anio
         WHERE cliente IS NOT NULL
           AND campania IS NOT NULL
           AND subcampania IS NOT NULL
@@ -352,7 +487,12 @@ def asegurar_administrador_inicial_db():
 
 
 def asegurar_distribucion_personal_inicial():
+    from flask import current_app
     from app.models import PersonalDistribucionHoras, ProyeccionMatriz
+
+    # Esta matriz es una linea base historica. El anio es configurable para que
+    # el dato no se confunda con el periodo operativo predeterminado de la app.
+    base_year = current_app.config['PLP_BASE_YEAR']
 
     valores = {
         'Personal CX': [98.16796694772124, 96.11765302091567, 90.08499357215123, 93.08592324475397, 91.12527178069466, 93.75060264177098, 91.39669824176157, 93.81087110649403, 91.99630306566439, 88.76005792692392, 89.80150318528723, 88.70580382605068],
@@ -362,17 +502,17 @@ def asegurar_distribucion_personal_inicial():
     }
     existentes = {
         (fila.servicio, fila.mes)
-        for fila in PersonalDistribucionHoras.query.filter_by(year=2026).all()
+        for fila in PersonalDistribucionHoras.query.filter_by(year=base_year).all()
     }
     agregados = False
     for servicio, porcentajes in valores.items():
         for numero_mes, porcentaje in enumerate(porcentajes, start=1):
-            mes = f'2026-{numero_mes:02d}'
+            mes = f'{base_year}-{numero_mes:02d}'
             if (servicio, mes) in existentes:
                 continue
             db.session.add(PersonalDistribucionHoras(
                 servicio=servicio,
-                year=2026,
+                year=base_year,
                 mes=mes,
                 porcentaje_diurno=porcentaje,
             ))

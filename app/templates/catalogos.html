@@ -20,6 +20,14 @@
         <form id="formAsignacion" action="/catalogos/crear" method="post" class="space-y-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" id="asignacionId" name="asignacion_id">
+            <label class="flex cursor-pointer items-center justify-between rounded-lg border border-cyan-200 bg-cyan-50 p-3">
+                <span><strong class="block text-sm text-cyan-950">Es NextGen</strong><span class="text-xs text-cyan-700">Solo requiere el nombre.</span></span>
+                <input id="es_next_gen" name="es_next_gen" type="checkbox" onchange="actualizarModoNextGen()" class="h-5 w-5 rounded border-cyan-400 text-cyan-700 focus:ring-cyan-500">
+            </label>
+            <div id="grupoNombreNextGen" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre NextGen *</label>
+                <input id="nombre_next_gen" name="nombre_next_gen" type="text" class="w-full border border-cyan-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+            </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
                 <input id="cliente" name="cliente" required type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -123,9 +131,10 @@
             </div>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[980px] text-sm">
+            <table class="w-full min-w-[1080px] text-sm">
                 <thead class="bg-gray-50">
                     <tr>
+                        <th class="px-4 py-3 text-center font-semibold text-gray-600" title="ID canónico de la combinación cliente + campaña">ID campaña</th>
                         <th class="px-4 py-3 text-left font-semibold text-gray-600">Cliente</th>
                         <th class="px-4 py-3 text-left font-semibold text-gray-600">Gerente</th>
                         <th class="px-4 py-3 text-left font-semibold text-gray-600">Jefe de Site</th>
@@ -138,11 +147,57 @@
                 </thead>
                 <tbody id="tablaAsignaciones">
                     <tr>
-                        <td colspan="8" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                        <td colspan="9" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
                     </tr>
                 </tbody>
             </table>
         </div>
+    </div>
+</div>
+
+<div class="mt-6 rounded-lg bg-white p-6 shadow">
+    <div class="mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Configuración de valor hora por campaña</h2>
+        <p class="mt-1 text-sm text-gray-500">Define si el Valor Hora Facturado se carga por separado o repite automáticamente el Valor Hora Objetivo.</p>
+    </div>
+    <div class="overflow-x-auto rounded border border-slate-200">
+        <table class="w-full min-w-[680px] text-sm">
+            <thead class="bg-slate-50"><tr><th class="px-4 py-3 text-left">Cliente</th><th class="px-4 py-3 text-left">Campaña</th><th class="px-4 py-3 text-left">¿Valor hora variable?</th><th class="px-4 py-3 text-left">Comportamiento</th></tr></thead>
+            <tbody id="tablaConfiguracionValorHora"><tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">Cargando campañas...</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mt-6 rounded-lg bg-white p-6 shadow">
+    <div class="mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Excepciones de cálculo</h2>
+        <p class="mt-1 text-sm text-gray-500">Define reglas especiales por cliente y campaña que se aplicarán automáticamente al cargar datos.</p>
+    </div>
+    <form id="formExcepcion" class="grid grid-cols-1 gap-3 md:grid-cols-6 md:items-end">
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Cliente *</label>
+            <select id="excepcionCliente" required class="w-full rounded border border-gray-300 px-3 py-2"></select>
+        </div>
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Campaña *</label>
+            <select id="excepcionCampania" required class="w-full rounded border border-gray-300 px-3 py-2"></select>
+        </div>
+        <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Tipo de cálculo *</label>
+            <select id="excepcionTipo" class="w-full rounded border border-gray-300 px-3 py-2">
+                <option value="facturado_horas_manual">Facturado en horas / horas realizadas</option>
+                <option value="facturado_manual_ajustes_vh">Facturado manual con ajustes de VH</option>
+            </select>
+        </div>
+        <div><label class="mb-1 block text-sm font-medium text-gray-700">Ajuste VH objetivo %</label><input id="excepcionAjusteObjetivo" type="number" step="0.01" value="0" class="w-full rounded border border-gray-300 px-3 py-2"></div>
+        <div><label class="mb-1 block text-sm font-medium text-gray-700">Ajuste VH alcanzado %</label><input id="excepcionAjusteAlcanzado" type="number" step="0.01" value="0" class="w-full rounded border border-gray-300 px-3 py-2"></div>
+        <button type="submit" class="rounded bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700">Guardar excepción</button>
+    </form>
+    <div class="mt-5 overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left">Cliente</th><th class="px-3 py-2 text-left">Campaña</th><th class="px-3 py-2 text-left">Cálculo aplicado</th><th class="px-3 py-2 text-center">Acción</th></tr></thead>
+            <tbody id="tablaExcepciones"><tr><td colspan="4" class="px-3 py-5 text-center text-gray-500">Cargando...</td></tr></tbody>
+        </table>
     </div>
 </div>
 <div id="catalogosConfig"
@@ -155,19 +210,35 @@
 const puedeEliminar = document.getElementById('catalogosConfig')?.dataset.puedeEliminar === 'true';
 let asignacionEditando = null;
 let asignacionesCatalogo = [];
+let excepcionesCalculo = [];
+let campaniasConfiguracion = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('formAsignacion').addEventListener('submit', manejarSubmitAsignacion);
     inicializarFiltrosCatalogo();
     cargarAsignaciones();
+    document.getElementById('formExcepcion').addEventListener('submit', guardarExcepcion);
+    document.getElementById('excepcionCliente').addEventListener('change', poblarCampaniasExcepcion);
+    cargarExcepciones();
+    cargarConfiguracionValorHora();
 });
 document.addEventListener('DOMContentLoaded', inicializarMensajeServidor);
 
 function manejarSubmitAsignacion(event) {
-    if (document.getElementById('asignacionId').value) {
-        event.preventDefault();
-        guardarAsignacion();
-    }
+    event.preventDefault();
+    guardarAsignacion();
+}
+
+function actualizarModoNextGen() {
+    const activo = document.getElementById('es_next_gen').checked;
+    document.getElementById('grupoNombreNextGen').classList.toggle('hidden', !activo);
+    document.getElementById('nombre_next_gen').required = activo;
+    ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania'].forEach(id => {
+        const campo = document.getElementById(id);
+        campo.required = !activo;
+        campo.closest('div').classList.toggle('hidden', activo);
+    });
+    document.getElementById('tipo_negocio').closest('div').classList.toggle('hidden', activo);
 }
 
 function inicializarMensajeServidor() {
@@ -200,10 +271,11 @@ async function cargarAsignaciones() {
         const response = await fetch('/api/asignaciones?activas=0&_ts=' + Date.now(), { cache: 'no-store' });
         data = await leerRespuestaJson(response);
     } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-red-600">${escapeHtml(error.message || 'No se pudieron cargar las asociaciones.')}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="px-4 py-8 text-center text-red-600">${escapeHtml(error.message || 'No se pudieron cargar las asociaciones.')}</td></tr>`;
         return;
     }
     asignacionesCatalogo = data.success ? (data.asignaciones || []) : [];
+    poblarClientesExcepcion();
     poblarFiltrosCatalogo();
     renderAsignaciones();
 }
@@ -248,11 +320,13 @@ function asignacionesFiltradas() {
         if (!texto) return true;
         return normalizarBusqueda([
             item.cliente,
+            item.campania_id,
             item.gerente,
             item.jefe_site,
             item.campania,
             item.subcampania,
             item.tipo_negocio,
+            item.es_next_gen ? 'nextgen' : '',
             item.activa ? 'activa' : 'inactiva'
         ].join(' ')).includes(texto);
     });
@@ -267,17 +341,18 @@ function renderAsignaciones() {
         : '';
 
     if (asignacionesCatalogo.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No hay asociaciones cargadas</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">No hay asociaciones cargadas</td></tr>';
         return;
     }
     if (asignaciones.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No hay asociaciones que coincidan con los filtros</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">No hay asociaciones que coincidan con los filtros</td></tr>';
         return;
     }
 
     tbody.innerHTML = asignaciones.map(item => `
         <tr id="asignacion-${item.id}" class="border-b hover:bg-gray-50 ${asignacionEditando && Number(asignacionEditando.id) === Number(item.id) ? 'bg-blue-50' : ''}">
-            <td class="px-4 py-3 font-medium">${escapeHtml(item.cliente)}</td>
+            <td class="px-4 py-3 text-center font-mono font-semibold text-blue-700">${escapeHtml(item.campania_id || '-')}</td>
+            <td class="px-4 py-3 font-medium">${escapeHtml(item.cliente)} ${item.es_next_gen ? '<span class="ml-1 rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-bold text-cyan-800">NextGen</span>' : ''}</td>
             <td class="px-4 py-3">${escapeHtml(item.gerente)}</td>
             <td class="px-4 py-3">${escapeHtml(item.jefe_site)}</td>
             <td class="px-4 py-3">${escapeHtml(item.campania)}</td>
@@ -374,6 +449,8 @@ async function guardarAsignacion() {
 
 function getPayload() {
     return {
+        es_next_gen: document.getElementById('es_next_gen').checked,
+        nombre_next_gen: document.getElementById('nombre_next_gen').value,
         cliente: document.getElementById('cliente').value,
         gerente: document.getElementById('gerente').value,
         jefe_site: document.getElementById('jefe_site').value,
@@ -384,6 +461,68 @@ function getPayload() {
     };
 }
 
+async function cargarConfiguracionValorHora() {
+    const tbody = document.getElementById('tablaConfiguracionValorHora');
+    try {
+        const data = await leerRespuestaJson(await fetch('/api/campanias?activas=0&_ts=' + Date.now(), { cache: 'no-store' }));
+        campaniasConfiguracion = data.campanias || [];
+        tbody.innerHTML = campaniasConfiguracion.length ? campaniasConfiguracion.map(item => `
+            <tr class="border-t"><td class="px-4 py-3 font-medium">${escapeHtml(item.cliente)}</td><td class="px-4 py-3">${escapeHtml(item.nombre)}</td><td class="px-4 py-3"><select onchange="guardarConfiguracionValorHora(${item.id}, this.value)" class="rounded border border-gray-300 bg-white px-3 py-2"><option value="" ${item.valor_hora_variable == null ? 'selected' : ''}>Sin configurar</option><option value="true" ${item.valor_hora_variable === true ? 'selected' : ''}>Sí</option><option value="false" ${item.valor_hora_variable === false ? 'selected' : ''}>No</option></select></td><td class="px-4 py-3 text-slate-600">${item.valor_hora_variable === true ? 'VH facturado independiente' : item.valor_hora_variable === false ? 'Repite VH objetivo' : 'Se preguntará en la primera carga'}</td></tr>
+        `).join('') : '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">No hay campañas</td></tr>';
+    } catch (error) { tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-red-600">${escapeHtml(error.message)}</td></tr>`; }
+}
+
+async function guardarConfiguracionValorHora(id, valor) {
+    if (valor === '') { mostrarMensaje('Elegí Sí o No; la configuración no puede volver a quedar pendiente.', 'error'); await cargarConfiguracionValorHora(); return; }
+    try {
+        const data = await leerRespuestaJson(await fetch(`/api/campanias/${id}/valor-hora`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor_hora_variable: valor === 'true' }) }));
+        mostrarMensaje(data.mensaje, 'success');
+        await cargarConfiguracionValorHora();
+    } catch (error) { mostrarMensaje(error.message, 'error'); await cargarConfiguracionValorHora(); }
+}
+
+function poblarClientesExcepcion() {
+    const select = document.getElementById('excepcionCliente');
+    const clientes = [...new Set(asignacionesCatalogo.map(item => item.cliente).filter(Boolean))].sort();
+    select.innerHTML = '<option value="">Seleccionar cliente...</option>' + clientes.map(valor => `<option value="${escapeHtml(valor)}">${escapeHtml(valor)}</option>`).join('');
+    poblarCampaniasExcepcion();
+}
+
+function poblarCampaniasExcepcion() {
+    const cliente = document.getElementById('excepcionCliente').value;
+    const campanias = [...new Set(asignacionesCatalogo.filter(item => item.cliente === cliente).map(item => item.campania).filter(Boolean))].sort();
+    document.getElementById('excepcionCampania').innerHTML = '<option value="">Seleccionar campaña...</option>' + campanias.map(valor => `<option value="${escapeHtml(valor)}">${escapeHtml(valor)}</option>`).join('');
+}
+
+async function cargarExcepciones() {
+    try {
+        const data = await leerRespuestaJson(await fetch('/api/excepciones-calculo?_ts=' + Date.now(), { cache: 'no-store' }));
+        excepcionesCalculo = data.excepciones || [];
+        document.getElementById('tablaExcepciones').innerHTML = excepcionesCalculo.length ? excepcionesCalculo.map(item => `
+            <tr class="border-t"><td class="px-3 py-2 font-medium">${escapeHtml(item.cliente)}</td><td class="px-3 py-2">${escapeHtml(item.campania)}</td><td class="px-3 py-2">${item.tipo_calculo === 'facturado_horas_manual' ? 'Facturado en horas ÷ horas realizadas' : `Importe manual; objetivo ${Number(item.ajuste_vh_objetivo_pct || 0)}%; alcanzado ${Number(item.ajuste_vh_alcanzado_pct || 0)}%`}</td><td class="px-3 py-2 text-center">${puedeEliminar ? `<button type="button" onclick="eliminarExcepcion(${item.id})" class="rounded bg-red-600 px-3 py-1 text-xs text-white">Eliminar</button>` : '<span class="text-xs text-slate-400">Sin permiso</span>'}</td></tr>
+        `).join('') : '<tr><td colspan="4" class="px-3 py-5 text-center text-gray-500">No hay excepciones configuradas</td></tr>';
+    } catch (error) { mostrarMensaje(error.message, 'error'); }
+}
+
+async function guardarExcepcion(event) {
+    event.preventDefault();
+    const payload = { cliente: document.getElementById('excepcionCliente').value, campania: document.getElementById('excepcionCampania').value, tipo_calculo: document.getElementById('excepcionTipo').value, ajuste_vh_objetivo_pct: document.getElementById('excepcionAjusteObjetivo').value, ajuste_vh_alcanzado_pct: document.getElementById('excepcionAjusteAlcanzado').value };
+    try {
+        const data = await leerRespuestaJson(await fetch('/api/excepciones-calculo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }));
+        mostrarMensaje(data.mensaje, 'success');
+        await cargarExcepciones();
+    } catch (error) { mostrarMensaje(error.message, 'error'); }
+}
+
+async function eliminarExcepcion(id) {
+    if (!confirm('¿Eliminar esta excepción de cálculo?')) return;
+    try {
+        const data = await leerRespuestaJson(await fetch(`/api/excepciones-calculo/${id}`, { method: 'DELETE' }));
+        mostrarMensaje(data.mensaje, 'success');
+        await cargarExcepciones();
+    } catch (error) { mostrarMensaje(error.message, 'error'); }
+}
+
 async function verificarAsignacionGuardada(id, esperado) {
     const response = await fetch(`/api/asignaciones/${id}?_ts=${Date.now()}`, { cache: 'no-store' });
     const data = await response.json();
@@ -391,7 +530,9 @@ async function verificarAsignacionGuardada(id, esperado) {
         return { ok: false, mensaje: 'No pude verificar el cambio guardado en la base.' };
     }
 
-    const campos = ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio'];
+    const campos = esperado.es_next_gen
+        ? ['es_next_gen']
+        : ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio', 'es_next_gen'];
     const distinto = campos.find(campo => String(data.asignacion[campo] ?? '') !== String(esperado[campo] ?? ''));
     if (distinto) {
         return {
@@ -411,13 +552,16 @@ function editarAsignacion(item) {
     document.getElementById('campania').value = item.campania;
     document.getElementById('subcampania').value = item.subcampania;
     document.getElementById('tipo_negocio').value = item.tipo_negocio || '';
+    document.getElementById('es_next_gen').checked = Boolean(item.es_next_gen);
+    document.getElementById('nombre_next_gen').value = item.es_next_gen ? item.cliente : '';
+    actualizarModoNextGen();
     document.getElementById('vigencia_desde').value = '';
     document.getElementById('grupoVigenciaDesde').classList.remove('hidden');
     document.getElementById('tituloFormulario').textContent = 'Editar asociacion';
-    document.getElementById('subtituloFormulario').textContent = `Editando ID ${item.id}: ${item.cliente} / ${item.campania}`;
+    document.getElementById('subtituloFormulario').textContent = `Asignación ${item.id} · Campaña ${item.campania_id || '-'}: ${item.cliente} / ${item.campania}`;
     document.getElementById('badgeModo').classList.remove('hidden');
     document.getElementById('textoGuardarAsignacion').textContent = 'Actualizar';
-    document.getElementById('cliente').focus();
+    document.getElementById(item.es_next_gen ? 'nombre_next_gen' : 'cliente').focus();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -470,6 +614,7 @@ function limpiarFormulario() {
     document.getElementById('badgeModo').classList.add('hidden');
     document.getElementById('grupoVigenciaDesde').classList.add('hidden');
     document.getElementById('textoGuardarAsignacion').textContent = 'Guardar';
+    actualizarModoNextGen();
 }
 
 function mostrarMensaje(mensaje, tipo) {

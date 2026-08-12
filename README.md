@@ -153,6 +153,8 @@ npm run next:dev
 npm run dev        # Flask + Next.js
 npm run flask:dev  # Solo Flask
 npm run next:dev   # Solo Next.js
+npm run build      # Build de producción de Next.js
+npm run verify:python  # Esquema, seguridad, rutas Flask y DDL SQLite
 npm run start      # Alias de npm run dev
 ```
 
@@ -160,8 +162,12 @@ npm run start      # Alias de npm run dev
 
 ```text
 SECRET_KEY=clave-secreta-local
+APP_ENV=development
+APP_DEFAULT_YEAR=2026
+PLP_BASE_YEAR=2026
 DATABASE_URL=sqlite:///facturacion.db
 CORS_ORIGINS=http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:8009,http://localhost:8009
+NEXT_PUBLIC_API_BASE=http://127.0.0.1:8009
 FLASK_HOST=127.0.0.1
 PORT=8009
 FLASK_DEBUG=0
@@ -171,6 +177,13 @@ SESSION_COOKIE_SECURE=0
 SESSION_MINUTES=60
 MAX_CONTENT_LENGTH=10485760
 ```
+
+- `APP_ENV`: use `development` localmente y `production` en el ambiente entregado. En producción, la aplicación rechaza una `SECRET_KEY` ausente o de ejemplo.
+- `APP_DEFAULT_YEAR`: período seleccionado por defecto en pantallas y APIs; no limita ni elimina datos de otros años.
+- `PLP_BASE_YEAR`: año al que pertenece la matriz histórica PLP incluida. Está separado del período operativo para no reinterpretar esos porcentajes como datos de un año nuevo.
+- `DATABASE_URL`: conexión SQLAlchemy; permite cambiar SQLite por PostgreSQL sin modificar el código.
+- `CORS_ORIGINS`: orígenes autorizados, separados por coma. También alimentan la política `connect-src` de Flask.
+- `NEXT_PUBLIC_API_BASE`: URL pública del backend usada por Next para consultas y enlaces hacia Flask.
 
 Para PostgreSQL:
 
@@ -203,7 +216,8 @@ Al iniciar, Flask crea las tablas que falten y aplica algunos ajustes simples de
 | --- | --- | --- |
 | `usuarios` | `Usuario` | Guarda usuarios, roles, estado activo y hash de contraseña. |
 | `historial_cambios` | `HistorialCambio` | Registra cambios, snapshots anteriores/posteriores y permite deshacer operaciones soportadas. |
-| `facturacion_2026` | `Facturacion2026` | Guarda la facturación real cargada: horas, importes, bonos, penalizaciones, variables y datos comerciales. |
+| `campanias` | `Campania` | Catálogo canónico que asigna un ID estable a cada combinación cliente + campaña. |
+| `facturacion_anio` | `FacturacionAnio` | Guarda la facturación real histórica y futura desde 2020, sin limitarla a un año fijo. |
 | `justificaciones_ajustes` | `JustificacionAjuste` | Guarda explicaciones o ajustes asociados a un registro de facturación. |
 | `asignaciones_comerciales` | `AsignacionComercial` | Catálogo maestro de cliente, gerente, jefe de site, campaña, subcampaña y tipo de negocio. |
 | `matriz_proyecciones` | `ProyeccionMatriz` | Guarda la planificación mensual por cliente/campaña: dotación, carga horaria, días objetivo, horas requeridas y cumplimiento. |
@@ -222,9 +236,10 @@ Al iniciar, Flask crea las tablas que falten y aplica algunos ajustes simples de
 | Tabla | Dónde se carga | A dónde apunta / qué alimenta |
 | --- | --- | --- |
 | `usuarios` | Usuarios o configuración inicial | Login, sesiones, permisos e identificación del historial. |
+| `campanias` | Automática al crear o migrar una asignación | ID canónico utilizado por asignaciones e integraciones nuevas. |
 | `asignaciones_comerciales` | Datos maestros | Formularios, filtros, sites, clientes y campañas de todos los módulos. |
-| `facturacion_2026` | Cargar datos, importación de facturación o edición en Control | Dashboard, Control, Comparativo, Matriz, Justificaciones y exportaciones reales. |
-| `justificaciones_ajustes` | Justificaciones | Un registro concreto de `facturacion_2026`; ajusta y explica bonos, penalizaciones u otros conceptos. |
+| `facturacion_anio` | Cargar datos, importación de facturación o edición en Control | Dashboard, Control, Comparativo, Matriz, Justificaciones y exportaciones reales. |
+| `justificaciones_ajustes` | Justificaciones | Un registro concreto de `facturacion_anio`; ajusta y explica bonos, penalizaciones u otros conceptos. |
 | `feriados_operativos` | Calendario operativo | Días objetivo, horas y dotaciones de `matriz_proyecciones`. |
 | `matriz_proyecciones` | Matriz de proyecciones, importación general o importación PLP | Control proyecciones y base de horas de Facturación horas. |
 | `matriz_proyecciones_jornadas` | Aperturas de jornada dentro de una proyección | Suma de horas y dotaciones de su registro padre en `matriz_proyecciones`. |
@@ -240,6 +255,346 @@ Al iniciar, Flask crea las tablas que falten y aplica algunos ajustes simples de
 ### Ficha de colecciones para la base de datos
 
 Esta sección resume qué necesita cada tabla/colección para que la base quede armada correctamente.
+
+#### Contrato de precisión numérica
+
+Los campos numéricos persistentes no utilizan `FLOAT`. La base declara precisión
+y escala explícitas para evitar diferencias binarias, especialmente en dinero.
+
+| Categoría | Tipo SQL | Alcance |
+| --- | --- | --- |
+| Dinero | `NUMERIC(18,2)` | Hasta 16 enteros y 2 decimales |
+| Cantidades | `NUMERIC(18,4)` | Hasta 14 enteros y 4 decimales |
+| Horas y dotación | `NUMERIC(12,2)` | Hasta 10 enteros y 2 decimales |
+| Porcentajes | `NUMERIC(9,4)` | Hasta 5 enteros y 4 decimales |
+| Cotización monetaria | `NUMERIC(18,6)` | Hasta 12 enteros y 6 decimales |
+
+Aplicación por campo:
+
+```text
+NUMERIC(18,2) Dinero
+  facturacion_anio.valor_hora_objetivo
+  facturacion_anio.valor_hora
+  facturacion_anio.tarifacion
+  facturacion_anio.importe_fijo
+  facturacion_anio.variable_objetivo
+  facturacion_anio.variable_productivo
+  facturacion_anio.bonos
+  facturacion_anio.penalizaciones
+  facturacion_anio.netx_gen
+  facturacion_anio.otros
+  justificaciones_ajustes.precio
+  justificaciones_ajustes.importe
+  matriz_precios.precio_base
+  matriz_precios.precio_final
+  matriz_precios.importe_fijo_mensual
+  tarifaciones_campanias.monto
+  next_gen_productos.cantidad_usd
+
+NUMERIC(18,4) Cantidades
+  justificaciones_ajustes.cantidad
+
+NUMERIC(12,2) Horas y dotación
+  facturacion_anio.horas_objetivo
+  facturacion_anio.horas_facturadas
+  facturacion_anio.horas_penalizadas
+  matriz_proyecciones.dotacion_requerida
+  matriz_proyecciones.carga_horaria
+  matriz_proyecciones.horas_requeridas
+  matriz_proyecciones.horas_requeridas_manual
+  matriz_proyecciones_jornadas.dotacion_requerida
+  matriz_proyecciones_jornadas.carga_horaria
+  matriz_proyecciones_jornadas.horas_requeridas
+
+NUMERIC(9,4) Porcentajes
+  matriz_proyecciones.porcentaje_cumplimiento
+  matriz_proyecciones.porcentaje_nocturnidad
+  personal_distribucion_horas.porcentaje_diurno
+  matriz_precios.alcance_porcentaje
+  variables_campanias.porcentaje
+
+NUMERIC(18,6) Cotización
+  next_gen_dolar.valor
+```
+
+En PostgreSQL, el arranque convierte columnas históricas con `ALTER COLUMN ...
+TYPE NUMERIC(...)`. En SQLite, los DDL nuevos declaran `NUMERIC`, aunque SQLite
+mantiene afinidad dinámica y no aplica precisión/escala con la misma rigidez que
+PostgreSQL. Para la base definitiva creada por un tercero, el contrato autoritativo
+es el DDL PostgreSQL.
+
+#### `campanias`
+
+Modelo: `Campania`.
+
+Es el catálogo canónico de campañas. Cada fila tiene una clave primaria numérica
+autoincremental en `campanias.id`. La identidad funcional se define por la
+combinación `cliente + nombre`, no solamente por el texto del nombre.
+
+```text
+campanias.id = ID técnico estable
+campanias.cliente + campanias.nombre = identidad funcional única
+```
+
+#### Cómo se genera la numeración
+
+La numeración no debe ingresarla el usuario. La genera automáticamente la base
+de datos cuando se crea por primera vez una combinación `cliente + campaña`:
+
+```text
+Primera campaña nueva  -> id 1
+Segunda campaña nueva  -> id 2
+Tercera campaña nueva  -> id 3
+Siguiente campaña      -> id 4
+```
+
+Si una campaña ya existe, se reutiliza su ID y no se consume otro número. Si el
+último ID existente fuera `92`, la próxima campaña nueva recibiría normalmente
+el ID `93`. Los IDs son identificadores técnicos: pueden quedar saltos si una
+fila se elimina y no deben renumerarse ni reutilizarse para cerrar esos saltos.
+
+Al incorporar esta estructura a una base local que ya tiene datos,
+`ensure_schema()` enumera las campañas históricas existentes, crea el catálogo y
+completa `asignaciones_comerciales.campania_id`. Por lo tanto, no hace falta
+volver a crear manualmente las campañas que ya estaban cargadas.
+
+| id | cliente | nombre | activa |
+| ---: | --- | --- | --- |
+| 1 | Cliente A | Ventas | true |
+| 2 | Cliente A | Retención | true |
+| 3 | Cliente B | Ventas | true |
+
+Los registros 1 y 3 pueden compartir `Ventas` porque pertenecen a clientes
+distintos. La restricción `uq_campanias_cliente_nombre` impide duplicar el mismo
+nombre dentro del mismo cliente.
+
+`asignaciones_comerciales.campania_id` referencia este ID. La columna textual
+`asignaciones_comerciales.campania` se conserva durante la transición para no
+romper filtros, importadores, históricos ni módulos que todavía trabajan por
+nombre. Las integraciones nuevas deben usar `campania_id` como clave técnica.
+
+Reglas de creación y mantenimiento:
+
+1. al crear una asignación se busca el mismo cliente y nombre en `campanias`;
+2. si existe, se reutiliza su ID y la campaña se reactiva;
+3. si no existe, se inserta una fila y la base genera el siguiente ID;
+4. si cambia cliente o campaña en una asignación, se vuelve a resolver el ID;
+5. `ensure_schema()` crea campañas faltantes y completa el ID de asignaciones históricas;
+6. el ID nunca debe calcularse desde el nombre ni asignarse manualmente.
+
+Ejemplo del contrato JSON del catálogo:
+
+```json
+{
+  "id": 1,
+  "cliente": "Cliente A",
+  "nombre": "Ventas",
+  "activa": true,
+  "creado_en": "2026-07-22T12:00:00"
+}
+```
+
+Durante la transición, las asignaciones publican el ID y el nombre:
+
+```json
+{
+  "id": 25,
+  "campania_id": 1,
+  "cliente": "Cliente A",
+  "campania": "Ventas"
+}
+```
+
+El ID también es visible en la pantalla **Datos maestros**, en la columna
+`ID campaña`. Ese valor corresponde a `campanias.id`; no debe confundirse con el
+ID propio de la asignación comercial utilizado para editar la fila.
+
+API de consulta:
+
+```text
+GET /api/campanias             # Sólo activas
+GET /api/campanias?activas=0   # Activas e inactivas
+```
+
+Ambas variantes requieren una sesión con permiso de edición.
+
+#### Especificación técnica para crear y revisar la base
+
+Esta es la definición que debe utilizar el responsable de base de datos. Para el
+destino PostgreSQL, `campanias.id` es una identidad generada por la base y
+`asignaciones_comerciales.campania_id` es su clave foránea.
+
+DDL recomendado para PostgreSQL:
+
+```sql
+CREATE TABLE campanias (
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    cliente VARCHAR(100) NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    activa BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_campanias_cliente_nombre UNIQUE (cliente, nombre)
+);
+
+ALTER TABLE asignaciones_comerciales
+    ADD COLUMN campania_id INTEGER;
+
+ALTER TABLE asignaciones_comerciales
+    ADD CONSTRAINT fk_asignaciones_campania
+    FOREIGN KEY (campania_id) REFERENCES campanias(id);
+
+CREATE INDEX ix_asignaciones_comerciales_campania_id
+    ON asignaciones_comerciales (campania_id);
+```
+
+Para una base nueva creada directamente por SQLAlchemy, el modelo de
+`app/models.py` genera la tabla, el índice y la clave foránea. Para una base con
+datos históricos, primero se crea y completa el catálogo, después se valida que
+no existan referencias nulas o inválidas y recién entonces se recomienda cambiar
+`campania_id` a `NOT NULL`:
+
+```sql
+ALTER TABLE asignaciones_comerciales
+    ALTER COLUMN campania_id SET NOT NULL;
+```
+
+Definición equivalente del catálogo para SQLite local:
+
+```sql
+CREATE TABLE campanias (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente VARCHAR(100) NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    activa BOOLEAN NOT NULL DEFAULT 1,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_campanias_cliente_nombre UNIQUE (cliente, nombre)
+);
+
+ALTER TABLE asignaciones_comerciales ADD COLUMN campania_id INTEGER;
+
+CREATE INDEX ix_asignaciones_comerciales_campania_id
+    ON asignaciones_comerciales (campania_id);
+```
+
+Importante: SQLite no permite agregar una clave foránea física a una tabla
+existente con un `ALTER TABLE` simple. En la base local histórica la relación se
+completa y controla desde la aplicación. Una base nueva sí recibe la clave
+foránea declarada por SQLAlchemy. PostgreSQL debe tener la restricción física
+`fk_asignaciones_campania` indicada arriba.
+
+Consultas obligatorias de revisión:
+
+```sql
+-- 1. No debe haber cliente + nombre duplicados.
+SELECT cliente, nombre, COUNT(*) AS cantidad
+FROM campanias
+GROUP BY cliente, nombre
+HAVING COUNT(*) > 1;
+
+-- 2. No debe haber asignaciones sin ID de campaña.
+SELECT COUNT(*) AS asignaciones_sin_campania_id
+FROM asignaciones_comerciales
+WHERE campania_id IS NULL;
+
+-- 3. No debe haber IDs que apunten a una campaña inexistente.
+SELECT a.id, a.campania_id
+FROM asignaciones_comerciales a
+LEFT JOIN campanias c ON c.id = a.campania_id
+WHERE a.campania_id IS NOT NULL AND c.id IS NULL;
+
+-- 4. El ID debe corresponder al mismo cliente y nombre conservados en la asignación.
+SELECT a.id, a.cliente, a.campania, a.campania_id,
+       c.cliente AS cliente_catalogo, c.nombre AS campania_catalogo
+FROM asignaciones_comerciales a
+JOIN campanias c ON c.id = a.campania_id
+WHERE a.cliente <> c.cliente OR a.campania <> c.nombre;
+```
+
+Criterio de aceptación para aprobar la base:
+
+```text
+[ ] campanias.id es clave primaria y se genera automáticamente.
+[ ] Existe unicidad para cliente + nombre.
+[ ] asignaciones_comerciales.campania_id está indexado.
+[ ] En PostgreSQL existe la clave foránea fk_asignaciones_campania.
+[ ] Las cuatro consultas de revisión no devuelven anomalías.
+[ ] Crear la misma combinación cliente + campaña reutiliza el mismo ID.
+[ ] Crear una combinación nueva genera un ID nuevo.
+[ ] Datos maestros muestra el mismo valor en la columna ID campaña.
+```
+
+#### Entregable completo de creación para terceros
+
+El tercero responsable de crear o revisar la base debe recibir uno de estos
+archivos, según el motor acordado:
+
+| Motor | Archivo contractual | Descarga desde la aplicación |
+| --- | --- | --- |
+| SQLite local | `docs/esquema_base_datos_sqlite.sql` | `/documentacion-tecnica/esquema/sqlite` |
+| PostgreSQL | `docs/esquema_base_datos_postgresql.sql` | `/documentacion-tecnica/esquema/postgresql` |
+
+Quien necesite revisar el esquema sin abrir archivos `.sql` puede descargar el
+PDF asociado a la documentación técnica:
+
+```text
+/documentacion-tecnica/esquema/pdf
+```
+
+El archivo entregado es `Esquema_Base_Datos_Dashboard.pdf` e incluye juntos los
+DDL completos de SQLite y PostgreSQL.
+
+Los scripts contienen, tabla por tabla, la definición física en formato
+`CREATE TABLE` y `CREATE INDEX`, tal como se entrega a un DBA:
+
+- nombre exacto de cada tabla;
+- todas las columnas y sus tipos;
+- longitud de los `VARCHAR`;
+- columnas obligatorias mediante `NOT NULL`;
+- valores `DEFAULT` físicos, cuando estén definidos en el servidor;
+- claves primarias;
+- claves foráneas y tablas referenciadas;
+- restricciones `UNIQUE`;
+- índices y columnas indexadas.
+
+El esquema incluye las 16 tablas vigentes:
+
+```text
+usuarios
+historial_cambios
+facturacion_anio
+justificaciones_ajustes
+matriz_proyecciones
+matriz_proyecciones_jornadas
+personal_distribucion_horas
+matriz_precios
+variables_campanias
+tarifaciones_campanias
+next_gen_dolar
+next_gen_productos
+sites_proyecciones
+feriados_operativos
+campanias
+asignaciones_comerciales
+```
+
+Estos archivos se generan directamente desde `app/models.py`; por eso son la
+fuente técnica para construir una base nueva y evitan copiar accidentalmente
+datos reales de `instance/facturacion.db`. Cada cambio de modelos exige volver a
+generar los scripts y la documentación:
+
+Nota: varios valores predeterminados actuales son aplicados por SQLAlchemy desde
+Python y no son `DEFAULT` físicos del motor. El DDL muestra deliberadamente sólo
+las garantías que la base puede imponer por sí misma; esto permite que el tercero
+distinga las restricciones de base de las reglas ejecutadas por la aplicación.
+
+```powershell
+python scripts\generar_esquema_base_datos.py
+python scripts\generar_documentacion_tecnica.py
+```
+
+Para PostgreSQL debe utilizarse el archivo PostgreSQL, no convertir manualmente
+el de SQLite: autoincrementos, booleanos, fechas y tipos se expresan de manera
+diferente en cada motor.
 
 #### `usuarios`
 
@@ -257,9 +612,10 @@ Esta sección resume qué necesita cada tabla/colección para que la base quede 
 - **Reglas importantes**: cliente y campaña deben escribirse igual que en facturación, proyecciones y precios; una asociación inactiva no debería usarse para cargas nuevas.
 - **Uso histórico**: si cambia el jefe desde un mes puntual, usar **Aplicar desde mes** para no pisar meses anteriores.
 
-#### `facturacion_2026`
+#### `facturacion_anio`
 
 - **Propósito**: guardar la facturación real cargada por mes y dimensión comercial.
+- **Cobertura temporal**: admite información desde 2020 en adelante y no está vinculada a un año fijo.
 - **Campos clave**: `fecha`, `mes`, `cliente`, `gerente`, `jefe_site`, `campania`, `subcampania`, `tipo_negocio`, `tipo_jornada`, horas e importes.
 - **Obligatorio para iniciar**: sí, si se quiere usar Dashboard, Control, Comparativo, Matriz, Justificaciones y exportaciones.
 - **Reglas importantes**: `mes` debe estar en formato `YYYY-MM`; las dimensiones comerciales deben coincidir con `asignaciones_comerciales`; penalizaciones se tratan como descuento.
@@ -270,7 +626,7 @@ Esta sección resume qué necesita cada tabla/colección para que la base quede 
 - **Propósito**: explicar ajustes, bonos, penalizaciones u otros conceptos asociados a una carga real.
 - **Campos clave**: `facturacion_id`, `tipo`, `cantidad`, `precio`, `importe`, `descripcion`.
 - **Obligatorio para iniciar**: no.
-- **Reglas importantes**: cada justificación debe apuntar a un registro existente de `facturacion_2026`; en penalizaciones, el importe impacta como descuento.
+- **Reglas importantes**: cada justificación debe apuntar a un registro existente de `facturacion_anio`; en penalizaciones, el importe impacta como descuento.
 - **Carga manual recomendada**: solo cuando un desvío o ajuste necesite respaldo.
 
 #### `matriz_proyecciones`
@@ -348,7 +704,7 @@ Para una base nueva, el orden recomendado de carga es:
 
 1. `usuarios`: crear al menos un usuario `administrador`.
 2. `asignaciones_comerciales`: cargar el maestro comercial base.
-3. `facturacion_2026`: cargar registros reales si se quiere usar Dashboard, Control, Matriz, Comparativo y Justificaciones.
+3. `facturacion_anio`: cargar registros reales si se quiere usar Dashboard, Control, Matriz, Comparativo y Justificaciones.
 4. `feriados_operativos`: cargar feriados si las proyecciones deben descontar días no operativos.
 5. `matriz_proyecciones`: cargar horas y dotaciones proyectadas por mes.
 6. `personal_distribucion_horas`: configurar los porcentajes diurnos/nocturnos de PLP para el año correspondiente.
@@ -415,7 +771,7 @@ Al editar la asociación y cargar `2026-06` en **Aplicar desde mes**, el sistema
 
 Si **Aplicar desde mes** queda vacío, la edición se comporta como una actualización general de la asociación y de sus cargas vinculadas.
 
-### `facturacion_2026`
+### `facturacion_anio`
 
 Guarda la facturación real.
 
@@ -450,7 +806,7 @@ Esta tabla alimenta Dashboard, Control, Comparativo, Matriz, Justificaciones y e
 
 ### `justificaciones_ajustes`
 
-Guarda explicaciones o ajustes vinculados a un registro de `facturacion_2026`.
+Guarda explicaciones o ajustes vinculados a un registro de `facturacion_anio`.
 
 Campos principales:
 
@@ -546,6 +902,8 @@ Campos principales:
 | `porcentaje_nocturno` | Valor calculado como `100 - porcentaje_diurno`; no se carga directamente. |
 
 Los porcentajes se administran desde **Matriz de proyecciones > PLP**. Cambiar un porcentaje recalcula todas las proyecciones PLP coincidentes del mes. Los datos de años anteriores permanecen intactos.
+
+La tabla **Distribución de horas Personal** muestra los porcentajes diurnos y nocturnos con dos decimales. La precisión histórica almacenada se conserva mientras una celda no sea editada; al modificarla, el paso permitido es de `0,01` puntos porcentuales.
 
 ### `matriz_proyecciones_jornadas`
 
@@ -827,6 +1185,10 @@ dotación requerida = horas requeridas / días laborales / horas de jornada
 
 El porcentaje de cumplimiento es editable y afecta las horas proyectadas finales. El resumen mensual PLP acumula las horas base importadas al 100% para poder cotejarlas contra el archivo original.
 
+El **Resumen mensual PLP** aparece antes de la edición para cotejar Personal CX, Personal, Personal Soporte, Total Personal, porcentaje de Soporte, Personal SMB y Total contra el archivo de control. Las horas y los totales se muestran siempre con dos decimales y se calculan sin redondear previamente cada clasificación. La sección **Edición rápida de horas PLP** presenta luego una grilla tipo planilla con una fila por campaña. Su filtro **Mes** permite trabajar con un período puntual o seleccionar **Todos los meses**, y limita tanto el resumen como la grilla. Permite modificar clasificación, mes, campaña, horas, carga semanal, jornada y cumplimiento en varias filas antes de presionar **Guardar cambios** una sola vez. Al finalizar correctamente, la pantalla muestra una confirmación explícita con la cantidad de filas guardadas y eliminadas. **Agregar fila** incorpora campañas nuevas sin abandonar la grilla. Si la combinación clasificación + campaña + mes ya existe, sus valores se reemplazan; no se crea una fila duplicada. **Eliminar** marca una campaña existente para quitarla y ofrece **Restaurar** antes de guardar; las filas nuevas se retiran inmediatamente. La operación es transaccional: si alguna fila es inválida o la misma clave aparece repetida dentro del lote enviado, ninguna modificación ni eliminación se confirma.
+
+Para una conciliación anual controlada puede ejecutarse `python scripts/sincronizar_porcentajes_personal.py RUTA_EXCEL --year AAAA`. El proceso lee las hojas `Desglose HORAS PERSONAL`, `Horas`, `Precios`, `Variable` y `Tarifacion`; conserva la precisión interna del archivo, recalcula distribuciones y porcentajes y registra el cambio en Historial. No genera ajustes residuales.
+
 La importación anual acepta `.xlsx` o `.csv` con estas columnas:
 
 ```text
@@ -1040,7 +1402,7 @@ Destino de cada importación:
 
 | Plantilla | Tabla principal | Pantalla de destino | Resultado posterior |
 | --- | --- | --- | --- |
-| Facturación real | `facturacion_2026` | Cargar datos / Control | Dashboard, Comparativo, Matriz y exportaciones. |
+| Facturación real | `facturacion_anio` | Cargar datos / Control | Dashboard, Comparativo, Matriz y exportaciones. |
 | Matriz de proyecciones | `matriz_proyecciones` y, si aplica, `matriz_proyecciones_jornadas` | Proyectados > Matriz de proyecciones | Control proyecciones y Facturación horas. |
 | Proyecciones PLP | `matriz_proyecciones` con `cliente=Personal` y `tipo_plp` | Proyectados > Matriz de proyecciones > PLP | Resumen PLP, aperturas diurnas/nocturnas y Facturación horas. |
 | Matriz de precios | `matriz_precios` | Proyectados > Matriz de precios | Precio de las horas y de las aperturas nocturnas. |
@@ -1342,7 +1704,7 @@ en desarrollo.
 | --- | --- | --- | --- |
 | Usuarios y roles | `usuarios` | Usuarios | Autenticación y permisos |
 | Catálogo comercial | `asignaciones_comerciales` | Datos maestros | Formularios, sites y filtros |
-| Facturación real | `facturacion_2026` | Cargar datos / Control | Dashboard, Comparativo y Matriz |
+| Facturación real | `facturacion_anio` | Cargar datos / Control | Dashboard, Comparativo y Matriz |
 | Justificaciones reales | `justificaciones_ajustes` | Justificaciones | Total real y trazabilidad |
 | Proyección de horas | `matriz_proyecciones` | Proyecciones | Control proyecciones y Facturación horas |
 | Jornadas múltiples | `matriz_proyecciones_jornadas` | Proyecciones | Cálculo de horas requeridas |
@@ -1399,14 +1761,21 @@ Las entidades reversibles actuales incluyen proyecciones, precios, variables,
 tarifaciones, Next Gen y regularizaciones de Facturación horas. Un deshacer aplica
 el snapshot anterior y crea otro movimiento de historial; no elimina la auditoría.
 
-#### `facturacion_2026`
+#### `facturacion_anio`
 
-Modelo: `Facturacion2026`.
+Modelo: `FacturacionAnio`.
 
 Contiene el escenario real. Sus dimensiones son fecha, mes, cliente, gerente,
 jefe de site, campaña, subcampaña, tipo de negocio y jornada. Sus medidas incluyen
 horas objetivo, horas facturadas, horas penalizadas, valor hora, tarifación,
 importe fijo, variables, bonos, penalizaciones, Next Gen y otros.
+
+La tabla se llamó anteriormente `facturacion_2026`. Durante el primer arranque
+posterior al cambio, la aplicación ejecuta un `ALTER TABLE ... RENAME TO
+facturacion_anio`, conservando IDs, registros y la referencia
+`justificaciones_ajustes.facturacion_id`. Si las dos tablas existieran al mismo
+tiempo, el inicio se detiene para exigir una conciliación manual y evitar pérdida
+o duplicación de datos.
 
 Las propiedades calculadas del modelo producen:
 
@@ -1428,7 +1797,7 @@ el cálculo.
 
 Modelo: `JustificacionAjuste`.
 
-Cada registro referencia `facturacion_2026.id`. Guarda tipo, cantidad, precio,
+Cada registro referencia `facturacion_anio.id`. Guarda tipo, cantidad, precio,
 importe y descripción. Su finalidad es explicar y respaldar ajustes del escenario
 real. Las penalizaciones se normalizan con signo negativo al calcular.
 
@@ -1555,9 +1924,9 @@ El monto conserva su signo:
 - negativo: resta;
 - cero: no altera el resultado.
 
-También contiene el concepto técnico `Ajuste alineación Excel`. Este concepto
-mantiene la conciliación contra el archivo de referencia utilizado en 2026. Debe
-permanecer separado de Tarifación y Suma fija para que sea auditable.
+Solo deben almacenarse conceptos e importes presentes en la fuente operativa. No se
+deben crear residuales técnicos para forzar la conciliación: cualquier diferencia debe
+corregirse en horas, precios, porcentajes variables o tarifaciones de origen.
 
 Si cambian datos maestros tanto en la app como en el Excel, se debe volver a
 ejecutar una comparación y recalcular la conciliación. No debe editarse el ajuste
@@ -1767,7 +2136,7 @@ La conciliación no reemplaza las reglas del negocio:
 
 1. primero se corrigen horas, precios, porcentajes, sumas fijas y nombres;
 2. después se calcula la diferencia residual;
-3. el residual se guarda con concepto `Ajuste alineación Excel`;
+3. cualquier residual se informa para corregir su componente de origen, sin generar ajustes artificiales;
 4. el ajuste queda visible, auditable y reversible.
 
 Si se cambia agosto en adelante:
@@ -1785,6 +2154,7 @@ Todas requieren sesión. Los métodos de escritura requieren CSRF y permisos.
 | Endpoint | Métodos | Responsabilidad |
 | --- | --- | --- |
 | `/api/matriz-proyecciones` | GET, POST | Consultar y guardar proyecciones |
+| `/api/campanias` | GET | Consultar IDs canónicos por cliente + campaña |
 | `/api/matriz-proyecciones/<id>` | DELETE | Eliminar proyección |
 | `/api/matriz-proyecciones/importar` | POST | Importar matriz |
 | `/api/matriz-proyecciones/template` | GET | Descargar plantilla |
@@ -1856,6 +2226,7 @@ No se debe desactivar CSRF para resolver un `403`. Debe verificarse:
 
 En producción:
 
+- configurar `APP_ENV=production`;
 - usar un `SECRET_KEY` persistente y seguro;
 - activar `SESSION_COOKIE_SECURE=1`;
 - publicar únicamente detrás de HTTPS;
