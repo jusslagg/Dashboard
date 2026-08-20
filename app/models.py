@@ -144,6 +144,7 @@ class FacturacionAnio(db.Model):
     valor_hora_objetivo = db.Column(DINERO, nullable=True)
     valor_hora = db.Column(DINERO, nullable=False)
     facturado_horas_manual = db.Column(DINERO, nullable=True)
+    total_facturado_manual = db.Column(DINERO, nullable=True)
     tarifacion = db.Column(DINERO, nullable=True)
     importe_fijo = db.Column(DINERO, nullable=True)
     variable_objetivo = db.Column(DINERO, default=0)
@@ -236,6 +237,8 @@ class FacturacionAnio(db.Model):
 
     @property
     def total_dashboard(self):
+        if self.total_facturado_manual is not None:
+            return self.total_facturado_manual
         if self.usa_importe_fijo:
             return (
                 self.importe_fijo
@@ -302,6 +305,7 @@ class FacturacionAnio(db.Model):
             'valor_hora_alcanzado': self.valor_hora_alcanzado,
             'valor_hora': self.valor_hora,
             'facturado_horas_manual': self.facturado_horas_manual,
+            'total_facturado_manual': self.total_facturado_manual,
             'tarifacion': self.tarifacion,
             'importe_fijo': self.importe_fijo,
             'variable_objetivo': self.variable_objetivo,

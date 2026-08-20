@@ -400,6 +400,7 @@ def ensure_schema():
         'horas_penalizadas': 'ALTER TABLE facturacion_anio ADD COLUMN horas_penalizadas NUMERIC(12,2) DEFAULT 0',
         'valor_hora_objetivo': 'ALTER TABLE facturacion_anio ADD COLUMN valor_hora_objetivo NUMERIC(18,2)',
         'facturado_horas_manual': 'ALTER TABLE facturacion_anio ADD COLUMN facturado_horas_manual NUMERIC(18,2)',
+        'total_facturado_manual': 'ALTER TABLE facturacion_anio ADD COLUMN total_facturado_manual NUMERIC(18,2)',
         'importe_fijo': 'ALTER TABLE facturacion_anio ADD COLUMN importe_fijo NUMERIC(18,2)',
         'variable_objetivo': 'ALTER TABLE facturacion_anio ADD COLUMN variable_objetivo NUMERIC(18,2) DEFAULT 0',
         'variable_productivo': 'ALTER TABLE facturacion_anio ADD COLUMN variable_productivo NUMERIC(18,2) DEFAULT 0',

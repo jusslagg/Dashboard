@@ -530,6 +530,17 @@ def normalizar_site(valor):
     return site
 
 
+def jefe_personal_por_servicio(*valores):
+    texto = normalizar_header(' '.join(str(valor or '') for valor in valores))
+    if 'soporte' in texto or 'smb' in texto:
+        return 'Walter Canalini'
+    if 'ventas' in texto:
+        return 'Pablo Chanampa'
+    if 'retencion' in texto:
+        return 'Alejandro Del Soto'
+    return 'Micaela Antelo'
+
+
 def normalizar_tipo_vh(valor):
     texto = str(valor or '').strip()
     clave = normalizar_header(texto)
@@ -743,6 +754,7 @@ def crear_registro_facturacion(data, exigir_configuracion_valor_hora=True, prese
         valor_hora_objetivo=parse_numero(data.get('valor_hora_objetivo') or data.get('valor_hora')),
         valor_hora=parse_numero(data.get('valor_hora')),
         facturado_horas_manual=parse_numero(data.get('facturado_horas_manual')) if data.get('facturado_horas_manual') not in (None, '') else None,
+        total_facturado_manual=parse_numero(data.get('total_facturado_manual')) if data.get('total_facturado_manual') not in (None, '') else None,
         tarifacion=parse_numero(data.get('tarifacion')) if data.get('tarifacion') not in (None, '') else None,
         importe_fijo=parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None,
         variable_objetivo=parse_numero(data.get('variable_objetivo')),
@@ -786,6 +798,7 @@ def actualizar_registro_facturacion(registro, data, exigir_configuracion_valor_h
     registro.valor_hora_objetivo = parse_numero(data.get('valor_hora_objetivo') or data.get('valor_hora'))
     registro.valor_hora = parse_numero(data.get('valor_hora'))
     registro.facturado_horas_manual = parse_numero(data.get('facturado_horas_manual')) if data.get('facturado_horas_manual') not in (None, '') else None
+    registro.total_facturado_manual = parse_numero(data.get('total_facturado_manual')) if data.get('total_facturado_manual') not in (None, '') else None
     registro.tarifacion = parse_numero(data.get('tarifacion')) if data.get('tarifacion') not in (None, '') else None
     registro.importe_fijo = parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None
     registro.variable_objetivo = parse_numero(data.get('variable_objetivo'))
@@ -1080,6 +1093,76 @@ def aplicar_asignacion_a_fila(item, asignacion):
     })
 
 
+def resolver_personal_importacion_directa(item):
+    """Resuelve o crea el maestro de Personal sin detener la carga masiva."""
+    cliente_archivo = str(item.get('cliente') or '').strip()
+    subcampania_archivo = str(item.get('subcampania') or '').strip()
+    cliente_clave = normalizar_header(cliente_archivo)
+    subcampania_clave = normalizar_header(subcampania_archivo)
+    maestras_activas = AsignacionComercial.query.filter_by(activa=True).order_by(AsignacionComercial.id).all()
+    candidatas = [
+        asignacion for asignacion in maestras_activas
+        if normalizar_header(asignacion.cliente) == cliente_clave
+    ]
+    exactas = [
+        asignacion for asignacion in candidatas
+        if normalizar_header(asignacion.subcampania) == subcampania_clave
+        or normalizar_header(asignacion.campania) == subcampania_clave
+    ]
+    if not exactas:
+        # El archivo operativo puede traer el servicio como Cuenta (por ejemplo,
+        # "Personal Cobranzas"), aunque el maestro lo tenga bajo Cliente Personal.
+        exactas = [
+            asignacion for asignacion in maestras_activas
+            if 'personal' in normalizar_header(asignacion.cliente)
+            and (
+                normalizar_header(asignacion.campania) in (cliente_clave, subcampania_clave)
+                or normalizar_header(asignacion.subcampania) in (cliente_clave, subcampania_clave)
+            )
+        ]
+    if exactas:
+        asignacion = exactas[0]
+        jefe_correcto = jefe_personal_por_servicio(
+            cliente_archivo,
+            asignacion.campania,
+            subcampania_archivo,
+            asignacion.tipo_negocio,
+        )
+        if asignacion.jefe_site != jefe_correcto:
+            asignacion.jefe_site = jefe_correcto
+    else:
+        if not candidatas and 'personal' in cliente_clave:
+            candidatas = [
+                asignacion for asignacion in maestras_activas
+                if 'personal' in normalizar_header(asignacion.cliente)
+            ]
+        if not candidatas:
+            return None, f'No existe una estructura base en Datos Maestros para {cliente_archivo}'
+        base = max(
+            candidatas,
+            key=lambda asignacion: SequenceMatcher(
+                None,
+                subcampania_clave,
+                normalizar_header(asignacion.subcampania),
+            ).ratio(),
+        )
+        asignacion, _ = obtener_o_crear_asignacion({
+            'cliente': cliente_archivo,
+            'gerente': base.gerente,
+            'jefe_site': jefe_personal_por_servicio(
+                cliente_archivo,
+                subcampania_archivo,
+                base.tipo_negocio,
+            ),
+            'campania': subcampania_archivo,
+            'subcampania': subcampania_archivo,
+            'tipo_negocio': base.tipo_negocio,
+            'es_next_gen': False,
+        })
+    aplicar_asignacion_a_fila(item, asignacion)
+    return asignacion, None
+
+
 def opciones_maestro_para_fila(item):
     cuenta = str(item.get('cliente') or '').strip()
     subcampania = str(item.get('subcampania') or '').strip()
@@ -1113,6 +1196,8 @@ def opciones_maestro_para_fila(item):
 
 def preparar_fila_migracion_facturacion(item):
     """Traduce el formato operativo reducido al modelo de facturación."""
+    identificacion_original = ' '.join(str(item.get(campo) or '') for campo in ('cliente', 'campania', 'subcampania'))
+    item['_importacion_directa_personal'] = 'personal' in normalizar_header(identificacion_original)
     item['mes'] = mes_valido(item.get('mes')) or item.get('mes')
     if not item.get('fecha'):
         item['fecha'] = date.today().isoformat()
@@ -1150,6 +1235,9 @@ def preparar_fila_migracion_facturacion(item):
 def validar_total_fila_migracion(item):
     informado = item.get('total_facturado_informado')
     if informado in (None, ''):
+        return None
+    if item.get('_importacion_directa_personal'):
+        item['total_facturado_manual'] = parse_numero(informado)
         return None
     horas_netas = max(parse_numero(item.get('horas_facturadas')) - parse_numero(item.get('horas_penalizadas')), 0)
     facturado_horas = (
@@ -2190,11 +2278,16 @@ def matriz_grupos(registros, campo, meses):
     return salida
 
 
-def validar_payload_facturacion(data, exigir_configuracion_valor_hora=True):
+def validar_payload_facturacion(data, exigir_configuracion_valor_hora=True, preservar_valores_importados=False):
     errores = []
     es_next_gen = bool(data.get('es_next_gen'))
+    es_personal_directo = bool(data.get('_importacion_directa_personal'))
     try:
-        aplicar_excepcion_calculo(data, exigir_configuracion=exigir_configuracion_valor_hora)
+        aplicar_excepcion_calculo(
+            data,
+            exigir_configuracion=exigir_configuracion_valor_hora,
+            preservar_facturado_manual=preservar_valores_importados,
+        )
     except ValueError as error:
         errores.append(str(error))
     tipo_jornada = normalizar_tipo_vh(data.get('tipo_jornada'))
@@ -2229,23 +2322,23 @@ def validar_payload_facturacion(data, exigir_configuracion_valor_hora=True):
         importe_fijo = None
         variable_objetivo = 0
         variable_productivo = 0
-    if horas_objetivo < 0:
+    if horas_objetivo < 0 and not es_personal_directo:
         errores.append('Las horas objetivo no pueden ser negativas')
-    if horas_facturadas < 0:
+    if horas_facturadas < 0 and not es_personal_directo:
         errores.append('Las horas facturadas no pueden ser negativas')
-    if horas_penalizadas < 0:
+    if horas_penalizadas < 0 and not es_personal_directo:
         errores.append('Las horas penalizadas no pueden ser negativas')
-    if not es_next_gen and not sin_restriccion_horas and horas_penalizadas > horas_facturadas:
+    if not es_next_gen and not es_personal_directo and not sin_restriccion_horas and horas_penalizadas > horas_facturadas:
         errores.append('Las horas penalizadas no pueden superar las horas facturadas')
-    if not es_next_gen and not sin_restriccion_horas and valor_hora <= 0:
+    if not es_next_gen and not es_personal_directo and not sin_restriccion_horas and valor_hora <= 0:
         errores.append('El valor hora debe ser mayor a 0')
-    if not es_next_gen and not sin_restriccion_horas and valor_hora_objetivo <= 0:
+    if not es_next_gen and not es_personal_directo and not sin_restriccion_horas and valor_hora_objetivo <= 0:
         errores.append('El valor hora objetivo debe ser mayor a 0')
     if importe_fijo is not None and importe_fijo < 0:
         errores.append('El importe fijo facturado no puede ser negativo')
     if variable_objetivo < 0:
         errores.append('Variable Objetivo no puede ser negativo')
-    if tipo_jornada and tipo_jornada not in TIPOS_VH and not es_next_gen:
+    if tipo_jornada and tipo_jornada not in TIPOS_VH and not es_next_gen and not es_personal_directo:
         errores.append(f'El tipo de VH "{data.get("tipo_jornada", "")}" no es válido')
     if data.get('mes') and not mes_valido(data.get('mes')):
         errores.append('El mes de facturacion no es valido')
@@ -6516,6 +6609,19 @@ def api_importar_datos():
             ):
                 continue
 
+            # Las planillas operativas pueden traer meses futuros ya armados con
+            # nombres y tipos, pero sin datos. No deben convertirse en registros
+            # de facturación en cero.
+            campos_numericos_importacion = (
+                'horas_objetivo', 'horas_facturadas', 'valor_hora',
+                'facturado_horas_manual', 'tarifacion', 'unidad',
+                'porcentaje_variable', 'variable_productivo',
+                'ajuste_bono_penalizacion', 'netx_gen', 'otros',
+                'total_facturado_informado',
+            )
+            if all(item.get(campo) in (None, '') for campo in campos_numericos_importacion):
+                continue
+
             try:
                 preparar_fila_migracion_facturacion(item)
             except (TypeError, ValueError) as exc:
@@ -6536,7 +6642,9 @@ def api_importar_datos():
             cuenta_original = str(item.get('cliente') or '').strip()
             subcampania_original = str(item.get('subcampania') or '').strip()
             resolucion = resoluciones.get(str(indice)) or {}
-            if resolucion.get('accion') == 'vincular':
+            if item.get('_importacion_directa_personal'):
+                _, error_asignacion = resolver_personal_importacion_directa(item)
+            elif resolucion.get('accion') == 'vincular':
                 asignacion_resuelta = db.session.get(AsignacionComercial, int(resolucion.get('asignacion_id') or 0))
                 if not asignacion_resuelta or not asignacion_resuelta.activa:
                     errores.append(f'Fila {indice}: la asociación elegida ya no está disponible')
@@ -6599,7 +6707,11 @@ def api_importar_datos():
                     continue
                 porcentajes_por_clave[clave_porcentaje] = porcentaje
 
-            errores_fila = validar_payload_facturacion(item, exigir_configuracion_valor_hora=False)
+            errores_fila = validar_payload_facturacion(
+                item,
+                exigir_configuracion_valor_hora=False,
+                preservar_valores_importados=True,
+            )
             if errores_fila:
                 errores.append(f'Fila {indice}: ' + '; '.join(errores_fila))
                 continue
