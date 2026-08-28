@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}Reloj | Directorio{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-6xl">
+    <div class="mb-6 flex items-end justify-between gap-4">
+        <div><p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Directorio</p><h2 class="mt-1 text-3xl font-bold text-slate-950">Reloj</h2><p class="mt-1 text-sm text-slate-500">Cumplimiento acumulado de horas requeridas y realizadas.</p></div>
+        <select id="relojYear" onchange="cargar()" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">{% for anio in anios_disponibles %}<option value="{{ anio }}" {% if anio == anio_actual %}selected{% endif %}>{{ anio }}</option>{% endfor %}</select>
+    </div>
+    <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <div class="rounded-2xl bg-slate-950 p-6 text-white">
+                <canvas id="gauge" class="mx-auto w-full max-w-2xl" height="290"></canvas>
+                <div class="-mt-6 text-center"><span id="cumplimiento" class="text-4xl font-black tabular-nums">0%</span><p class="mt-1 text-xs uppercase tracking-[0.22em] text-slate-400">Cumplimiento</p></div>
+            </div>
+            <div class="grid content-center gap-3">
+                <article class="rounded-xl border border-slate-200 p-5"><p class="text-xs font-semibold uppercase text-slate-500">Requerido</p><p id="requerido" class="mt-1 text-3xl font-bold tabular-nums text-slate-950">0</p></article>
+                <article class="rounded-xl border border-slate-200 p-5"><p class="text-xs font-semibold uppercase text-slate-500">Realizado</p><p id="realizado" class="mt-1 text-3xl font-bold tabular-nums text-slate-950">0</p></article>
+                <article class="rounded-xl border border-slate-200 p-5"><p class="text-xs font-semibold uppercase text-slate-500">Diferencia</p><p id="diferencia" class="mt-1 text-3xl font-bold tabular-nums">0</p></article>
+            </div>
+        </div>
+        <p class="mt-4 text-center text-xs text-slate-500">Escala calibrada: 100% se ubica al 75% del recorrido total; el extremo representa 133,33%.</p>
+    </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const formato = value => new Intl.NumberFormat('es-AR', {maximumFractionDigits:2}).format(Number(value||0)); let reloj;
+function dibujar(valor){const canvas=gauge,dpr=devicePixelRatio||1,w=canvas.clientWidth||650,h=290;canvas.width=w*dpr;canvas.height=h*dpr;const c=canvas.getContext('2d');c.scale(dpr,dpr);const x=w/2,y=235,r=Math.min(w*.4,195),colors=['#dc2626','#f97316','#f59e0b','#84cc16','#22c55e','#14b8a6'];c.lineWidth=30;colors.forEach((color,i)=>{c.beginPath();c.strokeStyle=color;c.arc(x,y,r,Math.PI+i*Math.PI/colors.length,Math.PI+(i+1)*Math.PI/colors.length);c.stroke()});const recorrido=Math.min(Math.max(valor*.75,0),1),a=Math.PI+recorrido*Math.PI;c.beginPath();c.strokeStyle='#f8fafc';c.lineWidth=6;c.lineCap='round';c.moveTo(x,y);c.lineTo(x+Math.cos(a)*(r-18),y+Math.sin(a)*(r-18));c.stroke();c.beginPath();c.fillStyle='#f8fafc';c.arc(x,y,11,0,Math.PI*2);c.fill();c.font='12px Inter, sans-serif';c.fillStyle='#94a3b8';c.textAlign='center';c.fillText('0%',x-r,y+28);c.fillText('100%',x+Math.cos(Math.PI*1.75)*r,y+Math.sin(Math.PI*1.75)*r-10);c.fillText('133,33%',x+r,y+28)}
+async function cargar(){const response=await fetch(`/api/indicadores?year=${relojYear.value}`),data=await response.json(),r=data.reloj;reloj=r;requerido.textContent=formato(r.requerido);realizado.textContent=formato(r.realizado);diferencia.textContent=`${r.diferencia>0?'+':''}${formato(r.diferencia)}`;diferencia.className=`mt-1 text-3xl font-bold tabular-nums ${r.diferencia>=0?'text-emerald-600':'text-red-600'}`;cumplimiento.textContent=`${formato(r.cumplimiento*100)}%`;dibujar(r.cumplimiento)}
+cargar();addEventListener('resize',()=>reloj&&dibujar(reloj.cumplimiento));
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+{
+  "2025": {
+    "cumplimiento_facturacion": [0.976, 0.968, 0.972, 1.015, 0.986, 0.972, 0.971, 0.968, 0.975, 0.962, 0.981, 0.965],
+    "desvio_facturacion": [-103185736, -129840354, -114185381, 62302006, -57009996, -113193780, -130061831, -138099351, -113208696, -170403879, -78690369, -159081761],
+    "cumplimiento_horas_anual": 0.996,
+    "cumplimiento_facturacion_anual": 0.9757,
+    "desvio_facturacion_anual": -1244659127,
+    "cumplimiento_horas_trimestral": [0.9945, 1.0075, 0.9962, 0.9858],
+    "cumplimiento_facturacion_trimestral": [0.9721, 0.9912, 0.971, 0.9692],
+    "desvio_facturacion_trimestral": [-347211471, -107901770, -381369878, -408176009]
+  }
+}

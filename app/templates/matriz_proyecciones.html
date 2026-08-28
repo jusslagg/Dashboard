@@ -116,24 +116,26 @@
     </div>
 </section>
 
-<div class="grid grid-cols-1 gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-    <section class="rounded-lg bg-white p-5 shadow">
+<div class="grid grid-cols-1 gap-5 xl:grid-cols-[430px_minmax(0,1fr)]">
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="mb-4 flex items-start justify-between gap-3">
             <div>
-                <h2 id="tituloFormulario" class="font-semibold text-gray-900">Nueva proyección</h2>
-                <p id="subtituloFormulario" class="mt-1 text-xs text-gray-500">Cliente, campaña y período.</p>
+                <h2 id="tituloFormulario" class="text-lg font-bold text-gray-950">Nueva proyección</h2>
+                <p id="subtituloFormulario" class="mt-1 text-sm text-gray-500">Completá los datos de arriba hacia abajo.</p>
             </div>
             <span id="badgeEditando" class="hidden rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Editando</span>
         </div>
 
         <form id="formProyeccion" class="space-y-4">
             <input type="hidden" id="proyeccionId">
+            <div class="rounded-lg border border-slate-200 p-3">
+            <div class="mb-3 flex items-center gap-2"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">1</span><span class="text-sm font-bold text-slate-900">Cliente y período</span></div>
             <div id="campoClienteGeneral">
-                <label class="mb-1 block text-sm font-medium text-gray-700">Cliente *</label>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Cliente</label>
                 <select id="cliente" required onchange="actualizarCampanias(); actualizarAvisoPersonal()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
             </div>
             <div id="campoCampaniaGeneral">
-                <label class="mb-1 block text-sm font-medium text-gray-700">Campaña *</label>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Campaña</label>
                 <select id="campania" required onchange="actualizarAvisoPersonal()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
             </div>
             <div id="bloqueNocturnidad" class="hidden rounded border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
@@ -200,22 +202,26 @@
                     <select id="mes" required onchange="actualizarProyectadas()" class="h-10 w-full rounded border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
                 </div>
             </div>
-            <div id="configuracionJornadas" class="rounded border border-slate-200 bg-slate-50 p-3">
+            </div>
+            <div id="configuracionJornadas" class="rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <div class="mb-3 flex items-center justify-between gap-3">
                     <div>
-                        <h3 class="text-sm font-semibold text-slate-900">Jornadas</h3>
-                        <p class="mt-1 text-xs text-slate-500">Dotación requerida, carga semanal y horas diarias.</p>
+                        <h3 class="flex items-center gap-2 text-sm font-bold text-slate-900"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">2</span> Jornada</h3>
+                        <p class="mt-1 text-xs text-slate-500">Ingresá dotación, días de trabajo y horas diarias. El resto se calcula solo.</p>
                     </div>
-                    <button type="button" onclick="agregarJornada()" class="inline-flex h-8 items-center justify-center gap-2 rounded bg-slate-700 px-3 text-xs font-medium text-white hover:bg-slate-800">
+                    <button type="button" onclick="agregarJornada({}, true)" class="inline-flex h-8 items-center justify-center gap-2 rounded bg-slate-700 px-3 text-xs font-medium text-white hover:bg-slate-800">
                         <i class="fas fa-plus"></i>
                         Agregar
                     </button>
                 </div>
                 <div id="jornadasContainer" class="space-y-3"></div>
             </div>
-            <div id="ajustesManualesProyeccion" class="rounded border border-blue-200 bg-blue-50 p-3">
-                <div class="text-sm font-semibold text-blue-950">Control manual del período</div>
-                <p class="mt-1 text-xs text-blue-800">Opcional. Úselo si la campaña comienza o termina durante el mes. Los valores informados reemplazan el cálculo automático.</p>
+            <details id="ajustesManualesProyeccion" class="group rounded-lg border border-slate-200 bg-white p-3">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-700">
+                    <span><i class="fas fa-sliders mr-2 text-slate-400"></i>Ajustes avanzados <span class="font-normal text-slate-500">(opcional)</span></span>
+                    <span id="modoCalculoBadge" class="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold text-emerald-800">Automático</span>
+                </summary>
+                <p class="mt-3 text-xs text-blue-800">Solo usá estos campos si la campaña comienza o termina durante el mes. Reemplazan el cálculo de la jornada.</p>
                 <div class="mt-3 grid grid-cols-2 gap-3">
                     <div>
                         <label class="mb-1 block text-xs font-medium text-blue-900">Días hábiles manuales</label>
@@ -226,8 +232,13 @@
                         <input id="horasRequeridasManual" type="number" min="0" step="0.01" placeholder="Automático" oninput="actualizarProyectadas()" class="h-10 w-full rounded border border-blue-300 bg-white px-3 text-right text-sm">
                     </div>
                 </div>
-            </div>
-            <div id="resumenJornadas" class="grid grid-cols-3 gap-3">
+                <button type="button" onclick="desactivarControlManual()" class="mt-3 inline-flex h-8 items-center gap-2 rounded border border-blue-300 bg-white px-3 text-xs font-semibold text-blue-800 hover:bg-blue-100">
+                    <i class="fas fa-rotate-left"></i> Volver a cálculo automático
+                </button>
+            </details>
+            <div class="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-3">
+            <div class="mb-3 flex items-center gap-2"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">3</span><span class="text-sm font-bold text-slate-900">Resultado</span></div>
+            <div id="resumenJornadas" class="grid grid-cols-3 gap-2">
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Dotacion total</label>
                     <input id="dotacionTotal" readonly type="number" class="h-10 w-full rounded border border-gray-300 bg-slate-50 px-3 text-sm text-right text-slate-700">
@@ -240,13 +251,14 @@
                     <label class="mb-1 block text-sm font-medium text-gray-700">Hs. requeridas</label>
                     <input id="horasRequeridas" readonly type="number" min="0" step="0.01" placeholder="" class="h-10 w-full rounded border border-gray-300 bg-slate-50 px-3 text-sm text-right text-slate-700">
                 </div>
-            </div>            <div id="cumplimientoBlock">
-                <label class="mb-1 block text-sm font-medium text-gray-700">% cumplimiento *</label>
+            </div><div id="cumplimientoBlock" class="mt-3">
+                <label class="mb-1 block text-sm font-medium text-gray-700">Cumplimiento esperado</label>
                 <input id="porcentajeCumplimiento" required type="number" min="0" step="0.01" value="100" oninput="actualizarProyectadas()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
-            <div class="rounded border border-slate-200 bg-slate-50 px-3 py-3">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Horas proyectadas</div>
-                <div id="horasProyectadasPreview" class="mt-1 text-2xl font-bold text-slate-900">0</div>
+            <div class="mt-3 flex items-center justify-between rounded-lg bg-blue-700 px-4 py-3 text-white">
+                <div><div class="text-xs font-semibold uppercase tracking-wide text-blue-100">Horas proyectadas</div><div class="text-xs text-blue-200">Horas requeridas × cumplimiento</div></div>
+                <div id="horasProyectadasPreview" class="text-3xl font-black tabular-nums">0</div>
+            </div>
             </div>
             <div id="mensajeProyeccion" class="hidden rounded px-3 py-2 text-sm"></div>
             <button type="submit" class="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700">
@@ -796,7 +808,7 @@ function generarMeses(year) {
     });
 }
 
-function agregarJornada(jornada = {}) {
+function agregarJornada(jornada = {}, limpiarManual = false) {
     const container = document.getElementById('jornadasContainer');
     const index = Date.now() + Math.floor(Math.random() * 1000);
     const opciones = cargasSemanales.map(carga =>
@@ -808,15 +820,15 @@ function agregarJornada(jornada = {}) {
         <div class="grid grid-cols-2 gap-2">
             <div>
                 <label class="mb-1 block text-xs font-medium text-gray-600">Dotación requerida</label>
-                <input data-field="dotacion" type="number" min="0" step="0.01" value="${jornada.dotacion_requerida ?? ''}" oninput="actualizarProyectadas()" class="h-9 w-full rounded border border-gray-300 px-2 text-sm text-right">
+                <input data-field="dotacion" type="number" min="0" step="0.01" value="${jornada.dotacion_requerida ?? ''}" oninput="actualizarDesdeJornadas()" class="h-9 w-full rounded border border-gray-300 px-2 text-sm text-right">
             </div>
             <div>
                 <label class="mb-1 block text-xs font-medium text-gray-600">Hs. diarias</label>
-                <input data-field="horas" type="number" min="0" step="0.01" value="${jornada.carga_horaria ?? ''}" oninput="actualizarProyectadas()" class="h-9 w-full rounded border border-gray-300 px-2 text-sm text-right">
+                <input data-field="horas" type="number" min="0" step="0.01" value="${jornada.carga_horaria ?? ''}" oninput="actualizarDesdeJornadas()" class="h-9 w-full rounded border border-gray-300 px-2 text-sm text-right">
             </div>
             <div class="col-span-2">
                 <label class="mb-1 block text-xs font-medium text-gray-600">Carga semanal</label>
-                <select data-field="carga" onchange="actualizarProyectadas()" class="h-9 w-full rounded border border-gray-300 bg-white px-2 text-sm">${opciones}</select>
+                <select data-field="carga" onchange="actualizarDesdeJornadas()" class="h-9 w-full rounded border border-gray-300 bg-white px-2 text-sm">${opciones}</select>
             </div>
             <div>
                 <label class="mb-1 block text-xs font-medium text-gray-600">Q dias</label>
@@ -834,6 +846,7 @@ function agregarJornada(jornada = {}) {
     `;
     row.dataset.index = index;
     container.appendChild(row);
+    if (limpiarManual) desactivarControlManual(false);
     actualizarProyectadas();
 }
 
@@ -841,6 +854,19 @@ function eliminarJornada(button) {
     const rows = document.querySelectorAll('.jornada-row');
     if (rows.length <= 1) return;
     button.closest('.jornada-row').remove();
+    actualizarDesdeJornadas();
+}
+
+function desactivarControlManual(recalcular = true) {
+    document.getElementById('diasObjetivoManual').value = '';
+    document.getElementById('horasRequeridasManual').value = '';
+    const detalles = document.getElementById('ajustesManualesProyeccion');
+    if (detalles) detalles.open = false;
+    if (recalcular) actualizarProyectadas();
+}
+
+function actualizarDesdeJornadas() {
+    desactivarControlManual(false);
     actualizarProyectadas();
 }
 
@@ -873,6 +899,14 @@ function actualizarProyectadas() {
     const horasManualInput = document.getElementById('horasRequeridasManual');
     const diasManual = diasManualInput.value.trim() === '' ? null : numero(diasManualInput.value);
     const horasManual = horasManualInput.value.trim() === '' ? null : numero(horasManualInput.value);
+    const modoManual = diasManual !== null || horasManual !== null;
+    const modoBadge = document.getElementById('modoCalculoBadge');
+    if (modoBadge) {
+        modoBadge.textContent = modoManual ? 'Manual activo' : 'Automático';
+        modoBadge.className = modoManual
+            ? 'rounded-full bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-800'
+            : 'rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold text-emerald-800';
+    }
     document.querySelectorAll('.jornada-row').forEach(row => {
         const dotacion = numero(row.querySelector('[data-field="dotacion"]').value);
         const cargaHoraria = numero(row.querySelector('[data-field="horas"]').value);
@@ -975,6 +1009,7 @@ function editarProyeccion(id) {
     document.getElementById('horasRequeridas').value = item.horas_requeridas;
     document.getElementById('diasObjetivoManual').value = item.dias_objetivo_manual ?? '';
     document.getElementById('horasRequeridasManual').value = item.horas_requeridas_manual ?? '';
+    document.getElementById('ajustesManualesProyeccion').open = item.dias_objetivo_manual != null || item.horas_requeridas_manual != null;
     document.getElementById('porcentajeCumplimiento').value = item.porcentaje_cumplimiento;
     document.getElementById('tipoPLP').value = item.tipo_plp || '';
     document.getElementById('campaniaPLP').value = item.tipo_plp ? item.campania : '';
@@ -1045,9 +1080,8 @@ function renderProyecciones() {
             </td>
         </tr>
     `)).join('');
-    if (pestaniaActual === 'todas') {
-        renderProyeccionesPLPAgrupadas(filtradas.filter(item => item.tipo_plp), true);
-    }
+    // Las aperturas PLP se consultan en su pestaña propia. En "Todas" no se
+    // anexan porque duplican las horas que ya contiene la matriz general.
 }
 
 function renderProyeccionesPLPAgrupadas(items, anexar = false) {

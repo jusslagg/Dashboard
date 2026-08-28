@@ -679,6 +679,134 @@ class FeriadoOperativo(db.Model):
         }
 
 
+class DotacionMensual(db.Model):
+    """Serie mensual usada por los indicadores de dotaciones."""
+    __tablename__ = 'dotaciones_mensuales'
+
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False, unique=True, index=True)
+    dotacion_requerida = db.Column(HORAS, nullable=False)
+    personal = db.Column(HORAS, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'fecha': self.fecha.isoformat(),
+            'dotacion_requerida': self.dotacion_requerida or 0,
+            'personal': self.personal or 0,
+        }
+
+
+class RatioEliMensual(db.Model):
+    __tablename__ = 'ratio_eli_mensual'
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False, unique=True, index=True)
+    requerido = db.Column(HORAS, nullable=False)
+    staff = db.Column(HORAS, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    def to_dict(self):
+        r, s = float(self.requerido or 0), float(self.staff or 0)
+        return {'id': self.id, 'fecha': self.fecha.isoformat(), 'mes': self.fecha.strftime('%Y-%m'), 'requerido': r, 'staff': s, 'ratio': s/r if r else None}
+
+
+class DashboardOperativo(db.Model):
+    """Fila mensual importada del Dashboard; bajas se conserva manualmente."""
+    __tablename__ = 'dashboard_operativo'
+
+    id = db.Column(db.Integer, primary_key=True)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    mes = db.Column(db.String(7), nullable=False, index=True)
+    cliente = db.Column(db.String(120), nullable=False, index=True)
+    campania = db.Column(db.String(180), nullable=False)
+    datos = db.Column(db.Text, nullable=False, default='{}')
+    bajas_manual = db.Column(HORAS, nullable=False, default=0)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('mes', 'cliente', 'campania', name='uq_dashboard_mes_cliente_campania'),
+    )
+
+    def datos_dict(self):
+        try:
+            return json.loads(self.datos or '{}')
+        except (TypeError, ValueError):
+            return {}
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'year': self.year, 'mes': self.mes,
+            'cliente': self.cliente, 'campania': self.campania,
+            'datos': self.datos_dict(), 'bajas_manual': self.bajas_manual or 0,
+        }
+
+
+class HistoricoClienteMensual(db.Model):
+    """Base histórica por cliente; pagadas y logueo son los únicos datos manuales."""
+    __tablename__ = 'historico_clientes_mensuales'
+    id = db.Column(db.Integer, primary_key=True)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    mes = db.Column(db.String(7), nullable=False, index=True)
+    cliente = db.Column(db.String(160), nullable=False, index=True)
+    datos_base = db.Column(db.Text, nullable=False, default='{}')
+    pagadas = db.Column(HORAS, nullable=True)
+    logueo = db.Column(HORAS, nullable=True)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    __table_args__ = (db.UniqueConstraint('mes', 'cliente', name='uq_historico_mes_cliente'),)
+
+    def base_dict(self):
+        try:
+            return json.loads(self.datos_base or '{}')
+        except (TypeError, ValueError):
+            return {}
+
+    def to_dict(self):
+        return {'id': self.id, 'year': self.year, 'mes': self.mes, 'cliente': self.cliente,
+                'datos_base': self.base_dict(), 'pagadas': self.pagadas, 'logueo': self.logueo}
+
+
+class DotacionClienteMensual(db.Model):
+    """Dotación requerida mensual abierta por cliente, como en la matriz Excel."""
+    __tablename__ = 'dotaciones_clientes_mensuales'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente = db.Column(db.String(160), nullable=False, index=True)
+    fecha = db.Column(db.Date, nullable=False, index=True)
+    dotacion = db.Column(HORAS, nullable=False, default=0)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('cliente', 'fecha', name='uq_dotacion_cliente_fecha'),
+    )
+
+    def to_dict(self):
+        return {'id': self.id, 'cliente': self.cliente, 'fecha': self.fecha.isoformat(), 'dotacion': self.dotacion or 0}
+
+
+class GraficoDotacionMensual(db.Model):
+    __tablename__ = 'graficos_dotaciones_mensuales'
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False, unique=True, index=True)
+    dotacion_requerida = db.Column(HORAS, nullable=False)
+    activa_sl = db.Column(HORAS, nullable=False)
+    activa_ba = db.Column(HORAS, nullable=False)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        activa = float(self.activa_sl or 0) + float(self.activa_ba or 0)
+        requerida = float(self.dotacion_requerida or 0)
+        return {'id': self.id, 'fecha': self.fecha.isoformat(), 'dotacion_requerida': requerida,
+                'activa_sl': self.activa_sl or 0, 'activa_ba': self.activa_ba or 0,
+                'dotacion_activa': round(activa, 2), 'diferencia': round(activa - requerida, 2),
+                'porcentaje_staff': round((activa - requerida) / requerida, 6) if requerida else 0}
+
+
 class Campania(db.Model):
     """Catálogo canónico de campañas.
 

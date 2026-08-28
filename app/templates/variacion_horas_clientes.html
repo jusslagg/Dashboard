@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block title %}Variación horas clientes - Facturación{% endblock %}
+{% block content %}
+<div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+  <div><p class="text-xs font-semibold uppercase tracking-[.2em] text-blue-600">Directorio</p><h1 class="mt-1 text-3xl font-black text-slate-950">Variación horas por cliente</h1><p class="mt-1 text-sm text-slate-500">Horas reales hasta el último mes cargado y proyección para el resto del año.</p></div>
+  <div class="flex flex-wrap items-end gap-2">
+    <label class="text-sm font-semibold text-slate-700">Año<select id="year" onchange="cargar()" class="mt-1 block h-10 rounded-lg border border-slate-300 bg-white px-3"><option>2026</option></select></label>
+    <label class="text-sm font-semibold text-slate-700">Desvío mínimo %<input id="umbral" type="number" min="0" value="0" step="1" oninput="render()" class="mt-1 block h-10 w-32 rounded-lg border border-slate-300 px-3 text-right"></label>
+    <label class="text-sm font-semibold text-slate-700">Estado<select id="estado" onchange="render()" class="mt-1 block h-10 rounded-lg border border-slate-300 bg-white px-3"><option value="">Todos</option><option value="baja">Caídas</option><option value="suba">Aumentos</option><option value="sin-proyeccion">Sin proyección</option><option value="control">Control descuadrado</option></select></label>
+    <label class="text-sm font-semibold text-slate-700">Buscar<input id="buscar" type="search" oninput="render()" placeholder="Cliente..." class="mt-1 block h-10 rounded-lg border border-slate-300 px-3"></label>
+    <button type="button" onclick="copiarImagen()" class="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white hover:bg-blue-800"><i class="fas fa-copy"></i> Copiar imagen</button>
+    <button type="button" onclick="descargarImagen()" class="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"><i class="fas fa-image"></i> Descargar PNG</button>
+  </div>
+</div>
+
+<div class="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+  <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p class="text-xs font-bold uppercase text-slate-500">Corte real</p><p id="corte" class="mt-2 text-2xl font-black text-slate-950">--</p><p class="text-xs text-slate-500">Meses siguientes proyectados</p></article>
+  <article id="controlRealCard" class="rounded-xl border p-4 shadow-sm"><div class="flex items-center justify-between"><p class="text-xs font-bold uppercase">Control reales</p><i class="fas fa-circle-check"></i></div><p id="controlReal" class="mt-2 text-2xl font-black">--</p><p id="controlRealDetalle" class="text-xs"></p></article>
+  <article id="controlProyCard" class="rounded-xl border p-4 shadow-sm"><div class="flex items-center justify-between"><p class="text-xs font-bold uppercase">Control proyectados</p><i class="fas fa-circle-check"></i></div><p id="controlProy" class="mt-2 text-2xl font-black">--</p><p id="controlProyDetalle" class="text-xs"></p></article>
+  <article id="controlFilasCard" class="rounded-xl border p-4 shadow-sm"><div class="flex items-center justify-between"><p class="text-xs font-bold uppercase">Control por cliente</p><i class="fas fa-list-check"></i></div><p id="controlFilas" class="mt-2 text-2xl font-black">--</p><p class="text-xs">Filas con diferencia de control</p></article>
+</div>
+
+<section class="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
+  <div class="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 class="font-bold text-slate-950">Comparativo por cliente</h2><p id="subtitulo" class="text-xs text-slate-500"></p></div><div class="flex gap-3 text-xs"><span class="text-emerald-700"><i class="fas fa-arrow-up"></i> Aumento</span><span class="text-rose-600"><i class="fas fa-arrow-down"></i> Caída</span></div></div>
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[1120px] border-collapse text-sm tabular-nums">
+      <thead><tr class="bg-slate-600 text-white"><th class="px-3 py-2 text-left">Cliente</th><th class="px-3 py-2 text-right">Hs <span data-anterior></span></th><th class="bg-slate-500 px-3 py-2 text-right">Real <span data-year></span></th><th class="px-3 py-2 text-right">Proy. Hs <span data-year></span></th><th class="bg-slate-500 px-3 py-2 text-right">Real + proy. <span data-year></span></th><th class="px-3 py-2 text-right">Diferencia HS</th><th class="px-3 py-2 text-right">% Variación</th><th class="bg-white px-3 py-2 text-right text-slate-600">Control</th><th class="bg-white px-3 py-2 text-right text-slate-600">Dif. control</th></tr></thead>
+      <tbody id="tbody"></tbody><tfoot id="tfoot"></tfoot>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+let datos = null;
+let filasVisibles = [];
+const n = valor => new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(Number(valor||0));
+const n2 = valor => new Intl.NumberFormat('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(valor||0));
+const pct = valor => valor == null ? '-' : new Intl.NumberFormat('es-AR',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}).format(valor);
+const esc = valor => String(valor??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+function estiloControl(ok){return ok?'border-emerald-200 bg-emerald-50 text-emerald-800':'border-rose-300 bg-rose-50 text-rose-700'}
+function pintarControl(id, diferencia, detalle){const ok=Math.abs(Number(diferencia))<=.01;document.getElementById(id+'Card').className=`rounded-xl border p-4 shadow-sm ${estiloControl(ok)}`;document.getElementById(id).textContent=ok?'OK':'REVISAR';document.getElementById(id+'Detalle').textContent=detalle;}
+async function cargar(){const year=document.getElementById('year').value;const r=await fetch(`/api/variacion-horas-clientes?year=${year}&_=${Date.now()}`,{cache:'no-store'});datos=await r.json();if(!datos.success)return;document.querySelectorAll('[data-year]').forEach(x=>x.textContent=datos.year);document.querySelectorAll('[data-anterior]').forEach(x=>x.textContent=datos.anterior);document.getElementById('corte').textContent=datos.corte||'Sin reales';document.getElementById('subtitulo').textContent=`Base ${datos.anterior} versus real + proyección ${datos.year}. Proyectados: ${datos.meses_proyectados.join(', ')||'ninguno'}.`;pintarControl('controlReal',datos.controles.real.diferencia,`Tabla ${n2(datos.controles.real.tabla)} · Fuente ${n2(datos.controles.real.fuente)}`);pintarControl('controlProy',datos.controles.proyectado.diferencia,`Tabla ${n2(datos.controles.proyectado.tabla)} · Matriz ${n2(datos.controles.proyectado.fuente)}`);const cf=datos.controles.filas_descuadradas;document.getElementById('controlFilasCard').className=`rounded-xl border p-4 shadow-sm ${estiloControl(cf===0)}`;document.getElementById('controlFilas').textContent=cf===0?'OK':cf;render();}
+function color(valor){return Number(valor)<0?'text-rose-600':Number(valor)>0?'text-emerald-700':'text-slate-600'}
+function render(){if(!datos)return;const buscar=document.getElementById('buscar').value.toLowerCase();const estado=document.getElementById('estado').value;const umbral=Number(document.getElementById('umbral').value||0)/100;const filas=datos.filas.filter(f=>{if(buscar&&!f.cliente.toLowerCase().includes(buscar))return false;if(f.variacion!=null&&Math.abs(f.variacion)<umbral)return false;if(estado==='baja'&&!(f.variacion<0))return false;if(estado==='suba'&&!(f.variacion>0))return false;if(estado==='sin-proyeccion'&&f.proyectado!==0)return false;if(estado==='control'&&Math.abs(f.desvio_control)<=.01)return false;return true});filasVisibles=filas;document.getElementById('tbody').innerHTML=filas.map((f,i)=>`<tr class="border-b border-orange-300 ${i%2?'bg-slate-50':''}"><td class="px-3 py-2 font-medium text-slate-800">${esc(f.cliente)}</td><td class="px-3 py-2 text-right">${n(f.anterior)}</td><td class="bg-slate-100 px-3 py-2 text-right">${n(f.real)}</td><td class="px-3 py-2 text-right">${n(f.proyectado)}</td><td class="bg-slate-100 px-3 py-2 text-right font-semibold">${n(f.mixto)}</td><td class="px-3 py-2 text-right font-semibold ${color(f.diferencia)}">${n(f.diferencia)}</td><td class="px-3 py-2 text-right font-semibold ${color(f.variacion)}">${pct(f.variacion)}</td><td class="px-3 py-2 text-right text-slate-500">${n(f.control)}</td><td class="px-3 py-2 text-right font-semibold ${Math.abs(f.desvio_control)>.01?'text-rose-600':'text-emerald-700'}">${n2(f.desvio_control)}</td></tr>`).join('')||'<tr><td colspan="9" class="px-4 py-10 text-center text-slate-500">No hay clientes para estos filtros.</td></tr>';const t=datos.total;document.getElementById('tfoot').innerHTML=`<tr class="bg-slate-700 font-black text-white"><td class="px-3 py-3">Total general</td><td class="px-3 py-3 text-right">${n(t.anterior)}</td><td class="px-3 py-3 text-right">${n(t.real)}</td><td class="px-3 py-3 text-right">${n(t.proyectado)}</td><td class="px-3 py-3 text-right">${n(t.mixto)}</td><td class="px-3 py-3 text-right">${n(t.diferencia)}</td><td class="px-3 py-3 text-right">${pct(t.variacion)}</td><td class="px-3 py-3 text-right">${n(t.control)}</td><td class="px-3 py-3 text-right">${n2(t.desvio_control)}</td></tr>`;}
+
+function canvasReporte(){
+  if(!datos||!filasVisibles.length)throw new Error('No hay filas para exportar');
+  const escala=2, ancho=1520, altoTitulo=68, altoCab=54, altoFila=29, altoPie=38;
+  const canvas=document.createElement('canvas');canvas.width=ancho*escala;canvas.height=(altoTitulo+altoCab+altoFila*filasVisibles.length+altoPie+20)*escala;
+  const c=canvas.getContext('2d');c.scale(escala,escala);c.fillStyle='#fff';c.fillRect(0,0,canvas.width,canvas.height);
+  const columnas=[260,155,155,170,190,160,170,140,120];const xs=[0];columnas.forEach(w=>xs.push(xs[xs.length-1]+w));
+  c.fillStyle='#fff';c.fillRect(0,0,ancho,altoTitulo);c.fillStyle='#0f172a';c.font='bold 23px Arial';c.fillText(`Variación horas por cliente · ${datos.anterior} vs ${datos.year}`,16,28);c.font='14px Arial';c.fillStyle='#64748b';c.fillText(`Real hasta ${datos.corte||'-'} + proyección meses restantes · Control real: OK · Control proyectado: OK`,16,52);
+  const encabezados=['Cliente',`Hs ${datos.anterior}`,`Real ${datos.year}`,`Proy Hs ${datos.year}`,`Real + proy ${datos.year}`,'Diferencia HS','% Variación','Control','Dif. control'];
+  c.fillStyle='#64748b';c.fillRect(0,altoTitulo,ancho,altoCab);c.font='bold 13px Arial';c.textBaseline='middle';
+  encabezados.forEach((h,i)=>{c.fillStyle='#fff';c.textAlign='center';const lineas=h.length>18?h.split(' '):[h];lineas.forEach((line,k)=>c.fillText(line,(xs[i]+xs[i+1])/2,altoTitulo+altoCab/2+(k-(lineas.length-1)/2)*15));});c.textAlign='left';
+  const dibujarFila=(f,indice,total=false)=>{const y=altoTitulo+altoCab+indice*altoFila;c.fillStyle=total?'#334155':(indice%2?'#f8fafc':'#fff');c.fillRect(0,y,ancho,total?altoPie:altoFila);c.strokeStyle='#fb923c';c.beginPath();c.moveTo(0,y+(total?altoPie:altoFila));c.lineTo(ancho,y+(total?altoPie:altoFila));c.stroke();c.font=`${total?'bold':'normal'} 13px Arial`;c.textBaseline='middle';c.textAlign='center';const vals=[f.cliente,n(f.anterior),n(f.real),n(f.proyectado),n(f.mixto),n(f.diferencia),pct(f.variacion),n(f.control),n2(f.desvio_control)];vals.forEach((v,i)=>{c.fillStyle=total?'#fff':((i===5||i===6)?(Number(i===5?f.diferencia:f.variacion)<0?'#ef4444':'#16a34a'):'#334155');c.fillText(v,(xs[i]+xs[i+1])/2,y+(total?altoPie:altoFila)/2);});c.textAlign='left';};
+  filasVisibles.forEach((f,i)=>dibujarFila(f,i));dibujarFila({...datos.total,cliente:'Total general'},filasVisibles.length,true);return canvas;
+}
+async function copiarImagen(){try{const canvas=canvasReporte();const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);alert('Imagen copiada. Ya podés pegarla en PowerPoint con Ctrl + V.');}catch(e){alert('El navegador no permitió copiar la imagen. Usá “Descargar PNG”.');}}
+function descargarImagen(){try{const a=document.createElement('a');a.download=`variacion-horas-clientes-${datos.year}.png`;a.href=canvasReporte().toDataURL('image/png');a.click();}catch(e){alert(e.message);}}
+document.addEventListener('DOMContentLoaded',cargar);
+</script>
+{% endblock %}

@@ -1,7 +1,7 @@
 ﻿# filepath: app/routes.py
 from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
 from app import db, get_csrf_token
-from app.models import AsignacionComercial, Campania, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, HistorialCambio, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, ROLES_USUARIO, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
+from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, ROLES_USUARIO, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
 import calendar
 from sqlalchemy import func, or_
@@ -113,12 +113,14 @@ ALIAS_IMPORTACION = {
     'variable objetivo': 'variable_objetivo',
     'variable_objetivo': 'variable_objetivo',
     'bono objetivo': 'variable_objetivo',
+    'objetivo facturacion bono': 'variable_objetivo',
+    'objetivo facturación bono': 'variable_objetivo',
     'variable productivo': 'variable_productivo',
     'variable_productivo': 'variable_productivo',
     'tarifación': 'tarifacion',
     'bonos': 'bonos',
     'bono': 'bonos',
-    'facturado bono': 'bonos',
+    'facturado bono': 'variable_productivo',
     'penalizaciones': 'penalizaciones',
     'penalizacion': 'penalizaciones',
     'penalizaciones bonos': 'ajuste_bono_penalizacion',
@@ -2092,11 +2094,15 @@ def lista_snapshots_historial(value):
         return value['next_gen']
     if isinstance(value, dict) and isinstance(value.get('sites_proyeccion'), list):
         return value['sites_proyeccion']
+    if isinstance(value, dict) and isinstance(value.get('filas'), list):
+        return value['filas']
     if isinstance(value, dict) and value.get('tipo_registro') in ('dolar', 'producto'):
         return [value]
     if isinstance(value, dict) and {'cliente', 'campania', 'site'}.issubset(value.keys()) and 'mes' not in value:
         return [value]
     if isinstance(value, dict) and {'cliente', 'campania', 'mes'}.issubset(value.keys()):
+        return [value]
+    if isinstance(value, dict) and {'fecha', 'requerido', 'staff'}.issubset(value.keys()):
         return [value]
     if isinstance(value, list):
         return value
@@ -2456,6 +2462,127 @@ def variable():
 def control_proyecciones():
     """Vista de control mensual de horas y dotaciones proyectadas."""
     return render_template('control_proyecciones.html')
+
+
+@main_bp.route('/indicadores')
+@login_requerido
+def indicadores():
+    return render_template('indicadores.html')
+
+
+@main_bp.route('/reloj')
+@login_requerido
+def reloj():
+    """Reloj de cumplimiento de horas."""
+    return render_template('reloj.html')
+
+
+@main_bp.route('/dotaciones')
+@login_requerido
+def dotaciones():
+    """Evolución y carga mensual de dotaciones."""
+    return render_template('dotaciones.html')
+
+
+@main_bp.route('/graficos-dotaciones')
+@login_requerido
+def graficos_dotaciones():
+    return render_template('graficos_dotaciones.html')
+
+
+@main_bp.route('/graficos-evolutivo-dotaciones')
+@login_requerido
+def graficos_evolutivo_dotaciones():
+    return render_template('graficos_evolutivo_dotaciones.html')
+
+
+@main_bp.route('/comparativo-anual-clientes')
+@login_requerido
+def comparativo_anual_clientes():
+    anios = {fila[0] for fila in db.session.query(HistoricoClienteMensual.year).distinct().all()}
+    anios.update(int(fila[0]) for fila in db.session.query(func.extract('year', Facturacion2026.fecha)).distinct().all() if fila[0])
+    anios.update(fila[0].year for fila in db.session.query(DotacionClienteMensual.fecha).distinct().all() if fila[0])
+    anios = sorted(anio for anio in anios if anio >= 2024)
+    return render_template('comparativo_anual_clientes.html', anios_comparativo=anios,
+                           anio_comparativo=anios[-1] if anios else current_app.config['DEFAULT_YEAR'])
+
+
+@main_bp.route('/ratio-eli')
+@login_requerido
+def ratio_eli():
+    return render_template('ratio_eli.html')
+
+
+@main_bp.route('/api/ratio-eli', methods=['GET'])
+@login_requerido
+def api_ratio_eli():
+    ruta = os.path.join(current_app.root_path, 'data', 'ratio_eli_historico.json')
+    with open(ruta, encoding='utf-8') as archivo:
+        base = json.load(archivo)
+    for mes, requerido, staff in base:
+        fecha = datetime.strptime(mes, '%Y-%m').date()
+        if not RatioEliMensual.query.filter_by(fecha=fecha).first():
+            db.session.add(RatioEliMensual(fecha=fecha, requerido=requerido, staff=staff))
+    db.session.commit()
+    registros = RatioEliMensual.query.filter(RatioEliMensual.fecha >= date(2023, 1, 1)).order_by(RatioEliMensual.fecha).all()
+    return jsonify({'success': True, 'serie': [x.to_dict() for x in registros]})
+
+
+@main_bp.route('/api/ratio-eli', methods=['POST'])
+@edicion_requerida
+def api_guardar_ratio_eli():
+    data=request.get_json(silent=True) or {}
+    try:
+        fecha=datetime.strptime(str(data.get('mes') or ''),'%Y-%m').date(); requerido=parse_numero(data.get('requerido')); staff=parse_numero(data.get('staff'))
+        if requerido<=0 or staff<0: raise ValueError
+    except (TypeError,ValueError): return jsonify({'success':False,'errores':['Datos inválidos']}),400
+    r=RatioEliMensual.query.filter_by(fecha=fecha).first(); antes=r.to_dict() if r else None
+    if not r: r=RatioEliMensual(fecha=fecha,requerido=requerido,staff=staff);db.session.add(r)
+    else: r.requerido,r.staff=requerido,staff
+    db.session.flush(); registrar_historial('edicion' if antes else 'creacion','ratio_eli_mensual',fecha.isoformat(),f'Ratio Eli: {fecha:%m/%Y}',antes=antes,despues=r.to_dict());db.session.commit()
+    return jsonify({'success':True,'mensaje':'Mes guardado'})
+
+
+@main_bp.route('/variacion-anual')
+@login_requerido
+def variacion_anual():
+    return render_template('variacion_anual.html')
+
+
+@main_bp.route('/variacion-horas-clientes')
+@login_requerido
+def variacion_horas_clientes():
+    return render_template('variacion_horas_clientes.html')
+
+
+@main_bp.route('/dashboard-operativo')
+@login_requerido
+def dashboard_operativo():
+    return render_template('dashboard_operativo.html')
+
+
+@main_bp.route('/historico-clientes')
+@login_requerido
+def historico_clientes():
+    return render_template('historico_clientes.html')
+
+
+@main_bp.route('/cumplimiento-horas-clientes')
+@login_requerido
+def cumplimiento_horas_clientes():
+    return render_template('cumplimiento_horas_clientes.html')
+
+
+@main_bp.route('/cumplimiento-facturacion-clientes')
+@login_requerido
+def cumplimiento_facturacion_clientes():
+    return render_template('cumplimiento_facturacion_clientes.html')
+
+
+@main_bp.route('/comparativo-interanual')
+@login_requerido
+def comparativo_interanual():
+    return render_template('comparativo_interanual.html')
 
 
 @main_bp.route('/calendario-operativo')
@@ -2874,7 +3001,7 @@ def deshacer_item_historial(item):
         return {'success': False, 'errores': ['Este movimiento ya es un deshacer']}, 400
     if historial_movimiento_deshace(item.id):
         return {'success': False, 'errores': ['Este movimiento ya fue deshecho']}, 400
-    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion')
+    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion', 'dotaciones_clientes_mensuales', 'graficos_dotaciones_mensuales', 'dashboard_operativo', 'historico_cliente', 'ratio_eli_mensual')
     if item.entidad not in entidades_permitidas:
         return {'success': False, 'errores': ['Este tipo de movimiento todavía no admite deshacer']}, 400
 
@@ -2882,6 +3009,105 @@ def deshacer_item_historial(item):
     despues = item._json(item.despues) or {}
     antes_snapshots = lista_snapshots_historial(antes)
     despues_snapshots = lista_snapshots_historial(despues)
+
+    if item.entidad == 'ratio_eli_mensual':
+        snapshots = [snapshot for snapshot in antes_snapshots + despues_snapshots if snapshot]
+        fechas = {
+            datetime.strptime(snapshot['fecha'], '%Y-%m-%d').date()
+            for snapshot in snapshots if snapshot.get('fecha')
+        }
+        for actual in RatioEliMensual.query.filter(RatioEliMensual.fecha.in_(fechas)).all():
+            db.session.delete(actual)
+        db.session.flush()
+        for snapshot in antes_snapshots:
+            if snapshot:
+                db.session.add(RatioEliMensual(
+                    fecha=datetime.strptime(snapshot['fecha'], '%Y-%m-%d').date(),
+                    requerido=parse_numero(snapshot.get('requerido')),
+                    staff=parse_numero(snapshot.get('staff')),
+                ))
+        registrar_historial('deshacer', item.entidad, item.entidad_id,
+                            f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes)
+        db.session.commit()
+        return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho'}, 200
+
+    if item.entidad == 'graficos_dotaciones_mensuales':
+        snapshots = antes_snapshots + despues_snapshots
+        fechas = {datetime.strptime(snapshot['fecha'], '%Y-%m-%d').date() for snapshot in snapshots if snapshot and snapshot.get('fecha')}
+        for actual in GraficoDotacionMensual.query.filter(GraficoDotacionMensual.fecha.in_(fechas)).all():
+            db.session.delete(actual)
+        db.session.flush()
+        for snapshot in antes_snapshots:
+            db.session.add(GraficoDotacionMensual(
+                fecha=datetime.strptime(snapshot['fecha'], '%Y-%m-%d').date(),
+                dotacion_requerida=parse_numero(snapshot.get('dotacion_requerida')),
+                activa_sl=parse_numero(snapshot.get('activa_sl')),
+                activa_ba=parse_numero(snapshot.get('activa_ba')),
+            ))
+        registrar_historial('deshacer', item.entidad, item.entidad_id,
+                            f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes)
+        db.session.commit()
+        return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho'}, 200
+
+    if item.entidad == 'dotaciones_clientes_mensuales':
+        snapshots = antes_snapshots + despues_snapshots
+        fechas = {
+            datetime.strptime(snapshot['fecha'], '%Y-%m-%d').date()
+            for snapshot in snapshots if snapshot and snapshot.get('fecha')
+        }
+        if not fechas:
+            return {'success': False, 'errores': ['El movimiento no contiene un mes restaurable']}, 400
+        actuales = DotacionClienteMensual.query.filter(DotacionClienteMensual.fecha.in_(fechas)).all()
+        for actual in actuales:
+            db.session.delete(actual)
+        db.session.flush()
+        for snapshot in antes_snapshots:
+            db.session.add(DotacionClienteMensual(
+                cliente=snapshot.get('cliente') or '',
+                fecha=datetime.strptime(snapshot['fecha'], '%Y-%m-%d').date(),
+                dotacion=parse_numero(snapshot.get('dotacion')),
+            ))
+        registrar_historial(
+            'deshacer', item.entidad, item.entidad_id,
+            f'Deshacer movimiento #{item.id}: {item.resumen}',
+            antes=despues, despues=antes,
+        )
+        db.session.commit()
+        return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho; se restauraron {len(antes_snapshots)} filas'}, 200
+
+    if item.entidad == 'dashboard_operativo':
+        snapshots = [snapshot for snapshot in antes_snapshots + despues_snapshots if snapshot]
+        claves = {(snapshot.get('mes'), snapshot.get('cliente'), snapshot.get('campania')) for snapshot in snapshots}
+        for mes, cliente, campania in claves:
+            actual = DashboardOperativo.query.filter_by(mes=mes, cliente=cliente, campania=campania).first()
+            if actual:
+                db.session.delete(actual)
+        db.session.flush()
+        for snapshot in antes_snapshots:
+            if snapshot:
+                db.session.add(DashboardOperativo(
+                    year=snapshot.get('year') or int(snapshot['mes'][:4]), mes=snapshot['mes'],
+                    cliente=snapshot['cliente'], campania=snapshot['campania'],
+                    datos=json.dumps(snapshot.get('datos') or {}, ensure_ascii=False),
+                    bajas_manual=parse_numero(snapshot.get('bajas_manual') or 0),
+                ))
+        registrar_historial('deshacer', item.entidad, item.entidad_id,
+                            f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes)
+        db.session.commit()
+        return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho'}, 200
+
+    if item.entidad == 'historico_cliente':
+        snapshot = antes_snapshots[0] if antes_snapshots else antes
+        actual = HistoricoClienteMensual.query.get(item.entidad_id)
+        if not actual:
+            return {'success': False, 'errores': ['El registro histórico ya no existe']}, 404
+        actual.pagadas = snapshot.get('pagadas')
+        actual.logueo = snapshot.get('logueo')
+        registrar_historial('deshacer', item.entidad, item.entidad_id,
+                            f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes)
+        db.session.commit()
+        return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho'}, 200
+
     cantidad = max(len(antes_snapshots), len(despues_snapshots))
 
     for indice in range(cantidad):
@@ -4710,12 +4936,19 @@ def construir_control_proyecciones_data(year):
         sites_por_nombre.setdefault(normalizar_header(asignacion.campania), site)
         sites_por_nombre.setdefault(normalizar_header(asignacion.cliente), site)
 
-    proyecciones = ProyeccionMatriz.query.filter(ProyeccionMatriz.mes.in_(meses)).order_by(
+    # El control replica la pestaña Horas del Excel. Las filas PLP son un
+    # desglose auxiliar de Personal y ya están contenidas en la matriz base.
+    proyecciones = ProyeccionMatriz.query.filter(
+        ProyeccionMatriz.mes.in_(meses),
+        db.or_(ProyeccionMatriz.tipo_plp.is_(None), ProyeccionMatriz.tipo_plp == ''),
+    ).order_by(
         ProyeccionMatriz.cliente,
         ProyeccionMatriz.campania,
         ProyeccionMatriz.mes,
     ).all()
     filas_por_clave = {}
+    total_horas_crudo = {mes: 0 for mes in meses}
+    total_dotaciones_crudo = {mes: 0 for mes in meses}
     for proyeccion in proyecciones:
         site = 'Personal' if proyeccion.tipo_plp else site_por_proyeccion(proyeccion.cliente, proyeccion.campania, sites_por_clave, sites_por_nombre)
         for nombre_campania, horas, dotacion in aperturas_nocturnidad(proyeccion):
@@ -4731,6 +4964,8 @@ def construir_control_proyecciones_data(year):
             })
             fila['horas'][proyeccion.mes] += horas
             fila['dotaciones'][proyeccion.mes] += dotacion
+            total_horas_crudo[proyeccion.mes] += horas
+            total_dotaciones_crudo[proyeccion.mes] += dotacion
 
     filas = []
     total_horas = {mes: 0 for mes in meses}
@@ -4741,10 +4976,10 @@ def construir_control_proyecciones_data(year):
         fila['dotaciones'] = {mes: round(fila['dotaciones'][mes], 2) for mes in meses}
         fila['total_horas'] = round(sum(fila['horas'].values()), 2)
         fila['total_dotaciones'] = round(sum(fila['dotaciones'].values()), 2)
-        for mes in meses:
-            total_horas[mes] += fila['horas'][mes]
-            total_dotaciones[mes] += fila['dotaciones'][mes]
         filas.append(fila)
+
+    total_horas = total_horas_crudo
+    total_dotaciones = total_dotaciones_crudo
 
     return {
         'filas': filas,
@@ -5466,6 +5701,941 @@ def api_control_proyecciones():
         'meses': meses_info,
     })
     return jsonify(data)
+
+
+DOTACIONES_INICIALES = [
+    ('2023-01', 2260, 1207), ('2023-02', 2322, 1274), ('2023-03', 2256, 1241),
+    ('2023-04', 2307, 1272), ('2023-05', 2491, 1440), ('2023-06', 2432, 1419),
+    ('2023-07', 2242, 1261), ('2023-08', 2094, 1148), ('2023-09', 1986, 1074),
+    ('2023-10', 2019, 1111), ('2023-11', 1920, 1014), ('2023-12', 1927, 986),
+    ('2024-01', 2007, 1082), ('2024-02', 2098, 1173), ('2024-03', 2129, 1212),
+    ('2024-04', 2098, 1167), ('2024-05', 2084, 1130), ('2024-06', 2060, 1102),
+    ('2024-07', 1979, 999), ('2024-08', 1956, 923), ('2024-09', 1990, 935),
+    ('2024-10', 1983, 918), ('2024-11', 2063, 978), ('2024-12', 1987, 940),
+    ('2025-01', 2128, 1114), ('2025-02', 2161, 1140), ('2025-03', 2241, 1230),
+    ('2025-04', 2004, 1023), ('2025-05', 1876, 925), ('2025-06', 1917, 954),
+    ('2025-07', 1840, 873), ('2025-08', 1865, 903), ('2025-09', 1835, 885),
+    ('2025-10', 1860, 894), ('2025-11', 1869, 875), ('2025-12', 1827, 865),
+    ('2026-01', 1931, 986), ('2026-02', 1959, 1006), ('2026-03', 1988, 1009),
+    ('2026-04', 2215, 984), ('2026-05', 2245, 1012), ('2026-06', 2176, 948),
+    ('2026-07', 2128, 935),
+]
+
+GRAFICOS_DOTACIONES_INICIALES = {
+    2024: {
+        'requerida': [2007.21,2098,2128.83,2098.33,2084,2059.5,1979.2,1956.2,1990.1,1982.7,2062.6,1987.13],
+        'sl': [154,159,164,162,161,163,155,187,201,180,198,205],
+        'ba': [2036,2201,2276,2210,2124,2079,2033,1985,1946,1936,1889,1899],
+    },
+    2025: {
+        'requerida': [2128.13,2161.3,2240.94,2003.5,1876,1916.6,1842,1865,1835,1860,1869,1827],
+        'sl': [196,198,196,193,197,205,207,195,188,154,165,158],
+        'ba': [2000,2072,2124,1962,1803,1736,1694,1733,1693,1781,1776,1750],
+    },
+    2026: {
+        'requerida': [1931,1958,1988,2215,2244.97,2175.9,2127.25],
+        'sl': [159,160,159,157,139,140,142],
+        'ba': [1799,1857,1963,2092,2127,2153,2109],
+    },
+}
+
+
+def asegurar_graficos_dotaciones_iniciales():
+    if GraficoDotacionMensual.query.first():
+        return
+    for year, series in GRAFICOS_DOTACIONES_INICIALES.items():
+        for indice, requerida in enumerate(series['requerida'], 1):
+            db.session.add(GraficoDotacionMensual(
+                fecha=date(year, indice, 1), dotacion_requerida=requerida,
+                activa_sl=series['sl'][indice - 1], activa_ba=series['ba'][indice - 1],
+            ))
+    db.session.commit()
+
+
+def asegurar_dotaciones_iniciales():
+    if DotacionMensual.query.first():
+        return
+    for mes, requerida, personal in DOTACIONES_INICIALES:
+        db.session.add(DotacionMensual(
+            fecha=datetime.strptime(f'{mes}-01', '%Y-%m-%d').date(),
+            dotacion_requerida=requerida,
+            personal=personal,
+        ))
+    db.session.commit()
+
+
+def asegurar_dotaciones_clientes_iniciales():
+    ruta = os.path.join(current_app.root_path, 'dotaciones_clientes_iniciales.json')
+    if not os.path.exists(ruta):
+        return
+    with open(ruta, encoding='utf-8') as archivo:
+        registros = json.load(archivo)
+    if DotacionClienteMensual.query.count() >= len(registros):
+        return
+    for cliente, mes, valor in registros:
+        fecha = datetime.strptime(f'{mes}-01', '%Y-%m-%d').date()
+        if not DotacionClienteMensual.query.filter_by(cliente=cliente, fecha=fecha).first():
+            db.session.add(DotacionClienteMensual(cliente=cliente, fecha=fecha, dotacion=valor))
+    db.session.commit()
+
+
+def construir_dotaciones_clientes_data(year=None):
+    asegurar_dotaciones_clientes_iniciales()
+    registros = DotacionClienteMensual.query.order_by(DotacionClienteMensual.fecha, DotacionClienteMensual.cliente).all()
+    anios = sorted({item.fecha.year for item in registros})
+    year = year if year in anios else (anios[-1] if anios else datetime.utcnow().year)
+    fechas_todas = sorted({item.fecha for item in registros})
+    fechas = [fecha for fecha in fechas_todas if fecha.year == year]
+    meses = [fecha.strftime('%Y-%m') for fecha in fechas]
+    ultimo = fechas[-1] if fechas else None
+    diciembre = next((fecha for fecha in reversed(fechas_todas) if fecha.month == 12 and fecha < ultimo), None) if ultimo else None
+    por_cliente = {}
+    for item in registros:
+        por_cliente.setdefault(item.cliente, {})[item.fecha.strftime('%Y-%m')] = float(item.dotacion or 0)
+    clientes = []
+    mes_ultimo = ultimo.strftime('%Y-%m') if ultimo else None
+    mes_diciembre = diciembre.strftime('%Y-%m') if diciembre else None
+    for cliente, valores in sorted(por_cliente.items(), key=lambda item: (item[0] != 'Personal', item[0].lower())):
+        valores_anio = [valor for mes, valor in valores.items() if mes.startswith(str(year))]
+        clientes.append({
+            'cliente': cliente,
+            'meses': {mes: valor for mes, valor in valores.items() if mes.startswith(str(year))},
+            'diferencia': round(valores.get(mes_ultimo, 0) - valores.get(mes_diciembre, 0), 2),
+            'promedio': round(sum(valores_anio) / len(valores_anio), 2) if valores_anio else 0,
+        })
+    totales = {mes: round(sum(por_cliente[cliente].get(mes, 0) for cliente in por_cliente), 2) for mes in meses}
+    if mes_diciembre:
+        totales[mes_diciembre] = round(sum(valores.get(mes_diciembre, 0) for valores in por_cliente.values()), 2)
+    personal_valores = por_cliente.get('Personal', {})
+    personal = {mes: valor for mes, valor in personal_valores.items() if mes.startswith(str(year)) or mes == mes_diciembre}
+    return {
+        'year': year,
+        'anios': anios,
+        'meses': meses,
+        'clientes': clientes,
+        'totales': totales,
+        'personal': personal,
+        'ultimo_mes': mes_ultimo,
+        'diciembre_base': mes_diciembre,
+    }
+
+
+@main_bp.route('/api/indicadores', methods=['GET'])
+@login_requerido
+def api_indicadores():
+    asegurar_dotaciones_iniciales()
+    registros = DotacionMensual.query.order_by(DotacionMensual.fecha).all()
+    ultimo = registros[-1] if registros else None
+    diciembre = next((item for item in reversed(registros) if item.fecha.month == 12 and (not ultimo or item.fecha < ultimo.fecha)), None)
+    actuales = [item for item in registros if ultimo and item.fecha.year == ultimo.fecha.year]
+
+    def promedio(campo):
+        valores = [float(getattr(item, campo) or 0) for item in actuales if float(getattr(item, campo) or 0) > 0]
+        return round(sum(valores) / len(valores), 2) if valores else 0
+
+    year = int(request.args.get('year') or (ultimo.fecha.year if ultimo else datetime.utcnow().year))
+    facturacion = Facturacion2026.query.filter(func.extract('year', Facturacion2026.fecha) == year).all()
+    requerido = round(sum(float(item.horas_objetivo or 0) for item in facturacion), 2)
+    realizado = round(sum(float(item.horas_facturadas or 0) for item in facturacion), 2)
+    cumplimiento = realizado / requerido if requerido else 0
+    return jsonify({
+        'success': True,
+        'reloj': {'year': year, 'requerido': requerido, 'realizado': realizado,
+                  'diferencia': round(realizado - requerido, 2), 'cumplimiento': round(cumplimiento, 6)},
+        'dotaciones': {
+            'serie': [item.to_dict() for item in registros],
+            'ultimo': ultimo.to_dict() if ultimo else None,
+            'diciembre_base': diciembre.to_dict() if diciembre else None,
+            'diferencia_requerida': round(float(ultimo.dotacion_requerida) - float(diciembre.dotacion_requerida), 2) if ultimo and diciembre else 0,
+            'diferencia_personal': round(float(ultimo.personal) - float(diciembre.personal), 2) if ultimo and diciembre else 0,
+            'promedio_requerida': promedio('dotacion_requerida'),
+            'promedio_personal': promedio('personal'),
+        },
+    })
+
+
+@main_bp.route('/api/dotaciones', methods=['POST'])
+@edicion_requerida
+def api_guardar_dotacion():
+    data = request.get_json(silent=True) or {}
+    try:
+        fecha = datetime.strptime(str(data.get('mes') or ''), '%Y-%m').date().replace(day=1)
+        requerida = parse_numero(data.get('dotacion_requerida'))
+        personal = parse_numero(data.get('personal'))
+        if requerida <= 0 or personal <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['Mes, dotación requerida y personal deben ser valores válidos mayores que cero']}), 400
+    registro = DotacionMensual.query.filter_by(fecha=fecha).first()
+    antes = registro.to_dict() if registro else None
+    if not registro:
+        registro = DotacionMensual(fecha=fecha)
+        db.session.add(registro)
+    registro.dotacion_requerida = requerida
+    registro.personal = personal
+    db.session.flush()
+    registrar_historial('edicion' if antes else 'creacion', 'dotaciones_mensuales', fecha.isoformat(),
+                        f'Dotaciones guardadas: {fecha:%m/%Y}', antes=antes, despues=registro.to_dict())
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Mes guardado', 'registro': registro.to_dict()})
+
+
+@main_bp.route('/api/dotaciones-clientes', methods=['GET'])
+@login_requerido
+def api_dotaciones_clientes():
+    try:
+        year = int(request.args.get('year')) if request.args.get('year') else None
+    except ValueError:
+        year = None
+    return jsonify({'success': True, **construir_dotaciones_clientes_data(year)})
+
+
+@main_bp.route('/api/graficos-evolutivo-dotaciones', methods=['GET'])
+@login_requerido
+def api_graficos_evolutivo_dotaciones():
+    """Replica las fórmulas de la hoja: total por mes y fila Personal."""
+    asegurar_dotaciones_clientes_iniciales()
+    registros = DotacionClienteMensual.query.order_by(DotacionClienteMensual.fecha).all()
+    por_mes = {}
+    for registro in registros:
+        if registro.fecha < date(2023, 1, 1):
+            continue
+        clave = registro.fecha.strftime('%Y-%m')
+        item = por_mes.setdefault(clave, {
+            'fecha': registro.fecha.isoformat(), 'dotacion_requerida': 0.0, 'personal': 0.0,
+        })
+        valor = float(registro.dotacion or 0)
+        item['dotacion_requerida'] += valor
+        if normalizar_header(registro.cliente) == 'personal':
+            item['personal'] += valor
+    serie = []
+    for clave in sorted(por_mes):
+        item = por_mes[clave]
+        item['dotacion_requerida'] = round(item['dotacion_requerida'], 2)
+        item['personal'] = round(item['personal'], 2)
+        serie.append(item)
+    return jsonify({'success': True, 'serie': serie, 'origen': 'dotaciones_clientes_mensuales'})
+
+
+@main_bp.route('/api/dotaciones-clientes', methods=['POST'])
+@edicion_requerida
+def api_guardar_dotaciones_clientes():
+    data = request.get_json(silent=True) or {}
+    try:
+        fecha = datetime.strptime(str(data.get('mes') or ''), '%Y-%m').date().replace(day=1)
+    except ValueError:
+        return jsonify({'success': False, 'errores': ['El mes no es válido']}), 400
+    filas = data.get('clientes') or []
+    errores = []
+    normalizadas = []
+    vistos = set()
+    for index, fila in enumerate(filas, 1):
+        cliente = str(fila.get('cliente') or '').strip()
+        try:
+            valor = parse_numero(fila.get('dotacion'))
+        except ValueError:
+            errores.append(f'La dotación de la fila {index} no es válida')
+            continue
+        clave = normalizar_header(cliente)
+        if not cliente:
+            errores.append(f'El cliente de la fila {index} es obligatorio')
+        elif clave in vistos:
+            errores.append(f'El cliente {cliente} está repetido')
+        elif valor < 0:
+            errores.append(f'La dotación de {cliente} no puede ser negativa')
+        else:
+            vistos.add(clave)
+            normalizadas.append((cliente, valor))
+    if errores or not normalizadas:
+        return jsonify({'success': False, 'errores': errores or ['Debe cargar al menos un cliente']}), 400
+    antes = [item.to_dict() for item in DotacionClienteMensual.query.filter_by(fecha=fecha).all()]
+    for cliente, valor in normalizadas:
+        registro = DotacionClienteMensual.query.filter_by(cliente=cliente, fecha=fecha).first()
+        if not registro:
+            registro = DotacionClienteMensual(cliente=cliente, fecha=fecha)
+            db.session.add(registro)
+        registro.dotacion = valor
+    db.session.flush()
+    despues = [item.to_dict() for item in DotacionClienteMensual.query.filter_by(fecha=fecha).all()]
+    registrar_historial('edicion' if antes else 'creacion', 'dotaciones_clientes_mensuales', fecha.isoformat(),
+                        f'Dotaciones por cliente guardadas: {fecha:%m/%Y}', antes={'filas': antes}, despues={'filas': despues})
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': f'{len(normalizadas)} clientes guardados para {fecha:%m/%Y}'})
+
+
+@main_bp.route('/api/graficos-dotaciones', methods=['GET'])
+@login_requerido
+def api_graficos_dotaciones():
+    asegurar_graficos_dotaciones_iniciales()
+    registros = GraficoDotacionMensual.query.order_by(GraficoDotacionMensual.fecha).all()
+    return jsonify({'success': True, 'serie': [item.to_dict() for item in registros]})
+
+
+@main_bp.route('/api/graficos-dotaciones', methods=['POST'])
+@edicion_requerida
+def api_guardar_grafico_dotacion():
+    data = request.get_json(silent=True) or {}
+    try:
+        fecha = datetime.strptime(str(data.get('mes') or ''), '%Y-%m').date().replace(day=1)
+        requerida = parse_numero(data.get('dotacion_requerida'))
+        activa_sl = parse_numero(data.get('activa_sl'))
+        activa_ba = parse_numero(data.get('activa_ba'))
+        if min(requerida, activa_sl, activa_ba) < 0 or requerida == 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['Mes y dotaciones deben ser valores válidos; la requerida debe ser mayor que cero']}), 400
+    registro = GraficoDotacionMensual.query.filter_by(fecha=fecha).first()
+    antes = registro.to_dict() if registro else None
+    if not registro:
+        registro = GraficoDotacionMensual(fecha=fecha)
+        db.session.add(registro)
+    registro.dotacion_requerida = requerida
+    registro.activa_sl = activa_sl
+    registro.activa_ba = activa_ba
+    db.session.flush()
+    despues = registro.to_dict()
+    registrar_historial('edicion' if antes else 'creacion', 'graficos_dotaciones_mensuales', fecha.isoformat(),
+                        f'Gráfico de dotaciones guardado: {fecha:%m/%Y}',
+                        antes={'filas': [antes] if antes else []}, despues={'filas': [despues]})
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Mes guardado', 'registro': despues})
+
+
+HORAS_HISTORICAS_2025 = [277311, 258526, 246763, 246920, 242098, 221653, 243424, 235580, 246068, 243737, 218952, 227542]
+
+
+def cliente_variacion_horas(nombre, campania=None):
+    """Agrupa las aperturas operativas como la hoja Variación horas ctes."""
+    normalizado = normalizar_header(nombre)
+    campania_normalizada = normalizar_header(campania)
+    if normalizado == 'supervielle' and 'seguro' in campania_normalizada:
+        return 'Supervielle Seguros'
+    if normalizado.startswith('personal'):
+        return 'Personal'
+    if normalizado.startswith('santander'):
+        return 'Santander'
+    if normalizado.startswith('naturgy'):
+        return 'Naturgy'
+    if normalizado.startswith('bbva'):
+        return 'BBVA'
+    if normalizado.startswith('mirgor'):
+        return 'Mirgor'
+    if normalizado.startswith('unicef'):
+        return 'Unicef'
+    if normalizado in ('river', 'river plate'):
+        return 'River Plate'
+    if normalizado in ('carrefour', 'bsf carrefour'):
+        return 'Bsf Carrefour'
+    if normalizado in ('galicia', 'galicia seguros'):
+        return 'Galicia'
+    nombres = {
+        'metrogas': 'Metrogas', 'omint': 'Omint', 'supervielle seguros': 'Supervielle Seguros',
+        'assurant': 'Assurant', 'qualia': 'Qualia', 'leiva joyas': 'Leiva Joyas',
+        'banco piano': 'Banco Piano', 'openpay': 'Openpay', 'gire': 'Gire',
+        'supervielle': 'Supervielle', 'spazios': 'Spazios', 'farmapay': 'Farmapay',
+        'bice': 'Bice', 'yamaha': 'Yamaha', 'bibank': 'BiBank', 'bi bank': 'BiBank',
+        'johnson & johnson': 'Johnson & Johnson', 'cachamai': 'Cachamai',
+        'banco comafi': 'Banco Comafi', 'bna': 'BNA', 'autotekne': 'Autotekne',
+        'invertir online': 'Invertir Online', 'shipnow': 'Shipnow',
+    }
+    return nombres.get(normalizado, str(nombre or '').strip())
+
+
+def base_horas_clientes(anio):
+    filas = Facturacion2026.query.with_entities(
+        Facturacion2026.cliente, func.sum(Facturacion2026.horas_facturadas)
+    ).filter(func.extract('year', Facturacion2026.fecha) == anio).group_by(Facturacion2026.cliente).all()
+    if filas:
+        resultado = {}
+        for cliente, horas in filas:
+            clave = cliente_variacion_horas(cliente)
+            resultado[clave] = resultado.get(clave, 0) + float(horas or 0)
+        return resultado
+    if anio == 2025:
+        ruta = os.path.join(current_app.root_path, 'variacion_horas_clientes_2025.json')
+        with open(ruta, encoding='utf-8') as archivo:
+            return json.load(archivo)
+    return {}
+
+
+@main_bp.route('/api/variacion-horas-clientes', methods=['GET'])
+@login_requerido
+def api_variacion_horas_clientes():
+    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    anterior = year - 1
+    meses = [item['value'] for item in opciones_meses_proyeccion(year)]
+    reales_por_mes = dict(Facturacion2026.query.with_entities(
+        Facturacion2026.mes, func.sum(Facturacion2026.horas_facturadas)
+    ).filter(func.extract('year', Facturacion2026.fecha) == year).group_by(Facturacion2026.mes).all())
+    corte = max((mes for mes in meses if mes in reales_por_mes), default=None)
+
+    reales = {}
+    filas_reales = Facturacion2026.query.with_entities(
+        Facturacion2026.cliente, func.sum(Facturacion2026.horas_facturadas)
+    ).filter(func.extract('year', Facturacion2026.fecha) == year).group_by(Facturacion2026.cliente).all()
+    for cliente, horas in filas_reales:
+        clave = cliente_variacion_horas(cliente)
+        reales[clave] = reales.get(clave, 0) + float(horas or 0)
+
+    meses_proyectados = [mes for mes in meses if not corte or mes > corte]
+    proyectadas = {}
+    filas_proyectadas = ProyeccionMatriz.query.with_entities(
+        ProyeccionMatriz.cliente, ProyeccionMatriz.campania,
+        func.sum(ProyeccionMatriz.horas_requeridas * ProyeccionMatriz.porcentaje_cumplimiento / 100),
+    ).filter(
+        ProyeccionMatriz.mes.in_(meses_proyectados),
+        or_(ProyeccionMatriz.tipo_plp.is_(None), ProyeccionMatriz.tipo_plp == ''),
+    ).group_by(ProyeccionMatriz.cliente, ProyeccionMatriz.campania).all()
+    for cliente, campania, horas in filas_proyectadas:
+        clave = cliente_variacion_horas(cliente, campania)
+        proyectadas[clave] = proyectadas.get(clave, 0) + float(horas or 0)
+
+    base = base_horas_clientes(anterior)
+    orden = list(base)
+    for cliente in list(reales) + list(proyectadas):
+        if cliente and cliente not in orden:
+            orden.append(cliente)
+    filas = []
+    for cliente in orden:
+        hs_anterior = float(base.get(cliente) or 0)
+        real = float(reales.get(cliente) or 0)
+        proyeccion = float(proyectadas.get(cliente) or 0)
+        mixto = real + proyeccion
+        # La hoja de Excel omite las cuentas Next Gen sin horas. Se conservan
+        # los clientes históricos que caen a cero, pero no filas 0 / 0 / 0.
+        if abs(hs_anterior) <= .01 and abs(real) <= .01 and abs(proyeccion) <= .01:
+            continue
+        diferencia = mixto - hs_anterior
+        control = float(proyectadas.get(cliente) or 0)
+        filas.append({
+            'cliente': cliente, 'anterior': round(hs_anterior, 2), 'real': round(real, 2),
+            'proyectado': round(proyeccion, 2), 'mixto': round(mixto, 2),
+            'diferencia': round(diferencia, 2),
+            'variacion': round(diferencia / hs_anterior, 6) if hs_anterior else None,
+            'control': round(control, 2), 'desvio_control': round(control - proyeccion, 2),
+        })
+
+    def totales(campo):
+        return round(sum(float(fila.get(campo) or 0) for fila in filas), 2)
+    total = {campo: totales(campo) for campo in ('anterior', 'real', 'proyectado', 'mixto', 'diferencia', 'control', 'desvio_control')}
+    total['variacion'] = round(total['diferencia'] / total['anterior'], 6) if total['anterior'] else None
+    control_real_fuente = round(sum(float(valor or 0) for valor in reales_por_mes.values()), 2)
+    control_proyectado_fuente = round(sum(float(valor or 0) for _, _, valor in filas_proyectadas), 2)
+    controles = {
+        'real': {'tabla': total['real'], 'fuente': control_real_fuente, 'diferencia': round(total['real'] - control_real_fuente, 2)},
+        'proyectado': {'tabla': total['proyectado'], 'fuente': control_proyectado_fuente, 'diferencia': round(total['proyectado'] - control_proyectado_fuente, 2)},
+        'filas_descuadradas': sum(1 for fila in filas if abs(fila['desvio_control']) > .01),
+    }
+    return jsonify({'success': True, 'year': year, 'anterior': anterior, 'corte': corte,
+                    'meses_proyectados': meses_proyectados, 'filas': filas, 'total': total, 'controles': controles})
+
+
+DASHBOARD_COLUMNAS = [
+    'gerente', 'jefe_site', 'conversion_dias', 'cliente_normalizado', 'mes', 'cliente', 'campania',
+    'horas_objetivo', 'horas_cumplidas', 'diferencia_horas', 'cumplimiento_horas',
+    'abs_sin_vacaciones', 'abs_total', 'ausentismo_total', 'abs_varias', 'ausencias_varias',
+    'agentes_e_mas', 'agentes_lcon', 'agentes_ce', 'agentes_off', 'abs_tecnologico',
+    'falta_insumos', 'sin_luz', 'sin_internet', 'abs_vacaciones', 'con_vacaciones',
+    'logueados', 'agentes_ff', 'facturables_capa', 'facturables_total', 'facturables_os',
+    'facturables_tt', 'dotacion_promedio', 'agentes_requeridos', 'agentes_requeridos_ss',
+    'agentes_activos', 'over_requerido', 'activos_menos_requeridos', 'rotacion', 'agentes_baja',
+    'separador_ap', 'separador_aq', 'aux_activos_horas', 'aux_ausencias_horas',
+    'aux_insumos_horas', 'aux_luz_horas', 'aux_internet_horas', 'separador_aw',
+    'separador_ax', 'aux_dotacion_promedio', 'aux_agentes_baja', 'separador_ba',
+    'aux_agentes_activos', 'aux_ausencias',
+]
+
+
+def valor_dashboard_json(valor):
+    if valor is None:
+        return None
+    if isinstance(valor, (datetime, date)):
+        return valor.isoformat()
+    if isinstance(valor, (int, float, str, bool)):
+        return valor
+    return str(valor)
+
+
+@main_bp.route('/api/dashboard-operativo/plantilla', methods=['GET'])
+@login_requerido
+def descargar_plantilla_dashboard_operativo():
+    """Genera la plantilla con la misma posición de columnas que la hoja Dashboard."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+
+    encabezados = [
+        '', 'Gte', 'Gte', 'Conversion Diras', '', 'Mes', 'Cliente', 'Campaña',
+        'Horas objetivo', 'Hs cumplidas a facturar', 'Dif Hs', 'Cumplimiento Hs',
+        '%ABS Sin Vacaciones', '%ABS Total', 'Ausentismo Total', '%ABS Varias',
+        'Ausencias Varias', 'Agentes E+', 'Agentes LCON', 'Agentes CE', 'Agentes OFF',
+        '%ABS Tecnológico', 'Agentes falta de insumos', 'Agentes Sin Luz',
+        'Agentes Sin Internet', '%ABS Vacaciones', 'Agentes con Vacaciones',
+        'Agentes Logueados', 'Agentes FF', 'Agentes Facturables en Capa',
+        'Total Agentes Facturables', 'Agentes Facturables OS', 'Agentes Facturables TT',
+        'Dotación Promedio', 'Agentes Requeridos', 'Agentes Requeridos SS',
+        'Agentes Activos', '%Over Sobre Requerido', 'Activos - Requeridos SS',
+        '%Rotación', 'Agentes Baja', '', '', 'Agentes Activos', 'Ausencias Varias',
+        'Agentes falta de insumos', 'Agentes Sin Luz', 'Agentes Sin Internet', '', '',
+        'Dotación Promedio', 'Agentes Baja', '', 'Agentes Activos', 'Ausencias',
+    ]
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = 'Dashboard'
+    hoja['B1'] = 'PLANTILLA DE IMPORTACIÓN - DASHBOARD OPERATIVO'
+    hoja.merge_cells(start_row=1, start_column=2, end_row=1, end_column=len(encabezados))
+    hoja['B1'].fill = PatternFill('solid', fgColor='1F4E78')
+    hoja['B1'].font = Font(color='FFFFFF', bold=True, size=12)
+    hoja['B1'].alignment = Alignment(horizontal='center')
+    borde = Border(bottom=Side(style='thin', color='FFFFFF'))
+    for columna, encabezado in enumerate(encabezados, 1):
+        celda = hoja.cell(row=2, column=columna, value=encabezado)
+        celda.fill = PatternFill('solid', fgColor='203864')
+        celda.font = Font(color='FFFFFF', bold=True)
+        celda.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        celda.border = borde
+        hoja.column_dimensions[get_column_letter(columna)].width = 18
+    hoja.column_dimensions['A'].width = 3
+    hoja.column_dimensions['F'].width = 13
+    hoja.column_dimensions['G'].width = 28
+    hoja.column_dimensions['H'].width = 32
+    hoja.freeze_panes = 'I3'
+    hoja.auto_filter.ref = f'B2:{get_column_letter(len(encabezados))}2'
+    hoja.row_dimensions[1].height = 24
+    hoja.row_dimensions[2].height = 42
+    hoja.sheet_view.showGridLines = False
+    for fila in range(3, 1003):
+        hoja.cell(fila, 44, f'=SUMIF($I$2:$AO$2,AR$2,$I{fila}:$AO{fila})*6')
+        hoja.cell(fila, 45, f'=SUMIF($I$2:$AO$2,AS$2,$I{fila}:$AO{fila})*6')
+        hoja.cell(fila, 46, f'=SUMIF($I$2:$AO$2,AT$2,$I{fila}:$AO{fila})*6')
+        hoja.cell(fila, 47, f'=SUMIF($I$2:$AO$2,AU$2,$I{fila}:$AO{fila})*6')
+        hoja.cell(fila, 48, f'=SUMIF($I$2:$AO$2,AV$2,$I{fila}:$AO{fila})*6')
+        hoja.cell(fila, 51, f'=SUMIF($I$2:$AO$2,AY$2,$I{fila}:$AO{fila})')
+        hoja.cell(fila, 52, f'=SUMIF($I$2:$AO$2,AZ$2,$I{fila}:$AO{fila})')
+        hoja.cell(fila, 54, f'=SUMIF($I$2:$AO$2,BB$2,$I{fila}:$AO{fila})')
+        hoja.cell(fila, 55, f'=SUM(AS{fila}:AV{fila})/6')
+    libro.calculation.fullCalcOnLoad = True
+    libro.calculation.forceFullCalc = True
+    salida = io.BytesIO()
+    libro.save(salida)
+    salida.seek(0)
+    return send_file(salida, as_attachment=True,
+                     download_name='Plantilla Dashboard operativo.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@main_bp.route('/api/dashboard-operativo', methods=['GET'])
+@login_requerido
+def api_dashboard_operativo():
+    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    mes = str(request.args.get('mes') or '').strip()
+    query = DashboardOperativo.query.filter_by(year=year)
+    if mes:
+        query = query.filter_by(mes=mes)
+    filas = query.order_by(DashboardOperativo.mes, DashboardOperativo.cliente, DashboardOperativo.campania).all()
+    meses = sorted({fila.mes for fila in DashboardOperativo.query.filter_by(year=year).all()})
+    datos = []
+    for fila in filas:
+        item = fila.to_dict()
+        item['datos']['agentes_baja'] = fila.bajas_manual or 0
+        def numero_aux(clave):
+            try:
+                return float(item['datos'].get(clave) or 0)
+            except (TypeError, ValueError):
+                return 0.0
+        item['datos'].update({
+            'aux_activos_horas': numero_aux('agentes_activos') * 6,
+            'aux_ausencias_horas': numero_aux('ausencias_varias') * 6,
+            'aux_insumos_horas': numero_aux('falta_insumos') * 6,
+            'aux_luz_horas': numero_aux('sin_luz') * 6,
+            'aux_internet_horas': numero_aux('sin_internet') * 6,
+            'aux_dotacion_promedio': item['datos'].get('dotacion_promedio'),
+            'aux_agentes_baja': fila.bajas_manual or 0,
+            'aux_agentes_activos': item['datos'].get('agentes_activos'),
+            'aux_ausencias': sum(numero_aux(clave) for clave in
+                                 ('ausencias_varias', 'falta_insumos', 'sin_luz', 'sin_internet')),
+        })
+        datos.append(item)
+    return jsonify({'success': True, 'year': year, 'meses': meses, 'columnas': DASHBOARD_COLUMNAS, 'filas': datos})
+
+
+@main_bp.route('/api/dashboard-operativo/importar', methods=['POST'])
+@edicion_requerida
+def api_importar_dashboard_operativo():
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename.lower().endswith('.xlsx'):
+        return jsonify({'success': False, 'errores': ['Seleccione un archivo Excel .xlsx']}), 400
+    contenido = archivo.read()
+    if len(contenido) > 25 * 1024 * 1024:
+        return jsonify({'success': False, 'errores': ['El archivo supera el máximo de 25 MB']}), 400
+    try:
+        from openpyxl import load_workbook
+        libro = load_workbook(io.BytesIO(contenido), data_only=True, read_only=True)
+        nombre_hoja = next((nombre for nombre in libro.sheetnames if normalizar_header(nombre) == 'dashboard'), libro.sheetnames[0])
+        hoja = libro[nombre_hoja]
+    except Exception:
+        return jsonify({'success': False, 'errores': ['No se pudo leer el archivo Excel']}), 400
+
+    importadas, antes, despues, errores = 0, [], [], []
+    for numero_fila, row in enumerate(hoja.iter_rows(min_row=3, values_only=True), 3):
+        valores = list(row)
+        if len(valores) < 41:
+            valores += [None] * (41 - len(valores))
+        fecha, cliente, campania = valores[5], str(valores[6] or '').strip(), str(valores[7] or '').strip()
+        if not isinstance(fecha, (datetime, date)) or not cliente or not campania:
+            continue
+        clave_mes = fecha.strftime('%Y-%m')
+        year = fecha.year
+        registro = DashboardOperativo.query.filter_by(mes=clave_mes, cliente=cliente, campania=campania).first()
+        antes.append(registro.to_dict() if registro else None)
+        if not registro:
+            registro = DashboardOperativo(year=year, mes=clave_mes, cliente=cliente, campania=campania)
+            registro.bajas_manual = parse_numero(valores[40]) if valores[40] not in (None, '') else 0
+            db.session.add(registro)
+        datos = {clave: valor_dashboard_json(valores[indice + 1]) for indice, clave in enumerate(DASHBOARD_COLUMNAS)}
+        datos['mes'] = clave_mes
+        datos['cliente'] = cliente
+        datos['campania'] = campania
+        datos.pop('agentes_baja', None)
+        registro.year, registro.mes, registro.cliente, registro.campania = year, clave_mes, cliente, campania
+        registro.datos = json.dumps(datos, ensure_ascii=False)
+        db.session.flush()
+        despues.append(registro.to_dict())
+        importadas += 1
+    if not importadas:
+        db.session.rollback()
+        return jsonify({'success': False, 'errores': errores or ['No se encontraron filas válidas en la hoja Dashboard']}), 400
+    registrar_historial('importacion', 'dashboard_operativo', archivo.filename,
+                        f'Dashboard operativo importado: {importadas} fila(s)',
+                        antes={'filas': antes}, despues={'filas': despues})
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': f'{importadas} fila(s) importada(s). Las bajas manuales existentes se conservaron.'})
+
+
+@main_bp.route('/api/dashboard-operativo/<int:registro_id>/bajas', methods=['POST'])
+@edicion_requerida
+def api_guardar_bajas_dashboard(registro_id):
+    registro = DashboardOperativo.query.get_or_404(registro_id)
+    data = request.get_json(silent=True) or {}
+    try:
+        bajas = parse_numero(data.get('bajas'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['La cantidad de bajas no es válida']}), 400
+    if bajas < 0:
+        return jsonify({'success': False, 'errores': ['Las bajas no pueden ser negativas']}), 400
+    antes = registro.to_dict()
+    registro.bajas_manual = bajas
+    db.session.flush()
+    registrar_historial('edicion', 'dashboard_operativo', registro.id,
+                        f'Bajas actualizadas: {registro.cliente} / {registro.campania} / {registro.mes}',
+                        antes={'filas': [antes]}, despues={'filas': [registro.to_dict()]})
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Bajas guardadas', 'bajas': bajas})
+
+
+@main_bp.route('/api/historico-clientes', methods=['GET'])
+@login_requerido
+def api_historico_clientes():
+    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    mes_filtro = str(request.args.get('mes') or '').strip()
+    registros = HistoricoClienteMensual.query.filter_by(year=year).all()
+    por_clave = {(r.mes, r.cliente): {'registro': r, '_tiene_base': True, **r.base_dict()} for r in registros}
+
+    # Los indicadores operativos actuales se reconstruyen siempre desde Dashboard.
+    for fila in DashboardOperativo.query.filter_by(year=year).all():
+        clave = (fila.mes, fila.cliente)
+        item = por_clave.setdefault(clave, {'registro': None})
+        item['_fuente_actual'] = True
+        if item.get('_tiene_base') and not item.get('_ocultar_sin_cambios'):
+            continue
+        if 'horas_requeridas_facturacion' not in item:
+            item['horas_requeridas'] = 0
+            item['horas_realizadas'] = 0
+        d = fila.datos_dict()
+        def n(campo):
+            try: return float(d.get(campo) or 0)
+            except (TypeError, ValueError): return 0.0
+        item['horas_dotacion_activa'] = item.get('horas_dotacion_activa_dashboard', 0) + n('agentes_activos') * 6
+        item['horas_dotacion_activa_dashboard'] = item['horas_dotacion_activa']
+        item['horas_ausentismo'] = item.get('horas_ausentismo_dashboard', 0) + sum(n(c) for c in ('ausencias_varias','falta_insumos','sin_luz','sin_internet')) * 6
+        item['horas_ausentismo_dashboard'] = item['horas_ausentismo']
+        item['dotacion_promedio'] = item.get('dotacion_promedio_dashboard', 0) + n('dotacion_promedio')
+        item['dotacion_promedio_dashboard'] = item['dotacion_promedio']
+        item['bajas'] = item.get('bajas_dashboard', 0) + float(fila.bajas_manual or 0)
+        item['bajas_dashboard'] = item['bajas']
+        item['dotacion_requerida'] = item.get('dotacion_requerida_dashboard', 0) + n('agentes_requeridos')
+        item['dotacion_requerida_dashboard'] = item['dotacion_requerida']
+
+    # Horas objetivo y cumplidas se suman directamente desde Facturación por cliente.
+    facturacion = Facturacion2026.query.filter(func.extract('year', Facturacion2026.fecha) == year).all()
+    for fila in facturacion:
+        if not float(fila.horas_objetivo or 0) and not float(fila.horas_facturadas or 0):
+            continue
+        clave = (fila.fecha.strftime('%Y-%m'), fila.cliente)
+        item = por_clave.setdefault(clave, {'registro': None})
+        item['_fuente_actual'] = True
+        item['_fact_actual_obj'] = item.get('_fact_actual_obj', 0) + float(fila.horas_objetivo or 0)
+        item['_fact_actual_real'] = item.get('_fact_actual_real', 0) + float(fila.horas_facturadas or 0)
+
+    for item in por_clave.values():
+        if '_fact_actual_obj' not in item:
+            continue
+        delta_obj = item['_fact_actual_obj'] - float(item.get('_fact_snapshot_obj') or 0)
+        delta_real = item['_fact_actual_real'] - float(item.get('_fact_snapshot_real') or 0)
+        if item.get('_tiene_base'):
+            item['horas_requeridas'] = (0 if item.get('_ocultar_sin_cambios') else float(item.get('horas_requeridas') or 0)) + delta_obj
+            item['horas_realizadas'] = (0 if item.get('_ocultar_sin_cambios') else float(item.get('horas_realizadas') or 0)) + delta_real
+            item['_delta_facturacion'] = abs(delta_obj) > .001 or abs(delta_real) > .001
+        else:
+            item['horas_requeridas'], item['horas_realizadas'] = item['_fact_actual_obj'], item['_fact_actual_real']
+
+    filas = []
+    for (mes, cliente), d in sorted(por_clave.items()):
+        if mes_filtro and mes != mes_filtro: continue
+        if d.get('_ocultar_sin_cambios') and not d.get('_delta_facturacion'):
+            continue
+        registro = d.get('registro')
+        req, real = float(d.get('horas_requeridas') or 0), float(d.get('horas_realizadas') or 0)
+        activa, ausencia = float(d.get('horas_dotacion_activa') or 0), float(d.get('horas_ausentismo') or 0)
+        dot, bajas = float(d.get('dotacion_promedio') or 0), float(d.get('bajas') or 0)
+        pagadas = float(registro.pagadas) if registro and registro.pagadas is not None else None
+        logueo = float(registro.logueo) if registro and registro.logueo is not None else None
+        filas.append({'id': registro.id if registro else None, 'mes': mes, 'year': year, 'cliente': cliente,
+            'empresa': d.get('empresa'), 'site': d.get('site'), 'industria': d.get('industria'),
+            'horas_dotacion_activa': activa, 'horas_ausentismo': ausencia,
+            'dotacion_promedio': dot, 'bajas': bajas, 'horas_requeridas': req,
+            'horas_realizadas': real, 'pagadas': pagadas, 'logueo': logueo,
+            'cumplimiento_horas': real / req if req else None,
+            'abs': ausencia / activa if activa else None, 'rotacion': bajas / dot if dot else None,
+            'eficiencia': pagadas / logueo if pagadas is not None and logueo else None,
+            'dotacion_requerida': d.get('dotacion_requerida')})
+    meses = sorted({m for m, _ in por_clave})
+    return jsonify({'success': True, 'year': year, 'meses': meses, 'filas': filas})
+
+
+def cliente_cumplimiento_facturacion(nombre):
+    clave = normalizar_header(nombre)
+    if clave.startswith('personal'):
+        return 'Personal'
+    if clave.startswith('santander'):
+        return 'Santander'
+    if clave.startswith('naturgy'):
+        return 'Naturgy'
+    equivalencias = {
+        'bbva seguros': 'BBVA', 'bice': 'Bice', 'bsf carrefour': 'Bsf Carrefour',
+        'cachamai': 'Cachamai', 'gire': 'GIRE', 'galicia seguros': 'Galicia',
+        'river plate': 'River Plate', 'unicef': 'Unicef',
+    }
+    return equivalencias.get(clave, nombre)
+
+
+@main_bp.route('/api/cumplimiento-facturacion-clientes', methods=['GET'])
+@login_requerido
+def api_cumplimiento_facturacion_clientes():
+    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    filas = {}
+    def obtener(cliente):
+        return filas.setdefault(cliente, {
+            'cliente': cliente, 'objetivo_horas': 0, 'objetivo_variable': 0,
+            'objetivo_penalizaciones_bonos': 0, 'alcanzado_horas': 0,
+            'alcanzado_variable': 0, 'alcanzado_penalizaciones_bonos': 0,
+        })
+
+    registros = Facturacion2026.query.filter(func.extract('year', Facturacion2026.fecha) == year).all()
+    for registro in registros:
+        if registro.es_next_gen:
+            continue
+        item = obtener(cliente_cumplimiento_facturacion(registro.cliente))
+        item['objetivo_horas'] += float(registro.objetivo_facturacion_horas or 0)
+        item['objetivo_variable'] += float(registro.variable_objetivo or 0)
+        item['alcanzado_horas'] += float(registro.facturado_horas or 0)
+        item['alcanzado_variable'] += float(registro.variable_productivo_calculo or 0)
+        item['alcanzado_penalizaciones_bonos'] += float(registro.facturado_bono or 0)
+        item['alcanzado_penalizaciones_bonos'] += float(registro.penalizaciones_incumplimientos or 0)
+
+    salida = []
+    for item in filas.values():
+        item['objetivo_total'] = item['objetivo_horas'] + item['objetivo_variable'] + item['objetivo_penalizaciones_bonos']
+        item['alcanzado_total'] = item['alcanzado_horas'] + item['alcanzado_variable'] + item['alcanzado_penalizaciones_bonos']
+        item['desvio_horas'] = item['alcanzado_horas'] - item['objetivo_horas']
+        item['desvio_variable'] = item['alcanzado_variable'] - item['objetivo_variable']
+        item['desvio_penalizaciones_bonos'] = item['alcanzado_penalizaciones_bonos'] - item['objetivo_penalizaciones_bonos']
+        item['desvio_total'] = item['alcanzado_total'] - item['objetivo_total']
+        item['porcentaje_desvio'] = item['desvio_total'] / item['objetivo_total'] if item['objetivo_total'] else None
+        if item['objetivo_total'] or item['alcanzado_total']:
+            salida.append({clave: round(valor, 6) if isinstance(valor, float) else valor for clave, valor in item.items()})
+    orden_excel = [
+        'Personal', 'Santander', 'BBVA', 'Qualia', 'Assurant', 'GIRE', 'Autotekne',
+        'Invertir Online', 'Cachamai', 'Bice', 'Farmapay', 'Yamaha', 'Johnson & Johnson',
+        'Banco Comafi', 'BiBank', 'Openpay', 'Banco Piano', 'Metrogas', 'Spazios',
+        'Supervielle Seguros', 'Shipnow', 'Supervielle', 'Leiva Joyas', 'Naturgy',
+        'Bsf Carrefour', 'Mirgor', 'Omint', 'River Plate', 'Unicef', 'Galicia', 'BNA',
+    ]
+    presentes = {item['cliente'] for item in salida}
+    if year == 2026:
+        for cliente in orden_excel:
+            if cliente not in presentes:
+                salida.append({
+                    'cliente': cliente, 'objetivo_horas': 0, 'objetivo_variable': 0,
+                    'objetivo_penalizaciones_bonos': 0, 'objetivo_total': 0,
+                    'alcanzado_horas': 0, 'alcanzado_variable': 0,
+                    'alcanzado_penalizaciones_bonos': 0, 'alcanzado_total': 0,
+                    'desvio_horas': 0, 'desvio_variable': 0,
+                    'desvio_penalizaciones_bonos': 0, 'desvio_total': 0,
+                    'porcentaje_desvio': None,
+                })
+    indice_orden = {cliente: indice for indice, cliente in enumerate(orden_excel)}
+    salida.sort(key=lambda item: (indice_orden.get(item['cliente'], 999), item['cliente'].lower()))
+    return jsonify({'success': True, 'year': year, 'filas': salida})
+
+
+@main_bp.route('/api/comparativo-interanual', methods=['GET'])
+@login_requerido
+def api_comparativo_interanual():
+    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    anterior = year - 1
+    ruta_historico = os.path.join(current_app.root_path, 'data', 'comparativo_interanual_historico.json')
+    with open(ruta_historico, encoding='utf-8') as archivo:
+        historico = json.load(archivo)
+    base = historico.get(str(anterior), {})
+    cumplimiento_anterior = base.get('cumplimiento_facturacion', [None] * 12)
+    desvio_anterior = base.get('desvio_facturacion', [None] * 12)
+
+    registros = Facturacion2026.query.filter(func.extract('year', Facturacion2026.fecha) == year).all()
+    acumulados = {mes: {'obj_fact': 0.0, 'real_fact': 0.0, 'obj_hs': 0.0, 'real_hs': 0.0, 'cantidad': 0} for mes in range(1, 13)}
+    for registro in registros:
+        if registro.es_next_gen:
+            continue
+        mes = registro.fecha.month
+        item = acumulados[mes]
+        item['obj_fact'] += float(registro.objetivo_facturacion_horas or 0) + float(registro.variable_objetivo or 0)
+        item['real_fact'] += float(registro.facturado_horas or 0) + float(registro.variable_productivo_calculo or 0) + float(registro.facturado_bono or 0) + float(registro.penalizaciones_incumplimientos or 0)
+        item['obj_hs'] += float(registro.horas_objetivo or 0)
+        item['real_hs'] += float(registro.horas_facturadas or 0)
+        item['cantidad'] += 1
+
+    meses = []
+    for numero in range(1, 13):
+        actual = acumulados[numero]
+        cargado = actual['cantidad'] > 0 and actual['obj_fact'] != 0
+        desvio = actual['real_fact'] - actual['obj_fact'] if cargado else None
+        cumplimiento = actual['real_fact'] / actual['obj_fact'] if cargado else None
+        meses.append({
+            'numero': numero, 'nombre': calendar.month_abbr[numero].lower(),
+            'cumplimiento_anterior': cumplimiento_anterior[numero - 1] if numero <= len(cumplimiento_anterior) else None,
+            'desvio_anterior': desvio_anterior[numero - 1] if numero <= len(desvio_anterior) else None,
+            'cumplimiento_actual': cumplimiento, 'desvio_actual': desvio, 'cargado': cargado,
+        })
+
+    def resumen(indices):
+        items = [acumulados[i] for i in indices if acumulados[i]['cantidad'] and acumulados[i]['obj_fact']]
+        obj_fact = sum(x['obj_fact'] for x in items)
+        real_fact = sum(x['real_fact'] for x in items)
+        obj_hs = sum(x['obj_hs'] for x in items)
+        real_hs = sum(x['real_hs'] for x in items)
+        return {
+            'cumplimiento_horas': real_hs / obj_hs if obj_hs else None,
+            'cumplimiento_facturacion': real_fact / obj_fact if obj_fact else None,
+            'desvio_facturacion': real_fact - obj_fact if obj_fact else None,
+        }
+
+    trimestres_actual = [resumen(range(inicio, inicio + 3)) for inicio in (1, 4, 7, 10)]
+    anual_actual = resumen(range(1, 13))
+    ant_hs = base.get('cumplimiento_horas_trimestral', [None] * 4)
+    ant_fact = base.get('cumplimiento_facturacion_trimestral', [None] * 4)
+    ant_desv = base.get('desvio_facturacion_trimestral', [None] * 4)
+    trimestres_anterior = [{'cumplimiento_horas': ant_hs[i], 'cumplimiento_facturacion': ant_fact[i], 'desvio_facturacion': ant_desv[i]} for i in range(4)]
+    def anual_desde_trimestres(items):
+        validos = [x for x in items if x['cumplimiento_facturacion'] is not None]
+        return {
+            'cumplimiento_horas': sum(x['cumplimiento_horas'] for x in validos) / len(validos) if validos else None,
+            'cumplimiento_facturacion': sum(x['cumplimiento_facturacion'] for x in validos) / len(validos) if validos else None,
+            'desvio_facturacion': sum(x['desvio_facturacion'] for x in validos) if validos else None,
+        }
+    anual_anterior = {
+        'cumplimiento_horas': base.get('cumplimiento_horas_anual'),
+        'cumplimiento_facturacion': base.get('cumplimiento_facturacion_anual'),
+        'desvio_facturacion': base.get('desvio_facturacion_anual'),
+    }
+    if not any(valor is not None for valor in anual_anterior.values()):
+        anual_anterior = anual_desde_trimestres(trimestres_anterior)
+    return jsonify({'success': True, 'year': year, 'anterior': anterior, 'meses': meses,
+                    'actual': {'anual': anual_actual, 'trimestres': trimestres_actual},
+                    'anterior_datos': {'anual': anual_anterior, 'trimestres': trimestres_anterior}})
+
+
+@main_bp.route('/api/historico-clientes/manual', methods=['POST'])
+@edicion_requerida
+def api_guardar_manual_historico():
+    data = request.get_json(silent=True) or {}
+    mes, cliente = str(data.get('mes') or ''), str(data.get('cliente') or '').strip()
+    if not re.match(r'^\d{4}-\d{2}$', mes) or not cliente:
+        return jsonify({'success': False, 'errores': ['Mes y cliente son obligatorios']}), 400
+    registro = HistoricoClienteMensual.query.filter_by(mes=mes, cliente=cliente).first()
+    if not registro:
+        registro = HistoricoClienteMensual(year=int(mes[:4]), mes=mes, cliente=cliente, datos_base='{}')
+        db.session.add(registro)
+    antes = registro.to_dict()
+    registro.pagadas = parse_numero(data.get('pagadas')) if data.get('pagadas') not in (None, '') else None
+    registro.logueo = parse_numero(data.get('logueo')) if data.get('logueo') not in (None, '') else None
+    db.session.flush()
+    registrar_historial('edicion', 'historico_cliente', registro.id,
+                        f'Pagadas y logueo: {cliente} / {mes}', antes=antes, despues=registro.to_dict())
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Pagadas y logueo guardados'})
+
+
+@main_bp.route('/api/variacion-anual', methods=['GET'])
+@login_requerido
+def api_variacion_anual():
+    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    anterior = year - 1
+    meses = opciones_meses_proyeccion(year)
+    claves = [item['value'] for item in meses]
+    nombres = [item['label'] for item in meses]
+
+    def horas_reales(anio):
+        filas = Facturacion2026.query.with_entities(
+            Facturacion2026.mes, func.sum(Facturacion2026.horas_facturadas)
+        ).filter(func.extract('year', Facturacion2026.fecha) == anio).group_by(Facturacion2026.mes).all()
+        return {mes: round(float(total or 0), 2) for mes, total in filas}
+
+    reales_actual = horas_reales(year)
+    reales_anterior = horas_reales(anterior)
+    if anterior == 2025 and not reales_anterior:
+        reales_anterior = {f'{anterior}-{indice:02d}': valor for indice, valor in enumerate(HORAS_HISTORICAS_2025, 1)}
+    # Las aperturas PLP desglosan las mismas horas de Personal para valorizarlas;
+    # no son horas adicionales y por eso no deben duplicar el total interanual.
+    proyectadas = dict(ProyeccionMatriz.query.with_entities(
+        ProyeccionMatriz.mes,
+        func.sum(ProyeccionMatriz.horas_requeridas * ProyeccionMatriz.porcentaje_cumplimiento / 100),
+    ).filter(
+        ProyeccionMatriz.mes.in_(claves),
+        db.or_(ProyeccionMatriz.tipo_plp.is_(None), ProyeccionMatriz.tipo_plp == ''),
+    ).group_by(ProyeccionMatriz.mes).all())
+    meses_reales = [mes for mes in claves if mes in reales_actual]
+    corte = max(meses_reales) if meses_reales else None
+    filas = []
+    for indice, (mes, nombre) in enumerate(zip(claves, nombres), 1):
+        clave_anterior = f'{anterior}-{indice:02d}'
+        es_real = bool(corte and mes <= corte)
+        actual = reales_actual.get(mes, 0) if es_real else float(proyectadas.get(mes) or 0)
+        base = float(reales_anterior.get(clave_anterior) or 0)
+        filas.append({'mes': mes, 'nombre': nombre, 'anterior': round(base, 2), 'actual': round(actual, 2),
+                      'tipo': 'real' if es_real else 'proyectado', 'diferencia': round(actual - base, 2),
+                      'variacion': round((actual - base) / base, 6) if base else 0})
+    indice_corte = len(meses_reales)
+    total_anterior = sum(item['anterior'] for item in filas)
+    total_actual = sum(item['actual'] for item in filas)
+    acum_anterior = sum(item['anterior'] for item in filas[:indice_corte])
+    acum_actual = sum(item['actual'] for item in filas[:indice_corte])
+    return jsonify({'success': True, 'year': year, 'anterior': anterior, 'corte': corte, 'filas': filas,
+                    'total': {'anterior': round(total_anterior, 2), 'actual': round(total_actual, 2),
+                              'diferencia': round(total_actual-total_anterior, 2),
+                              'variacion': round((total_actual-total_anterior)/total_anterior, 6) if total_anterior else 0},
+                    'acumulado': {'meses': indice_corte, 'anterior': round(acum_anterior, 2), 'actual': round(acum_actual, 2),
+                                  'diferencia': round(acum_actual-acum_anterior, 2),
+                                  'variacion': round((acum_actual-acum_anterior)/acum_anterior, 6) if acum_anterior else 0}})
 
 
 @main_bp.route('/api/variables', methods=['POST'])
