@@ -14,7 +14,7 @@
 <section class="mb-5 rounded-lg bg-white p-4 shadow">
     <h2 class="mb-4 font-semibold text-gray-900">Crear usuario</h2>
     <div id="alertaUsuarios" class="mb-4 hidden rounded border px-3 py-2 text-sm"></div>
-    <form id="formUsuario" class="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_180px_1fr_auto] lg:items-end">
+    <form id="formUsuario" class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
         <div>
             <label class="mb-1 block text-sm font-medium text-gray-700">Nombre</label>
             <input id="nombre" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" required>
@@ -25,12 +25,16 @@
         </div>
         <div>
             <label class="mb-1 block text-sm font-medium text-gray-700">Rol</label>
-            <select id="rol" class="h-10 w-full rounded border border-gray-300 px-3 text-sm">
+            <select id="rol" onchange="actualizarPuestos()" class="h-10 w-full rounded border border-gray-300 px-3 text-sm">
                 {% for rol in roles %}
                 <option value="{{ rol }}">{{ rol }}</option>
                 {% endfor %}
             </select>
         </div>
+        <div><label class="mb-1 block text-sm font-medium text-gray-700">Puesto</label><select id="puesto" class="h-10 w-full rounded border border-gray-300 px-3 text-sm"></select></div>
+        <div><label class="mb-1 block text-sm font-medium text-gray-700">Gerente asignado</label><select id="gerenteAsignado" onchange="sincronizarJerarquia(gerenteAsignado,jefeSiteAsignado)" class="h-10 w-full rounded border border-gray-300 px-3 text-sm"><option value="">Sin asignar</option></select><p class="mt-1 text-xs text-slate-500">Incluye automáticamente todo lo asignado debajo.</p></div>
+        <div><label class="mb-1 block text-sm font-medium text-gray-700">Jefe de site asignado</label><select id="jefeSiteAsignado" class="h-10 w-full rounded border border-gray-300 px-3 text-sm"><option value="">Sin asignar</option></select><p class="mt-1 text-xs text-slate-500">Solo se utiliza si no eliges gerente. Ambos vacíos = sin restricción.</p></div>
+        <fieldset class="md:col-span-2 xl:col-span-4 rounded-lg border border-slate-200 bg-slate-50 p-3"><legend class="px-2 text-sm font-bold text-slate-700">Accesos del usuario</legend><div id="permisosAlta" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"></div></fieldset>
         <div>
             <label class="mb-1 block text-sm font-medium text-gray-700">Contrasena</label>
             <input id="password" type="password" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" required>
@@ -51,7 +55,7 @@
                 <tr>
                     <th class="px-4 py-3">Nombre</th>
                     <th class="px-4 py-3">Email</th>
-                    <th class="px-4 py-3">Rol</th>
+                    <th class="px-4 py-3">Perfil</th><th class="px-4 py-3">Puesto</th><th class="px-4 py-3">Alcance</th>
                     <th class="px-4 py-3">Estado</th>
                     <th class="px-4 py-3 text-right">Acciones</th>
                 </tr>
@@ -60,11 +64,16 @@
         </table>
     </div>
 </section>
+
+<div id="modalAccesos" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/50 p-4"><div class="max-h-[92vh] w-full max-w-4xl overflow-auto rounded-xl bg-white shadow-2xl"><div class="flex items-center justify-between border-b px-5 py-4"><div><h2 class="text-xl font-bold">Editar acceso</h2><p id="usuarioEditando" class="text-sm text-slate-500"></p></div><button type="button" onclick="cerrarModal()" class="rounded px-3 py-2 text-xl">&times;</button></div><div class="grid gap-4 p-5 md:grid-cols-2"><label class="text-sm font-bold">Perfil<select id="modalRol" onchange="actualizarPuestosModal();aplicarPlantillaModal()" class="mt-1 h-10 w-full rounded border px-3">{% for rol in roles %}<option>{{ rol }}</option>{% endfor %}</select></label><label class="text-sm font-bold">Puesto<select id="modalPuesto" onchange="aplicarPlantillaModal()" class="mt-1 h-10 w-full rounded border px-3"></select></label><label class="text-sm font-bold">Gerente asignado<select id="modalGerente" onchange="sincronizarJerarquia(modalGerente,modalJefe)" class="mt-1 h-10 w-full rounded border px-3"></select><span class="mt-1 block text-xs font-normal text-slate-500">Incluye todo lo subordinado en Datos Maestros.</span></label><label class="text-sm font-bold">Jefe de site asignado<select id="modalJefe" class="mt-1 h-10 w-full rounded border px-3"></select><span class="mt-1 block text-xs font-normal text-slate-500">Solo si no hay gerente. Ambos vacíos = sin restricción.</span></label><fieldset class="md:col-span-2 rounded-lg border bg-slate-50 p-4"><legend class="px-2 text-sm font-bold">Permisos individuales</legend><div id="permisosModal" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"></div></fieldset></div><div class="flex justify-end gap-2 border-t px-5 py-4"><button type="button" onclick="cerrarModal()" class="rounded border px-4 py-2 text-sm font-bold">Cancelar</button><button id="botonGuardarAcceso" type="button" onclick="guardarAcceso()" class="rounded bg-blue-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-60">Guardar accesos</button></div></div></div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', cargarUsuarios);
+const puestosPorRol={{ puestos_por_rol|tojson }},plantillas={{ plantillas_permisos|tojson }};let usuariosActuales=[],idEditando=null;
+const rol=document.getElementById('rol'),puesto=document.getElementById('puesto'),gerenteAsignado=document.getElementById('gerenteAsignado'),jefeSiteAsignado=document.getElementById('jefeSiteAsignado'),permisosAlta=document.getElementById('permisosAlta'),permisosModal=document.getElementById('permisosModal'),modalAccesos=document.getElementById('modalAccesos'),modalRol=document.getElementById('modalRol'),modalPuesto=document.getElementById('modalPuesto'),modalGerente=document.getElementById('modalGerente'),modalJefe=document.getElementById('modalJefe'),usuarioEditando=document.getElementById('usuarioEditando'),botonGuardarAcceso=document.getElementById('botonGuardarAcceso');
+const opcionesPermiso=[['visualizar','Visualización','atributo'],['cargar','Carga de datos','atributo'],['editar','Edición','atributo'],['eliminar','Eliminar','atributo'],['administrar_perfiles','Administrar perfiles','atributo'],['facturacion_total','Facturación total','modulo'],['rmo_santander','RMO Santander','modulo'],['rmo_multi_co','RMO Multi C/O','modulo'],['rmo_multi_sq','RMO Multi S/Q','modulo'],['rmo_personal','RMO Personal','modulo'],['facturacion_asignada','Facturación asignada','modulo'],['directorio','Informe Directorio','modulo'],['proyecciones','Proyección facturación','modulo']];
+document.addEventListener('DOMContentLoaded',async()=>{dibujarPermisos(permisosAlta,'alta');dibujarPermisos(permisosModal,'modal');actualizarPuestos();await cargarAsignaciones();aplicarPlantillaAlta();cargarUsuarios()});
 document.getElementById('formUsuario').addEventListener('submit', crearUsuario);
 
 async function cargarUsuarios() {
@@ -74,9 +83,9 @@ async function cargarUsuarios() {
         mostrarAlerta((data.errores || ['No autorizado']).join('. '), false);
         return;
     }
-    const tbody = document.getElementById('tablaUsuarios');
+    usuariosActuales=data.usuarios;const tbody = document.getElementById('tablaUsuarios');
     if (!data.usuarios.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">No hay usuarios registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-gray-500">No hay usuarios registrados</td></tr>';
         return;
     }
     tbody.innerHTML = data.usuarios.map(usuario => `
@@ -84,11 +93,14 @@ async function cargarUsuarios() {
             <td class="px-4 py-3 font-medium text-gray-900">${escapeHtml(usuario.nombre)}</td>
             <td class="px-4 py-3 text-gray-700">${escapeHtml(usuario.email)}</td>
             <td class="px-4 py-3">${escapeHtml(usuario.rol)}</td>
+            <td class="px-4 py-3">${escapeHtml(usuario.puesto||'-')}</td>
+            <td class="px-4 py-3 text-xs">${escapeHtml([usuario.gerente_asignado&&`Gerente: ${usuario.gerente_asignado}`,usuario.jefe_site_asignado&&`Jefe: ${usuario.jefe_site_asignado}`].filter(Boolean).join(' / ')||'Total')}</td>
             <td class="px-4 py-3">${usuario.activo ? '<span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">Activo</span>' : '<span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">Inactivo</span>'}</td>
             <td class="px-4 py-3 text-right">
-                <button type="button" onclick="toggleActivo(${usuario.id}, ${usuario.activo ? 'false' : 'true'})" class="rounded border border-gray-300 px-3 py-1 text-xs hover:bg-gray-50">
+                <button type="button" data-accion="estado" data-usuario-id="${usuario.id}" data-activo="${usuario.activo ? 'false' : 'true'}" class="rounded border border-gray-300 px-3 py-1 text-xs hover:bg-gray-50">
                     ${usuario.activo ? 'Desactivar' : 'Activar'}
                 </button>
+                <button type="button" data-accion="acceso" data-usuario-id="${usuario.id}" class="ml-1 rounded border border-blue-300 px-3 py-1 text-xs text-blue-700 hover:bg-blue-50">Acceso</button>
             </td>
         </tr>
     `).join('');
@@ -100,6 +112,10 @@ async function crearUsuario(event) {
         nombre: document.getElementById('nombre').value,
         email: document.getElementById('email').value,
         rol: document.getElementById('rol').value,
+        puesto: document.getElementById('puesto').value,
+        gerente_asignado: document.getElementById('gerenteAsignado').value,
+        jefe_site_asignado: document.getElementById('jefeSiteAsignado').value,
+        permisos:leerPermisos('alta'),
         password: document.getElementById('password').value,
     };
     const response = await fetch('/api/usuarios', {
@@ -113,8 +129,42 @@ async function crearUsuario(event) {
         return;
     }
     event.target.reset();
+    actualizarPuestos();
     mostrarAlerta('Usuario creado correctamente', true);
     cargarUsuarios();
+}
+
+document.getElementById('tablaUsuarios').addEventListener('click', event => {
+    const boton = event.target.closest('button[data-accion][data-usuario-id]');
+    if (!boton) return;
+    const usuarioId = Number(boton.dataset.usuarioId);
+    if (boton.dataset.accion === 'acceso') abrirAcceso(usuarioId);
+    if (boton.dataset.accion === 'estado') toggleActivo(usuarioId, boton.dataset.activo === 'true');
+});
+
+function dibujarPermisos(contenedor,prefijo){contenedor.innerHTML=opcionesPermiso.map(([clave,label,tipo])=>`<label class="flex items-center gap-2 rounded border bg-white px-3 py-2 text-sm"><input type="checkbox" data-permiso="${clave}" data-tipo="${tipo}" data-grupo="${prefijo}" class="h-4 w-4 rounded">${label}</label>`).join('')}
+function leerPermisos(grupo){const checks=[...document.querySelectorAll(`[data-grupo="${grupo}"]`)];return {visualizar:checks.find(x=>x.dataset.permiso==='visualizar').checked,cargar:checks.find(x=>x.dataset.permiso==='cargar').checked,editar:checks.find(x=>x.dataset.permiso==='editar').checked,eliminar:checks.find(x=>x.dataset.permiso==='eliminar').checked,administrar_perfiles:checks.find(x=>x.dataset.permiso==='administrar_perfiles').checked,modulos:checks.filter(x=>x.dataset.tipo==='modulo'&&x.checked).map(x=>x.dataset.permiso)}}
+function marcarPermisos(grupo,p){document.querySelectorAll(`[data-grupo="${grupo}"]`).forEach(x=>x.checked=x.dataset.tipo==='modulo'?(p.modulos||[]).includes(x.dataset.permiso):Boolean(p[x.dataset.permiso]))}
+function actualizarPuestos(){const opciones=puestosPorRol[rol.value]||[];puesto.innerHTML=opciones.map(x=>`<option>${escapeHtml(x)}</option>`).join('');aplicarPlantillaAlta()}
+function plantillaActual(selectRol,selectPuesto){return plantillas[selectRol.value]?.[selectPuesto.value]||null}
+function aplicarPlantillaAlta(){const p=plantillaActual(rol,puesto);if(p)marcarPermisos('alta',p)}
+async function cargarAsignaciones(){const d=await fetch('/api/asignaciones?activas=1').then(r=>r.json());const filas=d.asignaciones||[],llenar=(select,valores)=>{select.innerHTML='<option value="">Sin asignar</option>'+[...new Set(valores.filter(Boolean))].sort().map(x=>`<option>${escapeHtml(x)}</option>`).join('')};[gerenteAsignado,modalGerente].forEach(x=>llenar(x,filas.map(f=>f.gerente)));[jefeSiteAsignado,modalJefe].forEach(x=>llenar(x,filas.map(f=>f.jefe_site)))}
+function sincronizarJerarquia(selectGerente,selectJefe){const tieneGerente=Boolean(selectGerente.value);if(tieneGerente)selectJefe.value='';selectJefe.disabled=tieneGerente;selectJefe.classList.toggle('bg-slate-100',tieneGerente)}
+function actualizarPuestosModal(){const actual=modalPuesto.value;modalPuesto.innerHTML=(puestosPorRol[modalRol.value]||[]).map(x=>`<option>${escapeHtml(x)}</option>`).join('');if([...modalPuesto.options].some(x=>x.value===actual))modalPuesto.value=actual}
+function aplicarPlantillaModal(){const p=plantillaActual(modalRol,modalPuesto);if(p)marcarPermisos('modal',p)}
+function abrirAcceso(id){const u=usuariosActuales.find(x=>x.id===id);if(!u)return;idEditando=id;usuarioEditando.textContent=`${u.nombre} · ${u.email}`;modalRol.value=u.rol;actualizarPuestosModal();modalPuesto.value=u.puesto||'';modalGerente.value=u.gerente_asignado||'';modalJefe.value=u.gerente_asignado?'':(u.jefe_site_asignado||'');sincronizarJerarquia(modalGerente,modalJefe);marcarPermisos('modal',u.permisos);modalAccesos.classList.remove('hidden');modalAccesos.classList.add('flex')}
+function cerrarModal(){modalAccesos.classList.add('hidden');modalAccesos.classList.remove('flex');idEditando=null}
+async function guardarAcceso(){
+    if(!idEditando||botonGuardarAcceso.disabled)return;
+    const payload={rol:modalRol.value,puesto:modalPuesto.value,gerente_asignado:modalGerente.value,jefe_site_asignado:modalJefe.value,permisos:leerPermisos('modal')};
+    botonGuardarAcceso.disabled=true;botonGuardarAcceso.textContent='Guardando...';
+    try{
+        const r=await fetch(`/api/usuarios/${idEditando}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const d=await r.json();
+        mostrarAlerta(d.success?'Rol y accesos actualizados':(d.errores||['No se pudo actualizar']).join('. '),d.success);
+        if(d.success){cerrarModal();await cargarUsuarios()}
+    }catch(error){mostrarAlerta('No se pudo guardar el cambio. Recarga la página e intenta nuevamente.',false)}
+    finally{botonGuardarAcceso.disabled=false;botonGuardarAcceso.textContent='Guardar accesos'}
 }
 
 async function toggleActivo(id, activo) {

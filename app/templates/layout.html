@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}Dashboard Facturación{% endblock %}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/app-tailwind.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+    <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         .sidebar-link:hover { background-color: rgba(255,255,255,0.1); }
@@ -47,6 +47,7 @@
                 </button>
             </div>
             <nav class="flex-1 p-3 md:p-4 flex md:block gap-2 overflow-x-auto md:overflow-x-hidden text-sm">
+                {% if usuario_actual and usuario_actual.puede_ver_facturacion %}
                 <section class="min-w-fit md:min-w-0 md:mb-3" data-sidebar-group="facturacion">
                     <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="true" aria-controls="sidebarGroupFacturacion" onclick="toggleSidebarGroup('facturacion')">
                         <span><i class="fas fa-file-invoice-dollar mr-2 w-4"></i><span class="sidebar-text">Facturación</span></span>
@@ -80,7 +81,9 @@
                         </a>
                     </div>
                 </section>
+                {% endif %}
 
+                {% if usuario_actual and usuario_actual.puede_ver_proyecciones %}
                 <section class="min-w-fit md:min-w-0 md:mb-3" data-sidebar-group="proyectados">
                     <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="true" aria-controls="sidebarGroupProyectados" onclick="toggleSidebarGroup('proyectados')">
                         <span><i class="fas fa-calendar-check mr-2 w-4"></i><span class="sidebar-text">Proyectados</span></span>
@@ -107,7 +110,9 @@
                         </a>
                     </div>
                 </section>
+                {% endif %}
 
+                {% if usuario_actual and usuario_actual.puede_ver_directorio %}
                 <section class="min-w-fit md:min-w-0 md:mb-3" data-sidebar-group="directorio">
                     <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="true" aria-controls="sidebarGroupDirectorio" onclick="toggleSidebarGroup('directorio')">
                         <span><i class="fas fa-chart-pie mr-2 w-4"></i><span class="sidebar-text">Directorio</span></span>
@@ -156,9 +161,17 @@
                         <a href="/ratio-eli" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/ratio-eli' %}active{% endif %}">
                             <i class="fas fa-chart-area w-6"></i><span class="sidebar-text">Ratio Eli</span>
                         </a>
+                        <a href="/ratio-eli-ii" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/ratio-eli-ii' %}active{% endif %}">
+                            <i class="fas fa-chart-line w-6"></i><span class="sidebar-text">Ratio Eli II</span>
+                        </a>
+                        <a href="/share" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/share' %}active{% endif %}">
+                            <i class="fas fa-chart-simple w-6"></i><span class="sidebar-text">Share</span>
+                        </a>
                     </div>
                 </section>
+                {% endif %}
 
+                {% if usuario_actual and usuario_actual.puede_administrar_usuarios %}
                 <section class="min-w-fit md:min-w-0" data-sidebar-group="administracion">
                     <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="true" aria-controls="sidebarGroupAdministracion" onclick="toggleSidebarGroup('administracion')">
                         <span><i class="fas fa-gear mr-2 w-4"></i><span class="sidebar-text">Administración</span></span>
@@ -175,6 +188,7 @@
                         {% endif %}
                     </div>
                 </section>
+                {% endif %}
 
                 <section class="min-w-fit md:min-w-0" data-sidebar-group="ayuda">
                     <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="true" aria-controls="sidebarGroupAyuda" onclick="toggleSidebarGroup('ayuda')">
@@ -239,6 +253,68 @@
             }
             return originalFetch(input, init);
         };
+
+        // Los controles renderizados luego de cargar la página no pueden usar
+        // atributos onclick/onchange con una CSP estricta. Se convierten en
+        // listeners reales, sin eval ni Function, conservando los handlers
+        // declarativos existentes mientras se migran los componentes.
+        const eventosDinamicos = ['click', 'change', 'input', 'focus', 'submit'];
+        function separarArgumentos(texto) {
+            const partes = []; let actual = ''; let comilla = ''; let nivel = 0;
+            for (const caracter of texto) {
+                if (comilla) {
+                    actual += caracter;
+                    if (caracter === comilla && !actual.endsWith(`\\${comilla}`)) comilla = '';
+                } else if (caracter === '"' || caracter === "'") { comilla = caracter; actual += caracter; }
+                else if ('([{'.includes(caracter)) { nivel++; actual += caracter; }
+                else if (')]}'.includes(caracter)) { nivel--; actual += caracter; }
+                else if (caracter === ',' && nivel === 0) { partes.push(actual.trim()); actual = ''; }
+                else actual += caracter;
+            }
+            if (actual.trim()) partes.push(actual.trim());
+            return partes;
+        }
+        function argumentoDeclarativo(texto, elemento, evento) {
+            const valor = texto.trim();
+            if (valor === 'this') return elemento;
+            if (valor === 'event') return evento;
+            if (valor === 'this.value') return elemento.value;
+            if (valor === 'this.checked') return elemento.checked;
+            if (valor === 'true') return true;
+            if (valor === 'false') return false;
+            if (valor === 'null') return null;
+            if (/^-?\d+(\.\d+)?$/.test(valor)) return Number(valor);
+            if ((valor.startsWith("'") && valor.endsWith("'")) || (valor.startsWith('"') && valor.endsWith('"'))) return valor.slice(1, -1);
+            if (valor.startsWith('{') || valor.startsWith('[')) {
+                try { return JSON.parse(valor); } catch (_) { return valor; }
+            }
+            return valor;
+        }
+        function ejecutarHandlerDeclarativo(codigo, elemento, evento) {
+            for (const sentencia of codigo.split(';').map(x => x.trim()).filter(Boolean)) {
+                if (sentencia === 'this.select()') { elemento.select(); continue; }
+                const coincidencia = sentencia.match(/^([A-Za-z_$][\w$]*)\((.*)\)$/s);
+                if (!coincidencia || typeof window[coincidencia[1]] !== 'function') continue;
+                const argumentos = coincidencia[2].trim()
+                    ? separarArgumentos(coincidencia[2]).map(x => argumentoDeclarativo(x, elemento, evento)) : [];
+                window[coincidencia[1]](...argumentos);
+            }
+        }
+        function asegurarEventosDinamicos(raiz) {
+            const elementos = [raiz, ...(raiz.querySelectorAll ? raiz.querySelectorAll('*') : [])];
+            elementos.forEach(elemento => eventosDinamicos.forEach(tipo => {
+                const atributo = `on${tipo}`;
+                if (!elemento.hasAttribute?.(atributo) || elemento.dataset[`eventoSeguro${tipo}`]) return;
+                const codigo = elemento.getAttribute(atributo);
+                elemento.removeAttribute(atributo);
+                elemento.dataset[`eventoSeguro${tipo}`] = '1';
+                elemento.addEventListener(tipo, evento => ejecutarHandlerDeclarativo(codigo, elemento, evento));
+            }));
+        }
+        const observadorEventosDinamicos = new MutationObserver(mutaciones => mutaciones.forEach(mutacion =>
+            mutacion.addedNodes.forEach(nodo => { if (nodo.nodeType === Node.ELEMENT_NODE) asegurarEventosDinamicos(nodo); })
+        ));
+        observadorEventosDinamicos.observe(document.documentElement, { childList: true, subtree: true });
 
         (function initSidebar() {
             if (localStorage.getItem('sidebarCollapsed') === 'true') {

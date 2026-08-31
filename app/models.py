@@ -2,10 +2,102 @@ from app import db
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 import json
+import re
+import unicodedata
+from sqlalchemy.orm import validates
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
-ROLES_USUARIO = ('administrador', 'usuario', 'superusuario')
+ROLES_USUARIO = ('Full', 'Admin', 'RMO_OPS', 'Finanzas', 'Tesorero', 'RMO', 'RMO_WFM')
+
+PUESTOS_POR_ROL = {
+    'Full': ('Controller', 'Dir Gen'),
+    'Admin': ('Administrador',),
+    'RMO_OPS': ('Jefe de site', 'Gte ops'),
+    'Finanzas': ('Resp Planif y ctrl', 'Analista Planif y ctrl', 'Gte Admin', 'Analista administracion'),
+    'Tesorero': ('Tesoreria',),
+    'RMO': ('COO', 'Dir Tecnologia', 'Gte Personal', 'Gte RRHH'),
+    'RMO_WFM': ('WFM',),
+}
+
+JEFES_SITE_CANONICOS = {
+    'alejandro del soto': 'Del Soto, Alejandro', 'del soto alejandro': 'Del Soto, Alejandro',
+    'roxana de la vega': 'De la Vega, Roxana', 'de la vega roxana': 'De la Vega, Roxana',
+    'ismael rissi': 'Rissi, Ismael', 'rissi ismael': 'Rissi, Ismael',
+    'mariela ditto': 'Ditto, Mariela', 'ditto mariela': 'Ditto, Mariela',
+    'micaela antelo': 'Antelo, Micaela', 'antelo micaela': 'Antelo, Micaela',
+    'pablo chanampa': 'Chanampa, Pablo', 'chanampa pablo': 'Chanampa, Pablo',
+    'salvador almeira': 'Almeira, Salvador', 'almeira salvador': 'Almeira, Salvador',
+    'carolina surace': 'Surace, Carolina', 'surace carolina': 'Surace, Carolina',
+    'walter canalini': 'Canalini, Walter', 'canalini walter': 'Canalini, Walter',
+    'nextgen': 'NextGen', 'next gen': 'NextGen',
+}
+
+GERENTES_CANONICOS = {
+    'lucas caamano': 'Caamaño, Lucas', 'caamano lucas': 'Caamaño, Lucas',
+    'mariano quesada': 'Quesada, Mariano', 'quesada mariano': 'Quesada, Mariano',
+    'multicuentas': 'Multicuentas', 'multi cuentas': 'Multicuentas',
+    'nextgen': 'NextGen', 'next gen': 'NextGen',
+    'sin gerencia': 'Sin gerencia', 'sin gerente': 'Sin gerencia',
+}
+
+
+def _clave_nombre(valor):
+    sin_acentos = ''.join(letra for letra in unicodedata.normalize('NFD', valor)
+                          if unicodedata.category(letra) != 'Mn')
+    return re.sub(r'[^a-z0-9]+', ' ', sin_acentos.lower()).strip()
+
+
+def normalizar_gerente(valor):
+    if valor is None:
+        return None
+    limpio = re.sub(r'\s+', ' ', str(valor).strip())
+    if not limpio:
+        return None
+    return GERENTES_CANONICOS.get(_clave_nombre(limpio), limpio)
+
+
+def normalizar_jefe_site(valor):
+    """Unifica mayúsculas, coma y orden con el padrón vigente."""
+    if valor is None:
+        return None
+    limpio = re.sub(r'\s+', ' ', str(valor).strip())
+    if not limpio:
+        return None
+    return JEFES_SITE_CANONICOS.get(_clave_nombre(limpio), limpio)
+
+
+def permisos_perfil(rol, puesto=''):
+    """Matriz de acceso funcional entregada por el negocio."""
+    rol = {'administrador': 'Admin', 'superusuario': 'Full', 'usuario': 'RMO_OPS'}.get(rol, rol)
+    puesto_clave = str(puesto or '').strip().lower()
+    modulos = set()
+    if rol == 'Full':
+        modulos = {'facturacion_total', 'rmo_santander', 'rmo_multi_co', 'rmo_multi_sq',
+                   'rmo_personal', 'directorio', 'proyecciones'}
+    elif rol == 'Admin':
+        modulos = {'facturacion_total', 'rmo_santander', 'rmo_multi_co', 'rmo_multi_sq',
+                   'directorio', 'proyecciones'}
+    elif rol == 'RMO_OPS':
+        modulos = {'facturacion_asignada'}
+    elif rol == 'Finanzas' and puesto_clave in {
+        'analista planif y ctrl', 'gte admin', 'analista administracion', 'analista administracion?'
+    }:
+        modulos = {'facturacion_total', 'directorio', 'proyecciones'}
+    elif rol == 'Tesorero':
+        modulos = {'proyecciones'}
+    elif rol == 'RMO':
+        modulos = {'rmo_santander', 'rmo_multi_co', 'rmo_multi_sq', 'rmo_personal'}
+    elif rol == 'RMO_WFM':
+        modulos = {'rmo_multi_co', 'rmo_multi_sq', 'rmo_personal'}
+    return {
+        'visualizar': True,
+        'cargar': rol in ('Full', 'Admin'),
+        'editar': rol == 'Admin',
+        'eliminar': rol == 'Admin',
+        'administrar_perfiles': rol == 'Admin',
+        'modulos': modulos,
+    }
 
 # Tipos numéricos del contrato de base. ``asdecimal=False`` mantiene la
 # compatibilidad de las APIs y cálculos Python actuales, mientras que el motor
@@ -29,7 +121,12 @@ class Usuario(db.Model):
     email = db.Column(db.String(160), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     rol = db.Column(db.String(30), nullable=False, default='usuario')
+    puesto = db.Column(db.String(100), nullable=True)
+    gerente_asignado = db.Column(db.String(100), nullable=True)
+    jefe_site_asignado = db.Column(db.String(100), nullable=True)
+    permisos_personalizados = db.Column(db.Text, nullable=True)
     activo = db.Column(db.Boolean, default=True, nullable=False)
+    debe_cambiar_password = db.Column(db.Boolean, default=False, nullable=False)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -41,31 +138,74 @@ class Usuario(db.Model):
 
     @property
     def es_administrador(self):
-        return self.rol == 'administrador'
+        return self.rol in ('Admin', 'administrador')
 
     @property
     def es_superusuario(self):
-        return self.rol == 'superusuario'
+        return self.rol in ('Full', 'superusuario')
+
+    @property
+    def permisos(self):
+        base = permisos_perfil(self.rol, self.puesto)
+        if not self.permisos_personalizados:
+            return base
+        try:
+            guardados = json.loads(self.permisos_personalizados)
+        except (TypeError, ValueError):
+            return base
+        modulos_validos = {
+            'facturacion_total', 'facturacion_asignada', 'rmo_santander', 'rmo_multi_co',
+            'rmo_multi_sq', 'rmo_personal', 'directorio', 'proyecciones',
+        }
+        return {
+            'visualizar': bool(guardados.get('visualizar', True)),
+            'cargar': bool(guardados.get('cargar', False)),
+            'editar': bool(guardados.get('editar', False)),
+            'eliminar': bool(guardados.get('eliminar', False)),
+            'administrar_perfiles': bool(guardados.get('administrar_perfiles', False)),
+            'modulos': set(guardados.get('modulos') or ()) & modulos_validos,
+        }
+
+    def puede_acceder(self, modulo):
+        return self.permisos['visualizar'] and modulo in self.permisos['modulos']
+
+    @property
+    def puede_ver_facturacion(self):
+        return self.permisos['visualizar'] and any(
+            modulo.startswith(('facturacion_', 'rmo_')) for modulo in self.permisos['modulos']
+        )
+
+    @property
+    def puede_ver_directorio(self):
+        return self.puede_acceder('directorio')
+
+    @property
+    def puede_ver_proyecciones(self):
+        return self.puede_acceder('proyecciones')
 
     @property
     def puede_editar(self):
-        return self.rol in ('administrador', 'superusuario')
+        return self.permisos['editar']
+
+    @property
+    def puede_cargar(self):
+        return self.permisos['cargar']
 
     @property
     def puede_eliminar(self):
-        return self.rol == 'administrador'
+        return self.permisos['eliminar']
 
     @property
     def puede_ver_carga(self):
-        return self.rol in ('administrador', 'superusuario')
+        return self.permisos['cargar'] and self.puede_ver_facturacion
 
     @property
     def puede_ver_catalogos(self):
-        return self.rol in ('administrador', 'superusuario')
+        return self.es_administrador
 
     @property
     def puede_administrar_usuarios(self):
-        return self.rol == 'administrador'
+        return self.permisos['administrar_perfiles']
 
     def to_dict(self):
         return {
@@ -73,7 +213,12 @@ class Usuario(db.Model):
             'nombre': self.nombre,
             'email': self.email,
             'rol': self.rol,
+            'puesto': self.puesto,
+            'gerente_asignado': self.gerente_asignado,
+            'jefe_site_asignado': self.jefe_site_asignado,
+            'permisos': {**self.permisos, 'modulos': sorted(self.permisos['modulos'])},
             'activo': self.activo,
+            'debe_cambiar_password': self.debe_cambiar_password,
             'creado_en': self.creado_en.isoformat() if self.creado_en else None,
             'actualizado_en': self.actualizado_en.isoformat() if self.actualizado_en else None,
         }
@@ -145,6 +290,11 @@ class FacturacionAnio(db.Model):
     valor_hora = db.Column(DINERO, nullable=False)
     facturado_horas_manual = db.Column(DINERO, nullable=True)
     total_facturado_manual = db.Column(DINERO, nullable=True)
+    control_facturado_horas = db.Column(DINERO, nullable=True)
+    control_variable_productivo = db.Column(DINERO, nullable=True)
+    control_penalizaciones_bonos = db.Column(DINERO, nullable=True)
+    control_total_facturado = db.Column(DINERO, nullable=True)
+    control_objetivo_total = db.Column(DINERO, nullable=True)
     tarifacion = db.Column(DINERO, nullable=True)
     importe_fijo = db.Column(DINERO, nullable=True)
     variable_objetivo = db.Column(DINERO, default=0)
@@ -153,6 +303,14 @@ class FacturacionAnio(db.Model):
     penalizaciones = db.Column(DINERO, default=0)
     netx_gen = db.Column(DINERO, default=0)
     otros = db.Column(DINERO, default=0)
+
+    @validates('jefe_site')
+    def validar_jefe_site(self, _, valor):
+        return normalizar_jefe_site(valor)
+
+    @validates('gerente')
+    def validar_gerente(self, _, valor):
+        return normalizar_gerente(valor)
     justificaciones = db.relationship(
         'JustificacionAjuste',
         backref='registro',
@@ -211,6 +369,26 @@ class FacturacionAnio(db.Model):
         return -abs(valor) if valor else 0
 
     @property
+    def facturado_horas_control(self):
+        return self.control_facturado_horas if self.control_facturado_horas is not None else self.facturado_horas
+
+    @property
+    def variable_productivo_control(self):
+        return self.control_variable_productivo if self.control_variable_productivo is not None else self.variable_productivo_calculo
+
+    @property
+    def penalizaciones_bonos_control(self):
+        if self.control_penalizaciones_bonos is not None:
+            return self.control_penalizaciones_bonos
+        return self.facturado_bono + self.penalizaciones_incumplimientos
+
+    @property
+    def total_facturado_control(self):
+        if self.control_total_facturado is not None:
+            return self.control_total_facturado
+        return self.facturado_horas_control + self.variable_productivo_control + self.penalizaciones_bonos_control
+
+    @property
     def porcentaje_cumplimiento_horas(self):
         if self.horas_objetivo == 0:
             return 0
@@ -261,9 +439,9 @@ class FacturacionAnio(db.Model):
 
     @property
     def total_teorico(self):
-        """Calcula el total objetivo: horas_objetivo por valor_hora_objetivo."""
-        if self.usa_importe_fijo:
-            return self.importe_fijo
+        """Total de Facturación Objetivo, respetando el control del Excel."""
+        if self.control_objetivo_total is not None:
+            return self.control_objetivo_total
         return self.facturacion_objetivo
 
     @property
@@ -306,6 +484,11 @@ class FacturacionAnio(db.Model):
             'valor_hora': self.valor_hora,
             'facturado_horas_manual': self.facturado_horas_manual,
             'total_facturado_manual': self.total_facturado_manual,
+            'control_facturado_horas': self.control_facturado_horas,
+            'control_variable_productivo': self.control_variable_productivo,
+            'control_penalizaciones_bonos': self.control_penalizaciones_bonos,
+            'control_total_facturado': self.control_total_facturado,
+            'control_objetivo_total': self.control_objetivo_total,
             'tarifacion': self.tarifacion,
             'importe_fijo': self.importe_fijo,
             'variable_objetivo': self.variable_objetivo,
@@ -469,6 +652,14 @@ class PersonalDistribucionHoras(db.Model):
     porcentaje_diurno = db.Column(PORCENTAJE, default=100, nullable=False)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    @validates('gerente_asignado')
+    def validar_gerente_asignado(self, _, valor):
+        return normalizar_gerente(valor)
+
+    @validates('jefe_site_asignado')
+    def validar_jefe_site_asignado(self, _, valor):
+        return normalizar_jefe_site(valor)
 
     __table_args__ = (
         db.UniqueConstraint('servicio', 'mes', name='uq_personal_distribucion_servicio_mes'),
@@ -712,6 +903,30 @@ class RatioEliMensual(db.Model):
         return {'id': self.id, 'fecha': self.fecha.isoformat(), 'mes': self.fecha.strftime('%Y-%m'), 'requerido': r, 'staff': s, 'ratio': s/r if r else None}
 
 
+class RatioEliIIMensual(db.Model):
+    __tablename__ = 'ratio_eli_ii_mensual'
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False, unique=True, index=True)
+    operaciones = db.Column(HORAS, nullable=False)
+    staff = db.Column(HORAS, nullable=False)
+    operaciones_importe = db.Column(DINERO, nullable=False, default=0)
+    staff_importe = db.Column(DINERO, nullable=False, default=0)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        operaciones, staff = float(self.operaciones or 0), float(self.staff or 0)
+        operaciones_importe, staff_importe = float(self.operaciones_importe or 0), float(self.staff_importe or 0)
+        return {
+            'id': self.id, 'fecha': self.fecha.isoformat(), 'mes': self.fecha.strftime('%Y-%m'),
+            'operaciones': operaciones, 'staff': staff, 'total': operaciones + staff,
+            'ratio': staff / operaciones if operaciones else None,
+            'operaciones_importe': operaciones_importe, 'staff_importe': staff_importe,
+            'total_importe': operaciones_importe + staff_importe,
+            'ratio_importe': staff_importe / operaciones_importe if operaciones_importe else None,
+        }
+
+
 class DashboardOperativo(db.Model):
     """Fila mensual importada del Dashboard; bajas se conserva manualmente."""
     __tablename__ = 'dashboard_operativo'
@@ -884,9 +1099,19 @@ class AsignacionComercial(db.Model):
     tipo_negocio = db.Column(db.String(100), nullable=True)
     es_next_gen = db.Column(db.Boolean, default=False, nullable=False)
     activa = db.Column(db.Boolean, default=True, nullable=False)
+    vigencia_desde = db.Column(db.String(7), nullable=True, index=True)
+    vigencia_hasta = db.Column(db.String(7), nullable=True, index=True)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     campania_catalogo = db.relationship('Campania', lazy=True)
+
+    @validates('jefe_site')
+    def validar_jefe_site(self, _, valor):
+        return normalizar_jefe_site(valor)
+
+    @validates('gerente')
+    def validar_gerente(self, _, valor):
+        return normalizar_gerente(valor)
 
     @property
     def label(self):
@@ -907,5 +1132,7 @@ class AsignacionComercial(db.Model):
             'tipo_negocio': self.tipo_negocio,
             'es_next_gen': bool(self.es_next_gen),
             'activa': self.activa,
+            'vigencia_desde': self.vigencia_desde,
+            'vigencia_hasta': self.vigencia_hasta,
             'label': self.label
         }

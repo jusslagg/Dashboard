@@ -385,13 +385,12 @@ function normalizarBusqueda(valor) {
 }
 
 function accionesAsignacion(item) {
-    const itemJson = escapeHtml(JSON.stringify(item));
     const acciones = [
-        `<button onclick='editarAsignacion(${itemJson})' class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Editar</button>`,
-        `<button onclick="toggleAsignacion(${item.id}, ${!item.activa})" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1 rounded text-xs ml-1">${item.activa ? 'Desactivar' : 'Activar'}</button>`,
+        `<button type="button" data-accion-asignacion="editar" data-id="${item.id}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Editar</button>`,
+        `<button type="button" data-accion-asignacion="estado" data-id="${item.id}" data-activa="${!item.activa}" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1 rounded text-xs ml-1">${item.activa ? 'Desactivar' : 'Activar'}</button>`,
     ];
     if (puedeEliminar) {
-        acciones.push(`<button onclick="eliminarAsignacion(${item.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs ml-1">Eliminar</button>`);
+        acciones.push(`<button type="button" data-accion-asignacion="eliminar" data-id="${item.id}" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs ml-1">Eliminar</button>`);
     }
     return acciones.join('');
 }
@@ -460,6 +459,18 @@ function getPayload() {
         vigencia_desde: document.getElementById('vigencia_desde').value
     };
 }
+
+document.getElementById('tablaAsignaciones').addEventListener('click', event => {
+    const boton = event.target.closest('[data-accion-asignacion][data-id]');
+    if (!boton) return;
+    const id = Number(boton.dataset.id);
+    if (boton.dataset.accionAsignacion === 'editar') {
+        const item = asignacionesCatalogo.find(asignacion => Number(asignacion.id) === id);
+        if (item) editarAsignacion(item);
+    }
+    if (boton.dataset.accionAsignacion === 'estado') toggleAsignacion(id, boton.dataset.activa === 'true');
+    if (boton.dataset.accionAsignacion === 'eliminar') eliminarAsignacion(id);
+});
 
 async function cargarConfiguracionValorHora() {
     const tbody = document.getElementById('tablaConfiguracionValorHora');

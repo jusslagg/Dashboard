@@ -1,6 +1,10 @@
 # filepath: app/__init__.py
 import os
 import secrets
+import base64
+import hashlib
+import html
+import re
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
@@ -14,8 +18,6 @@ db = SQLAlchemy()
 
 
 DEFAULT_TRUSTED_ORIGINS = (
-    'http://127.0.0.1:3000',
-    'http://localhost:3000',
     'http://127.0.0.1:8009',
     'http://localhost:8009',
 )
@@ -38,7 +40,8 @@ def create_app():
     app.config['TEMPLATES_AUTO_RELOAD'] = os.getenv('TEMPLATES_AUTO_RELOAD', '0') == '1'
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
-    app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', '0') == '1'
+    cookie_secure_config = os.getenv('SESSION_COOKIE_SECURE', '0') == '1'
+    app.config['SESSION_COOKIE_SECURE'] = environment == 'production' or cookie_secure_config
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=int(os.getenv('SESSION_MINUTES', '60')))
     app.config['DEFAULT_YEAR'] = configured_year('APP_DEFAULT_YEAR', datetime.now().year)
     app.config['PLP_BASE_YEAR'] = configured_year('PLP_BASE_YEAR', 2026)
@@ -68,22 +71,48 @@ def create_app():
 
     @app.after_request
     def add_security_headers(response):
+        csp_nonce = secrets.token_urlsafe(18)
+        script_attr_hashes = set()
+        style_attr_hashes = set()
+        if response.mimetype == 'text/html' and not response.direct_passthrough:
+            contenido = response.get_data(as_text=True)
+            contenido = re.sub(
+                r'<(script|style)(?=[\s>])',
+                lambda match: f'<{match.group(1)} nonce="{csp_nonce}"',
+                contenido,
+                flags=re.IGNORECASE,
+            )
+            patron_atributo = r'\s(on[a-z]+|style)\s*=\s*(["\'])(.*?)\2'
+            for atributo, _, valor in re.findall(patron_atributo, contenido, re.IGNORECASE | re.DOTALL):
+                digest = base64.b64encode(
+                    hashlib.sha256(html.unescape(valor).encode('utf-8')).digest()
+                ).decode('ascii')
+                destino = style_attr_hashes if atributo.lower() == 'style' else script_attr_hashes
+                destino.add(f"'sha256-{digest}'")
+            response.set_data(contenido)
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
         response.headers.setdefault('X-Frame-Options', 'DENY')
         response.headers.setdefault('Referrer-Policy', 'same-origin')
         response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
+        response.headers.setdefault('X-Permitted-Cross-Domain-Policies', 'none')
         response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
-        connect_sources = ' '.join(sorted(app.config['TRUSTED_ORIGINS']))
+        script_attrs = ' '.join(sorted(script_attr_hashes)) or "'none'"
+        style_attrs = ' '.join(sorted(style_attr_hashes)) or "'none'"
         response.headers.setdefault(
             'Content-Security-Policy',
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+            f"script-src 'self' 'nonce-{csp_nonce}'; "
+            f"script-src-elem 'self' 'nonce-{csp_nonce}'; "
+            f"script-src-attr 'unsafe-hashes' {script_attrs}; "
+            f"style-src 'self' 'nonce-{csp_nonce}'; "
+            f"style-src-elem 'self' 'nonce-{csp_nonce}'; "
+            f"style-src-attr 'unsafe-hashes' {style_attrs}; "
             "img-src 'self' data:; "
-            "font-src 'self' data: https://cdnjs.cloudflare.com; "
-            f"connect-src 'self' {connect_sources}; "
+            "font-src 'self' data:; "
+            "connect-src 'self'; object-src 'none'; "
             "frame-ancestors 'none'; "
-            "base-uri 'self'; "
+            "base-uri 'none'; "
             "form-action 'self'"
         )
         response.headers.setdefault('Cache-Control', 'no-store')
@@ -177,6 +206,16 @@ def migrar_tabla_facturacion_legacy():
             'Existen simultáneamente facturacion_2026 y facturacion_anio; '
             'se requiere conciliación manual antes de iniciar.'
         )
+        response.headers.setdefault(
+            'Content-Security-Policy-Report-Only',
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self'; "
+            "img-src 'self' data:; "
+            "font-src 'self' data:; "
+            "connect-src 'self'; "
+            "object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        )
     db.session.execute(text('ALTER TABLE facturacion_2026 RENAME TO facturacion_anio'))
     db.session.commit()
 
@@ -229,6 +268,33 @@ def migrar_tipos_numericos_postgresql():
 
 def ensure_schema():
     inspector = inspect(db.engine)
+    if inspector.has_table('usuarios'):
+        usuario_columns = {column['name'] for column in inspector.get_columns('usuarios')}
+        if 'debe_cambiar_password' not in usuario_columns:
+            db.session.execute(text(
+                'ALTER TABLE usuarios ADD COLUMN debe_cambiar_password BOOLEAN DEFAULT 0 NOT NULL'
+            ))
+            db.session.commit()
+        for nombre_columna in ('puesto', 'gerente_asignado', 'jefe_site_asignado'):
+            if nombre_columna not in usuario_columns:
+                db.session.execute(text(
+                    f'ALTER TABLE usuarios ADD COLUMN {nombre_columna} VARCHAR(100)'
+                ))
+        if 'permisos_personalizados' not in usuario_columns:
+            db.session.execute(text('ALTER TABLE usuarios ADD COLUMN permisos_personalizados TEXT'))
+        db.session.execute(text("UPDATE usuarios SET rol = 'Admin' WHERE rol = 'administrador'"))
+        db.session.execute(text("UPDATE usuarios SET rol = 'Full' WHERE rol = 'superusuario'"))
+        db.session.execute(text("UPDATE usuarios SET rol = 'RMO_OPS' WHERE rol = 'usuario'"))
+        db.session.execute(text("UPDATE usuarios SET puesto = 'Administrador' WHERE rol = 'Admin' AND (puesto IS NULL OR puesto = '')"))
+        db.session.execute(text("UPDATE usuarios SET puesto = 'Controller' WHERE rol = 'Full' AND (puesto IS NULL OR puesto = '')"))
+        db.session.commit()
+    if inspector.has_table('ratio_eli_ii_mensual'):
+        ratio_ii_columns = {column['name'] for column in inspector.get_columns('ratio_eli_ii_mensual')}
+        if 'operaciones_importe' not in ratio_ii_columns:
+            db.session.execute(text('ALTER TABLE ratio_eli_ii_mensual ADD COLUMN operaciones_importe NUMERIC(18,2) DEFAULT 0 NOT NULL'))
+        if 'staff_importe' not in ratio_ii_columns:
+            db.session.execute(text('ALTER TABLE ratio_eli_ii_mensual ADD COLUMN staff_importe NUMERIC(18,2) DEFAULT 0 NOT NULL'))
+        db.session.commit()
     asegurar_administrador_inicial_db()
     if not inspector.has_table('facturacion_anio'):
         return
@@ -240,6 +306,10 @@ def ensure_schema():
         db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN tipo_negocio VARCHAR(100)"))
     if asignacion_columns and 'es_next_gen' not in asignacion_columns:
         db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN es_next_gen BOOLEAN DEFAULT 0 NOT NULL"))
+    if asignacion_columns and 'vigencia_desde' not in asignacion_columns:
+        db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN vigencia_desde VARCHAR(7)"))
+    if asignacion_columns and 'vigencia_hasta' not in asignacion_columns:
+        db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN vigencia_hasta VARCHAR(7)"))
     if inspector.has_table('asignaciones_comerciales'):
         asignacion_columns = {column['name'] for column in inspector.get_columns('asignaciones_comerciales')}
         if 'campania_id' not in asignacion_columns:
@@ -247,6 +317,14 @@ def ensure_schema():
         db.session.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_asignaciones_comerciales_campania_id "
             "ON asignaciones_comerciales (campania_id)"
+        ))
+        db.session.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_asignaciones_comerciales_vigencia_desde "
+            "ON asignaciones_comerciales (vigencia_desde)"
+        ))
+        db.session.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_asignaciones_comerciales_vigencia_hasta "
+            "ON asignaciones_comerciales (vigencia_hasta)"
         ))
         db.session.execute(text("""
             INSERT INTO campanias (cliente, nombre, activa, creado_en)
@@ -401,6 +479,11 @@ def ensure_schema():
         'valor_hora_objetivo': 'ALTER TABLE facturacion_anio ADD COLUMN valor_hora_objetivo NUMERIC(18,2)',
         'facturado_horas_manual': 'ALTER TABLE facturacion_anio ADD COLUMN facturado_horas_manual NUMERIC(18,2)',
         'total_facturado_manual': 'ALTER TABLE facturacion_anio ADD COLUMN total_facturado_manual NUMERIC(18,2)',
+        'control_facturado_horas': 'ALTER TABLE facturacion_anio ADD COLUMN control_facturado_horas NUMERIC(18,2)',
+        'control_variable_productivo': 'ALTER TABLE facturacion_anio ADD COLUMN control_variable_productivo NUMERIC(18,2)',
+        'control_penalizaciones_bonos': 'ALTER TABLE facturacion_anio ADD COLUMN control_penalizaciones_bonos NUMERIC(18,2)',
+        'control_total_facturado': 'ALTER TABLE facturacion_anio ADD COLUMN control_total_facturado NUMERIC(18,2)',
+        'control_objetivo_total': 'ALTER TABLE facturacion_anio ADD COLUMN control_objetivo_total NUMERIC(18,2)',
         'importe_fijo': 'ALTER TABLE facturacion_anio ADD COLUMN importe_fijo NUMERIC(18,2)',
         'variable_objetivo': 'ALTER TABLE facturacion_anio ADD COLUMN variable_objetivo NUMERIC(18,2) DEFAULT 0',
         'variable_productivo': 'ALTER TABLE facturacion_anio ADD COLUMN variable_productivo NUMERIC(18,2) DEFAULT 0',
@@ -463,7 +546,7 @@ def asegurar_administrador_inicial_db():
         return
     if Usuario.query.count() == 0:
         return
-    if Usuario.query.filter_by(rol='administrador').first():
+    if Usuario.query.filter(Usuario.rol.in_(('Admin', 'administrador'))).first():
         return
 
     primer_usuario = Usuario.query.order_by(Usuario.creado_en.asc(), Usuario.id.asc()).first()
@@ -471,7 +554,7 @@ def asegurar_administrador_inicial_db():
         return
 
     rol_anterior = primer_usuario.rol
-    primer_usuario.rol = 'administrador'
+    primer_usuario.rol = 'Admin'
     if inspector.has_table('historial_cambios'):
         db.session.add(HistorialCambio(
             usuario_id=primer_usuario.id,

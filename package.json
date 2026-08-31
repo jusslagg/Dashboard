@@ -1,14 +1,12 @@
 {
-  "name": "dashboard-facturacion",
-  "version": "1.0.0",
   "private": true,
-  "description": "App Next.js con backend Flask temporal para control de facturacion.",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "flask:dev": "python run.py",
-    "next:dev": "npm --prefix next-app run dev",
-    "build": "npm --prefix next-app run build",
-    "verify:python": "python scripts/verificar_entrega.py",
-    "start": "node scripts/dev.mjs"
+    "build:css": "tailwindcss -i ./assets/tailwind.css -o ./app/static/vendor/app-tailwind.css --minify"
+  },
+  "devDependencies": {
+    "@fortawesome/fontawesome-free": "6.7.2",
+    "chart.js": "4.4.7",
+    "lucide": "0.468.0",
+    "tailwindcss": "3.4.17"
   }
 }

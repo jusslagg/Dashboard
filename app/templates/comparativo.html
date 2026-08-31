@@ -281,13 +281,13 @@ function popularSelect(id, valores, placeholder, formatter, seleccionado) {
         const todosSeleccionados = valores.length > 0 && valores.every(valor => seleccionados.includes(valor));
         const opcionesHtml = valores.map(valor => `
             <label class="flex items-center gap-2 py-1 cursor-pointer" data-opcion-texto="${formatter(valor).toLowerCase()}">
-                <input type="checkbox" value="${valor}" ${seleccionados.includes(valor) ? 'checked' : ''} onchange="actualizarTodosMultiple('${id}'); actualizarResumenMultiple('${id}'); onFiltroMultipleChange()" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <input type="checkbox" value="${valor}" ${seleccionados.includes(valor) ? 'checked' : ''} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                 <span>${formatter(valor)}</span>
             </label>
         `).join('');
         select.innerHTML = valores.length ? `
             <label class="flex items-center gap-2 py-1 mb-1 cursor-pointer border-b border-gray-200 font-semibold">
-                <input type="checkbox" data-todos="true" ${todosSeleccionados ? 'checked' : ''} onchange="toggleTodosMultiple('${id}', this.checked)" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <input type="checkbox" data-todos="true" ${todosSeleccionados ? 'checked' : ''} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                 <span>Todos</span>
             </label>
             ${opcionesHtml}
@@ -314,8 +314,16 @@ function toggleTodosMultiple(id, checked) {
         input.checked = checked;
     });
     actualizarResumenMultiple(id);
-    onFiltroMultipleChange();
 }
+
+document.addEventListener('change', async event => {
+    const input = event.target.closest('[data-lista-multiple="true"] input[type="checkbox"]');
+    if (!input) return;
+    const control = input.closest('[data-lista-multiple="true"]');
+    if (input.dataset.todos === 'true') toggleTodosMultiple(control.id, input.checked);
+    else { actualizarTodosMultiple(control.id); actualizarResumenMultiple(control.id); }
+    await onFiltroChange();
+});
 
 function actualizarTodosMultiple(id) {
     const control = document.getElementById(id);

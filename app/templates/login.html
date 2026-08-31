@@ -70,7 +70,7 @@ document.getElementById('formLogin').addEventListener('submit', async (event) =>
         mostrarAlerta((data.errores || ['No se pudo ingresar']).join('. '), false);
         return;
     }
-    window.location.href = '/';
+    window.location.href = data.requiere_cambio_password ? '/cambiar-contrasena' : '/';
 });
 
 function mostrarAlerta(texto, ok) {

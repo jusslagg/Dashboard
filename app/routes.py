@@ -1,7 +1,7 @@
 ﻿# filepath: app/routes.py
 from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
 from app import db, get_csrf_token
-from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, ROLES_USUARIO, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
+from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
 import calendar
 from sqlalchemy import func, or_
@@ -115,6 +115,8 @@ ALIAS_IMPORTACION = {
     'bono objetivo': 'variable_objetivo',
     'objetivo facturacion bono': 'variable_objetivo',
     'objetivo facturación bono': 'variable_objetivo',
+    'facturacion objetivo': 'control_objetivo_total',
+    'facturación objetivo': 'control_objetivo_total',
     'variable productivo': 'variable_productivo',
     'variable_productivo': 'variable_productivo',
     'tarifación': 'tarifacion',
@@ -304,12 +306,17 @@ def requiere_login():
 
 def requiere_admin():
     usuario = usuario_actual()
-    return usuario is not None and usuario.activo and usuario.es_administrador
+    return usuario is not None and usuario.activo and usuario.puede_administrar_usuarios
 
 
 def requiere_edicion():
     usuario = usuario_actual()
     return usuario is not None and usuario.activo and usuario.puede_editar
+
+
+def requiere_carga():
+    usuario = usuario_actual()
+    return usuario is not None and usuario.activo and usuario.puede_cargar
 
 
 def requiere_eliminacion():
@@ -332,6 +339,11 @@ def login_requerido(func):
             return respuesta_no_autorizado()
         if not requiere_login():
             return respuesta_no_autorizado()
+        usuario = usuario_actual()
+        if usuario.debe_cambiar_password:
+            if request.path.startswith('/api/'):
+                return jsonify({'success': False, 'requiere_cambio_password': True, 'errores': ['Debe cambiar su contrasena temporal']}), 428
+            return redirect(url_for('main.cambiar_password_obligatorio'))
         return func(*args, **kwargs)
     return wrapper
 
@@ -344,14 +356,103 @@ def permiso_requerido(verificador):
                 return respuesta_no_autorizado()
             if not verificador():
                 return respuesta_no_autorizado()
+            usuario = usuario_actual()
+            if usuario.debe_cambiar_password:
+                if request.path.startswith('/api/'):
+                    return jsonify({'success': False, 'requiere_cambio_password': True, 'errores': ['Debe cambiar su contrasena temporal']}), 428
+                return redirect(url_for('main.cambiar_password_obligatorio'))
             return func(*args, **kwargs)
         return wrapper
     return decorator
 
 
 admin_requerido = permiso_requerido(requiere_admin)
+carga_requerida = permiso_requerido(requiere_carga)
 edicion_requerida = permiso_requerido(requiere_edicion)
 eliminacion_requerida = permiso_requerido(requiere_eliminacion)
+
+
+def edicion_si_mutacion_requerida(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        verificador = requiere_login if request.method in ('GET', 'HEAD', 'OPTIONS') else requiere_edicion
+        if not verificador():
+            return respuesta_no_autorizado()
+        usuario = usuario_actual()
+        if usuario.debe_cambiar_password:
+            return respuesta_no_autorizado()
+        return func(*args, **kwargs)
+    return wrapper
+
+
+RUTAS_DIRECTORIO = (
+    '/reloj', '/indicadores', '/dotaciones', '/graficos-dotaciones',
+    '/graficos-evolutivo-dotaciones', '/variacion-anual', '/variacion-horas-clientes',
+    '/dashboard-operativo', '/historico-clientes', '/cumplimiento-horas-clientes',
+    '/cumplimiento-facturacion-clientes', '/comparativo-interanual',
+    '/comparativo-anual-clientes', '/ratio-eli', '/ratio-eli-ii', '/share',
+    '/api/reloj', '/api/indicadores', '/api/dotaciones', '/api/graficos-dotaciones',
+    '/api/graficos-evolutivo-dotaciones', '/api/variacion-anual',
+    '/api/variacion-horas-clientes', '/api/dashboard-operativo',
+    '/api/historico-clientes', '/api/cumplimiento-', '/api/comparativo-interanual',
+    '/api/comparativo-anual-clientes', '/api/ratio-eli', '/api/ratio-eli-ii', '/api/share',
+)
+RUTAS_PROYECCIONES = (
+    '/matriz-proyecciones', '/matriz-precios', '/suma-fija', '/resumen', '/variable',
+    '/control-proyecciones', '/calendario-operativo', '/api/proyeccion',
+    '/api/matriz-proyecciones', '/api/precios', '/api/suma-fija', '/api/variable',
+    '/api/control-proyecciones', '/api/calendario-operativo', '/api/feriados',
+)
+RUTAS_PUBLICAS_AUTENTICADAS = (
+    '/login', '/logout', '/cambiar-password', '/api/auth/', '/api/usuarios/setup',
+    '/guia-usuario', '/api/sesion', '/favicon.ico',
+)
+
+
+def modulo_solicitado(path):
+    if any(path.startswith(prefijo) for prefijo in RUTAS_DIRECTORIO):
+        return 'directorio'
+    if any(path.startswith(prefijo) for prefijo in RUTAS_PROYECCIONES):
+        return 'proyecciones'
+    if path.startswith(('/api/asignaciones', '/api/campanias')):
+        return 'maestros_api'
+    if path.startswith(('/usuarios', '/api/usuarios', '/catalogos', '/documentacion-tecnica')):
+        return 'usuarios'
+    if path.startswith('/historial') or path.startswith('/api/historial'):
+        return 'historial'
+    if path.startswith(RUTAS_PUBLICAS_AUTENTICADAS):
+        return None
+    return 'facturacion'
+
+
+@main_bp.before_request
+def proteger_modulos_por_perfil():
+    usuario = usuario_actual()
+    if not usuario or not usuario.activo or usuario.debe_cambiar_password:
+        return None
+    modulo = modulo_solicitado(request.path)
+    autorizado = (
+        modulo is None
+        or (modulo == 'facturacion' and usuario.puede_ver_facturacion)
+        or (modulo == 'directorio' and usuario.puede_ver_directorio)
+        or (modulo == 'proyecciones' and usuario.puede_ver_proyecciones)
+        or (modulo == 'maestros_api' and (usuario.puede_administrar_usuarios or usuario.puede_cargar))
+        or (modulo in ('usuarios', 'historial') and usuario.puede_administrar_usuarios)
+    )
+    if autorizado:
+        return None
+    if request.path == '/':
+        if usuario.puede_ver_directorio:
+            return redirect(url_for('main.reloj'))
+        if usuario.puede_ver_proyecciones:
+            return redirect(url_for('main.matriz_proyecciones'))
+        # Un perfil válido puede no tener módulos de negocio asignados todavía.
+        # En ese caso conserva el acceso a Ayuda en lugar de recibir un 403 al
+        # completar correctamente el inicio de sesión.
+        return redirect(url_for('main.guia_usuario'))
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'errores': ['El perfil no tiene acceso a este módulo']}), 403
+    return Response('Acceso no autorizado para el perfil asignado.', status=403)
 
 
 def usuarios_registrados():
@@ -362,12 +463,12 @@ def asegurar_administrador_inicial():
     """Promueve el primer usuario existente a administrador si aun no hay admin."""
     if not usuarios_registrados():
         return None
-    if Usuario.query.filter_by(rol='administrador').first():
+    if Usuario.query.filter(Usuario.rol.in_(('Admin', 'administrador'))).first():
         return None
     primer_usuario = Usuario.query.order_by(Usuario.creado_en.asc(), Usuario.id.asc()).first()
     if primer_usuario:
         rol_anterior = primer_usuario.rol
-        primer_usuario.rol = 'administrador'
+        primer_usuario.rol = 'Admin'
         registrar_historial(
             'edicion',
             'usuario',
@@ -416,6 +517,7 @@ def validar_usuario_payload(data, require_password=False):
     email = normalizar_email(data.get('email'))
     password = str(data.get('password', '') or '')
     rol = str(data.get('rol', 'usuario')).strip()
+    puesto = str(data.get('puesto', '') or '').strip()
 
     if not nombre:
         errores.append('El nombre es obligatorio')
@@ -431,7 +533,32 @@ def validar_usuario_payload(data, require_password=False):
         errores.append('La contrasena debe combinar mayusculas, minusculas y numeros')
     if rol not in ROLES_USUARIO:
         errores.append('El rol no es valido')
+    elif puesto and puesto not in PUESTOS_POR_ROL.get(rol, ()):
+        errores.append('El puesto no corresponde al perfil seleccionado')
+    elif rol != 'Full' and not puesto:
+        errores.append('El puesto es obligatorio')
     return errores
+
+
+MODULOS_PERMISO = {
+    'facturacion_total', 'facturacion_asignada', 'rmo_santander', 'rmo_multi_co',
+    'rmo_multi_sq', 'rmo_personal', 'directorio', 'proyecciones',
+}
+
+
+def normalizar_permisos_usuario(valor):
+    if valor is None:
+        return None
+    if not isinstance(valor, dict):
+        raise ValueError('Los permisos deben enviarse como un objeto')
+    return {
+        'visualizar': bool(valor.get('visualizar', True)),
+        'cargar': bool(valor.get('cargar', False)),
+        'editar': bool(valor.get('editar', False)),
+        'eliminar': bool(valor.get('eliminar', False)),
+        'administrar_perfiles': bool(valor.get('administrar_perfiles', False)),
+        'modulos': sorted(set(valor.get('modulos') or ()) & MODULOS_PERMISO),
+    }
 
 
 def filtrar_valores_exactos(query, columna, valores):
@@ -455,6 +582,14 @@ def aplicar_filtros(
     horas_facturadas_min=None,
     horas_facturadas_max=None,
 ):
+    usuario = usuario_actual()
+    if usuario and usuario.activo and not usuario.puede_acceder('facturacion_total'):
+        # El gerente es el nivel jerárquico superior: al seleccionarlo se incluyen
+        # automáticamente todos sus jefes, clientes y campañas de Datos Maestros.
+        if usuario.gerente_asignado:
+            query = query.filter(func.lower(Facturacion2026.gerente) == usuario.gerente_asignado.lower())
+        elif usuario.jefe_site_asignado:
+            query = query.filter(func.lower(Facturacion2026.jefe_site) == usuario.jefe_site_asignado.lower())
     if year:
         years = year if isinstance(year, list) else [year]
         condiciones = [Facturacion2026.mes.like(f'{valor}-%') for valor in years]
@@ -757,6 +892,11 @@ def crear_registro_facturacion(data, exigir_configuracion_valor_hora=True, prese
         valor_hora=parse_numero(data.get('valor_hora')),
         facturado_horas_manual=parse_numero(data.get('facturado_horas_manual')) if data.get('facturado_horas_manual') not in (None, '') else None,
         total_facturado_manual=parse_numero(data.get('total_facturado_manual')) if data.get('total_facturado_manual') not in (None, '') else None,
+        control_facturado_horas=parse_numero(data.get('control_facturado_horas')) if data.get('control_facturado_horas') not in (None, '') else None,
+        control_variable_productivo=parse_numero(data.get('control_variable_productivo')) if data.get('control_variable_productivo') not in (None, '') else None,
+        control_penalizaciones_bonos=parse_numero(data.get('control_penalizaciones_bonos')) if data.get('control_penalizaciones_bonos') not in (None, '') else None,
+        control_total_facturado=parse_numero(data.get('control_total_facturado')) if data.get('control_total_facturado') not in (None, '') else None,
+        control_objetivo_total=parse_numero(data.get('control_objetivo_total')) if data.get('control_objetivo_total') not in (None, '') else None,
         tarifacion=parse_numero(data.get('tarifacion')) if data.get('tarifacion') not in (None, '') else None,
         importe_fijo=parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None,
         variable_objetivo=parse_numero(data.get('variable_objetivo')),
@@ -801,6 +941,11 @@ def actualizar_registro_facturacion(registro, data, exigir_configuracion_valor_h
     registro.valor_hora = parse_numero(data.get('valor_hora'))
     registro.facturado_horas_manual = parse_numero(data.get('facturado_horas_manual')) if data.get('facturado_horas_manual') not in (None, '') else None
     registro.total_facturado_manual = parse_numero(data.get('total_facturado_manual')) if data.get('total_facturado_manual') not in (None, '') else None
+    registro.control_facturado_horas = parse_numero(data.get('control_facturado_horas')) if data.get('control_facturado_horas') not in (None, '') else None
+    registro.control_variable_productivo = parse_numero(data.get('control_variable_productivo')) if data.get('control_variable_productivo') not in (None, '') else None
+    registro.control_penalizaciones_bonos = parse_numero(data.get('control_penalizaciones_bonos')) if data.get('control_penalizaciones_bonos') not in (None, '') else None
+    registro.control_total_facturado = parse_numero(data.get('control_total_facturado')) if data.get('control_total_facturado') not in (None, '') else None
+    registro.control_objetivo_total = parse_numero(data.get('control_objetivo_total')) if data.get('control_objetivo_total') not in (None, '') else None
     registro.tarifacion = parse_numero(data.get('tarifacion')) if data.get('tarifacion') not in (None, '') else None
     registro.importe_fijo = parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None
     registro.variable_objetivo = parse_numero(data.get('variable_objetivo'))
@@ -823,6 +968,8 @@ def query_reemplazo_importacion(data):
         Facturacion2026.jefe_site == data.get('jefe_site', '').strip(),
         Facturacion2026.campania == data.get('campania', '').strip(),
         Facturacion2026.subcampania == data.get('subcampania', '').strip(),
+        Facturacion2026.tipo_jornada == normalizar_tipo_vh(data.get('tipo_jornada')),
+        Facturacion2026.tipo_negocio == (str(data.get('tipo_negocio') or '').strip() or None),
     )
 
 
@@ -835,6 +982,8 @@ def clave_reemplazo_importacion(data):
         data.get('jefe_site', '').strip(),
         data.get('campania', '').strip(),
         data.get('subcampania', '').strip(),
+        normalizar_tipo_vh(data.get('tipo_jornada')),
+        str(data.get('tipo_negocio') or '').strip(),
     ])
 
 
@@ -908,8 +1057,8 @@ def filas_desde_xlsx(contenido_bytes):
                 rel_id = first_sheet.attrib.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id')
                 for rel in rels.findall('rel:Relationship', ns):
                     if rel.attrib.get('Id') == rel_id:
-                        target = rel.attrib.get('Target', 'worksheets/sheet1.xml')
-                        sheet_path = 'xl/' + target.lstrip('/')
+                        target = rel.attrib.get('Target', 'worksheets/sheet1.xml').replace('\\', '/').lstrip('/')
+                        sheet_path = target if target.startswith('xl/') else f'xl/{target}'
                         break
 
         sheet = ET.fromstring(archivo.read(sheet_path))
@@ -942,7 +1091,21 @@ def filas_desde_xlsx(contenido_bytes):
 def datos_desde_filas(filas):
     if not filas:
         return []
-    headers = [resolver_header(header) for header in filas[0]]
+    headers = []
+    repeticiones = defaultdict(int)
+    controles_repetidos = {
+        'facturado_horas_manual': 'control_facturado_horas',
+        'variable_productivo': 'control_variable_productivo',
+        'total_facturado_informado': 'control_total_facturado',
+    }
+    for header in filas[0]:
+        resuelto = resolver_header(header)
+        repeticiones[resuelto] += 1
+        if resuelto in controles_repetidos and repeticiones[resuelto] > 1:
+            resuelto = controles_repetidos[resuelto]
+        if normalizar_header(header) in ('penalizaciones por incumplimientos', 'penalizacion por incumplimientos'):
+            resuelto = 'control_penalizaciones_bonos'
+        headers.append(resuelto)
     datos = []
     for fila in filas[1:]:
         if not any(str(celda).strip() for celda in fila):
@@ -950,7 +1113,8 @@ def datos_desde_filas(filas):
         item = {}
         for indice, valor in enumerate(fila):
             if indice < len(headers) and headers[indice]:
-                item[headers[indice]] = valor.strip() if isinstance(valor, str) else valor
+                if headers[indice] not in item:
+                    item[headers[indice]] = valor.strip() if isinstance(valor, str) else valor
         datos.append(item)
     return datos
 
@@ -1005,6 +1169,17 @@ def resolver_asignacion_importacion(item):
         if cuenta_coincide_servicio:
             coincidencias_cuenta.append(asignacion)
     coincidencias = coincidencias_sub_exacta or coincidencias_subcampania or coincidencias_cuenta
+    mes_objetivo = mes_valido(item.get('mes'))
+    if mes_objetivo and coincidencias:
+        vigentes = [
+            asignacion for asignacion in coincidencias
+            if (not asignacion.vigencia_desde or asignacion.vigencia_desde <= mes_objetivo)
+            and (not asignacion.vigencia_hasta or mes_objetivo <= asignacion.vigencia_hasta)
+        ]
+        # Los períodos explícitos son la fuente de verdad. La compatibilidad con
+        # maestros antiguos sin fechas se conserva cuando todavía no hay ninguno.
+        if vigentes:
+            coincidencias = vigentes
     if not coincidencias_subcampania and len(coincidencias_cuenta) > 1:
         opciones = ', '.join(dict.fromkeys(a.subcampania for a in coincidencias_cuenta))
         return None, (
@@ -1018,7 +1193,6 @@ def resolver_asignacion_importacion(item):
             for a in coincidencias
         }
         if len(firmas_sin_jefe) == 1:
-            mes_objetivo = mes_valido(item.get('mes'))
             historicos = Facturacion2026.query.filter(
                 func.lower(Facturacion2026.cliente) == cliente.lower(),
                 func.lower(Facturacion2026.subcampania) == subcampania.lower(),
@@ -1209,7 +1383,7 @@ def preparar_fila_migracion_facturacion(item):
     item.setdefault('otros', 0)
     item.setdefault('tarifacion', 0)
     item.setdefault('netx_gen', 0)
-    item['valor_hora_objetivo'] = item.get('valor_hora')
+    item.setdefault('valor_hora_objetivo', item.get('valor_hora'))
 
     es_next_gen_sin_horas = (
         parse_numero(item.get('netx_gen')) > 0
@@ -1259,6 +1433,7 @@ def validar_total_fila_migracion(item):
     total_informado = parse_numero(informado)
     if abs(calculado - total_informado) > 1:
         return f'Total Facturado informado {total_informado:.2f} no coincide con el calculado {calculado:.2f}'
+    item['total_facturado_manual'] = total_informado
     return None
 
 
@@ -1321,11 +1496,43 @@ def opciones_filtro(filtros, campo):
     registros = aplicar_filtros(Facturacion2026.query, **filtros_base).all()
     if campo == 'year':
         return sorted({registro.mes[:4] for registro in registros if registro.mes and len(registro.mes) >= 4})
-    return sorted({
+    valores = {
         getattr(registro, campo)
         for registro in registros
         if getattr(registro, campo, None)
-    })
+    }
+    # Los gerentes se administran en Datos Maestros y deben poder elegirse antes
+    # de que exista su primera facturación (por ejemplo, "Sin gerencia").
+    usuario = usuario_actual()
+    if campo == 'gerente' and (not usuario or usuario.puede_acceder('facturacion_total')):
+        valores.update(
+            gerente for (gerente,) in AsignacionComercial.query.with_entities(
+                AsignacionComercial.gerente
+            ).filter(AsignacionComercial.activa.is_(True)).distinct().all()
+            if gerente
+        )
+    return sorted(valores)
+
+
+def asignaciones_maestras_filtradas(filtros):
+    """Aplica los filtros dimensionales a Datos Maestros (sin período)."""
+    query = AsignacionComercial.query.filter(AsignacionComercial.activa.is_(True))
+    usuario = usuario_actual()
+    if usuario and not usuario.puede_acceder('facturacion_total'):
+        if usuario.gerente_asignado:
+            query = query.filter(func.lower(AsignacionComercial.gerente) == usuario.gerente_asignado.lower())
+        elif usuario.jefe_site_asignado:
+            query = query.filter(func.lower(AsignacionComercial.jefe_site) == usuario.jefe_site_asignado.lower())
+    for clave, columna in (
+        ('cliente', AsignacionComercial.cliente), ('gerente', AsignacionComercial.gerente),
+        ('jefe_site', AsignacionComercial.jefe_site), ('campania', AsignacionComercial.campania),
+        ('subcampania', AsignacionComercial.subcampania),
+        ('tipo_negocio', AsignacionComercial.tipo_negocio),
+    ):
+        valor = filtros.get(clave)
+        if valor:
+            query = filtrar_valores_exactos(query, columna, valor)
+    return query.all()
 
 
 def filtros_comparativo_request():
@@ -2104,6 +2311,8 @@ def lista_snapshots_historial(value):
         return [value]
     if isinstance(value, dict) and {'fecha', 'requerido', 'staff'}.issubset(value.keys()):
         return [value]
+    if isinstance(value, dict) and {'fecha', 'operaciones', 'staff'}.issubset(value.keys()):
+        return [value]
     if isinstance(value, list):
         return value
     return []
@@ -2388,7 +2597,7 @@ def favicon():
 
 
 @main_bp.route('/cargar')
-@edicion_requerida
+@carga_requerida
 def cargar():
     """Vista de carga de datos"""
     return render_template('cargar.html')
@@ -2543,6 +2752,160 @@ def api_guardar_ratio_eli():
     return jsonify({'success':True,'mensaje':'Mes guardado'})
 
 
+@main_bp.route('/ratio-eli-ii')
+@login_requerido
+def ratio_eli_ii():
+    return render_template('ratio_eli_ii.html')
+
+
+@main_bp.route('/api/ratio-eli-ii', methods=['GET'])
+@login_requerido
+def api_ratio_eli_ii():
+    ruta = os.path.join(current_app.root_path, 'data', 'ratio_eli_ii_historico.json')
+    with open(ruta, encoding='utf-8') as archivo:
+        base = json.load(archivo)
+    for mes, operaciones, staff, operaciones_importe, staff_importe in base:
+        fecha = datetime.strptime(mes, '%Y-%m').date()
+        registro = RatioEliIIMensual.query.filter_by(fecha=fecha).first()
+        if not registro:
+            db.session.add(RatioEliIIMensual(fecha=fecha, operaciones=operaciones, staff=staff,
+                                             operaciones_importe=operaciones_importe, staff_importe=staff_importe))
+        elif not registro.operaciones_importe and not registro.staff_importe:
+            registro.operaciones_importe, registro.staff_importe = operaciones_importe, staff_importe
+    db.session.commit()
+    registros = RatioEliIIMensual.query.order_by(RatioEliIIMensual.fecha).all()
+    return jsonify({'success': True, 'serie': [x.to_dict() for x in registros]})
+
+
+@main_bp.route('/api/ratio-eli-ii', methods=['POST'])
+@edicion_requerida
+def api_guardar_ratio_eli_ii():
+    data = request.get_json(silent=True) or {}
+    try:
+        fecha = datetime.strptime(str(data.get('mes') or ''), '%Y-%m').date()
+        operaciones = parse_numero(data.get('operaciones'))
+        staff = parse_numero(data.get('staff'))
+        operaciones_importe = parse_numero(data.get('operaciones_importe'))
+        staff_importe = parse_numero(data.get('staff_importe'))
+        if operaciones <= 0 or staff < 0 or operaciones_importe <= 0 or staff_importe < 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['Datos invalidos']}), 400
+    registro = RatioEliIIMensual.query.filter_by(fecha=fecha).first()
+    antes = registro.to_dict() if registro else None
+    if not registro:
+        registro = RatioEliIIMensual(fecha=fecha, operaciones=operaciones, staff=staff,
+                                     operaciones_importe=operaciones_importe, staff_importe=staff_importe)
+        db.session.add(registro)
+    else:
+        registro.operaciones, registro.staff = operaciones, staff
+        registro.operaciones_importe, registro.staff_importe = operaciones_importe, staff_importe
+    db.session.flush()
+    registrar_historial('edicion' if antes else 'creacion', 'ratio_eli_ii_mensual', fecha.isoformat(),
+                        f'Ratio Eli II: {fecha:%m/%Y}', antes=antes, despues=registro.to_dict())
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Mes guardado'})
+
+
+@main_bp.route('/share')
+@login_requerido
+def share():
+    return render_template('share.html')
+
+
+@main_bp.route('/api/share', methods=['GET'])
+@login_requerido
+def api_share():
+    ruta_usa = os.path.join(current_app.root_path, 'data', 'share_usa_historico.json')
+    with open(ruta_usa, encoding='utf-8') as archivo:
+        base_usa = json.load(archivo)
+        usa_historico = {int(year): float(valor) for year, valor in base_usa['horas'].items()}
+        usa_dotaciones = {int(year): float(valor) for year, valor in base_usa['dotaciones'].items()}
+    anios_historico = {x[0] for x in db.session.query(HistoricoClienteMensual.year).distinct().all()}
+    anios_dotacion = {x[0] for x in db.session.query(func.extract('year', DotacionClienteMensual.fecha)).distinct().all()}
+    anios_facturacion = {x[0] for x in db.session.query(func.extract('year', Facturacion2026.fecha)).distinct().all()}
+    anios = sorted({
+        int(x) for x in anios_historico | anios_dotacion | anios_facturacion
+        if x and int(x) >= 2020
+    })
+    horas_por_anio = {}
+    dotaciones_por_anio = {}
+
+    for year in anios:
+        por_clave = {}
+        for registro in HistoricoClienteMensual.query.filter_by(year=year).all():
+            base = registro.base_dict()
+            por_clave[(registro.mes, registro.cliente)] = {
+                'real': float(base.get('horas_realizadas') or 0),
+                'snapshot': float(base.get('_fact_snapshot_real') or 0),
+            }
+        facturado = db.session.query(
+            func.strftime('%Y-%m', Facturacion2026.fecha) if db.engine.dialect.name == 'sqlite' else func.to_char(Facturacion2026.fecha, 'YYYY-MM'),
+            Facturacion2026.cliente, func.sum(Facturacion2026.horas_facturadas),
+        ).filter(func.extract('year', Facturacion2026.fecha) == year).group_by(
+            func.strftime('%Y-%m', Facturacion2026.fecha) if db.engine.dialect.name == 'sqlite' else func.to_char(Facturacion2026.fecha, 'YYYY-MM'),
+            Facturacion2026.cliente,
+        ).all()
+        for mes, cliente, real_actual in facturado:
+            clave = (mes, cliente)
+            item = por_clave.setdefault(clave, {'real': 0, 'snapshot': 0})
+            item['real'] += float(real_actual or 0) - item['snapshot']
+        clientes = {}
+        for (_, cliente), item in por_clave.items():
+            clientes[cliente] = clientes.get(cliente, 0) + item['real']
+        def suma_clientes(predicado):
+            return sum(valor for nombre, valor in clientes.items() if predicado(normalizar_header(nombre.strip("'\""))))
+        if year <= 2022:
+            personal = suma_clientes(lambda nombre: nombre in ('cablevision', 'telecom'))
+        else:
+            personal = suma_clientes(lambda nombre: nombre in ('telecom', 'personal'))
+        santander = suma_clientes(lambda nombre: nombre == 'santander')
+        usa = usa_historico.get(year, suma_clientes(lambda nombre: nombre in ('abbey usa', 'usa')))
+        total = sum(clientes.values())
+        multicampania = total - personal - santander - usa
+        horas_por_anio[year] = {'Personal': personal, 'Santander': santander,
+                                'Multicampania': multicampania, 'USA': usa, 'Total': total}
+
+        meses = {}
+        for fila in DotacionClienteMensual.query.filter(func.extract('year', DotacionClienteMensual.fecha) == year).all():
+            mes = fila.fecha.strftime('%Y-%m')
+            item = meses.setdefault(mes, {'Personal': 0, 'Santander': 0, 'Multicampania': 0, 'USA': 0})
+            nombre = normalizar_header(fila.cliente)
+            if nombre in ('personal', 'telecom', 'cablevision'):
+                grupo = 'Personal'
+            elif nombre == 'santander':
+                grupo = 'Santander'
+            elif nombre in ('abbey usa', 'usa'):
+                grupo = 'USA'
+            else:
+                grupo = 'Multicampania'
+            item[grupo] += float(fila.dotacion or 0)
+        cantidad_meses = len(meses)
+        promedios = {grupo: (sum(m[grupo] for m in meses.values()) / cantidad_meses if cantidad_meses else 0)
+                     for grupo in ('Personal', 'Santander', 'Multicampania', 'USA')}
+        promedios['Total'] = sum(promedios.values())
+        if year in usa_dotaciones:
+            promedios['USA'] = usa_dotaciones[year]
+            promedios['Multicampania'] = promedios['Total'] - promedios['Personal'] - promedios['Santander'] - promedios['USA']
+        dotaciones_por_anio[year] = promedios
+
+    def con_share(base):
+        salida = []
+        for year in anios:
+            valores = base.get(year, {})
+            total = float(valores.get('Total') or 0)
+            fila = {'year': year, **valores}
+            fila['shares'] = {grupo: (float(valores.get(grupo) or 0) / total if total else 0)
+                              for grupo in ('Personal', 'Santander', 'Multicampania', 'USA')}
+            fila['personal_santander'] = float(valores.get('Personal') or 0) + float(valores.get('Santander') or 0)
+            fila['share_personal_santander'] = fila['personal_santander'] / total if total else 0
+            salida.append(fila)
+        return salida
+
+    return jsonify({'success': True, 'anios': anios, 'horas': con_share(horas_por_anio),
+                    'dotaciones': con_share(dotaciones_por_anio)})
+
+
 @main_bp.route('/variacion-anual')
 @login_requerido
 def variacion_anual():
@@ -2617,22 +2980,68 @@ def login():
     """Vista de acceso y primera configuracion."""
     asegurar_administrador_inicial()
     if requiere_login():
+        if usuario_actual().debe_cambiar_password:
+            return redirect(url_for('main.cambiar_password_obligatorio'))
         return redirect(url_for('main.index'))
     return render_template('login.html', requiere_setup=not usuarios_registrados())
 
 
 @main_bp.route('/logout', methods=['POST'])
-@login_requerido
 def logout():
     session.clear()
     return redirect(url_for('main.login'))
+
+
+@main_bp.route('/cambiar-contrasena')
+def cambiar_password_obligatorio():
+    usuario = usuario_actual()
+    if not usuario or not usuario.activo:
+        return redirect(url_for('main.login'))
+    if not usuario.debe_cambiar_password:
+        return redirect(url_for('main.index'))
+    return render_template('cambiar_password.html')
+
+
+@main_bp.route('/api/auth/cambiar-contrasena', methods=['POST'])
+def api_cambiar_password_obligatorio():
+    usuario = usuario_actual()
+    if not usuario or not usuario.activo:
+        return jsonify({'success': False, 'errores': ['No autorizado']}), 403
+    data = request.get_json(silent=True) or {}
+    actual = str(data.get('password_actual') or '')
+    nueva = str(data.get('password_nueva') or '')
+    confirmacion = str(data.get('password_confirmacion') or '')
+    errores = []
+    if not usuario.check_password(actual):
+        errores.append('La contrasena temporal no es correcta')
+    if len(nueva) < 12:
+        errores.append('La nueva contrasena debe tener al menos 12 caracteres')
+    elif nueva.lower() == nueva or nueva.upper() == nueva or not any(c.isdigit() for c in nueva):
+        errores.append('La nueva contrasena debe combinar mayusculas, minusculas y numeros')
+    if nueva != confirmacion:
+        errores.append('La confirmacion no coincide')
+    if nueva and usuario.check_password(nueva):
+        errores.append('La nueva contrasena debe ser diferente de la temporal')
+    if errores:
+        return jsonify({'success': False, 'errores': errores}), 400
+    usuario.set_password(nueva)
+    usuario.debe_cambiar_password = False
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Contrasena actualizada correctamente'})
 
 
 @main_bp.route('/usuarios')
 @admin_requerido
 def usuarios():
     """Vista de administracion de usuarios."""
-    return render_template('usuarios.html', roles=ROLES_USUARIO)
+    plantillas = {}
+    for rol in ROLES_USUARIO:
+        plantillas[rol] = {}
+        for puesto in PUESTOS_POR_ROL.get(rol, ('',)):
+            permisos = permisos_perfil(rol, puesto)
+            plantillas[rol][puesto] = {**permisos, 'modulos': sorted(permisos['modulos'])}
+    return render_template('usuarios.html', roles=ROLES_USUARIO, puestos_por_rol=PUESTOS_POR_ROL,
+                           plantillas_permisos=plantillas)
 
 
 @main_bp.route('/historial')
@@ -2838,11 +3247,11 @@ def api_auth_login():
     session['usuario_id'] = usuario.id
     csrf_token = get_csrf_token()
     limpiar_login_fallido(email)
-    return jsonify({'success': True, 'usuario': usuario.to_dict(), 'csrf_token': csrf_token})
+    return jsonify({'success': True, 'usuario': usuario.to_dict(), 'csrf_token': csrf_token,
+                    'requiere_cambio_password': usuario.debe_cambiar_password})
 
 
 @main_bp.route('/api/auth/logout', methods=['POST'])
-@login_requerido
 def api_auth_logout():
     session.clear()
     return jsonify({'success': True})
@@ -2855,7 +3264,8 @@ def api_usuarios_setup():
         return jsonify({'success': False, 'errores': ['La configuracion inicial ya fue realizada']}), 403
 
     data = request.get_json() or {}
-    data['rol'] = 'administrador'
+    data['rol'] = 'Admin'
+    data['puesto'] = 'Administrador'
     errores = validar_usuario_payload(data, require_password=True)
     if errores:
         return jsonify({'success': False, 'errores': errores}), 400
@@ -2863,7 +3273,8 @@ def api_usuarios_setup():
     usuario = Usuario(
         nombre=data['nombre'].strip(),
         email=normalizar_email(data['email']),
-        rol='administrador',
+        rol='Admin',
+        puesto='Administrador',
         activo=True,
     )
     usuario.set_password(data['password'])
@@ -2897,9 +3308,16 @@ def api_crear_usuario():
     usuario = Usuario(
         nombre=data['nombre'].strip(),
         email=email,
-        rol=data.get('rol', 'usuario').strip(),
+        rol=data.get('rol', 'RMO_OPS').strip(),
+        puesto=str(data.get('puesto') or '').strip() or None,
+        gerente_asignado=str(data.get('gerente_asignado') or '').strip() or None,
+        jefe_site_asignado=str(data.get('jefe_site_asignado') or '').strip() or None,
+        permisos_personalizados=serializar_json(normalizar_permisos_usuario(data.get('permisos'))) if data.get('permisos') is not None else None,
         activo=bool(data.get('activo', True)),
+        debe_cambiar_password=True,
     )
+    if usuario.gerente_asignado:
+        usuario.jefe_site_asignado = None
     usuario.set_password(data['password'])
     db.session.add(usuario)
     db.session.flush()
@@ -2943,6 +3361,21 @@ def api_actualizar_usuario(usuario_id):
             errores.append('El rol no es valido')
         else:
             usuario.rol = rol
+    for campo in ('puesto', 'gerente_asignado', 'jefe_site_asignado'):
+        if campo in data:
+            setattr(usuario, campo, str(data.get(campo) or '').strip() or None)
+    if usuario.gerente_asignado:
+        usuario.jefe_site_asignado = None
+    if 'permisos' in data:
+        try:
+            permisos = normalizar_permisos_usuario(data.get('permisos'))
+            usuario.permisos_personalizados = serializar_json(permisos) if permisos is not None else None
+        except ValueError as error:
+            errores.append(str(error))
+    if usuario.puesto and usuario.puesto not in PUESTOS_POR_ROL.get(usuario.rol, ()):
+        errores.append('El puesto no corresponde al perfil seleccionado')
+    if usuario.rol != 'Full' and not usuario.puesto:
+        errores.append('El puesto es obligatorio')
     if 'activo' in data:
         usuario.activo = bool(data.get('activo'))
     if data.get('password'):
@@ -2953,6 +3386,7 @@ def api_actualizar_usuario(usuario_id):
             errores.append('La contrasena debe combinar mayusculas, minusculas y numeros')
         else:
             usuario.set_password(password)
+            usuario.debe_cambiar_password = True
 
     if errores:
         return jsonify({'success': False, 'errores': errores}), 400
@@ -3001,7 +3435,7 @@ def deshacer_item_historial(item):
         return {'success': False, 'errores': ['Este movimiento ya es un deshacer']}, 400
     if historial_movimiento_deshace(item.id):
         return {'success': False, 'errores': ['Este movimiento ya fue deshecho']}, 400
-    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion', 'dotaciones_clientes_mensuales', 'graficos_dotaciones_mensuales', 'dashboard_operativo', 'historico_cliente', 'ratio_eli_mensual')
+    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion', 'dotaciones_clientes_mensuales', 'graficos_dotaciones_mensuales', 'dashboard_operativo', 'historico_cliente', 'ratio_eli_mensual', 'ratio_eli_ii_mensual')
     if item.entidad not in entidades_permitidas:
         return {'success': False, 'errores': ['Este tipo de movimiento todavía no admite deshacer']}, 400
 
@@ -3009,6 +3443,24 @@ def deshacer_item_historial(item):
     despues = item._json(item.despues) or {}
     antes_snapshots = lista_snapshots_historial(antes)
     despues_snapshots = lista_snapshots_historial(despues)
+
+    if item.entidad == 'ratio_eli_ii_mensual':
+        snapshots = [snapshot for snapshot in antes_snapshots + despues_snapshots if snapshot]
+        fechas = {datetime.strptime(s['fecha'], '%Y-%m-%d').date() for s in snapshots if s.get('fecha')}
+        for actual in RatioEliIIMensual.query.filter(RatioEliIIMensual.fecha.in_(fechas)).all():
+            db.session.delete(actual)
+        db.session.flush()
+        for snapshot in antes_snapshots:
+            db.session.add(RatioEliIIMensual(
+                fecha=datetime.strptime(snapshot['fecha'], '%Y-%m-%d').date(),
+                operaciones=parse_numero(snapshot.get('operaciones')), staff=parse_numero(snapshot.get('staff')),
+                operaciones_importe=parse_numero(snapshot.get('operaciones_importe')),
+                staff_importe=parse_numero(snapshot.get('staff_importe')),
+            ))
+        registrar_historial('deshacer', item.entidad, item.entidad_id,
+                            f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes)
+        db.session.commit()
+        return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho'}, 200
 
     if item.entidad == 'ratio_eli_mensual':
         snapshots = [snapshot for snapshot in antes_snapshots + despues_snapshots if snapshot]
@@ -3199,7 +3651,7 @@ def deshacer_item_historial(item):
 
 
 @main_bp.route('/api/cargar', methods=['POST'])
-@edicion_requerida
+@carga_requerida
 def api_cargar():
     """Endpoint para cargar datos de facturación"""
     data = request.get_json() or {}
@@ -3598,6 +4050,23 @@ def api_por_cliente():
             **resumen
         })
 
+    # Si la selección existe en Datos Maestros pero aún no fue facturada, se
+    # muestra con cero para que el filtro no parezca vacío.
+    clientes_presentes = {item['cliente'] for item in datos}
+    for asignacion in asignaciones_maestras_filtradas(filtros_request()):
+        if asignacion.cliente in clientes_presentes:
+            continue
+        datos.append({
+            'cliente': asignacion.cliente,
+            'gerente': asignacion.gerente,
+            'jefe_site': asignacion.jefe_site,
+            'registros': 0,
+            'horas_objetivo': 0, 'horas_facturadas': 0,
+            'total_facturado': 0, 'total_real': 0, 'total_teorico': 0,
+            'desvio': 0, 'porcentaje_cumplimiento': 0,
+        })
+        clientes_presentes.add(asignacion.cliente)
+
     datos.sort(key=lambda item: item['total_real'], reverse=True)
     return jsonify({'success': True, 'clientes': datos})
 
@@ -3695,7 +4164,7 @@ def api_matriz():
         Facturacion2026.es_next_gen.is_(False),
     )
     registros_year = aplicar_filtros(base_year, **filtros).all()
-    registros_sin_filtros = Facturacion2026.query.filter(
+    registros_sin_filtros = aplicar_filtros(Facturacion2026.query).filter(
         Facturacion2026.mes.in_(meses),
         Facturacion2026.es_next_gen.is_(False),
     ).all()
@@ -4027,7 +4496,7 @@ def api_calendario_operativo():
 
 
 @main_bp.route('/api/calendario-operativo', methods=['POST'])
-@login_requerido
+@edicion_requerida
 def api_guardar_feriado():
     data = request.get_json(silent=True) or {}
     normalizado = payload_feriado(data)
@@ -4064,7 +4533,7 @@ def api_guardar_feriado():
 
 
 @main_bp.route('/api/calendario-operativo/<int:feriado_id>', methods=['DELETE'])
-@login_requerido
+@eliminacion_requerida
 def api_eliminar_feriado(feriado_id):
     feriado = FeriadoOperativo.query.get_or_404(feriado_id)
     year = feriado.year
@@ -4124,7 +4593,7 @@ def api_matriz_precios():
 
 
 @main_bp.route('/api/matriz-precios', methods=['POST'])
-@login_requerido
+@edicion_requerida
 def api_guardar_matriz_precio():
     data = request.get_json(silent=True) or {}
     normalizado = payload_precio(data)
@@ -4188,7 +4657,7 @@ def api_guardar_matriz_precio():
 
 
 @main_bp.route('/api/matriz-precios/inflacion', methods=['POST'])
-@login_requerido
+@edicion_requerida
 def api_aplicar_inflacion_matriz_precios():
     data = request.get_json(silent=True) or {}
     mes = mes_valido(str(data.get('mes') or '').strip())
@@ -4243,7 +4712,7 @@ def api_aplicar_inflacion_matriz_precios():
 
 
 @main_bp.route('/api/matriz-precios/<int:precio_id>', methods=['DELETE'])
-@login_requerido
+@eliminacion_requerida
 def api_eliminar_matriz_precio(precio_id):
     precio = ProyeccionPrecio.query.get_or_404(precio_id)
     antes = precio.to_dict()
@@ -4335,7 +4804,7 @@ def api_template_matriz_precios():
 
 
 @main_bp.route('/api/matriz-precios/importar', methods=['POST'])
-@login_requerido
+@carga_requerida
 def api_importar_matriz_precios():
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename:
@@ -4797,7 +5266,7 @@ def api_resumen_proyeccion():
 
 
 @main_bp.route('/api/sites-proyeccion', methods=['POST'])
-@login_requerido
+@edicion_requerida
 def api_guardar_site_proyeccion():
     data = request.get_json(silent=True) or {}
     site = str(data.get('site') or '').strip()
@@ -5288,7 +5757,7 @@ def api_template_tarifaciones():
 
 
 @main_bp.route('/api/tarifaciones/importar', methods=['POST'])
-@login_requerido
+@carga_requerida
 def api_importar_tarifaciones():
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename:
@@ -5395,7 +5864,7 @@ def construir_next_gen_data(year):
 
 
 @main_bp.route('/api/next-gen', methods=['GET', 'POST'])
-@login_requerido
+@edicion_si_mutacion_requerida
 def api_next_gen():
     if request.method == 'GET':
         year = int(request.args.get('year') or datetime.utcnow().year)
@@ -5463,7 +5932,7 @@ def api_template_next_gen():
 
 
 @main_bp.route('/api/next-gen/importar', methods=['POST'])
-@login_requerido
+@carga_requerida
 def api_importar_next_gen():
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename:
@@ -5586,7 +6055,7 @@ def api_template_variables():
 
 
 @main_bp.route('/api/variables/importar', methods=['POST'])
-@login_requerido
+@carga_requerida
 def api_importar_variables():
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename:
@@ -5703,47 +6172,17 @@ def api_control_proyecciones():
     return jsonify(data)
 
 
-DOTACIONES_INICIALES = [
-    ('2023-01', 2260, 1207), ('2023-02', 2322, 1274), ('2023-03', 2256, 1241),
-    ('2023-04', 2307, 1272), ('2023-05', 2491, 1440), ('2023-06', 2432, 1419),
-    ('2023-07', 2242, 1261), ('2023-08', 2094, 1148), ('2023-09', 1986, 1074),
-    ('2023-10', 2019, 1111), ('2023-11', 1920, 1014), ('2023-12', 1927, 986),
-    ('2024-01', 2007, 1082), ('2024-02', 2098, 1173), ('2024-03', 2129, 1212),
-    ('2024-04', 2098, 1167), ('2024-05', 2084, 1130), ('2024-06', 2060, 1102),
-    ('2024-07', 1979, 999), ('2024-08', 1956, 923), ('2024-09', 1990, 935),
-    ('2024-10', 1983, 918), ('2024-11', 2063, 978), ('2024-12', 1987, 940),
-    ('2025-01', 2128, 1114), ('2025-02', 2161, 1140), ('2025-03', 2241, 1230),
-    ('2025-04', 2004, 1023), ('2025-05', 1876, 925), ('2025-06', 1917, 954),
-    ('2025-07', 1840, 873), ('2025-08', 1865, 903), ('2025-09', 1835, 885),
-    ('2025-10', 1860, 894), ('2025-11', 1869, 875), ('2025-12', 1827, 865),
-    ('2026-01', 1931, 986), ('2026-02', 1959, 1006), ('2026-03', 1988, 1009),
-    ('2026-04', 2215, 984), ('2026-05', 2245, 1012), ('2026-06', 2176, 948),
-    ('2026-07', 2128, 935),
-]
-
-GRAFICOS_DOTACIONES_INICIALES = {
-    2024: {
-        'requerida': [2007.21,2098,2128.83,2098.33,2084,2059.5,1979.2,1956.2,1990.1,1982.7,2062.6,1987.13],
-        'sl': [154,159,164,162,161,163,155,187,201,180,198,205],
-        'ba': [2036,2201,2276,2210,2124,2079,2033,1985,1946,1936,1889,1899],
-    },
-    2025: {
-        'requerida': [2128.13,2161.3,2240.94,2003.5,1876,1916.6,1842,1865,1835,1860,1869,1827],
-        'sl': [196,198,196,193,197,205,207,195,188,154,165,158],
-        'ba': [2000,2072,2124,1962,1803,1736,1694,1733,1693,1781,1776,1750],
-    },
-    2026: {
-        'requerida': [1931,1958,1988,2215,2244.97,2175.9,2127.25],
-        'sl': [159,160,159,157,139,140,142],
-        'ba': [1799,1857,1963,2092,2127,2153,2109],
-    },
-}
+def cargar_base_directorio(nombre):
+    ruta = os.path.join(current_app.root_path, 'data', nombre)
+    with open(ruta, encoding='utf-8') as archivo:
+        return json.load(archivo)
 
 
 def asegurar_graficos_dotaciones_iniciales():
     if GraficoDotacionMensual.query.first():
         return
-    for year, series in GRAFICOS_DOTACIONES_INICIALES.items():
+    for year_texto, series in cargar_base_directorio('dotaciones_resumen_historico.json')['graficos'].items():
+        year = int(year_texto)
         for indice, requerida in enumerate(series['requerida'], 1):
             db.session.add(GraficoDotacionMensual(
                 fecha=date(year, indice, 1), dotacion_requerida=requerida,
@@ -5755,7 +6194,7 @@ def asegurar_graficos_dotaciones_iniciales():
 def asegurar_dotaciones_iniciales():
     if DotacionMensual.query.first():
         return
-    for mes, requerida, personal in DOTACIONES_INICIALES:
+    for mes, requerida, personal in cargar_base_directorio('dotaciones_resumen_historico.json')['indicadores']:
         db.session.add(DotacionMensual(
             fecha=datetime.strptime(f'{mes}-01', '%Y-%m-%d').date(),
             dotacion_requerida=requerida,
@@ -5825,15 +6264,19 @@ def construir_dotaciones_clientes_data(year=None):
 def api_indicadores():
     asegurar_dotaciones_iniciales()
     registros = DotacionMensual.query.order_by(DotacionMensual.fecha).all()
-    ultimo = registros[-1] if registros else None
-    diciembre = next((item for item in reversed(registros) if item.fecha.month == 12 and (not ultimo or item.fecha < ultimo.fecha)), None)
-    actuales = [item for item in registros if ultimo and item.fecha.year == ultimo.fecha.year]
+    anios_dotacion = sorted({item.fecha.year for item in registros})
+    year = int(request.args.get('year') or (anios_dotacion[-1] if anios_dotacion else datetime.utcnow().year))
+    actuales = [item for item in registros if item.fecha.year == year]
+    ultimo = actuales[-1] if actuales else None
+    diciembre = next(
+        (item for item in reversed(registros) if item.fecha.month == 12 and item.fecha.year < year),
+        None,
+    )
 
     def promedio(campo):
         valores = [float(getattr(item, campo) or 0) for item in actuales if float(getattr(item, campo) or 0) > 0]
         return round(sum(valores) / len(valores), 2) if valores else 0
 
-    year = int(request.args.get('year') or (ultimo.fecha.year if ultimo else datetime.utcnow().year))
     facturacion = Facturacion2026.query.filter(func.extract('year', Facturacion2026.fecha) == year).all()
     requerido = round(sum(float(item.horas_objetivo or 0) for item in facturacion), 2)
     realizado = round(sum(float(item.horas_facturadas or 0) for item in facturacion), 2)
@@ -6001,9 +6444,6 @@ def api_guardar_grafico_dotacion():
     return jsonify({'success': True, 'mensaje': 'Mes guardado', 'registro': despues})
 
 
-HORAS_HISTORICAS_2025 = [277311, 258526, 246763, 246920, 242098, 221653, 243424, 235580, 246068, 243737, 218952, 227542]
-
-
 def cliente_variacion_horas(nombre, campania=None):
     """Agrupa las aperturas operativas como la hoja Variación horas ctes."""
     normalizado = normalizar_header(nombre)
@@ -6051,11 +6491,11 @@ def base_horas_clientes(anio):
             clave = cliente_variacion_horas(cliente)
             resultado[clave] = resultado.get(clave, 0) + float(horas or 0)
         return resultado
-    if anio == 2025:
-        ruta = os.path.join(current_app.root_path, 'variacion_horas_clientes_2025.json')
-        with open(ruta, encoding='utf-8') as archivo:
-            return json.load(archivo)
-    return {}
+    resultado = {}
+    for registro in HistoricoClienteMensual.query.filter_by(year=anio).all():
+        clave = cliente_variacion_horas(registro.cliente)
+        resultado[clave] = resultado.get(clave, 0) + float(registro.base_dict().get('horas_realizadas') or 0)
+    return resultado
 
 
 @main_bp.route('/api/variacion-horas-clientes', methods=['GET'])
@@ -6260,7 +6700,7 @@ def api_dashboard_operativo():
 
 
 @main_bp.route('/api/dashboard-operativo/importar', methods=['POST'])
-@edicion_requerida
+@carga_requerida
 def api_importar_dashboard_operativo():
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename.lower().endswith('.xlsx'):
@@ -6448,10 +6888,9 @@ def api_cumplimiento_facturacion_clientes():
         item = obtener(cliente_cumplimiento_facturacion(registro.cliente))
         item['objetivo_horas'] += float(registro.objetivo_facturacion_horas or 0)
         item['objetivo_variable'] += float(registro.variable_objetivo or 0)
-        item['alcanzado_horas'] += float(registro.facturado_horas or 0)
-        item['alcanzado_variable'] += float(registro.variable_productivo_calculo or 0)
-        item['alcanzado_penalizaciones_bonos'] += float(registro.facturado_bono or 0)
-        item['alcanzado_penalizaciones_bonos'] += float(registro.penalizaciones_incumplimientos or 0)
+        item['alcanzado_horas'] += float(registro.facturado_horas_control or 0)
+        item['alcanzado_variable'] += float(registro.variable_productivo_control or 0)
+        item['alcanzado_penalizaciones_bonos'] += float(registro.penalizaciones_bonos_control or 0)
 
     salida = []
     for item in filas.values():
@@ -6471,22 +6910,41 @@ def api_cumplimiento_facturacion_clientes():
         'Supervielle Seguros', 'Shipnow', 'Supervielle', 'Leiva Joyas', 'Naturgy',
         'Bsf Carrefour', 'Mirgor', 'Omint', 'River Plate', 'Unicef', 'Galicia', 'BNA',
     ]
-    presentes = {item['cliente'] for item in salida}
-    if year == 2026:
-        for cliente in orden_excel:
-            if cliente not in presentes:
-                salida.append({
-                    'cliente': cliente, 'objetivo_horas': 0, 'objetivo_variable': 0,
-                    'objetivo_penalizaciones_bonos': 0, 'objetivo_total': 0,
-                    'alcanzado_horas': 0, 'alcanzado_variable': 0,
-                    'alcanzado_penalizaciones_bonos': 0, 'alcanzado_total': 0,
-                    'desvio_horas': 0, 'desvio_variable': 0,
-                    'desvio_penalizaciones_bonos': 0, 'desvio_total': 0,
-                    'porcentaje_desvio': None,
-                })
     indice_orden = {cliente: indice for indice, cliente in enumerate(orden_excel)}
     salida.sort(key=lambda item: (indice_orden.get(item['cliente'], 999), item['cliente'].lower()))
-    return jsonify({'success': True, 'year': year, 'filas': salida})
+    ruta_historico = os.path.join(current_app.root_path, 'data', 'cumplimiento_facturacion_historico.json')
+    with open(ruta_historico, encoding='utf-8') as archivo:
+        historico = json.load(archivo)
+    resumen_anual = []
+    for anio, valores in historico.items():
+        horas = float(valores.get('horas') or 0)
+        variable = float(valores.get('variable') or 0)
+        bonos = float(valores.get('bonos_penalizaciones') or 0)
+        resumen_anual.append({
+            'year': int(anio), 'horas': horas, 'variable': variable,
+            'bonos_penalizaciones': bonos, 'total': horas + variable + bonos,
+            'porcentaje_desvio': valores.get('porcentaje_desvio'),
+        })
+    objetivo_actual = sum(float(item['objetivo_total'] or 0) for item in salida)
+    horas_actual = sum(float(item['desvio_horas'] or 0) for item in salida)
+    variable_actual = sum(float(item['desvio_variable'] or 0) for item in salida)
+    bonos_actual = sum(float(item['desvio_penalizaciones_bonos'] or 0) for item in salida)
+    total_actual = horas_actual + variable_actual + bonos_actual
+    if salida:
+        resumen_anual = [item for item in resumen_anual if item['year'] != year]
+        resumen_anual.append({
+            'year': year, 'horas': horas_actual, 'variable': variable_actual,
+            'bonos_penalizaciones': bonos_actual, 'total': total_actual,
+            'porcentaje_desvio': total_actual / objetivo_actual if objetivo_actual else None,
+        })
+    anios_facturacion = {
+        int(item[0]) for item in db.session.query(func.extract('year', Facturacion2026.fecha)).distinct().all()
+        if item[0]
+    }
+    anios_disponibles = sorted({int(anio) for anio in historico} | anios_facturacion)
+    resumen_anual.sort(key=lambda item: item['year'], reverse=True)
+    return jsonify({'success': True, 'year': year, 'anios': anios_disponibles,
+                    'filas': salida, 'resumen_anual': resumen_anual})
 
 
 @main_bp.route('/api/comparativo-interanual', methods=['GET'])
@@ -6509,7 +6967,7 @@ def api_comparativo_interanual():
         mes = registro.fecha.month
         item = acumulados[mes]
         item['obj_fact'] += float(registro.objetivo_facturacion_horas or 0) + float(registro.variable_objetivo or 0)
-        item['real_fact'] += float(registro.facturado_horas or 0) + float(registro.variable_productivo_calculo or 0) + float(registro.facturado_bono or 0) + float(registro.penalizaciones_incumplimientos or 0)
+        item['real_fact'] += float(registro.total_facturado_control or 0)
         item['obj_hs'] += float(registro.horas_objetivo or 0)
         item['real_hs'] += float(registro.horas_facturadas or 0)
         item['cantidad'] += 1
@@ -6598,12 +7056,16 @@ def api_variacion_anual():
         filas = Facturacion2026.query.with_entities(
             Facturacion2026.mes, func.sum(Facturacion2026.horas_facturadas)
         ).filter(func.extract('year', Facturacion2026.fecha) == anio).group_by(Facturacion2026.mes).all()
-        return {mes: round(float(total or 0), 2) for mes, total in filas}
+        resultado = {mes: round(float(total or 0), 2) for mes, total in filas}
+        if resultado:
+            return resultado
+        historico = {}
+        for registro in HistoricoClienteMensual.query.filter_by(year=anio).all():
+            historico[registro.mes] = historico.get(registro.mes, 0) + float(registro.base_dict().get('horas_realizadas') or 0)
+        return {mes: round(total, 2) for mes, total in historico.items()}
 
     reales_actual = horas_reales(year)
     reales_anterior = horas_reales(anterior)
-    if anterior == 2025 and not reales_anterior:
-        reales_anterior = {f'{anterior}-{indice:02d}': valor for indice, valor in enumerate(HORAS_HISTORICAS_2025, 1)}
     # Las aperturas PLP desglosan las mismas horas de Personal para valorizarlas;
     # no son horas adicionales y por eso no deben duplicar el total interanual.
     proyectadas = dict(ProyeccionMatriz.query.with_entities(
@@ -6639,7 +7101,7 @@ def api_variacion_anual():
 
 
 @main_bp.route('/api/variables', methods=['POST'])
-@login_requerido
+@edicion_requerida
 def api_guardar_variable():
     data = request.get_json(silent=True) or {}
     mes = mes_valido(str(data.get('mes') or '').strip())
@@ -6769,7 +7231,7 @@ def api_suma_fija():
 
 
 @main_bp.route('/api/suma-fija', methods=['POST'])
-@login_requerido
+@edicion_requerida
 def api_guardar_suma_fija():
     data = request.get_json(silent=True) or {}
     precio_id = data.get('id')
@@ -6794,7 +7256,7 @@ def api_guardar_suma_fija():
 
 
 @main_bp.route('/api/personal-distribucion', methods=['GET', 'POST'])
-@login_requerido
+@edicion_si_mutacion_requerida
 def api_personal_distribucion():
     if request.method == 'GET':
         year = int(request.args.get('year') or datetime.utcnow().year)
@@ -7071,7 +7533,7 @@ def api_template_proyecciones_plp():
 
 
 @main_bp.route('/api/proyecciones-plp/importar', methods=['POST'])
-@login_requerido
+@carga_requerida
 def api_importar_proyecciones_plp():
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename:
@@ -7195,7 +7657,7 @@ def api_importar_proyecciones_plp():
 
 
 @main_bp.route('/api/matriz-proyecciones', methods=['POST'])
-@login_requerido
+@edicion_requerida
 def api_guardar_matriz_proyeccion():
     data = request.get_json(silent=True) or {}
     normalizado = payload_proyeccion(data)
@@ -7256,7 +7718,7 @@ def api_guardar_matriz_proyeccion():
 
 
 @main_bp.route('/api/matriz-proyecciones/<int:proyeccion_id>', methods=['DELETE'])
-@login_requerido
+@eliminacion_requerida
 def api_eliminar_matriz_proyeccion(proyeccion_id):
     proyeccion = ProyeccionMatriz.query.get_or_404(proyeccion_id)
     antes = snapshot_proyeccion(proyeccion)
@@ -7274,7 +7736,7 @@ def api_eliminar_matriz_proyeccion(proyeccion_id):
 
 
 @main_bp.route('/api/matriz-proyecciones/eliminar-todo', methods=['POST'])
-@login_requerido
+@eliminacion_requerida
 def api_eliminar_todas_matriz_proyecciones():
     data = request.get_json(silent=True) or {}
     try:
@@ -7312,7 +7774,7 @@ def api_eliminar_todas_matriz_proyecciones():
 
 
 @main_bp.route('/api/matriz-proyecciones/deshacer-ultimo', methods=['POST'])
-@login_requerido
+@edicion_requerida
 def api_deshacer_ultima_proyeccion():
     usuario = usuario_actual()
     query = HistorialCambio.query.filter(
@@ -7398,7 +7860,7 @@ def api_template_matriz_proyecciones():
 
 
 @main_bp.route('/api/matriz-proyecciones/importar', methods=['POST'])
-@login_requerido
+@carga_requerida
 def api_importar_matriz_proyecciones():
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename:
@@ -7579,6 +8041,15 @@ def api_alertas():
     alertas = []
 
     if not registros:
+        asignaciones = asignaciones_maestras_filtradas(filtros_request())
+        if asignaciones:
+            nombres = ', '.join(sorted({a.cliente for a in asignaciones})[:5])
+            alertas.append({
+                'tipo': 'info',
+                'titulo': 'Asignación activa sin facturación',
+                'detalle': f'{nombres}: existe en Datos Maestros pero todavía no tiene facturación para el período seleccionado.'
+            })
+            return jsonify({'success': True, 'alertas': alertas})
         alertas.append({
             'tipo': 'info',
             'titulo': 'Sin datos para el filtro',
@@ -7699,7 +8170,7 @@ def api_exportar_excel():
 
 
 @main_bp.route('/api/template_carga', methods=['GET'])
-@edicion_requerida
+@carga_requerida
 def api_template_carga():
     """Descarga una plantilla xlsx para carga masiva."""
     headers = [label for _, label in COLUMNAS_IMPORTACION]
@@ -7732,7 +8203,7 @@ def api_template_carga():
 
 
 @main_bp.route('/api/importar_datos', methods=['POST'])
-@edicion_requerida
+@carga_requerida
 def api_importar_datos():
     """Importa registros desde la plantilla Excel/CSV."""
     archivo = request.files.get('archivo')
@@ -8059,7 +8530,7 @@ def api_eliminar_excepcion_calculo(excepcion_id):
 
 
 @main_bp.route('/api/asignaciones', methods=['GET'])
-@edicion_requerida
+@carga_requerida
 def api_asignaciones():
     """Lista de asociaciones predefinidas para carga y filtros."""
     solo_activas = request.args.get('activas', '1') != '0'
@@ -8230,9 +8701,42 @@ def api_actualizar_asignacion(asignacion_id):
             return jsonify({'success': False, 'errores': ['El mes de vigencia debe tener formato YYYY-MM']}), 400
         if vigencia_desde:
             asignacion_nueva, creada = obtener_o_crear_asignacion(valores_finales)
-            registros_asociados = Facturacion2026.query.filter_by(**valores_anteriores).filter(
-                Facturacion2026.mes >= vigencia_desde
+            anio_vigencia, mes_vigencia = (int(parte) for parte in vigencia_desde.split('-'))
+            if mes_vigencia == 1:
+                vigencia_anterior = f'{anio_vigencia - 1:04d}-12'
+            else:
+                vigencia_anterior = f'{anio_vigencia:04d}-{mes_vigencia - 1:02d}'
+
+            # La identidad comercial permanece; gerente y jefe pueden cambiar.
+            # Cerramos cualquier versión que cubra el mes anterior y abrimos la
+            # versión seleccionada desde la fecha indicada.
+            versiones = AsignacionComercial.query.filter_by(
+                cliente=valores_finales['cliente'],
+                campania=valores_finales['campania'],
+                subcampania=valores_finales['subcampania'],
+                tipo_negocio=valores_finales.get('tipo_negocio'),
+                es_next_gen=bool(valores_finales.get('es_next_gen')),
+                activa=True,
             ).all()
+            for version in versiones:
+                if version.id == asignacion_nueva.id:
+                    continue
+                if (not version.vigencia_desde or version.vigencia_desde <= vigencia_anterior) and (
+                    not version.vigencia_hasta or version.vigencia_hasta >= vigencia_desde
+                ):
+                    version.vigencia_hasta = vigencia_anterior
+            asignacion_nueva.vigencia_desde = vigencia_desde
+            asignacion_nueva.vigencia_hasta = None
+            # Se identifica el servicio por sus dimensiones estables. Así una
+            # segunda corrección de vigencia también alcanza filas que ya habían
+            # recibido otro gerente o jefe en una edición anterior.
+            registros_asociados = Facturacion2026.query.filter_by(
+                cliente=valores_finales['cliente'],
+                campania=valores_finales['campania'],
+                subcampania=valores_finales['subcampania'],
+                tipo_negocio=valores_finales.get('tipo_negocio'),
+                es_next_gen=bool(valores_finales.get('es_next_gen')),
+            ).filter(Facturacion2026.mes >= vigencia_desde).all()
             for registro in registros_asociados:
                 for campo, valor in valores_finales.items():
                     setattr(registro, campo, valor)
@@ -8482,7 +8986,9 @@ def api_seed():
 @login_requerido
 def api_clientes():
     """Endpoint para obtener lista de clientes únicos"""
-    clientes = db.session.query(Facturacion2026.cliente).distinct().order_by(Facturacion2026.cliente).all()
+    clientes = aplicar_filtros(Facturacion2026.query).with_entities(
+        Facturacion2026.cliente
+    ).distinct().order_by(Facturacion2026.cliente).all()
     return jsonify({
         'success': True,
         'clientes': [c[0] for c in clientes]
@@ -8493,7 +8999,9 @@ def api_clientes():
 @main_bp.route('/api/gerentes', methods=['GET'])
 @login_requerido
 def api_gerentes():
-    gerentes = db.session.query(Facturacion2026.gerente).distinct().order_by(Facturacion2026.gerente).all()
+    gerentes = aplicar_filtros(Facturacion2026.query).with_entities(
+        Facturacion2026.gerente
+    ).distinct().order_by(Facturacion2026.gerente).all()
     return jsonify({
         'success': True,
         'gerentes': [g[0] for g in gerentes if g[0]]
@@ -8504,7 +9012,9 @@ def api_gerentes():
 @login_requerido
 def api_meses():
     """Endpoint para obtener lista de meses disponibles"""
-    meses = db.session.query(Facturacion2026.mes).distinct().order_by(Facturacion2026.mes).all()
+    meses = aplicar_filtros(Facturacion2026.query).with_entities(
+        Facturacion2026.mes
+    ).distinct().order_by(Facturacion2026.mes).all()
     return jsonify({
         'success': True,
         'meses': [m[0] for m in meses]

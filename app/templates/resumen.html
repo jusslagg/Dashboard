@@ -170,7 +170,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/lucide.min.js') }}"></script>
 <script>
 let meses = [];
 let filas = [];

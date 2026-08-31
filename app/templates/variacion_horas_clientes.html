@@ -4,7 +4,7 @@
 <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
   <div><p class="text-xs font-semibold uppercase tracking-[.2em] text-blue-600">Directorio</p><h1 class="mt-1 text-3xl font-black text-slate-950">Variación horas por cliente</h1><p class="mt-1 text-sm text-slate-500">Horas reales hasta el último mes cargado y proyección para el resto del año.</p></div>
   <div class="flex flex-wrap items-end gap-2">
-    <label class="text-sm font-semibold text-slate-700">Año<select id="year" onchange="cargar()" class="mt-1 block h-10 rounded-lg border border-slate-300 bg-white px-3"><option>2026</option></select></label>
+    <label class="text-sm font-semibold text-slate-700">Año<select id="year" onchange="cargar()" class="mt-1 block h-10 rounded-lg border border-slate-300 bg-white px-3"><option>{{ anio_actual }}</option></select></label>
     <label class="text-sm font-semibold text-slate-700">Desvío mínimo %<input id="umbral" type="number" min="0" value="0" step="1" oninput="render()" class="mt-1 block h-10 w-32 rounded-lg border border-slate-300 px-3 text-right"></label>
     <label class="text-sm font-semibold text-slate-700">Estado<select id="estado" onchange="render()" class="mt-1 block h-10 rounded-lg border border-slate-300 bg-white px-3"><option value="">Todos</option><option value="baja">Caídas</option><option value="suba">Aumentos</option><option value="sin-proyeccion">Sin proyección</option><option value="control">Control descuadrado</option></select></label>
     <label class="text-sm font-semibold text-slate-700">Buscar<input id="buscar" type="search" oninput="render()" placeholder="Cliente..." class="mt-1 block h-10 rounded-lg border border-slate-300 px-3"></label>
