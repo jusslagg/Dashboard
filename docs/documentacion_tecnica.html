@@ -7,12 +7,12 @@
   <style>
     :root{--navy:#0f2747;--blue:#2563eb;--cyan:#0891b2;--ink:#172033;--muted:#5f6b7a;--line:#dbe4ef;--soft:#f4f7fb;}
     *{box-sizing:border-box} html{scroll-behavior:smooth}
-    body{margin:0;color:var(--ink);background:var(--soft);font:15px/1.62 Arial,sans-serif}
+    body{margin:0;color:var(--ink);background:var(--soft);font:15px/1.62 Arial,sans-serif;overflow-wrap:anywhere}
     a{color:#1859ba} .top{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px max(18px,calc((100% - 1180px)/2));color:#fff;background:var(--navy)}
     .top a{color:#fff;text-decoration:none} .buttons{display:flex;gap:8px;flex-wrap:wrap}
     .button{display:inline-block;padding:8px 13px;border:1px solid #7fa1ce;border-radius:7px;background:#173b69;font-weight:bold}
     .button.primary{border-color:#67e8f9;background:#0e7490}
-    .page{max-width:1180px;margin:24px auto 60px;padding:0 18px}
+    .page{width:min(100%,1180px);margin:24px auto 60px;padding:0 18px}
     .cover,.toc,.content{margin-bottom:20px;padding:30px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(15,39,71,.05)}
     .cover{padding:46px;background:linear-gradient(135deg,#0f2747,#155e75);color:#fff}
     .cover h1{margin:0 0 10px;color:#fff;font-size:clamp(30px,5vw,48px);line-height:1.15} .cover p{max-width:830px;font-size:19px}
@@ -21,19 +21,19 @@
     .anchor{margin-left:8px;color:#9aa9ba;text-decoration:none;font-size:.75em;opacity:0} h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
     p{margin:8px 0 14px} ul,ol{padding-left:26px} li{margin:5px 0}
     code{padding:2px 5px;border-radius:4px;background:#edf1f6;color:#8b1d41;font-family:Consolas,monospace}
-    pre{overflow:auto;margin:16px 0;padding:17px;border-radius:8px;background:#101b2c;color:#e5edf7;line-height:1.5} pre code{padding:0;background:none;color:inherit}
+    pre{max-width:100%;overflow:auto;margin:16px 0;padding:17px;border-radius:8px;background:#101b2c;color:#e5edf7;line-height:1.5} pre code{padding:0;background:none;color:inherit}
     .table-wrap{overflow-x:auto;margin:16px 0} table{width:100%;border-collapse:collapse;font-size:14px} th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top} th{background:#e9f0f8;color:var(--navy)}
     .callout{padding:14px 17px;border-left:5px solid var(--blue);border-radius:6px;background:#eef5ff}
     .back{position:fixed;right:20px;bottom:20px;padding:9px 12px;border-radius:8px;background:var(--navy);color:#fff;text-decoration:none}
     footer{padding:25px;color:var(--muted);text-align:center}
-    @media(max-width:720px){.toc ol{columns:1}.cover,.toc,.content{padding:20px}.top{align-items:flex-start}}
-    @media print{body{background:#fff;font-size:10pt}.top,.back,.anchor{display:none}.page{max-width:none;margin:0;padding:0}.cover,.toc,.content{box-shadow:none;border:0}.cover{break-after:page}h2{break-before:page}pre,.table-wrap{break-inside:avoid}.toc a{color:#1859ba;text-decoration:underline}}
+    @media(max-width:720px){.toc ol{columns:1}.cover,.toc,.content{padding:20px}.top{position:static;align-items:flex-start;flex-direction:column}}
+    @media print{body{background:#fff;font-size:9pt}.top,.back,.anchor{display:none}.page{max-width:none;margin:0;padding:0}.cover,.toc,.content{box-shadow:none;border:0;padding:12mm}.cover{break-after:page}h1,h2,h3{break-after:avoid}pre{white-space:pre-wrap;overflow:visible}table{font-size:8pt}tr{break-inside:avoid}.toc a{color:#1859ba;text-decoration:underline}}
   </style>
 </head>
 <body>
   <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/esquema/pdf">Esquema BD en PDF</a><a class="button" href="/documentacion-tecnica/esquema/sqlite">SQL SQLite</a><a class="button" href="/documentacion-tecnica/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/documentacion-tecnica/descargar">Documentación completa PDF</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Julio de 2026</small></header>
+    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Agosto de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice técnico</h2><ol><li class=""><a href="#documentacion-disponible">Documentación disponible</a></li>
 <li class=""><a href="#estado-del-proyecto">Estado del proyecto</a></li>
 <li class=""><a href="#estructura">Estructura</a></li>
@@ -50,6 +50,7 @@
 <li class="sub"><a href="#resumen-de-tablas-colecciones">Resumen de tablas/colecciones</a></li>
 <li class="sub"><a href="#mapa-de-carga-y-destino">Mapa de carga y destino</a></li>
 <li class="sub"><a href="#ficha-de-colecciones-para-la-base-de-datos">Ficha de colecciones para la base de datos</a></li>
+<li class="sub"><a href="#caracteristicas-de-las-bases-de-directorio-y-control">Características de las bases de Directorio y control</a></li>
 <li class="sub"><a href="#datos-minimos-para-iniciar">Datos mínimos para iniciar</a></li>
 <li class="sub"><a href="#usuarios-2">usuarios</a></li>
 <li class="sub"><a href="#asignaciones-comerciales-2">asignaciones_comerciales</a></li>
@@ -91,6 +92,7 @@
 <li class=""><a href="#apis-principales">APIs principales</a></li>
 <li class=""><a href="#seguridad">Seguridad</a></li>
 <li class=""><a href="#flujo-recomendado-de-uso">Flujo recomendado de uso</a></li>
+<li class="sub"><a href="#generacion-de-un-nuevo-ano-proyectado">Generación de un nuevo año proyectado</a></li>
 <li class=""><a href="#problemas-frecuentes">Problemas frecuentes</a></li>
 <li class="sub"><a href="#npm-no-se-reconoce">npm no se reconoce</a></li>
 <li class="sub"><a href="#la-app-usa-otro-puerto">La app usa otro puerto</a></li>
@@ -343,6 +345,46 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <td><code>FeriadoOperativo</code></td>
 <td>Guarda feriados o días no operativos que afectan los días objetivo de las proyecciones.</td>
 </tr>
+<tr>
+<td><code>dotaciones_mensuales</code></td>
+<td><code>DotacionMensual</code></td>
+<td>Serie mensual consolidada de dotación requerida y personal para indicadores.</td>
+</tr>
+<tr>
+<td><code>ratio_eli_mensual</code></td>
+<td><code>RatioEliMensual</code></td>
+<td>Serie mensual de requerido y staff para el indicador ELI.</td>
+</tr>
+<tr>
+<td><code>ratio_eli_ii_mensual</code></td>
+<td><code>RatioEliIIMensual</code></td>
+<td>Serie mensual operativa y monetaria de operaciones y staff para ELI II.</td>
+</tr>
+<tr>
+<td><code>dashboard_operativo</code></td>
+<td><code>DashboardOperativo</code></td>
+<td>Base mensual por cliente/campaña de Directorio; conserva datos importados y bajas manuales.</td>
+</tr>
+<tr>
+<td><code>historico_clientes_mensuales</code></td>
+<td><code>HistoricoClienteMensual</code></td>
+<td>Base histórica mensual por cliente; conserva datos fuente, pagadas y logueo.</td>
+</tr>
+<tr>
+<td><code>dotaciones_clientes_mensuales</code></td>
+<td><code>DotacionClienteMensual</code></td>
+<td>Dotación requerida mensual abierta por cliente.</td>
+</tr>
+<tr>
+<td><code>graficos_dotaciones_mensuales</code></td>
+<td><code>GraficoDotacionMensual</code></td>
+<td>Serie mensual para gráficos de dotación requerida y activa por sede.</td>
+</tr>
+<tr>
+<td><code>excepciones_calculo</code></td>
+<td><code>ExcepcionCalculo</code></td>
+<td>Reglas excepcionales y ajustes porcentuales por cliente/campaña.</td>
+</tr>
 </tbody></table></div>
 <h3 id="mapa-de-carga-y-destino">Mapa de carga y destino<a class="anchor" href="#mapa-de-carga-y-destino" aria-label="Enlace a esta sección">#</a></h3>
 <div class="table-wrap"><table><thead><tr>
@@ -429,6 +471,46 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <td><code>historial_cambios</code></td>
 <td>Automática; no se carga manualmente</td>
 <td>Auditoría y restauración de snapshots en operaciones compatibles con Deshacer.</td>
+</tr>
+<tr>
+<td><code>dotaciones_mensuales</code></td>
+<td>Importación de Directorio / Dotaciones</td>
+<td>Indicadores consolidados de requerida, personal y diferencia mensual.</td>
+</tr>
+<tr>
+<td><code>ratio_eli_mensual</code></td>
+<td>Importación del indicador ELI</td>
+<td>Gráfico mensual de requerido, staff y ratio calculado.</td>
+</tr>
+<tr>
+<td><code>ratio_eli_ii_mensual</code></td>
+<td>Importación del indicador ELI II</td>
+<td>Gráficos operativos y monetarios; los totales y ratios se calculan al consultar.</td>
+</tr>
+<tr>
+<td><code>dashboard_operativo</code></td>
+<td>Importación Dashboard operativo; edición de bajas</td>
+<td>Tableros de Directorio por año, mes, cliente y campaña.</td>
+</tr>
+<tr>
+<td><code>historico_clientes_mensuales</code></td>
+<td>Importación histórica; edición de pagadas/logueo</td>
+<td>Histórico y comparativos mensuales por cliente.</td>
+</tr>
+<tr>
+<td><code>dotaciones_clientes_mensuales</code></td>
+<td>Importación de dotaciones por cliente</td>
+<td>Cuadros, evolutivos y comparaciones de dotación requerida.</td>
+</tr>
+<tr>
+<td><code>graficos_dotaciones_mensuales</code></td>
+<td>Importación de gráficos de dotaciones</td>
+<td>Series de requerida, activa SL, activa BA, diferencia y sobre-staff.</td>
+</tr>
+<tr>
+<td><code>excepciones_calculo</code></td>
+<td>Configuración técnica</td>
+<td>Ajustes puntuales del cálculo sin alterar la fórmula general.</td>
 </tr>
 </tbody></table></div>
 <h3 id="ficha-de-colecciones-para-la-base-de-datos">Ficha de colecciones para la base de datos<a class="anchor" href="#ficha-de-colecciones-para-la-base-de-datos" aria-label="Enlace a esta sección">#</a></h3>
@@ -685,7 +767,7 @@ WHERE a.cliente &lt;&gt; c.cliente OR a.campania &lt;&gt; c.nombre;</code></pre>
 <li>restricciones <code>UNIQUE</code>;</li>
 <li>índices y columnas indexadas.</li>
 </ul>
-<p class="">El esquema incluye las 16 tablas vigentes:</p>
+<p class="">El esquema incluye las 24 tablas vigentes:</p>
 <pre><code class="language-text">usuarios
 historial_cambios
 facturacion_anio
@@ -700,8 +782,73 @@ next_gen_dolar
 next_gen_productos
 sites_proyecciones
 feriados_operativos
+dotaciones_mensuales
+ratio_eli_mensual
+ratio_eli_ii_mensual
+dashboard_operativo
+historico_clientes_mensuales
+dotaciones_clientes_mensuales
+graficos_dotaciones_mensuales
 campanias
+excepciones_calculo
 asignaciones_comerciales</code></pre>
+<h3 id="caracteristicas-de-las-bases-de-directorio-y-control">Características de las bases de Directorio y control<a class="anchor" href="#caracteristicas-de-las-bases-de-directorio-y-control" aria-label="Enlace a esta sección">#</a></h3>
+<div class="table-wrap"><table><thead><tr>
+<th>Tabla</th>
+<th>Granularidad / clave lógica</th>
+<th>Datos persistidos</th>
+<th>Cálculos derivados y reglas</th>
+</tr></thead><tbody>
+<tr>
+<td><code>dotaciones_mensuales</code></td>
+<td>Una fila por <code>fecha</code> mensual, única</td>
+<td>Dotación requerida y personal</td>
+<td>Diferencia y porcentajes se calculan al consultar; no se duplican meses.</td>
+</tr>
+<tr>
+<td><code>ratio_eli_mensual</code></td>
+<td>Una fila por <code>fecha</code> mensual, única</td>
+<td>Requerido y staff</td>
+<td><code>ratio = staff / requerido</code>; si requerido es cero, el ratio queda sin valor.</td>
+</tr>
+<tr>
+<td><code>ratio_eli_ii_mensual</code></td>
+<td>Una fila por <code>fecha</code> mensual, única</td>
+<td>Operaciones, staff e importes de ambos</td>
+<td>Total y ratios operativos/monetarios se derivan de los cuatro valores base.</td>
+</tr>
+<tr>
+<td><code>dashboard_operativo</code></td>
+<td><code>mes + cliente + campaña</code>, único</td>
+<td>Año, datos importados en JSON y bajas manuales</td>
+<td>La reimportación actualiza la misma clave y conserva el tratamiento explícito de bajas.</td>
+</tr>
+<tr>
+<td><code>historico_clientes_mensuales</code></td>
+<td><code>mes + cliente</code>, único</td>
+<td>Base fuente en JSON, pagadas y logueo</td>
+<td>Pagadas y logueo son editables; la información importada permanece agrupada por cliente/mes.</td>
+</tr>
+<tr>
+<td><code>dotaciones_clientes_mensuales</code></td>
+<td><code>cliente + fecha</code>, único</td>
+<td>Dotación requerida</td>
+<td>Alimenta cuadros y evolutivos abiertos por cliente sin duplicar el mismo período.</td>
+</tr>
+<tr>
+<td><code>graficos_dotaciones_mensuales</code></td>
+<td>Una fila por <code>fecha</code> mensual, única</td>
+<td>Requerida, activa SL y activa BA</td>
+<td>Activa total, diferencia y porcentaje de sobre-staff se calculan al consultar.</td>
+</tr>
+<tr>
+<td><code>excepciones_calculo</code></td>
+<td><code>cliente + campaña</code>, único</td>
+<td>Tipo de cálculo, ajustes de valor hora objetivo/alcanzado y estado</td>
+<td>Solo se aplica cuando está activa; permite excepciones trazables sin forzar los datos generales.</td>
+</tr>
+</tbody></table></div>
+<p class="">Los campos JSON de <code>dashboard_operativo.datos</code> e <code>historico_clientes_mensuales.datos_base</code> conservan las columnas variables de la fuente importada. Los campos que participan en filtros, edición o unicidad se mantienen como columnas tipadas. El detalle físico de <strong>cada campo</strong>, tipo, obligatoriedad, clave, índice y restricción está en los anexos DDL generados que acompañan esta ficha.</p>
 <p class="">Estos archivos se generan directamente desde <code>app/models.py</code>; por eso son la fuente técnica para construir una base nueva y evitan copiar accidentalmente datos reales de <code>instance/facturacion.db</code>. Cada cambio de modelos exige volver a generar los scripts y la documentación:</p>
 <p class="callout">Nota: varios valores predeterminados actuales son aplicados por SQLAlchemy desde Python y no son <code>DEFAULT</code> físicos del motor. El DDL muestra deliberadamente sólo las garantías que la base puede imponer por sí misma; esto permite que el tercero distinga las restricciones de base de las reglas ejecutadas por la aplicación.</p>
 <pre><code class="language-powershell">python scripts\generar_esquema_base_datos.py
@@ -1830,6 +1977,9 @@ FLASK_RELOAD=0
 TEMPLATES_AUTO_RELOAD=0</code></pre>
 <p class="">Servir siempre detrás de HTTPS y con una base de datos administrada.</p>
 <h2 id="flujo-recomendado-de-uso">Flujo recomendado de uso<a class="anchor" href="#flujo-recomendado-de-uso" aria-label="Enlace a esta sección">#</a></h2>
+<h3 id="generacion-de-un-nuevo-ano-proyectado">Generación de un nuevo año proyectado<a class="anchor" href="#generacion-de-un-nuevo-ano-proyectado" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">La acción <strong>Nuevo</strong> de Matriz de proyecciones toma el año seleccionado en pantalla como base y, dentro de ese año, el último mes con datos disponible hasta el mes calendario actual. No toma meses futuros aunque ya tengan una previsión cargada: en agosto usa agosto y, cuando septiembre esté cargado, usa septiembre. Esa fotografía mensual se replica en los doce meses del año siguiente para proyecciones, jornadas, precios, suma fija, porcentajes variables y distribución horaria de Personal.</p>
+<p class="">Los días objetivo y las horas derivadas se recalculan con el calendario de cada mes destino. Los feriados no se heredan y deben cargarse expresamente para el nuevo año. La operación es atómica, queda en el historial y rechaza la solicitud si el año destino ya tiene proyecciones, evitando sobrescrituras parciales.</p>
 <ol>
 <li>Cargar o revisar Datos maestros.</li>
 <li>Cargar facturación real en Cargar datos.</li>
@@ -2424,7 +2574,10 @@ horas nocturnas = horas totales × porcentaje nocturno</code></pre>
 <p class="">No se deben importar directamente <code>Facturacion Horas</code>, <code>Variable</code>, <code>Next Gen</code> o <code>RESUMEN</code> como bases. Sus valores pueden estar almacenados en caché por Excel y no reflejar cambios recientes de las hojas maestras hasta que Excel recalcule.</p>
 <p class="">La columna <code>Cuenta</code> del Excel es la identidad canónica del resultado. La columna <code>Cliente</code> puede representar una apertura. La relación entre ambas se refleja en <code>sites_proyecciones</code>.</p>
 <h3 id="conciliacion-2026">Conciliación 2026<a class="anchor" href="#conciliacion-2026" aria-label="Enlace a esta sección">#</a></h3>
-<p class="">La alineación vigente fue validada contra las 47 cuentas y los doce meses del <code>RESUMEN</code> de referencia. El resultado quedó con una diferencia anual de $0,14, originada por acumulación de decimales inferiores al centavo.</p>
+<p class="">La alineación vigente se valida por cuenta, mes y componente contra las hojas calculadas del libro de referencia. No alcanza con comparar el total anual.</p>
+<p class="">Ejecutar el control luego de cada carga o cambio de reglas:</p>
+<pre><code class="language-powershell">python scripts\verificar_alineacion_proyectados.py &quot;C:\ruta\Proyeccion Horas.xlsx&quot; --year 2026</code></pre>
+<p class="">El comando devuelve error si encuentra una diferencia inesperada en <code>Facturacion Horas</code>, <code>Variable</code>, <code>Tarifacion</code> o <code>Next Gen</code>. Las celdas de salida que no tienen fórmula en el Excel se informan aparte como <code>FORMULA_FALTANTE</code>; con <code>--strict</code> también hacen fallar el control. La comparación monetaria se hace al centavo, pero los cálculos internos conservan precisión decimal completa.</p>
 <p class="">La conciliación no reemplaza las reglas del negocio:</p>
 <ol>
 <li>primero se corrigen horas, precios, porcentajes, sumas fijas y nombres;</li>
@@ -2682,9 +2835,82 @@ CREATE TABLE campanias (
 	cliente VARCHAR(100) NOT NULL,
 	nombre VARCHAR(100) NOT NULL,
 	activa BOOLEAN NOT NULL,
+	valor_hora_variable BOOLEAN,
 	creado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
 	CONSTRAINT uq_campanias_cliente_nombre UNIQUE (cliente, nombre)
+);
+
+-- ============================================================
+-- TABLA: dashboard_operativo
+-- ============================================================
+CREATE TABLE dashboard_operativo (
+	id INTEGER NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	cliente VARCHAR(120) NOT NULL,
+	campania VARCHAR(180) NOT NULL,
+	datos TEXT NOT NULL,
+	bajas_manual NUMERIC(20, 10) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_dashboard_mes_cliente_campania UNIQUE (mes, cliente, campania)
+);
+
+CREATE INDEX ix_dashboard_operativo_cliente ON dashboard_operativo (cliente);
+
+CREATE INDEX ix_dashboard_operativo_mes ON dashboard_operativo (mes);
+
+CREATE INDEX ix_dashboard_operativo_year ON dashboard_operativo (year);
+
+-- ============================================================
+-- TABLA: dotaciones_clientes_mensuales
+-- ============================================================
+CREATE TABLE dotaciones_clientes_mensuales (
+	id INTEGER NOT NULL,
+	cliente VARCHAR(160) NOT NULL,
+	fecha DATE NOT NULL,
+	dotacion NUMERIC(20, 10) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_dotacion_cliente_fecha UNIQUE (cliente, fecha)
+);
+
+CREATE INDEX ix_dotaciones_clientes_mensuales_cliente ON dotaciones_clientes_mensuales (cliente);
+
+CREATE INDEX ix_dotaciones_clientes_mensuales_fecha ON dotaciones_clientes_mensuales (fecha);
+
+-- ============================================================
+-- TABLA: dotaciones_mensuales
+-- ============================================================
+CREATE TABLE dotaciones_mensuales (
+	id INTEGER NOT NULL,
+	fecha DATE NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
+	personal NUMERIC(20, 10) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_dotaciones_mensuales_fecha ON dotaciones_mensuales (fecha);
+
+-- ============================================================
+-- TABLA: excepciones_calculo
+-- ============================================================
+CREATE TABLE excepciones_calculo (
+	id INTEGER NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	tipo_calculo VARCHAR(60) NOT NULL,
+	ajuste_vh_objetivo_pct NUMERIC(9, 4) NOT NULL,
+	ajuste_vh_alcanzado_pct NUMERIC(9, 4) NOT NULL,
+	activa BOOLEAN NOT NULL,
+	creado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_excepcion_calculo_cliente_campania UNIQUE (cliente, campania)
 );
 
 -- ============================================================
@@ -2700,12 +2926,21 @@ CREATE TABLE facturacion_anio (
 	campania VARCHAR(100),
 	subcampania VARCHAR(100),
 	tipo_negocio VARCHAR(100),
+	es_next_gen BOOLEAN NOT NULL,
+	objetivo_separar_ajuste_vh BOOLEAN NOT NULL,
 	tipo_jornada VARCHAR(50) NOT NULL,
-	horas_objetivo NUMERIC(12, 2) NOT NULL,
-	horas_facturadas NUMERIC(12, 2) NOT NULL,
-	horas_penalizadas NUMERIC(12, 2),
+	horas_objetivo NUMERIC(20, 10) NOT NULL,
+	horas_facturadas NUMERIC(20, 10) NOT NULL,
+	horas_penalizadas NUMERIC(20, 10),
 	valor_hora_objetivo NUMERIC(18, 2),
 	valor_hora NUMERIC(18, 2) NOT NULL,
+	facturado_horas_manual NUMERIC(18, 2),
+	total_facturado_manual NUMERIC(18, 2),
+	control_facturado_horas NUMERIC(18, 2),
+	control_variable_productivo NUMERIC(18, 2),
+	control_penalizaciones_bonos NUMERIC(18, 2),
+	control_total_facturado NUMERIC(18, 2),
+	control_objetivo_total NUMERIC(18, 2),
 	tarifacion NUMERIC(18, 2),
 	importe_fijo NUMERIC(18, 2),
 	variable_objetivo NUMERIC(18, 2),
@@ -2738,6 +2973,45 @@ CREATE INDEX ix_feriados_operativos_fecha ON feriados_operativos (fecha);
 CREATE INDEX ix_feriados_operativos_year ON feriados_operativos (year);
 
 -- ============================================================
+-- TABLA: graficos_dotaciones_mensuales
+-- ============================================================
+CREATE TABLE graficos_dotaciones_mensuales (
+	id INTEGER NOT NULL,
+	fecha DATE NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
+	activa_sl NUMERIC(20, 10) NOT NULL,
+	activa_ba NUMERIC(20, 10) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_graficos_dotaciones_mensuales_fecha ON graficos_dotaciones_mensuales (fecha);
+
+-- ============================================================
+-- TABLA: historico_clientes_mensuales
+-- ============================================================
+CREATE TABLE historico_clientes_mensuales (
+	id INTEGER NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	cliente VARCHAR(160) NOT NULL,
+	datos_base TEXT NOT NULL,
+	pagadas NUMERIC(20, 10),
+	logueo NUMERIC(20, 10),
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_historico_mes_cliente UNIQUE (mes, cliente)
+);
+
+CREATE INDEX ix_historico_clientes_mensuales_cliente ON historico_clientes_mensuales (cliente);
+
+CREATE INDEX ix_historico_clientes_mensuales_mes ON historico_clientes_mensuales (mes);
+
+CREATE INDEX ix_historico_clientes_mensuales_year ON historico_clientes_mensuales (year);
+
+-- ============================================================
 -- TABLA: matriz_precios
 -- ============================================================
 CREATE TABLE matriz_precios (
@@ -2747,9 +3021,9 @@ CREATE TABLE matriz_precios (
 	campania VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	precio_base NUMERIC(18, 2) NOT NULL,
-	alcance_porcentaje NUMERIC(9, 4) NOT NULL,
-	precio_final NUMERIC(18, 2) NOT NULL,
+	precio_base NUMERIC(24, 10) NOT NULL,
+	alcance_porcentaje NUMERIC(15, 10) NOT NULL,
+	precio_final NUMERIC(24, 10) NOT NULL,
 	importe_fijo_mensual NUMERIC(18, 2) NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
@@ -2770,18 +3044,18 @@ CREATE TABLE matriz_proyecciones (
 	campania VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	dotacion_requerida NUMERIC(12, 2) NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
 	carga_semanal VARCHAR(20) NOT NULL,
-	carga_horaria NUMERIC(12, 2) NOT NULL,
+	carga_horaria NUMERIC(20, 10) NOT NULL,
 	dias_objetivo INTEGER NOT NULL,
-	horas_requeridas NUMERIC(12, 2) NOT NULL,
-	porcentaje_cumplimiento NUMERIC(9, 4) NOT NULL,
+	horas_requeridas NUMERIC(20, 10) NOT NULL,
+	porcentaje_cumplimiento NUMERIC(15, 10) NOT NULL,
 	tiene_nocturnidad BOOLEAN NOT NULL,
-	porcentaje_nocturnidad NUMERIC(9, 4) NOT NULL,
+	porcentaje_nocturnidad NUMERIC(15, 10) NOT NULL,
 	tipo_plp VARCHAR(30),
 	horas_carga_manual BOOLEAN NOT NULL,
 	dias_objetivo_manual INTEGER,
-	horas_requeridas_manual NUMERIC(12, 2),
+	horas_requeridas_manual NUMERIC(20, 10),
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
@@ -2799,7 +3073,7 @@ CREATE TABLE next_gen_dolar (
 	id INTEGER NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	valor NUMERIC(18, 6) NOT NULL,
+	valor NUMERIC(24, 10) NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id)
@@ -2820,7 +3094,8 @@ CREATE TABLE next_gen_productos (
 	producto VARCHAR(160) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	cantidad_usd NUMERIC(18, 2) NOT NULL,
+	cantidad_usd NUMERIC(24, 10) NOT NULL,
+	cotizacion_aplicada NUMERIC(24, 10),
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
@@ -2839,7 +3114,7 @@ CREATE TABLE personal_distribucion_horas (
 	servicio VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	porcentaje_diurno NUMERIC(9, 4) NOT NULL,
+	porcentaje_diurno NUMERIC(15, 10) NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
@@ -2851,6 +3126,38 @@ CREATE INDEX ix_personal_distribucion_horas_mes ON personal_distribucion_horas (
 CREATE INDEX ix_personal_distribucion_horas_servicio ON personal_distribucion_horas (servicio);
 
 CREATE INDEX ix_personal_distribucion_horas_year ON personal_distribucion_horas (year);
+
+-- ============================================================
+-- TABLA: ratio_eli_ii_mensual
+-- ============================================================
+CREATE TABLE ratio_eli_ii_mensual (
+	id INTEGER NOT NULL,
+	fecha DATE NOT NULL,
+	operaciones NUMERIC(20, 10) NOT NULL,
+	staff NUMERIC(20, 10) NOT NULL,
+	operaciones_importe NUMERIC(18, 2) NOT NULL,
+	staff_importe NUMERIC(18, 2) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_ratio_eli_ii_mensual_fecha ON ratio_eli_ii_mensual (fecha);
+
+-- ============================================================
+-- TABLA: ratio_eli_mensual
+-- ============================================================
+CREATE TABLE ratio_eli_mensual (
+	id INTEGER NOT NULL,
+	fecha DATE NOT NULL,
+	requerido NUMERIC(20, 10) NOT NULL,
+	staff NUMERIC(20, 10) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_ratio_eli_mensual_fecha ON ratio_eli_mensual (fecha);
 
 -- ============================================================
 -- TABLA: sites_proyecciones
@@ -2879,7 +3186,7 @@ CREATE TABLE tarifaciones_campanias (
 	concepto VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	monto NUMERIC(18, 2) NOT NULL,
+	monto NUMERIC(24, 10) NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
@@ -2899,7 +3206,12 @@ CREATE TABLE usuarios (
 	email VARCHAR(160) NOT NULL,
 	password_hash VARCHAR(255) NOT NULL,
 	rol VARCHAR(30) NOT NULL,
+	puesto VARCHAR(100),
+	gerente_asignado VARCHAR(100),
+	jefe_site_asignado VARCHAR(100),
+	permisos_personalizados TEXT,
 	activo BOOLEAN NOT NULL,
+	debe_cambiar_password BOOLEAN NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id)
@@ -2917,7 +3229,7 @@ CREATE TABLE variables_campanias (
 	campania VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	porcentaje NUMERIC(9, 4) NOT NULL,
+	porcentaje NUMERIC(15, 10) NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
@@ -2940,13 +3252,20 @@ CREATE TABLE asignaciones_comerciales (
 	campania VARCHAR(100) NOT NULL,
 	subcampania VARCHAR(100) NOT NULL,
 	tipo_negocio VARCHAR(100),
+	es_next_gen BOOLEAN NOT NULL,
 	activa BOOLEAN NOT NULL,
+	vigencia_desde VARCHAR(7),
+	vigencia_hasta VARCHAR(7),
 	creado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
 	CONSTRAINT fk_asignaciones_campania FOREIGN KEY(campania_id) REFERENCES campanias (id)
 );
 
 CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
+
+CREATE INDEX ix_asignaciones_comerciales_vigencia_desde ON asignaciones_comerciales (vigencia_desde);
+
+CREATE INDEX ix_asignaciones_comerciales_vigencia_hasta ON asignaciones_comerciales (vigencia_hasta);
 
 -- ============================================================
 -- TABLA: historial_cambios
@@ -2992,11 +3311,11 @@ CREATE TABLE justificaciones_ajustes (
 CREATE TABLE matriz_proyecciones_jornadas (
 	id INTEGER NOT NULL,
 	proyeccion_id INTEGER NOT NULL,
-	dotacion_requerida NUMERIC(12, 2) NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
 	carga_semanal VARCHAR(30) NOT NULL,
-	carga_horaria NUMERIC(12, 2) NOT NULL,
+	carga_horaria NUMERIC(20, 10) NOT NULL,
 	dias_objetivo INTEGER NOT NULL,
-	horas_requeridas NUMERIC(12, 2) NOT NULL,
+	horas_requeridas NUMERIC(20, 10) NOT NULL,
 	PRIMARY KEY (id),
 	FOREIGN KEY(proyeccion_id) REFERENCES matriz_proyecciones (id)
 );
@@ -3015,9 +3334,82 @@ CREATE TABLE campanias (
 	cliente VARCHAR(100) NOT NULL,
 	nombre VARCHAR(100) NOT NULL,
 	activa BOOLEAN NOT NULL,
+	valor_hora_variable BOOLEAN,
 	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	PRIMARY KEY (id),
 	CONSTRAINT uq_campanias_cliente_nombre UNIQUE (cliente, nombre)
+);
+
+-- ============================================================
+-- TABLA: dashboard_operativo
+-- ============================================================
+CREATE TABLE dashboard_operativo (
+	id SERIAL NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	cliente VARCHAR(120) NOT NULL,
+	campania VARCHAR(180) NOT NULL,
+	datos TEXT NOT NULL,
+	bajas_manual NUMERIC(20, 10) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_dashboard_mes_cliente_campania UNIQUE (mes, cliente, campania)
+);
+
+CREATE INDEX ix_dashboard_operativo_cliente ON dashboard_operativo (cliente);
+
+CREATE INDEX ix_dashboard_operativo_mes ON dashboard_operativo (mes);
+
+CREATE INDEX ix_dashboard_operativo_year ON dashboard_operativo (year);
+
+-- ============================================================
+-- TABLA: dotaciones_clientes_mensuales
+-- ============================================================
+CREATE TABLE dotaciones_clientes_mensuales (
+	id SERIAL NOT NULL,
+	cliente VARCHAR(160) NOT NULL,
+	fecha DATE NOT NULL,
+	dotacion NUMERIC(20, 10) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_dotacion_cliente_fecha UNIQUE (cliente, fecha)
+);
+
+CREATE INDEX ix_dotaciones_clientes_mensuales_cliente ON dotaciones_clientes_mensuales (cliente);
+
+CREATE INDEX ix_dotaciones_clientes_mensuales_fecha ON dotaciones_clientes_mensuales (fecha);
+
+-- ============================================================
+-- TABLA: dotaciones_mensuales
+-- ============================================================
+CREATE TABLE dotaciones_mensuales (
+	id SERIAL NOT NULL,
+	fecha DATE NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
+	personal NUMERIC(20, 10) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_dotaciones_mensuales_fecha ON dotaciones_mensuales (fecha);
+
+-- ============================================================
+-- TABLA: excepciones_calculo
+-- ============================================================
+CREATE TABLE excepciones_calculo (
+	id SERIAL NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	tipo_calculo VARCHAR(60) NOT NULL,
+	ajuste_vh_objetivo_pct NUMERIC(9, 4) NOT NULL,
+	ajuste_vh_alcanzado_pct NUMERIC(9, 4) NOT NULL,
+	activa BOOLEAN NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_excepcion_calculo_cliente_campania UNIQUE (cliente, campania)
 );
 
 -- ============================================================
@@ -3033,12 +3425,21 @@ CREATE TABLE facturacion_anio (
 	campania VARCHAR(100),
 	subcampania VARCHAR(100),
 	tipo_negocio VARCHAR(100),
+	es_next_gen BOOLEAN NOT NULL,
+	objetivo_separar_ajuste_vh BOOLEAN NOT NULL,
 	tipo_jornada VARCHAR(50) NOT NULL,
-	horas_objetivo NUMERIC(12, 2) NOT NULL,
-	horas_facturadas NUMERIC(12, 2) NOT NULL,
-	horas_penalizadas NUMERIC(12, 2),
+	horas_objetivo NUMERIC(20, 10) NOT NULL,
+	horas_facturadas NUMERIC(20, 10) NOT NULL,
+	horas_penalizadas NUMERIC(20, 10),
 	valor_hora_objetivo NUMERIC(18, 2),
 	valor_hora NUMERIC(18, 2) NOT NULL,
+	facturado_horas_manual NUMERIC(18, 2),
+	total_facturado_manual NUMERIC(18, 2),
+	control_facturado_horas NUMERIC(18, 2),
+	control_variable_productivo NUMERIC(18, 2),
+	control_penalizaciones_bonos NUMERIC(18, 2),
+	control_total_facturado NUMERIC(18, 2),
+	control_objetivo_total NUMERIC(18, 2),
 	tarifacion NUMERIC(18, 2),
 	importe_fijo NUMERIC(18, 2),
 	variable_objetivo NUMERIC(18, 2),
@@ -3071,6 +3472,45 @@ CREATE INDEX ix_feriados_operativos_fecha ON feriados_operativos (fecha);
 CREATE INDEX ix_feriados_operativos_year ON feriados_operativos (year);
 
 -- ============================================================
+-- TABLA: graficos_dotaciones_mensuales
+-- ============================================================
+CREATE TABLE graficos_dotaciones_mensuales (
+	id SERIAL NOT NULL,
+	fecha DATE NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
+	activa_sl NUMERIC(20, 10) NOT NULL,
+	activa_ba NUMERIC(20, 10) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_graficos_dotaciones_mensuales_fecha ON graficos_dotaciones_mensuales (fecha);
+
+-- ============================================================
+-- TABLA: historico_clientes_mensuales
+-- ============================================================
+CREATE TABLE historico_clientes_mensuales (
+	id SERIAL NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	cliente VARCHAR(160) NOT NULL,
+	datos_base TEXT NOT NULL,
+	pagadas NUMERIC(20, 10),
+	logueo NUMERIC(20, 10),
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_historico_mes_cliente UNIQUE (mes, cliente)
+);
+
+CREATE INDEX ix_historico_clientes_mensuales_cliente ON historico_clientes_mensuales (cliente);
+
+CREATE INDEX ix_historico_clientes_mensuales_mes ON historico_clientes_mensuales (mes);
+
+CREATE INDEX ix_historico_clientes_mensuales_year ON historico_clientes_mensuales (year);
+
+-- ============================================================
 -- TABLA: matriz_precios
 -- ============================================================
 CREATE TABLE matriz_precios (
@@ -3080,9 +3520,9 @@ CREATE TABLE matriz_precios (
 	campania VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	precio_base NUMERIC(18, 2) NOT NULL,
-	alcance_porcentaje NUMERIC(9, 4) NOT NULL,
-	precio_final NUMERIC(18, 2) NOT NULL,
+	precio_base NUMERIC(24, 10) NOT NULL,
+	alcance_porcentaje NUMERIC(15, 10) NOT NULL,
+	precio_final NUMERIC(24, 10) NOT NULL,
 	importe_fijo_mensual NUMERIC(18, 2) NOT NULL,
 	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
@@ -3103,18 +3543,18 @@ CREATE TABLE matriz_proyecciones (
 	campania VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	dotacion_requerida NUMERIC(12, 2) NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
 	carga_semanal VARCHAR(20) NOT NULL,
-	carga_horaria NUMERIC(12, 2) NOT NULL,
+	carga_horaria NUMERIC(20, 10) NOT NULL,
 	dias_objetivo INTEGER NOT NULL,
-	horas_requeridas NUMERIC(12, 2) NOT NULL,
-	porcentaje_cumplimiento NUMERIC(9, 4) NOT NULL,
+	horas_requeridas NUMERIC(20, 10) NOT NULL,
+	porcentaje_cumplimiento NUMERIC(15, 10) NOT NULL,
 	tiene_nocturnidad BOOLEAN NOT NULL,
-	porcentaje_nocturnidad NUMERIC(9, 4) NOT NULL,
+	porcentaje_nocturnidad NUMERIC(15, 10) NOT NULL,
 	tipo_plp VARCHAR(30),
 	horas_carga_manual BOOLEAN NOT NULL,
 	dias_objetivo_manual INTEGER,
-	horas_requeridas_manual NUMERIC(12, 2),
+	horas_requeridas_manual NUMERIC(20, 10),
 	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	PRIMARY KEY (id),
@@ -3132,7 +3572,7 @@ CREATE TABLE next_gen_dolar (
 	id SERIAL NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	valor NUMERIC(18, 6) NOT NULL,
+	valor NUMERIC(24, 10) NOT NULL,
 	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	PRIMARY KEY (id)
@@ -3153,7 +3593,8 @@ CREATE TABLE next_gen_productos (
 	producto VARCHAR(160) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	cantidad_usd NUMERIC(18, 2) NOT NULL,
+	cantidad_usd NUMERIC(24, 10) NOT NULL,
+	cotizacion_aplicada NUMERIC(24, 10),
 	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	PRIMARY KEY (id),
@@ -3172,7 +3613,7 @@ CREATE TABLE personal_distribucion_horas (
 	servicio VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	porcentaje_diurno NUMERIC(9, 4) NOT NULL,
+	porcentaje_diurno NUMERIC(15, 10) NOT NULL,
 	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	PRIMARY KEY (id),
@@ -3184,6 +3625,38 @@ CREATE INDEX ix_personal_distribucion_horas_mes ON personal_distribucion_horas (
 CREATE INDEX ix_personal_distribucion_horas_servicio ON personal_distribucion_horas (servicio);
 
 CREATE INDEX ix_personal_distribucion_horas_year ON personal_distribucion_horas (year);
+
+-- ============================================================
+-- TABLA: ratio_eli_ii_mensual
+-- ============================================================
+CREATE TABLE ratio_eli_ii_mensual (
+	id SERIAL NOT NULL,
+	fecha DATE NOT NULL,
+	operaciones NUMERIC(20, 10) NOT NULL,
+	staff NUMERIC(20, 10) NOT NULL,
+	operaciones_importe NUMERIC(18, 2) NOT NULL,
+	staff_importe NUMERIC(18, 2) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_ratio_eli_ii_mensual_fecha ON ratio_eli_ii_mensual (fecha);
+
+-- ============================================================
+-- TABLA: ratio_eli_mensual
+-- ============================================================
+CREATE TABLE ratio_eli_mensual (
+	id SERIAL NOT NULL,
+	fecha DATE NOT NULL,
+	requerido NUMERIC(20, 10) NOT NULL,
+	staff NUMERIC(20, 10) NOT NULL,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_ratio_eli_mensual_fecha ON ratio_eli_mensual (fecha);
 
 -- ============================================================
 -- TABLA: sites_proyecciones
@@ -3212,7 +3685,7 @@ CREATE TABLE tarifaciones_campanias (
 	concepto VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	monto NUMERIC(18, 2) NOT NULL,
+	monto NUMERIC(24, 10) NOT NULL,
 	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	PRIMARY KEY (id),
@@ -3232,7 +3705,12 @@ CREATE TABLE usuarios (
 	email VARCHAR(160) NOT NULL,
 	password_hash VARCHAR(255) NOT NULL,
 	rol VARCHAR(30) NOT NULL,
+	puesto VARCHAR(100),
+	gerente_asignado VARCHAR(100),
+	jefe_site_asignado VARCHAR(100),
+	permisos_personalizados TEXT,
 	activo BOOLEAN NOT NULL,
+	debe_cambiar_password BOOLEAN NOT NULL,
 	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	PRIMARY KEY (id)
@@ -3250,7 +3728,7 @@ CREATE TABLE variables_campanias (
 	campania VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	porcentaje NUMERIC(9, 4) NOT NULL,
+	porcentaje NUMERIC(15, 10) NOT NULL,
 	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	PRIMARY KEY (id),
@@ -3273,13 +3751,20 @@ CREATE TABLE asignaciones_comerciales (
 	campania VARCHAR(100) NOT NULL,
 	subcampania VARCHAR(100) NOT NULL,
 	tipo_negocio VARCHAR(100),
+	es_next_gen BOOLEAN NOT NULL,
 	activa BOOLEAN NOT NULL,
+	vigencia_desde VARCHAR(7),
+	vigencia_hasta VARCHAR(7),
 	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	PRIMARY KEY (id),
 	CONSTRAINT fk_asignaciones_campania FOREIGN KEY(campania_id) REFERENCES campanias (id)
 );
 
 CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
+
+CREATE INDEX ix_asignaciones_comerciales_vigencia_desde ON asignaciones_comerciales (vigencia_desde);
+
+CREATE INDEX ix_asignaciones_comerciales_vigencia_hasta ON asignaciones_comerciales (vigencia_hasta);
 
 -- ============================================================
 -- TABLA: historial_cambios
@@ -3325,11 +3810,11 @@ CREATE TABLE justificaciones_ajustes (
 CREATE TABLE matriz_proyecciones_jornadas (
 	id SERIAL NOT NULL,
 	proyeccion_id INTEGER NOT NULL,
-	dotacion_requerida NUMERIC(12, 2) NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
 	carga_semanal VARCHAR(30) NOT NULL,
-	carga_horaria NUMERIC(12, 2) NOT NULL,
+	carga_horaria NUMERIC(20, 10) NOT NULL,
 	dias_objetivo INTEGER NOT NULL,
-	horas_requeridas NUMERIC(12, 2) NOT NULL,
+	horas_requeridas NUMERIC(20, 10) NOT NULL,
 	PRIMARY KEY (id),
 	FOREIGN KEY(proyeccion_id) REFERENCES matriz_proyecciones (id)
 );

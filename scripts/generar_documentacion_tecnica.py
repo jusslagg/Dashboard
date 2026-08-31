@@ -178,12 +178,12 @@ def main():
   <style>
     :root{{--navy:#0f2747;--blue:#2563eb;--cyan:#0891b2;--ink:#172033;--muted:#5f6b7a;--line:#dbe4ef;--soft:#f4f7fb;}}
     *{{box-sizing:border-box}} html{{scroll-behavior:smooth}}
-    body{{margin:0;color:var(--ink);background:var(--soft);font:15px/1.62 Arial,sans-serif}}
+    body{{margin:0;color:var(--ink);background:var(--soft);font:15px/1.62 Arial,sans-serif;overflow-wrap:anywhere}}
     a{{color:#1859ba}} .top{{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px max(18px,calc((100% - 1180px)/2));color:#fff;background:var(--navy)}}
     .top a{{color:#fff;text-decoration:none}} .buttons{{display:flex;gap:8px;flex-wrap:wrap}}
     .button{{display:inline-block;padding:8px 13px;border:1px solid #7fa1ce;border-radius:7px;background:#173b69;font-weight:bold}}
     .button.primary{{border-color:#67e8f9;background:#0e7490}}
-    .page{{max-width:1180px;margin:24px auto 60px;padding:0 18px}}
+    .page{{width:min(100%,1180px);margin:24px auto 60px;padding:0 18px}}
     .cover,.toc,.content{{margin-bottom:20px;padding:30px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(15,39,71,.05)}}
     .cover{{padding:46px;background:linear-gradient(135deg,#0f2747,#155e75);color:#fff}}
     .cover h1{{margin:0 0 10px;color:#fff;font-size:clamp(30px,5vw,48px);line-height:1.15}} .cover p{{max-width:830px;font-size:19px}}
@@ -192,19 +192,19 @@ def main():
     .anchor{{margin-left:8px;color:#9aa9ba;text-decoration:none;font-size:.75em;opacity:0}} h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{{opacity:1}}
     p{{margin:8px 0 14px}} ul,ol{{padding-left:26px}} li{{margin:5px 0}}
     code{{padding:2px 5px;border-radius:4px;background:#edf1f6;color:#8b1d41;font-family:Consolas,monospace}}
-    pre{{overflow:auto;margin:16px 0;padding:17px;border-radius:8px;background:#101b2c;color:#e5edf7;line-height:1.5}} pre code{{padding:0;background:none;color:inherit}}
+    pre{{max-width:100%;overflow:auto;margin:16px 0;padding:17px;border-radius:8px;background:#101b2c;color:#e5edf7;line-height:1.5}} pre code{{padding:0;background:none;color:inherit}}
     .table-wrap{{overflow-x:auto;margin:16px 0}} table{{width:100%;border-collapse:collapse;font-size:14px}} th,td{{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}} th{{background:#e9f0f8;color:var(--navy)}}
     .callout{{padding:14px 17px;border-left:5px solid var(--blue);border-radius:6px;background:#eef5ff}}
     .back{{position:fixed;right:20px;bottom:20px;padding:9px 12px;border-radius:8px;background:var(--navy);color:#fff;text-decoration:none}}
     footer{{padding:25px;color:var(--muted);text-align:center}}
-    @media(max-width:720px){{.toc ol{{columns:1}}.cover,.toc,.content{{padding:20px}}.top{{align-items:flex-start}}}}
-    @media print{{body{{background:#fff;font-size:10pt}}.top,.back,.anchor{{display:none}}.page{{max-width:none;margin:0;padding:0}}.cover,.toc,.content{{box-shadow:none;border:0}}.cover{{break-after:page}}h2{{break-before:page}}pre,.table-wrap{{break-inside:avoid}}.toc a{{color:#1859ba;text-decoration:underline}}}}
+    @media(max-width:720px){{.toc ol{{columns:1}}.cover,.toc,.content{{padding:20px}}.top{{position:static;align-items:flex-start;flex-direction:column}}}}
+    @media print{{body{{background:#fff;font-size:9pt}}.top,.back,.anchor{{display:none}}.page{{max-width:none;margin:0;padding:0}}.cover,.toc,.content{{box-shadow:none;border:0;padding:12mm}}.cover{{break-after:page}}h1,h2,h3{{break-after:avoid}}pre{{white-space:pre-wrap;overflow:visible}}table{{font-size:8pt}}tr{{break-inside:avoid}}.toc a{{color:#1859ba;text-decoration:underline}}}}
   </style>
 </head>
 <body>
   <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/esquema/pdf">Esquema BD en PDF</a><a class="button" href="/documentacion-tecnica/esquema/sqlite">SQL SQLite</a><a class="button" href="/documentacion-tecnica/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/documentacion-tecnica/descargar">Documentación completa PDF</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Julio de 2026</small></header>
+    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Agosto de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice técnico</h2><ol>{construir_indice(indice)}</ol></nav>
     <article class="content">{cuerpo}</article>
     <footer>Dashboard de Facturación · Documentación técnica</footer>

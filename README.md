@@ -230,6 +230,14 @@ Al iniciar, Flask crea las tablas que falten y aplica algunos ajustes simples de
 | `next_gen_productos` | `NextGenProducto` | Guarda cantidades mensuales en USD por cliente, campaña y producto Next Gen. |
 | `sites_proyecciones` | `SiteProyeccion` | Guarda la regularización manual del site o gerencia de una campaña proyectada. |
 | `feriados_operativos` | `FeriadoOperativo` | Guarda feriados o días no operativos que afectan los días objetivo de las proyecciones. |
+| `dotaciones_mensuales` | `DotacionMensual` | Serie mensual consolidada de dotación requerida y personal para indicadores. |
+| `ratio_eli_mensual` | `RatioEliMensual` | Serie mensual de requerido y staff para el indicador ELI. |
+| `ratio_eli_ii_mensual` | `RatioEliIIMensual` | Serie mensual operativa y monetaria de operaciones y staff para ELI II. |
+| `dashboard_operativo` | `DashboardOperativo` | Base mensual por cliente/campaña de Directorio; conserva datos importados y bajas manuales. |
+| `historico_clientes_mensuales` | `HistoricoClienteMensual` | Base histórica mensual por cliente; conserva datos fuente, pagadas y logueo. |
+| `dotaciones_clientes_mensuales` | `DotacionClienteMensual` | Dotación requerida mensual abierta por cliente. |
+| `graficos_dotaciones_mensuales` | `GraficoDotacionMensual` | Serie mensual para gráficos de dotación requerida y activa por sede. |
+| `excepciones_calculo` | `ExcepcionCalculo` | Reglas excepcionales y ajustes porcentuales por cliente/campaña. |
 
 ### Mapa de carga y destino
 
@@ -251,6 +259,14 @@ Al iniciar, Flask crea las tablas que falten y aplica algunos ajustes simples de
 | `next_gen_productos` | Variable > Next Gen o importación anual | Importe Next Gen en pesos y total consolidado de Facturación horas. |
 | `sites_proyecciones` | Edición directa de la columna Site en Facturación horas | Reagrupa todos los meses y conceptos consolidados de la campaña. |
 | `historial_cambios` | Automática; no se carga manualmente | Auditoría y restauración de snapshots en operaciones compatibles con Deshacer. |
+| `dotaciones_mensuales` | Importación de Directorio / Dotaciones | Indicadores consolidados de requerida, personal y diferencia mensual. |
+| `ratio_eli_mensual` | Importación del indicador ELI | Gráfico mensual de requerido, staff y ratio calculado. |
+| `ratio_eli_ii_mensual` | Importación del indicador ELI II | Gráficos operativos y monetarios; los totales y ratios se calculan al consultar. |
+| `dashboard_operativo` | Importación Dashboard operativo; edición de bajas | Tableros de Directorio por año, mes, cliente y campaña. |
+| `historico_clientes_mensuales` | Importación histórica; edición de pagadas/logueo | Histórico y comparativos mensuales por cliente. |
+| `dotaciones_clientes_mensuales` | Importación de dotaciones por cliente | Cuadros, evolutivos y comparaciones de dotación requerida. |
+| `graficos_dotaciones_mensuales` | Importación de gráficos de dotaciones | Series de requerida, activa SL, activa BA, diferencia y sobre-staff. |
+| `excepciones_calculo` | Configuración técnica | Ajustes puntuales del cálculo sin alterar la fórmula general. |
 
 ### Ficha de colecciones para la base de datos
 
@@ -556,7 +572,7 @@ Los scripts contienen, tabla por tabla, la definición física en formato
 - restricciones `UNIQUE`;
 - índices y columnas indexadas.
 
-El esquema incluye las 16 tablas vigentes:
+El esquema incluye las 24 tablas vigentes:
 
 ```text
 usuarios
@@ -573,9 +589,37 @@ next_gen_dolar
 next_gen_productos
 sites_proyecciones
 feriados_operativos
+dotaciones_mensuales
+ratio_eli_mensual
+ratio_eli_ii_mensual
+dashboard_operativo
+historico_clientes_mensuales
+dotaciones_clientes_mensuales
+graficos_dotaciones_mensuales
 campanias
+excepciones_calculo
 asignaciones_comerciales
 ```
+
+### Características de las bases de Directorio y control
+
+| Tabla | Granularidad / clave lógica | Datos persistidos | Cálculos derivados y reglas |
+| --- | --- | --- | --- |
+| `dotaciones_mensuales` | Una fila por `fecha` mensual, única | Dotación requerida y personal | Diferencia y porcentajes se calculan al consultar; no se duplican meses. |
+| `ratio_eli_mensual` | Una fila por `fecha` mensual, única | Requerido y staff | `ratio = staff / requerido`; si requerido es cero, el ratio queda sin valor. |
+| `ratio_eli_ii_mensual` | Una fila por `fecha` mensual, única | Operaciones, staff e importes de ambos | Total y ratios operativos/monetarios se derivan de los cuatro valores base. |
+| `dashboard_operativo` | `mes + cliente + campaña`, único | Año, datos importados en JSON y bajas manuales | La reimportación actualiza la misma clave y conserva el tratamiento explícito de bajas. |
+| `historico_clientes_mensuales` | `mes + cliente`, único | Base fuente en JSON, pagadas y logueo | Pagadas y logueo son editables; la información importada permanece agrupada por cliente/mes. |
+| `dotaciones_clientes_mensuales` | `cliente + fecha`, único | Dotación requerida | Alimenta cuadros y evolutivos abiertos por cliente sin duplicar el mismo período. |
+| `graficos_dotaciones_mensuales` | Una fila por `fecha` mensual, única | Requerida, activa SL y activa BA | Activa total, diferencia y porcentaje de sobre-staff se calculan al consultar. |
+| `excepciones_calculo` | `cliente + campaña`, único | Tipo de cálculo, ajustes de valor hora objetivo/alcanzado y estado | Solo se aplica cuando está activa; permite excepciones trazables sin forzar los datos generales. |
+
+Los campos JSON de `dashboard_operativo.datos` e
+`historico_clientes_mensuales.datos_base` conservan las columnas variables de la
+fuente importada. Los campos que participan en filtros, edición o unicidad se
+mantienen como columnas tipadas. El detalle físico de **cada campo**, tipo,
+obligatoriedad, clave, índice y restricción está en los anexos DDL generados que
+acompañan esta ficha.
 
 Estos archivos se generan directamente desde `app/models.py`; por eso son la
 fuente técnica para construir una base nueva y evitan copiar accidentalmente
@@ -1571,6 +1615,21 @@ Servir siempre detrás de HTTPS y con una base de datos administrada.
 
 ## Flujo recomendado de uso
 
+### Generación de un nuevo año proyectado
+
+La acción **Nuevo** de Matriz de proyecciones toma el año seleccionado en
+pantalla como base y, dentro de ese año, el último mes con datos disponible hasta el
+mes calendario actual. No toma meses futuros aunque ya tengan una previsión
+cargada: en agosto usa agosto y, cuando septiembre esté cargado, usa septiembre.
+Esa fotografía mensual se replica en los doce meses del año
+siguiente para proyecciones, jornadas, precios, suma fija, porcentajes variables
+y distribución horaria de Personal.
+
+Los días objetivo y las horas derivadas se recalculan con el calendario de cada
+mes destino. Los feriados no se heredan y deben cargarse expresamente para el
+nuevo año. La operación es atómica, queda en el historial y rechaza la solicitud
+si el año destino ya tiene proyecciones, evitando sobrescrituras parciales.
+
 1. Cargar o revisar Datos maestros.
 2. Cargar facturación real en Cargar datos.
 3. Controlar registros desde Control.
@@ -2128,9 +2187,20 @@ La columna `Cuenta` del Excel es la identidad canónica del resultado. La column
 
 ### Conciliación 2026
 
-La alineación vigente fue validada contra las 47 cuentas y los doce meses del
-`RESUMEN` de referencia. El resultado quedó con una diferencia anual de $0,14,
-originada por acumulación de decimales inferiores al centavo.
+La alineación vigente se valida por cuenta, mes y componente contra las hojas
+calculadas del libro de referencia. No alcanza con comparar el total anual.
+
+Ejecutar el control luego de cada carga o cambio de reglas:
+
+```powershell
+python scripts\verificar_alineacion_proyectados.py "C:\ruta\Proyeccion Horas.xlsx" --year 2026
+```
+
+El comando devuelve error si encuentra una diferencia inesperada en
+`Facturacion Horas`, `Variable`, `Tarifacion` o `Next Gen`. Las celdas de salida
+que no tienen fórmula en el Excel se informan aparte como `FORMULA_FALTANTE`;
+con `--strict` también hacen fallar el control. La comparación monetaria se hace
+al centavo, pero los cálculos internos conservan precisión decimal completa.
 
 La conciliación no reemplaza las reglas del negocio:
 

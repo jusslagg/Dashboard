@@ -104,9 +104,9 @@ def permisos_perfil(rol, puesto=''):
 # almacena los valores con precisión y escala explícitas.
 DINERO = db.Numeric(18, 2, asdecimal=False)
 CANTIDAD = db.Numeric(18, 4, asdecimal=False)
-HORAS = db.Numeric(12, 2, asdecimal=False)
-PORCENTAJE = db.Numeric(9, 4, asdecimal=False)
-COTIZACION = db.Numeric(18, 6, asdecimal=False)
+HORAS = db.Numeric(20, 10, asdecimal=False)
+PORCENTAJE = db.Numeric(15, 10, asdecimal=False)
+COTIZACION = db.Numeric(24, 10, asdecimal=False)
 
 
 def redondear_moneda(valor):
@@ -386,7 +386,14 @@ class FacturacionAnio(db.Model):
     def total_facturado_control(self):
         if self.control_total_facturado is not None:
             return self.control_total_facturado
-        return self.facturado_horas_control + self.variable_productivo_control + self.penalizaciones_bonos_control
+        return (
+            self.facturado_horas_control
+            + (self.tarifacion or 0)
+            + self.variable_productivo_control
+            + self.penalizaciones_bonos_control
+            + (self.netx_gen or 0)
+            + (self.otros or 0)
+        )
 
     @property
     def porcentaje_cumplimiento_horas(self):
@@ -689,9 +696,9 @@ class ProyeccionPrecio(db.Model):
     campania = db.Column(db.String(100), nullable=False)
     year = db.Column(db.Integer, nullable=False, index=True)
     mes = db.Column(db.String(7), nullable=False, index=True)
-    precio_base = db.Column(DINERO, default=0, nullable=False)
+    precio_base = db.Column(COTIZACION, default=0, nullable=False)
     alcance_porcentaje = db.Column(PORCENTAJE, default=100, nullable=False)
-    precio_final = db.Column(DINERO, default=0, nullable=False)
+    precio_final = db.Column(COTIZACION, default=0, nullable=False)
     importe_fijo_mensual = db.Column(DINERO, default=0, nullable=False)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -702,7 +709,7 @@ class ProyeccionPrecio(db.Model):
 
     def recalcular(self):
         total = Decimal(str(self.precio_base or 0)) * (Decimal(str(self.alcance_porcentaje or 0)) / Decimal('100'))
-        self.precio_final = redondear_moneda(total)
+        self.precio_final = float(total.quantize(Decimal('0.0000000001'), rounding=ROUND_HALF_UP))
 
     def to_dict(self):
         return {
@@ -714,7 +721,7 @@ class ProyeccionPrecio(db.Model):
             'mes': self.mes,
             'precio_base': self.precio_base or 0,
             'alcance_porcentaje': self.alcance_porcentaje or 0,
-            'precio_final': round(self.precio_final or 0, 2),
+            'precio_final': round(self.precio_final or 0, 10),
             'importe_fijo_mensual': round(self.importe_fijo_mensual or 0, 2),
             'creado_en': self.creado_en.isoformat() if self.creado_en else None,
             'actualizado_en': self.actualizado_en.isoformat() if self.actualizado_en else None,
@@ -762,7 +769,7 @@ class TarifacionCampania(db.Model):
     concepto = db.Column(db.String(100), default='Tarifación', nullable=False)
     year = db.Column(db.Integer, nullable=False, index=True)
     mes = db.Column(db.String(7), nullable=False, index=True)
-    monto = db.Column(DINERO, default=0, nullable=False)
+    monto = db.Column(COTIZACION, default=0, nullable=False)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -802,7 +809,8 @@ class NextGenProducto(db.Model):
     producto = db.Column(db.String(160), nullable=False)
     year = db.Column(db.Integer, nullable=False, index=True)
     mes = db.Column(db.String(7), nullable=False, index=True)
-    cantidad_usd = db.Column(DINERO, default=0, nullable=False)
+    cantidad_usd = db.Column(COTIZACION, default=0, nullable=False)
+    cotizacion_aplicada = db.Column(COTIZACION, nullable=True)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -815,6 +823,7 @@ class NextGenProducto(db.Model):
             'id': self.id, 'site': self.site or '', 'cliente': self.cliente,
             'campania': self.campania, 'producto': self.producto,
             'year': self.year, 'mes': self.mes, 'cantidad_usd': self.cantidad_usd or 0,
+            'cotizacion_aplicada': self.cotizacion_aplicada,
         }
 
 

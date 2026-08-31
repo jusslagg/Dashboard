@@ -61,6 +61,7 @@ def generar_html_pdf() -> None:
     """Genera la fuente HTML del PDF específico de esquemas."""
     sqlite_ddl = (RAIZ / "docs" / "esquema_base_datos_sqlite.sql").read_text(encoding="utf-8")
     postgres_ddl = (RAIZ / "docs" / "esquema_base_datos_postgresql.sql").read_text(encoding="utf-8")
+    cantidad_tablas = len(db.metadata.sorted_tables)
     documento = f"""<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>Esquema de base de datos</title>
 <style>
@@ -71,7 +72,7 @@ h1{{color:#0f2747;font-size:28px}} h2{{color:#174b83;border-bottom:2px solid #08
 </style></head><body>
 <section class="portada"><h1>Dashboard de Facturación</h1><h3>Esquema físico completo de base de datos</h3>
 <p>Documento técnico para creación y revisión por el responsable de base de datos.</p>
-<p>Incluye las 16 tablas, columnas, tipos, claves primarias, claves foráneas, restricciones únicas e índices para SQLite y PostgreSQL.</p></section>
+<p>Incluye las {cantidad_tablas} tablas vigentes, columnas, tipos, claves primarias, claves foráneas, restricciones únicas e índices para SQLite y PostgreSQL.</p></section>
 <h2>DDL completo — SQLite</h2><pre>{html.escape(sqlite_ddl)}</pre>
 <h2>DDL completo — PostgreSQL</h2><pre>{html.escape(postgres_ddl)}</pre>
 </body></html>"""

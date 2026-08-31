@@ -233,22 +233,22 @@ def migrar_tipos_numericos_postgresql():
         },
         'justificaciones_ajustes': {'cantidad': (18, 4), 'precio': (18, 2), 'importe': (18, 2)},
         'matriz_proyecciones': {
-            'dotacion_requerida': (12, 2), 'carga_horaria': (12, 2), 'horas_requeridas': (12, 2),
-            'porcentaje_cumplimiento': (9, 4), 'porcentaje_nocturnidad': (9, 4),
-            'horas_requeridas_manual': (12, 2),
+            'dotacion_requerida': (20, 10), 'carga_horaria': (20, 10), 'horas_requeridas': (20, 10),
+            'porcentaje_cumplimiento': (15, 10), 'porcentaje_nocturnidad': (15, 10),
+            'horas_requeridas_manual': (20, 10),
         },
         'matriz_proyecciones_jornadas': {
-            'dotacion_requerida': (12, 2), 'carga_horaria': (12, 2), 'horas_requeridas': (12, 2),
+            'dotacion_requerida': (20, 10), 'carga_horaria': (20, 10), 'horas_requeridas': (20, 10),
         },
-        'personal_distribucion_horas': {'porcentaje_diurno': (9, 4)},
+        'personal_distribucion_horas': {'porcentaje_diurno': (15, 10)},
         'matriz_precios': {
-            'precio_base': (18, 2), 'alcance_porcentaje': (9, 4), 'precio_final': (18, 2),
+            'precio_base': (24, 10), 'alcance_porcentaje': (15, 10), 'precio_final': (24, 10),
             'importe_fijo_mensual': (18, 2),
         },
-        'variables_campanias': {'porcentaje': (9, 4)},
-        'tarifaciones_campanias': {'monto': (18, 2)},
+        'variables_campanias': {'porcentaje': (15, 10)},
+        'tarifaciones_campanias': {'monto': (24, 10)},
         'next_gen_dolar': {'valor': (18, 6)},
-        'next_gen_productos': {'cantidad_usd': (18, 2)},
+        'next_gen_productos': {'cantidad_usd': (24, 10), 'cotizacion_aplicada': (24, 10)},
     }
     inspector = inspect(db.engine)
     for tabla, columnas in contrato.items():
@@ -465,6 +465,14 @@ def ensure_schema():
             db.session.execute(text("ALTER TABLE sites_proyecciones ADD COLUMN cliente_destino VARCHAR(100)"))
         if 'campania_destino' not in site_columns:
             db.session.execute(text("ALTER TABLE sites_proyecciones ADD COLUMN campania_destino VARCHAR(160)"))
+
+    if inspector.has_table('next_gen_productos'):
+        next_gen_columns = {column['name'] for column in inspector.get_columns('next_gen_productos')}
+        if 'cotizacion_aplicada' not in next_gen_columns:
+            db.session.execute(text(
+                "ALTER TABLE next_gen_productos ADD COLUMN cotizacion_aplicada NUMERIC(24,10)"
+            ))
+            db.session.commit()
 
     columns = {column['name'] for column in inspector.get_columns('facturacion_anio')}
     missing_columns = {

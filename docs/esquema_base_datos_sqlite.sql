@@ -10,9 +10,82 @@ CREATE TABLE campanias (
 	cliente VARCHAR(100) NOT NULL,
 	nombre VARCHAR(100) NOT NULL,
 	activa BOOLEAN NOT NULL,
+	valor_hora_variable BOOLEAN,
 	creado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
 	CONSTRAINT uq_campanias_cliente_nombre UNIQUE (cliente, nombre)
+);
+
+-- ============================================================
+-- TABLA: dashboard_operativo
+-- ============================================================
+CREATE TABLE dashboard_operativo (
+	id INTEGER NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	cliente VARCHAR(120) NOT NULL,
+	campania VARCHAR(180) NOT NULL,
+	datos TEXT NOT NULL,
+	bajas_manual NUMERIC(20, 10) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_dashboard_mes_cliente_campania UNIQUE (mes, cliente, campania)
+);
+
+CREATE INDEX ix_dashboard_operativo_cliente ON dashboard_operativo (cliente);
+
+CREATE INDEX ix_dashboard_operativo_mes ON dashboard_operativo (mes);
+
+CREATE INDEX ix_dashboard_operativo_year ON dashboard_operativo (year);
+
+-- ============================================================
+-- TABLA: dotaciones_clientes_mensuales
+-- ============================================================
+CREATE TABLE dotaciones_clientes_mensuales (
+	id INTEGER NOT NULL,
+	cliente VARCHAR(160) NOT NULL,
+	fecha DATE NOT NULL,
+	dotacion NUMERIC(20, 10) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_dotacion_cliente_fecha UNIQUE (cliente, fecha)
+);
+
+CREATE INDEX ix_dotaciones_clientes_mensuales_cliente ON dotaciones_clientes_mensuales (cliente);
+
+CREATE INDEX ix_dotaciones_clientes_mensuales_fecha ON dotaciones_clientes_mensuales (fecha);
+
+-- ============================================================
+-- TABLA: dotaciones_mensuales
+-- ============================================================
+CREATE TABLE dotaciones_mensuales (
+	id INTEGER NOT NULL,
+	fecha DATE NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
+	personal NUMERIC(20, 10) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_dotaciones_mensuales_fecha ON dotaciones_mensuales (fecha);
+
+-- ============================================================
+-- TABLA: excepciones_calculo
+-- ============================================================
+CREATE TABLE excepciones_calculo (
+	id INTEGER NOT NULL,
+	cliente VARCHAR(100) NOT NULL,
+	campania VARCHAR(100) NOT NULL,
+	tipo_calculo VARCHAR(60) NOT NULL,
+	ajuste_vh_objetivo_pct NUMERIC(9, 4) NOT NULL,
+	ajuste_vh_alcanzado_pct NUMERIC(9, 4) NOT NULL,
+	activa BOOLEAN NOT NULL,
+	creado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_excepcion_calculo_cliente_campania UNIQUE (cliente, campania)
 );
 
 -- ============================================================
@@ -28,12 +101,21 @@ CREATE TABLE facturacion_anio (
 	campania VARCHAR(100),
 	subcampania VARCHAR(100),
 	tipo_negocio VARCHAR(100),
+	es_next_gen BOOLEAN NOT NULL,
+	objetivo_separar_ajuste_vh BOOLEAN NOT NULL,
 	tipo_jornada VARCHAR(50) NOT NULL,
-	horas_objetivo NUMERIC(12, 2) NOT NULL,
-	horas_facturadas NUMERIC(12, 2) NOT NULL,
-	horas_penalizadas NUMERIC(12, 2),
+	horas_objetivo NUMERIC(20, 10) NOT NULL,
+	horas_facturadas NUMERIC(20, 10) NOT NULL,
+	horas_penalizadas NUMERIC(20, 10),
 	valor_hora_objetivo NUMERIC(18, 2),
 	valor_hora NUMERIC(18, 2) NOT NULL,
+	facturado_horas_manual NUMERIC(18, 2),
+	total_facturado_manual NUMERIC(18, 2),
+	control_facturado_horas NUMERIC(18, 2),
+	control_variable_productivo NUMERIC(18, 2),
+	control_penalizaciones_bonos NUMERIC(18, 2),
+	control_total_facturado NUMERIC(18, 2),
+	control_objetivo_total NUMERIC(18, 2),
 	tarifacion NUMERIC(18, 2),
 	importe_fijo NUMERIC(18, 2),
 	variable_objetivo NUMERIC(18, 2),
@@ -66,6 +148,45 @@ CREATE INDEX ix_feriados_operativos_fecha ON feriados_operativos (fecha);
 CREATE INDEX ix_feriados_operativos_year ON feriados_operativos (year);
 
 -- ============================================================
+-- TABLA: graficos_dotaciones_mensuales
+-- ============================================================
+CREATE TABLE graficos_dotaciones_mensuales (
+	id INTEGER NOT NULL,
+	fecha DATE NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
+	activa_sl NUMERIC(20, 10) NOT NULL,
+	activa_ba NUMERIC(20, 10) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_graficos_dotaciones_mensuales_fecha ON graficos_dotaciones_mensuales (fecha);
+
+-- ============================================================
+-- TABLA: historico_clientes_mensuales
+-- ============================================================
+CREATE TABLE historico_clientes_mensuales (
+	id INTEGER NOT NULL,
+	year INTEGER NOT NULL,
+	mes VARCHAR(7) NOT NULL,
+	cliente VARCHAR(160) NOT NULL,
+	datos_base TEXT NOT NULL,
+	pagadas NUMERIC(20, 10),
+	logueo NUMERIC(20, 10),
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_historico_mes_cliente UNIQUE (mes, cliente)
+);
+
+CREATE INDEX ix_historico_clientes_mensuales_cliente ON historico_clientes_mensuales (cliente);
+
+CREATE INDEX ix_historico_clientes_mensuales_mes ON historico_clientes_mensuales (mes);
+
+CREATE INDEX ix_historico_clientes_mensuales_year ON historico_clientes_mensuales (year);
+
+-- ============================================================
 -- TABLA: matriz_precios
 -- ============================================================
 CREATE TABLE matriz_precios (
@@ -75,9 +196,9 @@ CREATE TABLE matriz_precios (
 	campania VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	precio_base NUMERIC(18, 2) NOT NULL,
-	alcance_porcentaje NUMERIC(9, 4) NOT NULL,
-	precio_final NUMERIC(18, 2) NOT NULL,
+	precio_base NUMERIC(24, 10) NOT NULL,
+	alcance_porcentaje NUMERIC(15, 10) NOT NULL,
+	precio_final NUMERIC(24, 10) NOT NULL,
 	importe_fijo_mensual NUMERIC(18, 2) NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
@@ -98,18 +219,18 @@ CREATE TABLE matriz_proyecciones (
 	campania VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	dotacion_requerida NUMERIC(12, 2) NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
 	carga_semanal VARCHAR(20) NOT NULL,
-	carga_horaria NUMERIC(12, 2) NOT NULL,
+	carga_horaria NUMERIC(20, 10) NOT NULL,
 	dias_objetivo INTEGER NOT NULL,
-	horas_requeridas NUMERIC(12, 2) NOT NULL,
-	porcentaje_cumplimiento NUMERIC(9, 4) NOT NULL,
+	horas_requeridas NUMERIC(20, 10) NOT NULL,
+	porcentaje_cumplimiento NUMERIC(15, 10) NOT NULL,
 	tiene_nocturnidad BOOLEAN NOT NULL,
-	porcentaje_nocturnidad NUMERIC(9, 4) NOT NULL,
+	porcentaje_nocturnidad NUMERIC(15, 10) NOT NULL,
 	tipo_plp VARCHAR(30),
 	horas_carga_manual BOOLEAN NOT NULL,
 	dias_objetivo_manual INTEGER,
-	horas_requeridas_manual NUMERIC(12, 2),
+	horas_requeridas_manual NUMERIC(20, 10),
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
@@ -127,7 +248,7 @@ CREATE TABLE next_gen_dolar (
 	id INTEGER NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	valor NUMERIC(18, 6) NOT NULL,
+	valor NUMERIC(24, 10) NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id)
@@ -148,7 +269,8 @@ CREATE TABLE next_gen_productos (
 	producto VARCHAR(160) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	cantidad_usd NUMERIC(18, 2) NOT NULL,
+	cantidad_usd NUMERIC(24, 10) NOT NULL,
+	cotizacion_aplicada NUMERIC(24, 10),
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
@@ -167,7 +289,7 @@ CREATE TABLE personal_distribucion_horas (
 	servicio VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	porcentaje_diurno NUMERIC(9, 4) NOT NULL,
+	porcentaje_diurno NUMERIC(15, 10) NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
@@ -179,6 +301,38 @@ CREATE INDEX ix_personal_distribucion_horas_mes ON personal_distribucion_horas (
 CREATE INDEX ix_personal_distribucion_horas_servicio ON personal_distribucion_horas (servicio);
 
 CREATE INDEX ix_personal_distribucion_horas_year ON personal_distribucion_horas (year);
+
+-- ============================================================
+-- TABLA: ratio_eli_ii_mensual
+-- ============================================================
+CREATE TABLE ratio_eli_ii_mensual (
+	id INTEGER NOT NULL,
+	fecha DATE NOT NULL,
+	operaciones NUMERIC(20, 10) NOT NULL,
+	staff NUMERIC(20, 10) NOT NULL,
+	operaciones_importe NUMERIC(18, 2) NOT NULL,
+	staff_importe NUMERIC(18, 2) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_ratio_eli_ii_mensual_fecha ON ratio_eli_ii_mensual (fecha);
+
+-- ============================================================
+-- TABLA: ratio_eli_mensual
+-- ============================================================
+CREATE TABLE ratio_eli_mensual (
+	id INTEGER NOT NULL,
+	fecha DATE NOT NULL,
+	requerido NUMERIC(20, 10) NOT NULL,
+	staff NUMERIC(20, 10) NOT NULL,
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX ix_ratio_eli_mensual_fecha ON ratio_eli_mensual (fecha);
 
 -- ============================================================
 -- TABLA: sites_proyecciones
@@ -207,7 +361,7 @@ CREATE TABLE tarifaciones_campanias (
 	concepto VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	monto NUMERIC(18, 2) NOT NULL,
+	monto NUMERIC(24, 10) NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
@@ -227,7 +381,12 @@ CREATE TABLE usuarios (
 	email VARCHAR(160) NOT NULL,
 	password_hash VARCHAR(255) NOT NULL,
 	rol VARCHAR(30) NOT NULL,
+	puesto VARCHAR(100),
+	gerente_asignado VARCHAR(100),
+	jefe_site_asignado VARCHAR(100),
+	permisos_personalizados TEXT,
 	activo BOOLEAN NOT NULL,
+	debe_cambiar_password BOOLEAN NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id)
@@ -245,7 +404,7 @@ CREATE TABLE variables_campanias (
 	campania VARCHAR(100) NOT NULL,
 	year INTEGER NOT NULL,
 	mes VARCHAR(7) NOT NULL,
-	porcentaje NUMERIC(9, 4) NOT NULL,
+	porcentaje NUMERIC(15, 10) NOT NULL,
 	creado_en DATETIME NOT NULL,
 	actualizado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
@@ -268,13 +427,20 @@ CREATE TABLE asignaciones_comerciales (
 	campania VARCHAR(100) NOT NULL,
 	subcampania VARCHAR(100) NOT NULL,
 	tipo_negocio VARCHAR(100),
+	es_next_gen BOOLEAN NOT NULL,
 	activa BOOLEAN NOT NULL,
+	vigencia_desde VARCHAR(7),
+	vigencia_hasta VARCHAR(7),
 	creado_en DATETIME NOT NULL,
 	PRIMARY KEY (id),
 	CONSTRAINT fk_asignaciones_campania FOREIGN KEY(campania_id) REFERENCES campanias (id)
 );
 
 CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
+
+CREATE INDEX ix_asignaciones_comerciales_vigencia_desde ON asignaciones_comerciales (vigencia_desde);
+
+CREATE INDEX ix_asignaciones_comerciales_vigencia_hasta ON asignaciones_comerciales (vigencia_hasta);
 
 -- ============================================================
 -- TABLA: historial_cambios
@@ -320,11 +486,11 @@ CREATE TABLE justificaciones_ajustes (
 CREATE TABLE matriz_proyecciones_jornadas (
 	id INTEGER NOT NULL,
 	proyeccion_id INTEGER NOT NULL,
-	dotacion_requerida NUMERIC(12, 2) NOT NULL,
+	dotacion_requerida NUMERIC(20, 10) NOT NULL,
 	carga_semanal VARCHAR(30) NOT NULL,
-	carga_horaria NUMERIC(12, 2) NOT NULL,
+	carga_horaria NUMERIC(20, 10) NOT NULL,
 	dias_objetivo INTEGER NOT NULL,
-	horas_requeridas NUMERIC(12, 2) NOT NULL,
+	horas_requeridas NUMERIC(20, 10) NOT NULL,
 	PRIMARY KEY (id),
 	FOREIGN KEY(proyeccion_id) REFERENCES matriz_proyecciones (id)
 );

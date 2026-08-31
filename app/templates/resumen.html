@@ -19,6 +19,9 @@
             <i data-lucide="refresh-cw" class="h-4 w-4"></i>
             Actualizar
         </button>
+        <button type="button" onclick="descargarResumen()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-emerald-100">
+            <i data-lucide="file-spreadsheet" class="h-4 w-4"></i> Descargar Excel
+        </button>
     </div>
 </div>
 
@@ -131,19 +134,15 @@
             <h2 class="font-semibold text-gray-950">Detalle de composición</h2>
             <p id="subtituloTabla" class="mt-1 text-xs text-slate-500">Cargando datos...</p>
         </div>
-        <span class="inline-flex w-fit items-center gap-2 rounded-md bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-            <i data-lucide="calculator" class="h-3.5 w-3.5"></i>
-            Horas proyectadas x precio
-        </span>
+        <span class="inline-flex w-fit items-center gap-2 rounded-md bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"><i data-lucide="sheet" class="h-3.5 w-3.5"></i>Formato RESUMEN</span>
     </div>
     <div class="overflow-x-auto">
-        <table class="w-full min-w-[2480px] border-separate border-spacing-0 text-sm">
+        <table class="w-full min-w-[2200px] border-separate border-spacing-0 text-sm">
             <thead class="sticky top-0 z-20 bg-slate-100 text-slate-900">
+                <tr id="theadTotalCat" class="bg-slate-700 font-bold text-white"></tr>
                 <tr>
-                    <th class="sticky left-0 z-30 w-[150px] min-w-[150px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Site</th>
-                    <th class="sticky left-[150px] z-30 w-[190px] min-w-[190px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Cliente</th>
-                    <th class="sticky left-[340px] z-30 w-[240px] min-w-[240px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Campaña</th>
-                    <th class="w-[130px] min-w-[130px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Concepto</th>
+                    <th class="sticky left-0 z-30 w-[220px] min-w-[220px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-right font-semibold">Concepto</th>
+                    <th class="sticky left-[220px] z-30 w-[260px] min-w-[260px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-center font-semibold">Campaña</th>
                     <th class="w-[150px] min-w-[150px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3 text-right font-semibold">Total anual</th>
                     <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Enero</th>
                     <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Febrero</th>
@@ -161,7 +160,7 @@
             </thead>
             <tbody id="tbodyResumen">
                 <tr>
-                    <td colspan="17" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                    <td colspan="15" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
                 </tr>
             </tbody>
         </table>
@@ -191,11 +190,16 @@ async function cargarResumen() {
         return;
     }
     meses = data.meses || [];
-    filas = data.filas || [];
+    filas = data.filas_resumen || [];
     totalGeneral = data.total_general || { meses: {}, total: 0 };
     popularFiltros();
     renderResumen();
     crearIconos();
+}
+
+function descargarResumen() {
+    const year = document.getElementById('yearFiltro').value;
+    window.location.href = `/api/resumen-proyeccion/exportar?year=${encodeURIComponent(year)}`;
 }
 
 function setLoadingState() {
@@ -260,11 +264,12 @@ function obtenerFilasFiltradas() {
 }
 
 function calcularTotal(filasBase) {
+    const componentes = filasBase.filter(item => item.tipo === 'concepto');
     return {
-        total: filasBase.reduce((sum, item) => sum + (item.tipo === 'total_site' ? 0 : Number(item.total || 0)), 0),
+        total: componentes.reduce((sum, item) => sum + Number(item.total || 0), 0),
         meses: Object.fromEntries(meses.map(mes => [
             mes.value,
-            filasBase.reduce((sum, item) => sum + (item.tipo === 'total_site' ? 0 : Number(item.meses[mes.value] || 0)), 0),
+            componentes.reduce((sum, item) => sum + Number(item.meses[mes.value] || 0), 0),
         ])),
     };
 }
@@ -272,7 +277,13 @@ function calcularTotal(filasBase) {
 function renderResumen() {
     const tbody = document.getElementById('tbodyResumen');
     const filtradas = obtenerFilasFiltradas();
-    const detallesFiltrados = filtradas.filter(item => item.tipo !== 'total_site');
+    const filaCat = filas.find(item => item.tipo === 'total_cat');
+    document.getElementById('theadTotalCat').innerHTML = filaCat ? `
+        <th></th><th class="px-3 py-1 text-center">TOTAL CAT</th>
+        <th class="px-3 py-1 text-right">${formatCurrency(filaCat.total)}</th>
+        ${meses.map(mes => `<th class="px-3 py-1 text-right">${formatCurrency(filaCat.meses[mes.value])}</th>`).join('')}
+    ` : '';
+    const detallesFiltrados = filtradas.filter(item => item.tipo === 'total_campania');
     const totalFiltrado = calcularTotal(filtradas);
     const stats = calcularEstadisticasMes(totalFiltrado);
 
@@ -282,23 +293,12 @@ function renderResumen() {
     renderInsights(totalFiltrado, stats, detallesFiltrados.length);
 
     if (!filtradas.length) {
-        tbody.innerHTML = '<tr><td colspan="17" class="px-4 py-8 text-center text-gray-500">No hay datos para el resumen</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="px-4 py-8 text-center text-gray-500">No hay datos para el resumen</td></tr>';
         crearIconos();
         return;
     }
 
-    const totalRow = `
-        <tr class="bg-blue-100 font-bold text-blue-950">
-            <td class="sticky left-0 z-10 min-w-[150px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3">TOTAL</td>
-            <td class="sticky left-[150px] z-10 min-w-[190px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3"></td>
-            <td class="sticky left-[340px] z-10 min-w-[240px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3">GENERAL</td>
-            <td class="min-w-[130px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3">${badgeConcepto('Acumulado')}</td>
-            <td class="min-w-[150px] border-b border-r border-blue-200 bg-blue-50 px-3 py-3 text-right">${formatCurrency(totalFiltrado.total)}</td>
-            ${meses.map(mes => `<td class="min-w-[135px] border-b border-r border-blue-200 px-3 py-3 text-right">${formatCurrency(totalFiltrado.meses[mes.value])}</td>`).join('')}
-        </tr>
-    `;
-
-    tbody.innerHTML = totalRow + filtradas.map((item, index) => renderFila(item, index)).join('');
+    tbody.innerHTML = filtradas.filter(item => item.tipo !== 'total_cat').map((item, index) => renderFila(item, index)).join('');
     crearIconos();
 }
 
@@ -345,12 +345,16 @@ function renderMonthlyEvolution(totalFiltrado, stats) {
                 const height = maximo > 0 ? Math.max(6, (item.monto / maximo) * 100) : 0;
                 const isMax = item.value === stats.max.value && item.monto > 0;
                 const isMin = item.value === stats.min.value && item.monto > 0;
-                const tone = isMax ? 'bg-emerald-600' : isMin ? 'bg-amber-500' : 'bg-blue-600';
+                const fill = isMax ? '#059669' : isMin ? '#f59e0b' : '#2563eb';
                 const labelTone = isMax ? 'text-emerald-700' : isMin ? 'text-amber-700' : 'text-slate-700';
                 return `
                     <div class="group flex min-w-0 flex-1 flex-col items-center gap-2">
                         <div class="relative flex h-[210px] w-full items-end rounded-md bg-slate-50 px-1">
-                            <div title="${escapeHtml(labelMes(item))}: ${formatCurrency(item.monto)}" class="w-full rounded-t-md ${tone} transition-all group-hover:opacity-85" style="height: ${height}%"></div>
+                            <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="${escapeHtml(labelMes(item))}: ${formatCurrency(item.monto)}" class="h-full w-full overflow-visible transition-all group-hover:opacity-85" role="img">
+                                <rect x="0" y="${100 - height}" width="100" height="${height}" rx="4" fill="${fill}">
+                                    <title>${escapeHtml(labelMes(item))}: ${formatCurrency(item.monto)}</title>
+                                </rect>
+                            </svg>
                             <div class="pointer-events-none absolute left-1/2 top-2 z-10 hidden w-max -translate-x-1/2 rounded-md bg-gray-950 px-2 py-1 text-xs font-medium text-white shadow-lg group-hover:block">
                                 ${escapeHtml(labelMes(item))}: ${formatCurrency(item.monto)}
                             </div>
@@ -399,19 +403,15 @@ function insightCard(title, subtitle, value, icon, tone) {
 }
 
 function renderFila(item, index) {
-    const esTotal = item.tipo === 'total_site';
-    const rowClass = esTotal ? 'bg-slate-100 font-bold text-slate-950' : (index % 2 === 0 ? 'bg-white hover:bg-blue-50/40' : 'bg-slate-50/70 hover:bg-blue-50/40');
-    const stickyClass = esTotal ? 'bg-slate-100' : (index % 2 === 0 ? 'bg-white' : 'bg-slate-50');
-    const siteActual = item.site || 'Sin site';
-    const ajuste = encodeAttr(JSON.stringify({site: siteActual, cliente: item.cliente || '', campania: item.campania || '', origenes: item.origenes || []}));
-    const siteCell = esTotal ? escapeHtml(siteActual) : `<button type="button" onclick="editarIdentidadProyeccion('${ajuste}')" class="inline-flex items-center gap-1 rounded px-2 py-1 text-left text-xs font-semibold ${normalizar(siteActual) === 'sin site' || normalizar(siteActual) === 'n/a' ? 'bg-amber-100 text-amber-900' : 'text-slate-700 hover:bg-slate-100'}"><span>${escapeHtml(siteActual)}</span><i data-lucide="pencil" class="h-3 w-3"></i></button>`;
+    const esTotal = ['total_campania', 'total_grupo', 'total_cat'].includes(item.tipo);
+    const esCat = item.tipo === 'total_cat';
+    const rowClass = esCat ? 'bg-slate-700 font-bold text-white' : (esTotal ? 'bg-blue-100 font-bold text-slate-950' : 'bg-white');
+    const stickyClass = esCat ? 'bg-slate-700' : (esTotal ? 'bg-blue-100' : 'bg-white');
     return `
         <tr class="${rowClass}">
-            <td class="sticky left-0 z-10 min-w-[150px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2.5 text-left">${siteCell}</td>
-            <td class="sticky left-[150px] z-10 min-w-[190px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2.5 text-left">${escapeHtml(item.cliente || '')}</td>
-            <td class="sticky left-[340px] z-10 min-w-[240px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2.5 text-left font-semibold">${escapeHtml(item.campania)}</td>
-            <td class="min-w-[130px] border-b border-r border-slate-200 px-3 py-2.5 text-left">${badgeConcepto(item.concepto)}</td>
-            <td class="min-w-[150px] border-b border-r border-slate-200 bg-blue-50 px-3 py-2.5 text-right font-semibold tabular-nums">${formatCurrency(item.total)}</td>
+            <td class="sticky left-0 z-10 min-w-[220px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2 text-right">${escapeHtml(item.concepto || '')}</td>
+            <td class="sticky left-[220px] z-10 min-w-[260px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2 text-center font-semibold">${escapeHtml(item.campania)}</td>
+            <td class="min-w-[150px] border-b border-r border-slate-200 px-3 py-2 text-right font-semibold tabular-nums">${formatCurrency(item.total)}</td>
             ${meses.map(mes => `<td class="min-w-[135px] border-b border-r border-slate-200 px-3 py-2.5 text-right tabular-nums">${formatCurrency(item.meses[mes.value])}</td>`).join('')}
         </tr>
     `;

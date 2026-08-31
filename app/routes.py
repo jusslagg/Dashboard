@@ -19,6 +19,7 @@ import time
 import unicodedata
 import zipfile
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
 main_bp = Blueprint('main', __name__)
@@ -3056,7 +3057,10 @@ def historial():
 def guia_usuario():
     """Abre la guia funcional, independiente de la documentacion tecnica."""
     ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'guia_usuario.html'))
-    return send_file(ruta, mimetype='text/html')
+    # Se devuelve como respuesta HTML normal para que after_request pueda
+    # incorporar el nonce CSP al <style> y al <script> embebidos.
+    contenido = Path(ruta).read_text(encoding='utf-8')
+    return Response(contenido, content_type='text/html; charset=utf-8')
 
 
 class _TextoDesdeHtml(HTMLParser):
@@ -3212,7 +3216,8 @@ def descargar_esquema_base_datos(motor):
 def documentacion_tecnica():
     """Abre la documentación técnica legible; solo para administradores."""
     ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'documentacion_tecnica.html'))
-    return send_file(ruta, mimetype='text/html')
+    contenido = Path(ruta).read_text(encoding='utf-8')
+    return Response(contenido, content_type='text/html; charset=utf-8')
 
 
 # ========== ENDPOINTS API ==========
@@ -3843,6 +3848,10 @@ def api_actualizar_dato(registro_id):
         registro.penalizaciones = normalizar_importe_ajuste('penalizaciones', data.get('penalizaciones'))
         registro.netx_gen = float(data.get('netx_gen', 0) or 0)
         registro.otros = float(data.get('otros', 0) or 0)
+        # Control edita los componentes del total. Los totales manuales traídos
+        # por una importación anterior no deben congelar ni ocultar el cambio.
+        registro.total_facturado_manual = None
+        registro.control_total_facturado = None
         asegurar_asignacion_desde_registro(registro)
         despues = snapshot_modelo(registro)
         cambios = cambios_entre(antes, despues)
@@ -4955,7 +4964,16 @@ def construir_resumen_proyeccion_data(year):
         sites_por_nombre.setdefault(normalizar_header(asignacion.campania), site_asignado)
         sites_por_nombre.setdefault(normalizar_header(asignacion.cliente), site_asignado)
 
-    proyecciones = ProyeccionMatriz.query.filter(ProyeccionMatriz.mes.in_(meses)).all()
+    # Personal se valoriza desde sus aperturas PLP, que distinguen servicio y
+    # nocturnidad. La fila regular de la Matriz es el agregado de esas mismas
+    # horas: conservar ambos circuitos duplica Facturación horas y Variable.
+    proyecciones = ProyeccionMatriz.query.filter(
+        ProyeccionMatriz.mes.in_(meses),
+        db.or_(
+            db.and_(ProyeccionMatriz.tipo_plp.isnot(None), ProyeccionMatriz.tipo_plp != ''),
+            func.lower(func.trim(ProyeccionMatriz.cliente)) != 'personal',
+        ),
+    ).all()
     precios = ProyeccionPrecio.query.filter(ProyeccionPrecio.mes.in_(meses)).all()
     precios_por_clave = {}
     precios_por_nombre = {}
@@ -5114,17 +5132,21 @@ def construir_resumen_proyeccion_data(year):
     filas_base_variable = [item for item in filas if item['concepto'] in ('Horas', 'Fijo mensual')]
     for base in filas_base_variable:
         for mes in meses:
+            campania_base_variable = normalizar_nombre_variable(base['campania'])
+            if campania_base_variable.endswith(' nocturnidad'):
+                campania_base_variable = campania_base_variable[:-len(' nocturnidad')]
             candidatas = [item for item in variables_year
                 if normalizar_nombre_variable(item.campania) == normalizar_nombre_variable(base['campania'])
                 and item.mes.endswith(f'-{mes[-2:]}')
                 and (
                     normalizar_header(item.cliente) == normalizar_header(base['cliente'])
                     or normalizar_nombre_variable(item.cliente) == normalizar_nombre_variable(base['campania'])
+                    or normalizar_nombre_variable(item.cliente) == campania_base_variable
                 )]
             variable = max(candidatas, key=lambda item: item.year, default=None)
             if not variable:
                 continue
-            valor = redondear_moneda(base['meses'][mes] * ((variable.porcentaje or 0) / 100))
+            valor = base['meses'][mes] * ((variable.porcentaje or 0) / 100)
             fila_clave = (base['site'], base['cliente'], base['campania'], 'Variable')
             fila = next((item for item in filas if item['clave'] == fila_clave), None)
             if not fila:
@@ -5179,7 +5201,12 @@ def construir_resumen_proyeccion_data(year):
     dolares_next_gen = {r.mes: r.valor or 0 for r in NextGenDolar.query.filter_by(year=year).all()}
     productos_next_gen = NextGenProducto.query.filter_by(year=year).all()
     for producto in productos_next_gen:
-        valor = redondear_moneda((producto.cantidad_usd or 0) * dolares_next_gen.get(producto.mes, 0))
+        cotizacion = producto.cotizacion_aplicada
+        if cotizacion is None:
+            cotizacion = dolares_next_gen.get(producto.mes, 0)
+        # Igual que el libro: conservar precisión por producto y redondear una
+        # vez consolidada la campaña/mes. Redondear aquí altera el TOTAL CAT.
+        valor = (producto.cantidad_usd or 0) * cotizacion
         base_coincidente = next((item for item in filas_horas
             if normalizar_nombre_variable(item['campania']) == normalizar_nombre_variable(producto.campania)
             and (
@@ -5246,14 +5273,15 @@ def construir_resumen_proyeccion_data(year):
                              if fila.get('tipo', 'detalle') == 'detalle' else []),
                 'concepto': fila['concepto'],
                 'tipo': fila.get('tipo', 'detalle'),
-                'meses': {mes: round(fila['meses'].get(mes, 0), 2) for mes in meses},
-                'total': round(fila.get('total', 0), 2),
+                # Se conserva precisión interna hasta consolidar la Cuenta.
+                'meses': {mes: round(fila['meses'].get(mes, 0), 10) for mes in meses},
+                'total': round(fila.get('total', 0), 10),
             }
             for fila in filas_ordenadas
         ],
         'total_general': {
-            'meses': {mes: round(total_general.get(mes, 0), 2) for mes in meses},
-            'total': round(sum(total_general.values()), 2),
+            'meses': {mes: round(total_general.get(mes, 0), 10) for mes in meses},
+            'total': round(sum(total_general.values()), 10),
         },
     }
 
@@ -5262,7 +5290,133 @@ def construir_resumen_proyeccion_data(year):
 @login_requerido
 def api_resumen_proyeccion():
     year = int(request.args.get('year') or datetime.utcnow().year)
-    return jsonify(consolidar_resumen_proyeccion(construir_resumen_proyeccion_data(year)))
+    data = construir_resumen_proyeccion_data(year)
+    salida = consolidar_resumen_proyeccion(data)
+    salida['filas_resumen'] = construir_filas_resumen_excel(data)
+    return jsonify(salida)
+
+
+CONCEPTOS_RESUMEN = ('Horas', 'Variable Productividad', 'Next Gen', 'Tarifacion + otros')
+
+
+def construir_filas_resumen_excel(data):
+    """Replica la topología de RESUMEN: concepto, campaña, total y meses."""
+    meses = [item['value'] for item in data.get('meses', [])]
+    orden_personal = {'personal cx': 0, 'personal soporte': 1, 'personal': 2, 'personal smb': 3}
+    grupos = {}
+    for fila in data.get('filas', []):
+        if fila.get('tipo') == 'total_site':
+            continue
+        campania = str(fila.get('campania') or '').strip()
+        clave_campania = normalizar_nombre_variable(campania)
+        if clave_campania.endswith(' nocturnidad'):
+            clave_campania = clave_campania[:-len(' nocturnidad')]
+            campania = campania[:-len(' nocturnidad')].strip()
+        concepto_origen = fila.get('concepto')
+        if concepto_origen in ('Horas', 'Fijo mensual'):
+            concepto = 'Horas'
+        elif concepto_origen == 'Variable':
+            concepto = 'Variable Productividad'
+        elif concepto_origen == 'Next Gen':
+            concepto = 'Next Gen'
+        else:
+            concepto = 'Tarifacion + otros'
+        cliente_clave = 'personal' if clave_campania in orden_personal else normalizar_header(fila.get('cliente'))
+        clave = (cliente_clave, clave_campania)
+        grupo = grupos.setdefault(clave, {
+            'site': fila.get('site') or '', 'cliente': fila.get('cliente') or '',
+            'campania': campania, 'conceptos': {
+                nombre: {mes: 0 for mes in meses} for nombre in CONCEPTOS_RESUMEN
+            },
+        })
+        for mes in meses:
+            grupo['conceptos'][concepto][mes] += numero_seguro(fila.get('meses', {}).get(mes))
+
+    ordenados = sorted(grupos.values(), key=lambda item: (
+        0 if normalizar_nombre_variable(item['campania']) in orden_personal else 1,
+        orden_personal.get(normalizar_nombre_variable(item['campania']), 99),
+        normalizar_header(item['site']), normalizar_header(item['campania']),
+    ))
+    salida = []
+    total_personal = {mes: 0 for mes in meses}
+    for grupo in ordenados:
+        valores_total = {mes: 0 for mes in meses}
+        for concepto in CONCEPTOS_RESUMEN:
+            valores = grupo['conceptos'][concepto]
+            for mes in meses:
+                valores_total[mes] += valores[mes]
+            salida.append({
+                'site': grupo['site'], 'cliente': grupo['cliente'],
+                'concepto': concepto, 'campania': grupo['campania'], 'tipo': 'concepto',
+                'meses': {mes: redondear_moneda(valores[mes]) for mes in meses},
+                'total': redondear_moneda(sum(valores.values())),
+            })
+        es_personal = normalizar_nombre_variable(grupo['campania']) in orden_personal
+        if es_personal:
+            for mes in meses:
+                total_personal[mes] += valores_total[mes]
+        salida.append({
+            'site': grupo['site'], 'cliente': grupo['cliente'], 'concepto': 'Total',
+            'campania': grupo['campania'], 'tipo': 'total_campania',
+            'meses': {mes: redondear_moneda(valores_total[mes]) for mes in meses},
+            'total': redondear_moneda(sum(valores_total.values())),
+        })
+        if es_personal and normalizar_nombre_variable(grupo['campania']) == 'personal smb':
+            salida.append({
+                'site': grupo['site'], 'cliente': 'Personal', 'concepto': '',
+                'campania': 'TOTAL GRUPO PERSONAL', 'tipo': 'total_grupo',
+                'meses': {mes: redondear_moneda(total_personal[mes]) for mes in meses},
+                'total': redondear_moneda(sum(total_personal.values())),
+            })
+    total = data.get('total_general', {})
+    salida.insert(0, {
+        'site': '', 'cliente': '', 'concepto': '', 'campania': 'TOTAL CAT', 'tipo': 'total_cat',
+        'meses': {mes: redondear_moneda(total.get('meses', {}).get(mes, 0)) for mes in meses},
+        'total': redondear_moneda(total.get('total', 0)),
+    })
+    return salida
+
+
+@main_bp.route('/api/resumen-proyeccion/exportar', methods=['GET'])
+@login_requerido
+def exportar_resumen_proyeccion():
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+
+    year = int(request.args.get('year') or datetime.utcnow().year)
+    data = construir_resumen_proyeccion_data(year)
+    filas = construir_filas_resumen_excel(data)
+    meses = data['meses']
+    wb = Workbook(); ws = wb.active; ws.title = 'RESUMEN'
+    nombres_meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+    encabezados = ['Concepto', 'Campaña', str(year)] + nombres_meses
+    azul = PatternFill('solid', fgColor='D9E5F6'); oscuro = PatternFill('solid', fgColor='40536D')
+    borde = Border(bottom=Side(style='thin', color='B7C5D8'))
+    fila_cat = next(fila for fila in filas if fila['tipo'] == 'total_cat')
+    ws.append(['', fila_cat['campania'], fila_cat['total']] + [fila_cat['meses'][m['value']] for m in meses])
+    ws.append(encabezados)
+    for celda in ws[1]: celda.fill = oscuro; celda.font = Font(bold=True, color='FFFFFF')
+    for celda in ws[2]:
+        celda.font = Font(bold=True); celda.fill = azul; celda.alignment = Alignment(horizontal='center')
+    for fila in (item for item in filas if item['tipo'] != 'total_cat'):
+        ws.append([fila['concepto'], fila['campania'], fila['total']] + [fila['meses'][m['value']] for m in meses])
+        numero_fila = ws.max_row
+        if fila['tipo'] in ('total_campania', 'total_grupo'):
+            for celda in ws[numero_fila]: celda.fill = azul; celda.font = Font(bold=True)
+        for celda in ws[numero_fila]: celda.border = borde
+        for columna in range(3, 16):
+            ws.cell(numero_fila, columna).number_format = '$ #,##0;[Red]-$ #,##0;$ 0'
+    for columna in range(3, 16): ws.cell(1, columna).number_format = '$ #,##0;[Red]-$ #,##0;$ 0'
+    ws.freeze_panes = 'C3'; ws.auto_filter.ref = f'A2:{get_column_letter(ws.max_column)}2'
+    ws.column_dimensions['A'].width = 24; ws.column_dimensions['B'].width = 30
+    for columna in range(3, 16): ws.column_dimensions[get_column_letter(columna)].width = 17
+    salida = BytesIO(); wb.save(salida); salida.seek(0)
+    return send_file(salida, as_attachment=True,
+                     download_name=f'Facturacion_horas_RESUMEN_{year}.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 @main_bp.route('/api/sites-proyeccion', methods=['POST'])
@@ -5342,8 +5496,9 @@ def consolidar_resumen_proyeccion(data):
     filas = []
     totales_site = {}
     for grupo in grupos.values():
-        grupo['meses'] = {mes: round(valor, 2) for mes, valor in grupo['meses'].items()}
-        grupo['total'] = round(sum(grupo['meses'].values()), 2)
+        total_crudo = sum(grupo['meses'].values())
+        grupo['meses'] = {mes: redondear_moneda(valor) for mes, valor in grupo['meses'].items()}
+        grupo['total'] = redondear_moneda(total_crudo)
         grupo['conceptos'] = sorted(concepto for concepto in grupo['conceptos'] if concepto)
         filas.append(grupo)
         site = grupo['site'] or 'Sin site'
@@ -6869,6 +7024,56 @@ def cliente_cumplimiento_facturacion(nombre):
     return equivalencias.get(clave, nombre)
 
 
+@main_bp.route('/api/cumplimiento-horas-clientes', methods=['GET'])
+@login_requerido
+def api_cumplimiento_horas_clientes():
+    """Consolida variantes de cliente antes de aplicar cambios de Facturación."""
+    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    grupos = {}
+
+    def nuevo(mes, cliente):
+        return {'mes': mes, 'year': year, 'cliente': cliente, 'base_obj': 0.0,
+                'base_real': 0.0, 'snapshot_obj': 0.0, 'snapshot_real': 0.0,
+                'tiene_snapshot': False, 'actual_obj': 0.0, 'actual_real': 0.0,
+                'tiene_actual': False}
+
+    for registro in HistoricoClienteMensual.query.filter_by(year=year).all():
+        cliente = cliente_cumplimiento_facturacion(registro.cliente)
+        item = grupos.setdefault((registro.mes, cliente), nuevo(registro.mes, cliente))
+        datos = registro.base_dict()
+        item['base_obj'] += float(datos.get('horas_requeridas') or 0)
+        item['base_real'] += float(datos.get('horas_realizadas') or 0)
+        if '_fact_snapshot_obj' in datos or '_fact_snapshot_real' in datos:
+            item['tiene_snapshot'] = True
+            item['snapshot_obj'] += float(datos.get('_fact_snapshot_obj') or 0)
+            item['snapshot_real'] += float(datos.get('_fact_snapshot_real') or 0)
+
+    for fila in Facturacion2026.query.filter(func.extract('year', Facturacion2026.fecha) == year).all():
+        if not float(fila.horas_objetivo or 0) and not float(fila.horas_facturadas or 0):
+            continue
+        mes, cliente = fila.fecha.strftime('%Y-%m'), cliente_cumplimiento_facturacion(fila.cliente)
+        item = grupos.setdefault((mes, cliente), nuevo(mes, cliente))
+        item['tiene_actual'] = True
+        item['actual_obj'] += float(fila.horas_objetivo or 0)
+        item['actual_real'] += float(fila.horas_facturadas or 0)
+
+    filas = []
+    for item in grupos.values():
+        if item['tiene_actual'] and item['tiene_snapshot']:
+            objetivo = item['base_obj'] + item['actual_obj'] - item['snapshot_obj']
+            realizado = item['base_real'] + item['actual_real'] - item['snapshot_real']
+        elif item['tiene_actual'] and not (item['base_obj'] or item['base_real']):
+            objetivo, realizado = item['actual_obj'], item['actual_real']
+        else:
+            objetivo, realizado = item['base_obj'], item['base_real']
+        if objetivo or realizado:
+            filas.append({'mes': item['mes'], 'year': year, 'cliente': item['cliente'],
+                          'horas_requeridas': round(objetivo, 6),
+                          'horas_realizadas': round(realizado, 6)})
+    filas.sort(key=lambda fila: (fila['mes'], fila['cliente'].lower()))
+    return jsonify({'success': True, 'year': year, 'filas': filas})
+
+
 @main_bp.route('/api/cumplimiento-facturacion-clientes', methods=['GET'])
 @login_requerido
 def api_cumplimiento_facturacion_clientes():
@@ -7161,6 +7366,121 @@ def api_guardar_variable():
         'success': True,
         'mensaje': 'Variable guardada',
         'variable': variable.to_dict(),
+    })
+
+
+@main_bp.route('/api/matriz-proyecciones/nuevo-anio', methods=['POST'])
+@edicion_requerida
+def api_matriz_proyecciones_nuevo_anio():
+    """Crea el año siguiente desde la fotografía mensual más recientemente editada."""
+    data = request.get_json(silent=True) or {}
+    try:
+        ultimo_year = int(data.get('year_base'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['Seleccioná un año base válido']}), 400
+    if not 2020 <= ultimo_year <= 2100:
+        return jsonify({'success': False, 'errores': ['El año base está fuera del rango permitido']}), 400
+    if not ProyeccionMatriz.query.filter_by(year=ultimo_year).first():
+        return jsonify({'success': False, 'errores': ['No hay proyecciones cargadas para usar como base']}), 400
+
+    candidatas = ProyeccionMatriz.query.filter_by(year=ultimo_year).all()
+    if not candidatas:
+        return jsonify({'success': False, 'errores': ['El último año no contiene proyecciones']}), 400
+    ahora = datetime.now()
+    limite_calendario = f'{ahora.year}-{ahora.month:02d}'
+    meses_disponibles = sorted({fila.mes for fila in candidatas})
+    meses_hasta_hoy = [mes for mes in meses_disponibles if mes <= limite_calendario]
+    # Si el año vigente contiene meses futuros, no se usan como fotografía:
+    # agosto toma agosto y, cuando septiembre esté cargado, toma septiembre.
+    mes_base = max(meses_hasta_hoy) if meses_hasta_hoy else max(meses_disponibles)
+    base = [fila for fila in candidatas if fila.mes == mes_base]
+    year_destino = int(ultimo_year) + 1
+    if ProyeccionMatriz.query.filter_by(year=year_destino).first():
+        return jsonify({
+            'success': False,
+            'errores': [f'El año {year_destino} ya tiene proyecciones. No se sobrescribió ningún dato.'],
+        }), 409
+
+    feriados_destino = fechas_feriadas_activas(year_destino)
+    creadas = []
+    for numero_mes in range(1, 13):
+        mes_destino = f'{year_destino}-{numero_mes:02d}'
+        for origen in base:
+            jornadas = [
+                {
+                    'dotacion_requerida': jornada.dotacion_requerida,
+                    'carga_semanal': jornada.carga_semanal,
+                    'carga_horaria': jornada.carga_horaria,
+                }
+                for jornada in origen.jornadas
+            ]
+            nueva = ProyeccionMatriz()
+            aplicar_calculo_proyeccion(nueva, {
+                'cliente': origen.cliente,
+                'campania': origen.campania,
+                'jornadas': jornadas,
+                'dotacion_requerida': origen.dotacion_requerida,
+                'carga_semanal': origen.carga_semanal,
+                'carga_horaria': origen.carga_horaria,
+                'porcentaje_cumplimiento': origen.porcentaje_cumplimiento,
+                'tipo_plp': origen.tipo_plp,
+                'horas_carga_manual': origen.horas_carga_manual,
+                'horas_requeridas_manual': origen.horas_requeridas if origen.horas_carga_manual else None,
+                'carga_semanal_plp': origen.carga_semanal,
+                'carga_horaria_plp': origen.carga_horaria,
+            }, mes_destino, feriados_destino)
+            db.session.add(nueva)
+            creadas.append(nueva)
+
+    def filas_mes(modelo):
+        return modelo.query.filter_by(year=ultimo_year, mes=mes_base).all()
+
+    precios_base = filas_mes(ProyeccionPrecio)
+    variables_base = filas_mes(VariableCampania)
+    distribuciones_base = filas_mes(PersonalDistribucionHoras)
+    for numero_mes in range(1, 13):
+        mes_destino = f'{year_destino}-{numero_mes:02d}'
+        for origen in precios_base:
+            db.session.add(ProyeccionPrecio(
+                site=origen.site, cliente=origen.cliente, campania=origen.campania,
+                year=year_destino, mes=mes_destino, precio_base=origen.precio_base,
+                alcance_porcentaje=origen.alcance_porcentaje, precio_final=origen.precio_final,
+                importe_fijo_mensual=origen.importe_fijo_mensual,
+            ))
+        for origen in variables_base:
+            db.session.add(VariableCampania(
+                site=origen.site, cliente=origen.cliente, campania=origen.campania,
+                year=year_destino, mes=mes_destino, porcentaje=origen.porcentaje,
+            ))
+        for origen in distribuciones_base:
+            db.session.add(PersonalDistribucionHoras(
+                servicio=origen.servicio, year=year_destino,
+                mes=mes_destino, porcentaje_diurno=origen.porcentaje_diurno,
+            ))
+
+    db.session.flush()
+    resumen = {
+        'year_base': ultimo_year,
+        'mes_base': mes_base,
+        'year_destino': year_destino,
+        'campanias': len(base),
+        'proyecciones': len(creadas),
+        'precios': len(precios_base) * 12,
+        'variables': len(variables_base) * 12,
+        'distribuciones_personal': len(distribuciones_base) * 12,
+        'feriados': 0,
+    }
+    registrar_historial(
+        'creacion', 'matriz_proyecciones', str(year_destino),
+        f'Nuevo año {year_destino} generado desde {mes_base}',
+        despues=resumen,
+        detalle='Fotografía del último mes actualizado repetida en los 12 meses; feriados no copiados.',
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'Año {year_destino} creado desde la fotografía de {mes_base}. Los feriados quedaron vacíos.',
+        **resumen,
     })
 
 

@@ -336,10 +336,23 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function nuevoAnioProyeccion() {
-    const year = siguienteYear('yearFiltro');
-    if (!confirm(`¿Estás seguro de que querés proyectar el año ${year}?`)) return;
-    agregarYear('yearFiltro', year);
-    document.getElementById('year').value = year;
+    if (!confirm('Se creará el año siguiente usando el último mes actualizado como base para los 12 meses. Los feriados no se copiarán. ¿Continuar?')) return;
+    const response = await fetch('/api/matriz-proyecciones/nuevo-anio', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year_base: Number(document.getElementById('yearFiltro').value) }),
+    });
+    const data = await response.json();
+    if (!data.success) {
+        const mensaje = (data.errores || ['No se pudo crear el nuevo año']).join(' | ');
+        mostrarMensaje(mensaje, 'error');
+        alert(mensaje);
+        return;
+    }
+    agregarYear('yearFiltro', data.year_destino);
+    document.getElementById('year').value = data.year_destino;
+    mostrarMensaje(data.mensaje, 'success');
+    alert(`${data.mensaje}\nCampañas: ${data.campanias}\nProyecciones creadas: ${data.proyecciones}\nPrecios: ${data.precios}\nVariables: ${data.variables}`);
     await cargarProyecciones();
     limpiarFormulario();
 }

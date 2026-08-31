@@ -8,14 +8,14 @@
     :root { --navy:#0f2747; --blue:#2563eb; --green:#059669; --ink:#172033; --muted:#5f6b7a; --line:#dbe4ef; --soft:#f4f7fb; --warn:#fff7df; }
     * { box-sizing:border-box; }
     html { scroll-behavior:smooth; }
-    body { margin:0; color:var(--ink); background:var(--soft); font:16px/1.6 Arial, sans-serif; }
+    body { margin:0; color:var(--ink); background:var(--soft); font:16px/1.6 Arial, sans-serif; overflow-wrap:anywhere; }
     a { color:#1859ba; }
     .top { position:sticky; top:0; z-index:5; display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px max(18px, calc((100% - 1120px)/2)); color:white; background:var(--navy); }
     .top a { color:white; text-decoration:none; }
     .buttons { display:flex; gap:8px; flex-wrap:wrap; }
     .button { display:inline-block; padding:8px 13px; border:1px solid #7fa1ce; border-radius:7px; background:#173b69; font-weight:bold; }
     .button.primary { border-color:#34d399; background:#047857; }
-    .page { max-width:1120px; margin:24px auto 60px; padding:0 18px; }
+    .page { width:min(100%,1180px); margin:24px auto 60px; padding:0 18px; }
     .cover, section, nav.toc { margin-bottom:20px; padding:28px; border:1px solid var(--line); border-radius:12px; background:white; box-shadow:0 4px 18px rgba(15,39,71,.05); }
     .cover { padding:42px; background:linear-gradient(135deg,#0f2747,#174b83); color:white; }
     .cover h1 { margin:0 0 10px; font-size:clamp(30px,5vw,48px); line-height:1.15; }
@@ -34,19 +34,23 @@
     .steps { counter-reset:step; list-style:none; padding:0; }
     .steps li { position:relative; min-height:38px; margin:12px 0; padding-left:46px; }
     .steps li::before { counter-increment:step; content:counter(step); position:absolute; left:0; top:0; width:30px; height:30px; border-radius:50%; color:white; background:var(--blue); text-align:center; font-weight:bold; line-height:30px; }
-    table { width:100%; border-collapse:collapse; margin:14px 0; }
+    .table-wrap { max-width:100%; overflow-x:auto; margin:14px 0; }
+    table { width:100%; border-collapse:collapse; }
     th, td { padding:10px; border:1px solid var(--line); text-align:left; vertical-align:top; }
     th { background:#edf3fa; color:var(--navy); }
     code { padding:2px 5px; border-radius:4px; background:#edf1f6; }
     .back { display:block; margin-top:22px; text-align:right; font-size:14px; }
     footer { color:var(--muted); text-align:center; }
-    @media (max-width:700px) { .toc ol { columns:1; } .cover, section, nav.toc { padding:20px; } .top { align-items:flex-start; } }
+    @media (max-width:700px) { .toc ol { columns:1; } .cover, section, nav.toc { padding:20px; } .top { position:static; align-items:flex-start; flex-direction:column; } th,td { padding:7px; font-size:13px; } }
     @media print {
-      body { background:white; font-size:11pt; }
+      body { background:white; font-size:9.5pt; }
       .top, .back { display:none; }
       .page { max-width:none; margin:0; }
-      .cover, section, nav.toc { box-shadow:none; break-inside:avoid; }
-      section { break-before:page; }
+      .cover, section, nav.toc { box-shadow:none; padding:8mm; }
+      .cover { break-after:page; }
+      h2, h3 { break-after:avoid; }
+      table { font-size:8.5pt; }
+      tr { break-inside:avoid; }
       nav.toc a { color:#1859ba; text-decoration:underline; font-weight:600; }
     }
   </style>
@@ -64,8 +68,8 @@
     <header class="cover">
       <h1>Dashboard de Facturación</h1>
       <p>Guía sencilla para cargar información, preparar proyecciones y controlar los resultados.</p>
-      <p><strong>Incluye:</strong> facturación real, Facturación horas, PLP, precios, variables, tarifación, Next Gen, suma fija, historial e importaciones.</p>
-      <small>Guía funcional para usuarios · Actualizada en julio de 2026</small>
+      <p><strong>Incluye:</strong> facturación real, Facturación horas, PLP, precios, variables, Directorio, dotaciones, ratios, historial e importaciones.</p>
+      <small>Guía funcional para usuarios · Actualizada en agosto de 2026</small>
     </header>
 
     <nav class="toc" id="indice">
@@ -85,6 +89,7 @@
         <li><a href="#facturacion-horas">Facturación horas</a></li>
         <li><a href="#control-proyecciones">Control proyecciones</a></li>
         <li><a href="#importaciones">Plantillas e importaciones</a></li>
+        <li><a href="#directorio">Directorio e indicadores</a></li>
         <li><a href="#historial">Historial y deshacer</a></li>
         <li><a href="#problemas">Problemas frecuentes</a></li>
         <li><a href="#glosario">Glosario</a></li>
@@ -117,6 +122,7 @@
         <tr><td>Proyectados</td><td>Horas, PLP, calendario, precios y control operativo.</td></tr>
         <tr><td>Facturación horas</td><td>Resultado monetario proyectado consolidado.</td></tr>
         <tr><td>Variable</td><td>Porcentajes variables, tarifación, Next Gen y suma fija.</td></tr>
+        <tr><td>Directorio</td><td>Reloj, indicadores, dotaciones, evolutivos, variaciones, ratios, históricos y tableros operativos.</td></tr>
         <tr><td>Historial</td><td>Auditoría y deshacer cambios admitidos.</td></tr>
         <tr><td>Ayuda</td><td>Esta guía de usuario.</td></tr>
       </table>
@@ -211,7 +217,14 @@
       <p>Si un servicio tiene 10.000 horas y 94% diurno, el resumen acumula 9.400 horas en su clasificación principal y 600 horas en “nocturnidad”.</p>
       <div class="note">El resumen PLP muestra las horas base al 100%. El porcentaje de cumplimiento pertenece a la proyección operativa y no debe alterar ese resumen de distribución.</div>
       <h3>Año siguiente</h3>
-      <p>Podés repetir los porcentajes del año anterior y luego corregir solo los meses necesarios. Cambiar 2027 no modifica 2026.</p>
+      <p>En <strong>Matriz de proyecciones</strong>, el botón <strong>Nuevo</strong> crea el año siguiente al que esté seleccionado, usando la fotografía del último mes disponible hasta el mes actual. Con 2026 seleccionado, si el último mes disponible es septiembre, esa configuración se usa como base de enero a diciembre de 2027.</p>
+      <ul>
+        <li>Se replican dotación, jornadas, carga horaria, cumplimiento, precios, suma fija, variable y distribución diurna/nocturna de Personal.</li>
+        <li>Los días objetivo y las horas calculadas se recalculan para cada mes del año nuevo.</li>
+        <li>Los feriados no se copian: deben cargarse en Calendario operativo para el año nuevo.</li>
+        <li>Si el año destino ya contiene proyecciones, la generación se detiene y no sobrescribe datos.</li>
+      </ul>
+      <p>Después de generarlo, cada mes queda editable. Crear o modificar 2027 no cambia 2026; al generar 2028 se vuelve a tomar la fotografía más reciente disponible de 2027.</p>
       <a class="back" href="#indice">Volver al índice ↑</a>
     </section>
 
@@ -295,8 +308,24 @@
       <a class="back" href="#indice">Volver al índice ↑</a>
     </section>
 
+    <section id="directorio">
+      <h2>15. Directorio e indicadores</h2>
+      <p>Este grupo reúne las vistas ejecutivas alimentadas por sus bases mensuales: Reloj, Indicadores, Dotaciones, Gráficos de dotaciones, Evolutivo, Variación interanual, Variación de horas por cliente, Dashboard operativo, Histórico, Cumplimiento y ratios ELI.</p>
+      <h3>Filtros y datos visibles</h3>
+      <ul>
+        <li>Elegí año, período, cliente o resultado según los controles disponibles en cada pestaña.</li>
+        <li>Los totales, tablas y gráficos se recalculan sobre el mismo filtro visible.</li>
+        <li>En Cumplimiento de horas, las variantes de nombre del mismo cliente se consolidan para evitar filas duplicadas.</li>
+        <li>Las tablas se muestran completas dentro de la página; en pantallas pequeñas la página se adapta al ancho disponible.</li>
+      </ul>
+      <h3>Colores de los gráficos</h3>
+      <p>Los selectores de paleta modifican el gráfico de la aplicación. El botón <strong>Restaurar original</strong> devuelve ese gráfico a sus colores predeterminados. La preferencia queda guardada en el navegador para las vistas que admiten personalización.</p>
+      <div class="note"><strong>Actualización:</strong> al importar o editar la base correspondiente, recargá la vista para que indicadores, tablas y gráficos lean los valores vigentes. La guía no incluye funciones de descarga de presentaciones.</div>
+      <a class="back" href="#indice">Volver al índice ↑</a>
+    </section>
+
     <section id="historial">
-      <h2>15. Historial y deshacer</h2>
+      <h2>16. Historial y deshacer</h2>
       <p>El historial indica quién hizo el cambio, cuándo, en qué pestaña y qué valores había antes y después.</p>
       <ol class="steps">
         <li>Abrí <strong>Historial</strong>.</li>
@@ -310,7 +339,7 @@
     </section>
 
     <section id="problemas">
-      <h2>16. Problemas frecuentes</h2>
+      <h2>17. Problemas frecuentes</h2>
       <table>
         <tr><th>Problema</th><th>Qué revisar</th></tr>
         <tr><td>No puedo iniciar sesión</td><td>Correo, contraseña, usuario activo y dirección correcta del servidor.</td></tr>
@@ -325,7 +354,7 @@
     </section>
 
     <section id="glosario">
-      <h2>17. Glosario</h2>
+      <h2>18. Glosario</h2>
       <table>
         <tr><th>Término</th><th>Significado sencillo</th></tr>
         <tr><td>Cliente</td><td>Cuenta comercial principal.</td></tr>
@@ -343,7 +372,7 @@
     </section>
 
     <section id="checklist">
-      <h2>18. Lista rápida de control</h2>
+      <h2>19. Lista rápida de control</h2>
       <ul>
         <li>☐ Cliente y campaña existen y están activos.</li>
         <li>☐ Año y mes son correctos.</li>
@@ -363,5 +392,14 @@
       <p>Dashboard de Facturación · Guía funcional para usuarios</p>
     </footer>
   </main>
+<script>
+  document.querySelectorAll('table').forEach((table) => {
+    if (table.parentElement?.classList.contains('table-wrap')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'table-wrap';
+    table.parentNode.insertBefore(wrap, table);
+    wrap.appendChild(table);
+  });
+</script>
 </body>
 </html>
