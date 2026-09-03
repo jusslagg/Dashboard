@@ -92,6 +92,7 @@
 <li class=""><a href="#apis-principales">APIs principales</a></li>
 <li class=""><a href="#seguridad">Seguridad</a></li>
 <li class=""><a href="#flujo-recomendado-de-uso">Flujo recomendado de uso</a></li>
+<li class="sub"><a href="#carga-posterior-de-un-mes-anterior">Carga posterior de un mes anterior</a></li>
 <li class="sub"><a href="#generacion-de-un-nuevo-ano-proyectado">Generación de un nuevo año proyectado</a></li>
 <li class=""><a href="#problemas-frecuentes">Problemas frecuentes</a></li>
 <li class="sub"><a href="#npm-no-se-reconoce">npm no se reconoce</a></li>
@@ -850,6 +851,8 @@ asignaciones_comerciales</code></pre>
 </tbody></table></div>
 <p class="">Los campos JSON de <code>dashboard_operativo.datos</code> e <code>historico_clientes_mensuales.datos_base</code> conservan las columnas variables de la fuente importada. Los campos que participan en filtros, edición o unicidad se mantienen como columnas tipadas. El detalle físico de <strong>cada campo</strong>, tipo, obligatoriedad, clave, índice y restricción está en los anexos DDL generados que acompañan esta ficha.</p>
 <p class="">Estos archivos se generan directamente desde <code>app/models.py</code>; por eso son la fuente técnica para construir una base nueva y evitan copiar accidentalmente datos reales de <code>instance/facturacion.db</code>. Cada cambio de modelos exige volver a generar los scripts y la documentación:</p>
+<h4 id="compatibilidad-con-bases-locales-anteriores">Compatibilidad con bases locales anteriores<a class="anchor" href="#compatibilidad-con-bases-locales-anteriores" aria-label="Enlace a esta sección">#</a></h4>
+<p class="">El contrato nuevo está formado por las <strong>24 tablas declaradas en los DDL</strong>. Una base SQLite local actualizada durante versiones anteriores puede conservar la tabla vacía <code>bajas_operativas</code>, las columnas vacías <code>facturacion_anio.mes_baja</code> y <code>facturacion_anio.motivo_baja</code>, o las columnas en cero <code>matriz_precios.aplica_dolar</code> y <code>matriz_precios.valor_dolar</code>. Son artefactos legacy no consultados por la aplicación y <strong>no deben crearse en una base nueva</strong>. La valorización vigente en dólares utiliza <code>next_gen_dolar</code>, <code>next_gen_productos.cantidad_usd</code> y <code>next_gen_productos.cotizacion_aplicada</code>.</p>
 <p class="callout">Nota: varios valores predeterminados actuales son aplicados por SQLAlchemy desde Python y no son <code>DEFAULT</code> físicos del motor. El DDL muestra deliberadamente sólo las garantías que la base puede imponer por sí misma; esto permite que el tercero distinga las restricciones de base de las reglas ejecutadas por la aplicación.</p>
 <pre><code class="language-powershell">python scripts\generar_esquema_base_datos.py
 python scripts\generar_documentacion_tecnica.py</code></pre>
@@ -1977,6 +1980,9 @@ FLASK_RELOAD=0
 TEMPLATES_AUTO_RELOAD=0</code></pre>
 <p class="">Servir siempre detrás de HTTPS y con una base de datos administrada.</p>
 <h2 id="flujo-recomendado-de-uso">Flujo recomendado de uso<a class="anchor" href="#flujo-recomendado-de-uso" aria-label="Enlace a esta sección">#</a></h2>
+<h3 id="carga-posterior-de-un-mes-anterior">Carga posterior de un mes anterior<a class="anchor" href="#carga-posterior-de-un-mes-anterior" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">La fecha en que se sube un archivo no define el período contable. Si en septiembre se carga información cuyo campo <code>Mes</code> o <code>Fecha</code> corresponde a agosto, se persiste como <code>YYYY-08</code> y se incorpora a agosto en Dashboard, Control, Histórico, Directorio, comparativos e indicadores acumulados.</p>
+<p class="">Las claves mensuales mantienen <code>year</code> alineado con el prefijo de <code>mes</code>. Las reimportaciones actualizan la misma clave; cuando una campaña contiene varias líneas aditivas con idénticas dimensiones, el conjunto anterior se reemplaza una sola vez por el conjunto completo recibido. Esto evita duplicar o colapsar una parte del total. Las variantes de mayúsculas/minúsculas de un cliente se consolidan al responder las APIs de Histórico sin alterar los importes fuente.</p>
 <h3 id="generacion-de-un-nuevo-ano-proyectado">Generación de un nuevo año proyectado<a class="anchor" href="#generacion-de-un-nuevo-ano-proyectado" aria-label="Enlace a esta sección">#</a></h3>
 <p class="">La acción <strong>Nuevo</strong> de Matriz de proyecciones toma el año seleccionado en pantalla como base y, dentro de ese año, el último mes con datos disponible hasta el mes calendario actual. No toma meses futuros aunque ya tengan una previsión cargada: en agosto usa agosto y, cuando septiembre esté cargado, usa septiembre. Esa fotografía mensual se replica en los doce meses del año siguiente para proyecciones, jornadas, precios, suma fija, porcentajes variables y distribución horaria de Personal.</p>
 <p class="">Los días objetivo y las horas derivadas se recalculan con el calendario de cada mes destino. Los feriados no se heredan y deben cargarse expresamente para el nuevo año. La operación es atómica, queda en el historial y rechaza la solicitud si el año destino ya tiene proyecciones, evitando sobrescrituras parciales.</p>

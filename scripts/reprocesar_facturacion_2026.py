@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import create_app, db
 from app.models import Facturacion2026, HistorialCambio
 
-ARCHIVO = r'C:\Users\jegil\Downloads\2026 Facturacion (32).xlsx'
+ARCHIVO = r'C:\Users\jegil\Downloads\2026 Facturacion (34).xlsx'
 
 def texto(v):
     return ' '.join(str(v or '').strip().lower().split())

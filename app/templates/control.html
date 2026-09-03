@@ -150,7 +150,7 @@
         <table class="w-full min-w-[2320px] text-sm">
             <thead class="bg-gray-800 text-white">
                 <tr>
-                    <th class="px-4 py-3 text-left">Fecha</th>
+                    <th class="px-4 py-3 text-left">Fecha de carga</th>
                     <th class="px-4 py-3 text-left">Mes</th>
                     <th class="px-4 py-3 text-left">Cliente</th>
                     <th class="px-4 py-3 text-left">Gerente</th>
@@ -358,6 +358,7 @@ const controlConfig = document.getElementById('controlConfig');
 const puedeEditar = controlConfig?.dataset.puedeEditar === 'true';
 const puedeEliminar = controlConfig?.dataset.puedeEliminar === 'true';
 const TIPO_VH_PERSONAL_COBRANZAS = 'Personal Cobranzas';
+let secuenciaCargaDatos = 0;
 
 document.addEventListener('DOMContentLoaded', function() {
     cargarFiltros();
@@ -511,6 +512,10 @@ document.addEventListener('change', async event => {
     await onFiltroChange();
 });
 
+async function onFiltroChange() {
+    await cargarDatos();
+}
+
 function actualizarTodosMultiple(id) {
     const control = document.getElementById(id);
     const todos = control.querySelector('input[data-todos="true"]');
@@ -535,13 +540,14 @@ function actualizarResumenMultiple(id) {
 }
 
 async function cargarDatos() {
+    const secuenciaActual = ++secuenciaCargaDatos;
     const url = '/api/datos' + buildQuery({ ...getFiltrosControl(), _ts: Date.now() });
 
     try {
         const response = await fetch(url, { cache: 'no-store' });
         const data = await leerJsonSeguro(response);
 
-        if (data.success) {
+        if (data.success && secuenciaActual === secuenciaCargaDatos) {
             actualizarTabla(data.data);
         }
     } catch (error) {

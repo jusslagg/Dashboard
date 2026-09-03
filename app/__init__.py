@@ -137,6 +137,8 @@ def create_app():
         db.create_all()
         migrar_tipos_numericos_postgresql()
         ensure_schema()
+        from app.models import normalizar_nombres_comerciales_existentes
+        normalizar_nombres_comerciales_existentes()
     
     return app
 

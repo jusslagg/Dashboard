@@ -23,12 +23,12 @@ def verificar() -> None:
         os.environ["APP_DEFAULT_YEAR"] = "2026"
 
         from app import create_app, db
-        from app.models import ProyeccionMatriz, Usuario
+        from app.models import Campania, ProyeccionMatriz, Usuario
 
         app = create_app()
         app.config.update(TESTING=True)
         with app.app_context():
-            assert len(db.metadata.tables) == 16, "La cantidad de tablas cambio sin actualizar el contrato."
+            assert len(db.metadata.tables) == 24, "La cantidad de tablas cambio sin actualizar el contrato."
             assert "facturacion_anio" in db.metadata.tables
             assert "facturacion_2026" not in db.metadata.tables
             usuario = Usuario(
@@ -39,8 +39,11 @@ def verificar() -> None:
             )
             usuario.set_password("solo-pruebas")
             db.session.add(usuario)
+            campania = Campania(cliente="Cliente prueba", nombre="Campaña prueba", activa=True)
+            db.session.add(campania)
             db.session.commit()
             usuario_id = usuario.id
+            campania_id = campania.id
 
         client = app.test_client()
         with client.session_transaction() as session:
@@ -49,13 +52,23 @@ def verificar() -> None:
 
         routes = (
             "/", "/control", "/matriz", "/matriz-precios",
-            "/matriz-proyecciones", "/resumen", "/variable",
+            "/matriz-proyecciones", "/resumen", "/variable", "/resumen-horas",
             "/suma-fija", "/calendario-operativo", "/api/matriz?year=2026",
         )
         for route in routes:
             response = client.get(route)
             assert response.status_code == 200, f"{route} devolvio HTTP {response.status_code}."
         assert client.get("/api/matriz?year=invalido").status_code == 400
+        assert client.get("/api/resumen-horas?year=2026").status_code == 200
+
+        for valor_esperado in (True, False, None):
+            response = client.patch(
+                f"/api/campanias/{campania_id}/valor-hora",
+                json={"valor_hora_variable": valor_esperado, "csrf_token": "csrf-verificacion"},
+                headers={"X-CSRF-Token": "csrf-verificacion"},
+            )
+            assert response.status_code == 200, response.get_json()
+            assert response.get_json()["campania"]["valor_hora_variable"] is valor_esperado
 
         response = client.post(
             "/api/proyecciones-plp/edicion-masiva",
@@ -98,7 +111,7 @@ def verificar() -> None:
             tables = connection.execute(
                 "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
             ).fetchall()
-            assert len(tables) == 16, "El DDL SQLite no crea las 16 tablas documentadas."
+            assert len(tables) == 24, "El DDL SQLite no crea las 24 tablas documentadas."
 
         local_database = RAIZ / "instance" / "facturacion.db"
         if local_database.exists():

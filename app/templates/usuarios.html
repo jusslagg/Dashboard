@@ -96,11 +96,13 @@ async function cargarUsuarios() {
             <td class="px-4 py-3">${escapeHtml(usuario.puesto||'-')}</td>
             <td class="px-4 py-3 text-xs">${escapeHtml([usuario.gerente_asignado&&`Gerente: ${usuario.gerente_asignado}`,usuario.jefe_site_asignado&&`Jefe: ${usuario.jefe_site_asignado}`].filter(Boolean).join(' / ')||'Total')}</td>
             <td class="px-4 py-3">${usuario.activo ? '<span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">Activo</span>' : '<span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">Inactivo</span>'}</td>
-            <td class="px-4 py-3 text-right">
+            <td class="px-4 py-3 text-right"><div class="flex flex-wrap justify-end gap-1">
                 <button type="button" data-accion="estado" data-usuario-id="${usuario.id}" data-activo="${usuario.activo ? 'false' : 'true'}" class="rounded border border-gray-300 px-3 py-1 text-xs hover:bg-gray-50">
                     ${usuario.activo ? 'Desactivar' : 'Activar'}
                 </button>
-                <button type="button" data-accion="acceso" data-usuario-id="${usuario.id}" class="ml-1 rounded border border-blue-300 px-3 py-1 text-xs text-blue-700 hover:bg-blue-50">Acceso</button>
+                <button type="button" data-accion="acceso" data-usuario-id="${usuario.id}" class="rounded border border-blue-300 px-3 py-1 text-xs text-blue-700 hover:bg-blue-50">Acceso</button>
+                <button type="button" data-accion="eliminar" data-usuario-id="${usuario.id}" class="rounded border border-rose-300 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50">Eliminar</button>
+            </div>
             </td>
         </tr>
     `).join('');
@@ -140,6 +142,7 @@ document.getElementById('tablaUsuarios').addEventListener('click', event => {
     const usuarioId = Number(boton.dataset.usuarioId);
     if (boton.dataset.accion === 'acceso') abrirAcceso(usuarioId);
     if (boton.dataset.accion === 'estado') toggleActivo(usuarioId, boton.dataset.activo === 'true');
+    if (boton.dataset.accion === 'eliminar') eliminarUsuario(usuarioId);
 });
 
 function dibujarPermisos(contenedor,prefijo){contenedor.innerHTML=opcionesPermiso.map(([clave,label,tipo])=>`<label class="flex items-center gap-2 rounded border bg-white px-3 py-2 text-sm"><input type="checkbox" data-permiso="${clave}" data-tipo="${tipo}" data-grupo="${prefijo}" class="h-4 w-4 rounded">${label}</label>`).join('')}
@@ -179,6 +182,22 @@ async function toggleActivo(id, activo) {
         return;
     }
     cargarUsuarios();
+}
+
+async function eliminarUsuario(id) {
+    const usuario=usuariosActuales.find(item=>item.id===id);
+    if(!usuario)return;
+    if(!confirm(`¿Eliminar definitivamente a ${usuario.nombre} (${usuario.email})?\n\nLa cuenta no podrá volver a iniciar sesión. El historial de sus operaciones se conservará.`))return;
+    const password=prompt('Ingresá tu contraseña para confirmar la eliminación:');
+    if(password===null)return;
+    const response=await fetch(`/api/usuarios/${id}`,{
+        method:'DELETE',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({password_confirmacion:password}),
+    });
+    const data=await response.json();
+    mostrarAlerta(data.success?(data.mensaje||'Usuario eliminado'):(data.errores||['No se pudo eliminar']).join('. '),data.success);
+    if(data.success)await cargarUsuarios();
 }
 
 function mostrarAlerta(texto, ok) {

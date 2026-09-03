@@ -303,6 +303,14 @@
         <li>Verificá una muestra y los totales antes de continuar.</li>
       </ol>
       <div class="note"><strong>Reimportación:</strong> cuando la clave ya existe, el importador debe actualizarla. Por eso es importante que cliente, campaña, año y mes sean idénticos.</div>
+      <h3>Cargar agosto durante septiembre</h3>
+      <p>La aplicación usa el <strong>mes informado dentro del archivo</strong>, no el día en que lo subís. Una fila identificada como agosto se suma en agosto aunque la importación se realice en septiembre.</p>
+      <ul>
+        <li>Dashboard, Control, Histórico, Directorio e indicadores acumulados conservan el período agosto.</li>
+        <li>Si agosto ya existe, la aplicación solicita confirmación antes de reemplazarlo.</li>
+        <li>Si una campaña trae varias líneas con la misma identificación, se reemplaza el grupo completo y se conservan todas las líneas recibidas.</li>
+        <li>Los nombres que solo difieren por mayúsculas o minúsculas se muestran consolidados en Histórico.</li>
+      </ul>
       <h3>Archivos anuales</h3>
       <p>Las plantillas matriciales permiten cargar los doce meses juntos en los módulos que lo admiten. Los valores quedan separados por año.</p>
       <a class="back" href="#indice">Volver al índice ↑</a>

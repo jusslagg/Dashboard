@@ -87,19 +87,32 @@
         </div>
     </div>
     <div class="space-y-3 p-4">
-        <div class="grid grid-cols-1 gap-2 lg:grid-cols-[1.2fr_1fr_1fr_1fr_1fr_auto]">
+        <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
             <div class="relative">
                 <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"></i>
-                <input id="buscarResumen" type="search" oninput="renderResumen()" placeholder="Buscar site, cliente o campaña..." class="h-10 w-full rounded-md border border-gray-300 pl-9 pr-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                <input id="buscarResumen" type="search" oninput="renderResumen()" placeholder="Buscar cliente o campaña..." class="h-10 w-full rounded-md border border-gray-300 pl-9 pr-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
             </div>
-            <select id="filtroSite" onchange="actualizarFiltroCampania(); renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
-            <select id="filtroCliente" onchange="actualizarFiltroCampania(); renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
-            <select id="filtroConcepto" onchange="renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+            <div id="selectorClientes">
+                <button id="botonSelectorClientes" type="button" onclick="togglePanelClientes()" aria-expanded="false" class="flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-100">
+                    <span id="filtroClienteLabel" class="truncate">Todos los clientes</span>
+                    <i data-lucide="chevron-down" class="h-4 w-4 shrink-0 text-slate-500"></i>
+                </button>
+            </div>
             <select id="filtroCampania" onchange="renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+            <select id="filtroConcepto" onchange="renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
             <button type="button" onclick="limpiarFiltros()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
                 <i data-lucide="x-circle" class="h-4 w-4"></i>
                 Limpiar filtros
             </button>
+            <div id="panelClientes" style="grid-column: 1 / -1;" class="hidden rounded-md border border-blue-200 bg-blue-50/40 p-3">
+                <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Seleccionar clientes</p>
+                    <button type="button" onclick="togglePanelClientes(false)" class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-white">
+                        <i data-lucide="x" class="h-3.5 w-3.5"></i> Cerrar
+                    </button>
+                </div>
+                <div id="filtroClienteOpciones" style="max-height: 13rem;" class="overflow-y-auto rounded-md bg-white p-2"></div>
+            </div>
         </div>
         <div id="activeFilterChips" class="flex flex-wrap gap-2"></div>
     </div>
@@ -174,6 +187,7 @@
 let meses = [];
 let filas = [];
 let totalGeneral = { meses: {}, total: 0 };
+let clientesSeleccionados = new Set();
 
 document.addEventListener('DOMContentLoaded', () => {
     crearIconos();
@@ -211,34 +225,122 @@ function setLoadingState() {
 }
 
 function popularFiltros() {
-    const siteActual = document.getElementById('filtroSite').value;
-    const clienteActual = document.getElementById('filtroCliente').value;
     const conceptoActual = document.getElementById('filtroConcepto').value;
     const campaniaActual = document.getElementById('filtroCampania').value;
     const detalles = filas.filter(item => item.tipo !== 'total_site');
-    const sites = [...new Set(detalles.map(item => item.site).filter(Boolean))].sort();
     const clientes = [...new Set(detalles.map(item => item.cliente).filter(Boolean))].sort();
     const conceptos = [...new Set(detalles.map(item => item.concepto).filter(Boolean))].sort();
-    document.getElementById('filtroSite').innerHTML = '<option value="">Todos los sites</option>' + sites.map(site =>
-        `<option value="${escapeHtml(site)}" ${site === siteActual ? 'selected' : ''}>${escapeHtml(site)}</option>`
-    ).join('');
-    document.getElementById('filtroCliente').innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(cliente =>
-        `<option value="${escapeHtml(cliente)}" ${cliente === clienteActual ? 'selected' : ''}>${escapeHtml(cliente)}</option>`
-    ).join('');
+    clientesSeleccionados = new Set([...clientesSeleccionados].filter(cliente => clientes.includes(cliente)));
+    renderOpcionesClientes(clientes);
     document.getElementById('filtroConcepto').innerHTML = '<option value="">Todos los conceptos</option>' + conceptos.map(concepto =>
         `<option value="${escapeHtml(concepto)}" ${concepto === conceptoActual ? 'selected' : ''}>${escapeHtml(concepto)}</option>`
     ).join('');
     actualizarFiltroCampania(campaniaActual);
 }
 
+function renderOpcionesClientes(clientes) {
+    const container = document.getElementById('filtroClienteOpciones');
+    container.innerHTML = `
+        <div class="mb-2 flex flex-wrap gap-2 border-b border-slate-100 pb-2">
+            <button type="button" onclick="limpiarClientes()" class="rounded px-2 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-100">
+                Todos
+            </button>
+            <button type="button" onclick="seleccionarGrupoPersonal()" class="rounded bg-blue-50 px-2 py-2 text-left text-xs font-semibold text-blue-700 hover:bg-blue-100">
+                Grupo Personal
+            </button>
+            <button type="button" onclick="seleccionarGrupoGetnet()" class="rounded bg-emerald-50 px-2 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-100">
+                Grupo Getnet
+            </button>
+            <button type="button" onclick="seleccionarGrupoSantander()" class="rounded bg-red-50 px-2 py-2 text-left text-xs font-semibold text-red-700 hover:bg-red-100">
+                Grupo Santander
+            </button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .25rem;">
+            ${clientes.map(cliente => `
+                <label class="flex cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm hover:bg-slate-100">
+                    <input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-blue-600"
+                        ${clientesSeleccionados.has(cliente) ? 'checked' : ''}
+                        onchange="toggleCliente(decodeURIComponent('${encodeAttr(cliente)}'), this.checked)">
+                    <span class="truncate">${escapeHtml(cliente)}</span>
+                </label>
+            `).join('')}
+        </div>
+    `;
+    actualizarLabelClientes();
+}
+
+function togglePanelClientes(forzar) {
+    const panel = document.getElementById('panelClientes');
+    const boton = document.getElementById('botonSelectorClientes');
+    const abrir = forzar === undefined ? panel.classList.contains('hidden') : Boolean(forzar);
+    panel.classList.toggle('hidden', !abrir);
+    boton.setAttribute('aria-expanded', String(abrir));
+    crearIconos();
+}
+
+function toggleCliente(cliente, seleccionado) {
+    if (seleccionado) clientesSeleccionados.add(cliente);
+    else clientesSeleccionados.delete(cliente);
+    actualizarLabelClientes();
+    actualizarFiltroCampania();
+    renderResumen();
+}
+
+function limpiarClientes() {
+    clientesSeleccionados.clear();
+    document.querySelectorAll('#filtroClienteOpciones input[type="checkbox"]').forEach(input => { input.checked = false; });
+    actualizarLabelClientes();
+    actualizarFiltroCampania();
+    renderResumen();
+}
+
+function seleccionarGrupoPersonal() {
+    seleccionarClientesPor(cliente => normalizar(cliente).startsWith('personal'));
+}
+
+function clientesDisponibles() {
+    return [...new Set(filas
+        .filter(item => item.tipo !== 'total_site')
+        .map(item => item.cliente)
+        .filter(Boolean)
+    )].sort();
+}
+
+function seleccionarClientesPor(predicado) {
+    const clientes = clientesDisponibles();
+    clientesSeleccionados = new Set(clientes.filter(predicado));
+    renderOpcionesClientes(clientes);
+    actualizarFiltroCampania();
+    renderResumen();
+}
+
+function seleccionarGrupoGetnet() {
+    const getnet = new Set(['santander getnet', 'santander getnet onboarding']);
+    seleccionarClientesPor(cliente => getnet.has(normalizar(cliente)));
+}
+
+function seleccionarGrupoSantander() {
+    const getnet = new Set(['santander getnet', 'santander getnet onboarding']);
+    seleccionarClientesPor(cliente => {
+        const nombre = normalizar(cliente);
+        return nombre.startsWith('santander') && !getnet.has(nombre);
+    });
+}
+
+function actualizarLabelClientes() {
+    const seleccionados = [...clientesSeleccionados];
+    document.getElementById('filtroClienteLabel').textContent = seleccionados.length === 0
+        ? 'Todos los clientes'
+        : seleccionados.length === 1
+            ? seleccionados[0]
+            : `${seleccionados.length} clientes seleccionados`;
+}
+
 function actualizarFiltroCampania(valorActual) {
-    const site = document.getElementById('filtroSite').value;
-    const cliente = document.getElementById('filtroCliente').value;
     const actual = valorActual === undefined ? document.getElementById('filtroCampania').value : valorActual;
     const campanias = [...new Set(filas
         .filter(item => item.tipo !== 'total_site')
-        .filter(item => !site || item.site === site)
-        .filter(item => !cliente || item.cliente === cliente)
+        .filter(item => !clientesSeleccionados.size || clientesSeleccionados.has(item.cliente))
         .map(item => item.campania)
         .filter(Boolean)
     )].sort();
@@ -249,17 +351,14 @@ function actualizarFiltroCampania(valorActual) {
 
 function obtenerFilasFiltradas() {
     const texto = normalizar(document.getElementById('buscarResumen').value);
-    const site = document.getElementById('filtroSite').value;
-    const cliente = document.getElementById('filtroCliente').value;
     const concepto = document.getElementById('filtroConcepto').value;
     const campania = document.getElementById('filtroCampania').value;
     return filas.filter(item => {
-        if (site && item.site !== site) return false;
-        if (cliente && item.cliente !== cliente) return false;
+        if (clientesSeleccionados.size && !clientesSeleccionados.has(item.cliente)) return false;
         if (concepto && item.concepto !== concepto) return false;
         if (campania && item.campania !== campania) return false;
         if (!texto) return true;
-        return normalizar(`${item.site} ${item.cliente} ${item.concepto} ${item.campania}`).includes(texto);
+        return normalizar(`${item.cliente} ${item.concepto} ${item.campania}`).includes(texto);
     });
 }
 
@@ -284,7 +383,18 @@ function renderResumen() {
         ${meses.map(mes => `<th class="px-3 py-1 text-right">${formatCurrency(filaCat.meses[mes.value])}</th>`).join('')}
     ` : '';
     const detallesFiltrados = filtradas.filter(item => item.tipo === 'total_campania');
-    const totalFiltrado = calcularTotal(filtradas);
+    // Sin filtros, ambos KPI deben provenir de la misma cifra oficial. Sumar
+    // nuevamente las filas (ya redondeadas a centavos para la tabla) puede
+    // introducir una diferencia artificial de uno o más centavos.
+    const totalFiltrado = filtrosActivos().length
+        ? calcularTotal(filtradas)
+        : {
+            total: Number(totalGeneral.total || 0),
+            meses: Object.fromEntries(meses.map(mes => [
+                mes.value,
+                Number(totalGeneral.meses?.[mes.value] || 0),
+            ])),
+        };
     const stats = calcularEstadisticasMes(totalFiltrado);
 
     actualizarKpis(filtradas, detallesFiltrados, totalFiltrado);
@@ -458,13 +568,14 @@ function badgeConcepto(concepto) {
 function filtrosActivos() {
     const filtros = [];
     const buscar = document.getElementById('buscarResumen').value.trim();
-    const site = document.getElementById('filtroSite').value;
-    const cliente = document.getElementById('filtroCliente').value;
     const concepto = document.getElementById('filtroConcepto').value;
     const campania = document.getElementById('filtroCampania').value;
     if (buscar) filtros.push({ key: 'buscar', label: `Búsqueda: ${buscar}` });
-    if (site) filtros.push({ key: 'site', label: `Site: ${site}` });
-    if (cliente) filtros.push({ key: 'cliente', label: `Cliente: ${cliente}` });
+    if (clientesSeleccionados.size) {
+        const nombres = [...clientesSeleccionados];
+        const label = nombres.length <= 2 ? nombres.join(', ') : `${nombres.length} clientes`;
+        filtros.push({ key: 'clientes', label: `Clientes: ${label}` });
+    }
     if (concepto) filtros.push({ key: 'concepto', label: `Concepto: ${concepto}` });
     if (campania) filtros.push({ key: 'campania', label: `Campaña: ${campania}` });
     return filtros;
@@ -487,25 +598,29 @@ function renderActiveChips() {
 }
 
 function quitarFiltro(key) {
+    if (key === 'clientes') {
+        limpiarClientes();
+        return;
+    }
     const ids = {
         buscar: 'buscarResumen',
-        site: 'filtroSite',
-        cliente: 'filtroCliente',
         concepto: 'filtroConcepto',
         campania: 'filtroCampania',
     };
     const element = document.getElementById(ids[key]);
     if (!element) return;
     element.value = '';
-    if (key === 'site' || key === 'cliente') actualizarFiltroCampania();
     renderResumen();
 }
 
 function limpiarFiltros() {
-    ['buscarResumen', 'filtroSite', 'filtroCliente', 'filtroConcepto', 'filtroCampania'].forEach(id => {
+    ['buscarResumen', 'filtroConcepto', 'filtroCampania'].forEach(id => {
         const element = document.getElementById(id);
         if (element) element.value = '';
     });
+    clientesSeleccionados.clear();
+    document.querySelectorAll('#filtroClienteOpciones input[type="checkbox"]').forEach(input => { input.checked = false; });
+    actualizarLabelClientes();
     actualizarFiltroCampania();
     renderResumen();
 }

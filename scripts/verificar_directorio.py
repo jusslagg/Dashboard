@@ -121,7 +121,7 @@ def verificar():
         if not cerca(futuro.total_facturado_control, 1885):
             errores.append('Carga futura: total de control no usa las formulas dinamicas')
 
-        archivo_excel = Path(r'C:\Users\jegil\Downloads\2026 Facturacion (32).xlsx')
+        archivo_excel = Path(r'C:\Users\jegil\Downloads\2026 Facturacion (34).xlsx')
         if archivo_excel.exists():
             from openpyxl import load_workbook
             hoja = load_workbook(archivo_excel, data_only=True, read_only=True)['2026']
@@ -133,9 +133,15 @@ def verificar():
                 objetivo_excel += float(fila[26] or 0) if isinstance(fila[26], (int, float)) else 0
             kpis = respuestas.get('/api/kpis', {}).get('kpis', {})
             if not cerca(kpis.get('total_facturado'), total_excel):
-                errores.append('KPI Total Facturado 2026 no coincide con el SUBTOTAL del Excel')
+                errores.append(
+                    f"KPI Total Facturado 2026 no coincide con el SUBTOTAL del Excel: "
+                    f"app={float(kpis.get('total_facturado') or 0):.2f}; excel={total_excel:.2f}"
+                )
             if not cerca(kpis.get('total_teorico'), objetivo_excel):
-                errores.append('KPI Facturacion Objetivo 2026 no coincide con el SUBTOTAL del Excel')
+                errores.append(
+                    f"KPI Facturacion Objetivo 2026 no coincide con el SUBTOTAL del Excel: "
+                    f"app={float(kpis.get('total_teorico') or 0):.2f}; excel={objetivo_excel:.2f}"
+                )
 
     if errores:
         raise AssertionError('\n'.join(errores))

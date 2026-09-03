@@ -128,7 +128,7 @@
 <div id="alertasDashboard" class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6"></div>
 
 <!-- KPIs -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
     <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
         <div class="flex items-center justify-between">
             <div>
@@ -173,6 +173,30 @@
             </div>
             <div class="bg-purple-100 p-3 rounded-full">
                 <i class="fas fa-percent text-purple-500 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-cyan-500">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-500">Horas objetivo</p>
+                <p class="text-2xl font-bold text-gray-800" id="kpiHorasObjetivo">0</p>
+            </div>
+            <div class="bg-cyan-100 p-3 rounded-full">
+                <i class="fas fa-bullseye text-cyan-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-indigo-500">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-500">Horas facturadas</p>
+                <p class="text-2xl font-bold text-gray-800" id="kpiHorasFacturadas">0</p>
+            </div>
+            <div class="bg-indigo-100 p-3 rounded-full">
+                <i class="fas fa-clock text-indigo-600 text-xl"></i>
             </div>
         </div>
     </div>
@@ -479,6 +503,8 @@ function actualizarKPIs(kpis) {
     document.getElementById('kpiDesvio').className = `text-2xl font-bold ${(kpis.desvio || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`;
     document.getElementById('kpiCumplimiento').textContent = (kpis.porcentaje_cumplimiento || 0).toFixed(1) + '%';
     document.getElementById('kpiCumplimiento').className = `text-2xl font-bold ${(kpis.porcentaje_cumplimiento || 0) >= 100 ? 'text-green-600' : 'text-red-600'}`;
+    document.getElementById('kpiHorasObjetivo').textContent = formatNumber(kpis.horas_objetivo || 0);
+    document.getElementById('kpiHorasFacturadas').textContent = formatNumber(kpis.horas_facturadas || 0);
 }
 
 function actualizarAlertas(alertas) {
@@ -648,6 +674,10 @@ function formatCurrency(value) {
     const numero = Number(value || 0);
     const signo = numero < 0 ? '-$' : '$';
     return signo + Math.abs(numero).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatNumber(value) {
+    return Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
 }
 
 function formatMes(mes) {

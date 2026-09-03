@@ -484,9 +484,9 @@ async function cargarConfiguracionValorHora() {
 }
 
 async function guardarConfiguracionValorHora(id, valor) {
-    if (valor === '') { mostrarMensaje('Elegí Sí o No; la configuración no puede volver a quedar pendiente.', 'error'); await cargarConfiguracionValorHora(); return; }
     try {
-        const data = await leerRespuestaJson(await fetch(`/api/campanias/${id}/valor-hora`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor_hora_variable: valor === 'true' }) }));
+        const configuracion = valor === '' ? null : valor === 'true';
+        const data = await leerRespuestaJson(await fetch(`/api/campanias/${id}/valor-hora`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor_hora_variable: configuracion }) }));
         mostrarMensaje(data.mensaje, 'success');
         await cargarConfiguracionValorHora();
     } catch (error) { mostrarMensaje(error.message, 'error'); await cargarConfiguracionValorHora(); }

@@ -4,7 +4,8 @@ from decimal import Decimal, ROUND_HALF_UP
 import json
 import re
 import unicodedata
-from sqlalchemy.orm import validates
+from sqlalchemy import event
+from sqlalchemy.orm import Session, validates
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -45,7 +46,42 @@ GERENTES_CANONICOS = {
 def _clave_nombre(valor):
     sin_acentos = ''.join(letra for letra in unicodedata.normalize('NFD', valor)
                           if unicodedata.category(letra) != 'Mn')
-    return re.sub(r'[^a-z0-9]+', ' ', sin_acentos.lower()).strip()
+    return re.sub(r'[^a-z0-9]+', '', sin_acentos.lower())
+
+
+_CLIENTES_CANONICOS = {}
+_CAMPANIAS_CANONICAS = {}
+
+
+def _registrar_nombre_canonico(cliente, campania=None):
+    cliente_limpio = re.sub(r'\s+', ' ', str(cliente or '').strip())
+    if not cliente_limpio:
+        return
+    clave_cliente = _clave_nombre(cliente_limpio)
+    _CLIENTES_CANONICOS.setdefault(clave_cliente, cliente_limpio)
+    if campania is None:
+        return
+    campania_limpia = re.sub(r'\s+', ' ', str(campania or '').strip())
+    if campania_limpia:
+        _CAMPANIAS_CANONICAS.setdefault(
+            (clave_cliente, _clave_nombre(campania_limpia)),
+            campania_limpia,
+        )
+
+
+def _canonizar_cliente(valor):
+    limpio = re.sub(r'\s+', ' ', str(valor or '').strip())
+    return _CLIENTES_CANONICOS.get(_clave_nombre(limpio), limpio) if limpio else limpio
+
+
+def _canonizar_campania(cliente, valor):
+    limpio = re.sub(r'\s+', ' ', str(valor or '').strip())
+    if not limpio:
+        return limpio
+    return _CAMPANIAS_CANONICAS.get(
+        (_clave_nombre(_canonizar_cliente(cliente)), _clave_nombre(limpio)),
+        limpio,
+    )
 
 
 def normalizar_gerente(valor):
@@ -422,6 +458,11 @@ class FacturacionAnio(db.Model):
 
     @property
     def total_dashboard(self):
+        # Una carga identificada como NextGen se informa exclusivamente en su
+        # concepto, aunque el archivo o formulario haya enviado un total manual
+        # vacío o en cero. No debe transformarse en horas ni perder el importe.
+        if self.es_next_gen:
+            return self.netx_gen or 0
         if self.total_facturado_manual is not None:
             return self.total_facturado_manual
         if self.usa_importe_fijo:
@@ -1145,3 +1186,152 @@ class AsignacionComercial(db.Model):
             'vigencia_hasta': self.vigencia_hasta,
             'label': self.label
         }
+
+
+MODELOS_CON_IDENTIDAD_COMERCIAL = (
+    FacturacionAnio,
+    ProyeccionMatriz,
+    ProyeccionPrecio,
+    VariableCampania,
+    TarifacionCampania,
+    NextGenProducto,
+    SiteProyeccion,
+    DashboardOperativo,
+    HistoricoClienteMensual,
+    DotacionClienteMensual,
+    Campania,
+    ExcepcionCalculo,
+    AsignacionComercial,
+)
+
+
+def cargar_nombres_comerciales_canonicos():
+    """Carga el padrón cliente/campaña que gobierna escritura y filtros."""
+    _CLIENTES_CANONICOS.clear()
+    _CAMPANIAS_CANONICAS.clear()
+    for registro in Campania.query.order_by(Campania.id).all():
+        _registrar_nombre_canonico(registro.cliente, registro.nombre)
+    # Las fuentes históricas pueden contener clientes todavía no incorporados
+    # al catálogo. La primera grafía operativa queda registrada y las variantes
+    # posteriores se alinean con ella.
+    for modelo in MODELOS_CON_IDENTIDAD_COMERCIAL:
+        for registro in modelo.query.order_by(modelo.id).all():
+            campania = getattr(registro, 'nombre', None) if isinstance(registro, Campania) else getattr(registro, 'campania', None)
+            _registrar_nombre_canonico(getattr(registro, 'cliente', None), campania)
+
+
+def normalizar_nombres_comerciales_existentes():
+    """Alinea variantes de mayúsculas, espacios y acentos con el catálogo."""
+    cargar_nombres_comerciales_canonicos()
+    db.session.info['normalizando_nombres_comerciales'] = True
+    modificados = 0
+    # Había doce precios vacíos de ``Santander Préstamos`` que, al corregir
+    # la grafía, coinciden con los doce precios válidos ya existentes. Se
+    # conserva por clave mensual la fila con información económica y se quita
+    # únicamente la variante vacía.
+    grupos_precios = {}
+    for registro in ProyeccionPrecio.query.order_by(ProyeccionPrecio.id).all():
+        cliente = _canonizar_cliente(registro.cliente)
+        campania = _canonizar_campania(cliente, registro.campania)
+        clave = (cliente, campania, registro.mes)
+        grupos_precios.setdefault(clave, []).append(registro)
+    for registros in grupos_precios.values():
+        if len(registros) < 2:
+            continue
+        registros.sort(
+            key=lambda fila: (
+                bool(fila.precio_base or fila.precio_final or fila.importe_fijo_mensual),
+                fila.id,
+            ),
+            reverse=True,
+        )
+        for duplicado in registros[1:]:
+            db.session.delete(duplicado)
+            modificados += 1
+
+    # El histórico puede contener una fila de base y otra auxiliar del Dashboard
+    # para el mismo cliente/mes con distinta grafía. Primero se combinan sus
+    # aportes; renombrarlas directamente violaría la clave única y, peor aún,
+    # podría perder horas.
+    grupos_historicos = {}
+    for registro in HistoricoClienteMensual.query.order_by(HistoricoClienteMensual.id).all():
+        clave = (registro.mes, _clave_nombre(_canonizar_cliente(registro.cliente)))
+        grupos_historicos.setdefault(clave, []).append(registro)
+    campos_suma = (
+        'horas_dotacion_activa', 'horas_ausentismo', 'dotacion_promedio',
+        'bajas', 'horas_requeridas', 'horas_realizadas', 'dotacion_requerida',
+    )
+    for registros in grupos_historicos.values():
+        if len(registros) < 2:
+            continue
+        principal = registros[0]
+        datos = principal.base_dict()
+        for adicional in registros[1:]:
+            otros = adicional.base_dict()
+            for campo in campos_suma:
+                datos[campo] = float(datos.get(campo) or 0) + float(otros.get(campo) or 0)
+            for campo in ('empresa', 'site', 'industria'):
+                datos[campo] = datos.get(campo) or otros.get(campo)
+            for campo in ('pagadas', 'logueo'):
+                valores = [
+                    valor for valor in (getattr(principal, campo), getattr(adicional, campo))
+                    if valor is not None
+                ]
+                setattr(principal, campo, sum(float(valor) for valor in valores) if valores else None)
+            db.session.delete(adicional)
+            modificados += 1
+        principal.datos_base = json.dumps(datos, ensure_ascii=False)
+
+    # SQLite ejecuta UPDATE antes que DELETE dentro de un mismo flush. Se
+    # eliminan primero las variantes ya consolidadas para liberar la clave
+    # única (mes, cliente) antes de adoptar el nombre canónico.
+    db.session.flush()
+
+    with db.session.no_autoflush:
+        for modelo in MODELOS_CON_IDENTIDAD_COMERCIAL:
+            for registro in modelo.query.all():
+                if registro in db.session.deleted:
+                    continue
+                if hasattr(registro, 'cliente'):
+                    cliente = _canonizar_cliente(registro.cliente)
+                    if cliente != registro.cliente:
+                        registro.cliente = cliente
+                        modificados += 1
+                campo_campania = 'nombre' if isinstance(registro, Campania) else 'campania'
+                if hasattr(registro, campo_campania):
+                    actual = getattr(registro, campo_campania)
+                    canonico = _canonizar_campania(getattr(registro, 'cliente', ''), actual)
+                    if canonico != actual:
+                        setattr(registro, campo_campania, canonico)
+                        modificados += 1
+    if modificados:
+        db.session.commit()
+    db.session.info.pop('normalizando_nombres_comerciales', None)
+    return modificados
+
+
+@event.listens_for(Session, 'before_flush')
+def canonizar_identidad_comercial_antes_de_guardar(session, _flush_context, _instances):
+    """Impide que una carga vuelva a crear AlMundo/Almundo como entidades distintas."""
+    if session.info.get('normalizando_nombres_comerciales'):
+        return
+    candidatos = list(session.new) + list(session.dirty)
+    for registro in candidatos:
+        if isinstance(registro, Campania):
+            cliente = _canonizar_cliente(registro.cliente)
+            nombre = _canonizar_campania(cliente, registro.nombre)
+            registro.cliente = cliente
+            registro.nombre = nombre
+            _registrar_nombre_canonico(cliente, nombre)
+    for registro in candidatos:
+        if not isinstance(registro, MODELOS_CON_IDENTIDAD_COMERCIAL):
+            continue
+        if hasattr(registro, 'cliente'):
+            registro.cliente = _canonizar_cliente(registro.cliente)
+        campo_campania = 'nombre' if isinstance(registro, Campania) else 'campania'
+        if hasattr(registro, campo_campania):
+            setattr(
+                registro,
+                campo_campania,
+                _canonizar_campania(getattr(registro, 'cliente', ''), getattr(registro, campo_campania)),
+            )

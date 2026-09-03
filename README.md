@@ -626,6 +626,18 @@ fuente técnica para construir una base nueva y evitan copiar accidentalmente
 datos reales de `instance/facturacion.db`. Cada cambio de modelos exige volver a
 generar los scripts y la documentación:
 
+#### Compatibilidad con bases locales anteriores
+
+El contrato nuevo está formado por las **24 tablas declaradas en los DDL**. Una
+base SQLite local actualizada durante versiones anteriores puede conservar la
+tabla vacía `bajas_operativas`, las columnas vacías `facturacion_anio.mes_baja`
+y `facturacion_anio.motivo_baja`, o las columnas en cero
+`matriz_precios.aplica_dolar` y `matriz_precios.valor_dolar`. Son artefactos
+legacy no consultados por la aplicación y **no deben crearse en una base nueva**.
+La valorización vigente en dólares utiliza `next_gen_dolar`,
+`next_gen_productos.cantidad_usd` y
+`next_gen_productos.cotizacion_aplicada`.
+
 Nota: varios valores predeterminados actuales son aplicados por SQLAlchemy desde
 Python y no son `DEFAULT` físicos del motor. El DDL muestra deliberadamente sólo
 las garantías que la base puede imponer por sí misma; esto permite que el tercero
@@ -1614,6 +1626,20 @@ TEMPLATES_AUTO_RELOAD=0
 Servir siempre detrás de HTTPS y con una base de datos administrada.
 
 ## Flujo recomendado de uso
+
+### Carga posterior de un mes anterior
+
+La fecha en que se sube un archivo no define el período contable. Si en
+septiembre se carga información cuyo campo `Mes` o `Fecha` corresponde a agosto,
+se persiste como `YYYY-08` y se incorpora a agosto en Dashboard, Control,
+Histórico, Directorio, comparativos e indicadores acumulados.
+
+Las claves mensuales mantienen `year` alineado con el prefijo de `mes`. Las
+reimportaciones actualizan la misma clave; cuando una campaña contiene varias
+líneas aditivas con idénticas dimensiones, el conjunto anterior se reemplaza una
+sola vez por el conjunto completo recibido. Esto evita duplicar o colapsar una
+parte del total. Las variantes de mayúsculas/minúsculas de un cliente se
+consolidan al responder las APIs de Histórico sin alterar los importes fuente.
 
 ### Generación de un nuevo año proyectado
 

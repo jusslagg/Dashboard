@@ -702,6 +702,21 @@ def normalizar_tipo_vh(valor):
     return texto
 
 
+def facturacion_por_anio(query, year):
+    """Filtra por el período contable informado, no por la fecha de carga."""
+    return query.filter(Facturacion2026.mes.like(f'{int(year):04d}-%'))
+
+
+def anios_facturacion_disponibles():
+    """Años presentes en el campo Mes de Facturación."""
+    anios = set()
+    for (mes,) in db.session.query(Facturacion2026.mes).distinct().all():
+        texto = str(mes or '').strip()
+        if len(texto) >= 4 and texto[:4].isdigit():
+            anios.add(int(texto[:4]))
+    return anios
+
+
 def es_personal_cobranzas(data):
     return normalizar_tipo_vh(data.get('tipo_jornada')) == TIPO_VH_PERSONAL_COBRANZAS
 
@@ -1713,10 +1728,24 @@ def resumen_registros(registros):
 
 
 def resumen_dashboard(registros):
-    resumen = resumen_registros(registros)
-    total_facturado = sum(r.total_dashboard for r in registros)
     registros_con_objetivo = [r for r in registros if not r.es_next_gen]
-    total_comparable = sum(r.total_dashboard for r in registros_con_objetivo)
+    resumen = resumen_registros(registros_con_objetivo)
+    # Los conceptos independientes siguen informándose con la base completa.
+    resumen['netx_gen'] = round(sum(r.netx_gen or 0 for r in registros), 2)
+    resumen['otros'] = round(sum(r.otros or 0 for r in registros), 2)
+    resumen['tarifacion'] = round(sum(r.tarifacion or 0 for r in registros), 2)
+    total_facturado = sum(r.total_dashboard for r in registros)
+    # Fórmula de la hoja RESUMEN: el alcance y el desvío comparan únicamente
+    # Facturado Horas + Variable Productivo + Penalizaciones/Bonos contra el
+    # objetivo. Next Gen, tarifación y otros integran Total Facturado, pero no
+    # alteran este control comparable.
+    total_comparable = sum(
+        r.facturado_horas
+        + r.variable_productivo_calculo
+        + r.facturado_bono
+        + r.penalizaciones_incumplimientos
+        for r in registros_con_objetivo
+    )
     total_teorico = sum(r.total_teorico for r in registros_con_objetivo)
     desvio = total_comparable - total_teorico
     porcentaje = (total_comparable / total_teorico * 100) if total_teorico > 0 else 0
@@ -2382,14 +2411,16 @@ def existe_site_proyeccion_snapshot(snapshot):
 
 
 def metricas_matriz(registros):
+    registros_totales = list(registros)
+    registros = [r for r in registros_totales if not r.es_next_gen]
     resumen = resumen_registros(registros)
     facturado_horas = sum(r.facturado_horas for r in registros)
     variable_real = sum(r.variable_productivo_calculo for r in registros)
     facturado_bono = sum(r.facturado_bono for r in registros)
     penalizaciones = sum(r.penalizaciones_incumplimientos for r in registros)
-    tarifacion = sum(r.tarifacion or 0 for r in registros)
-    netx_gen = sum(r.netx_gen or 0 for r in registros)
-    otros = sum(r.otros or 0 for r in registros)
+    tarifacion = sum(r.tarifacion or 0 for r in registros_totales)
+    netx_gen = sum(r.netx_gen or 0 for r in registros_totales)
+    otros = sum(r.otros or 0 for r in registros_totales)
     objetivo_horas = sum(r.objetivo_facturacion_horas for r in registros)
     objetivo_bono = sum(r.objetivo_facturacion_bono for r in registros)
     horas_netas_facturadas = max(resumen['horas_facturadas'] - resumen['horas_penalizadas'], 0)
@@ -2611,6 +2642,13 @@ def control():
     return render_template('control.html')
 
 
+@main_bp.route('/resumen-horas')
+@login_requerido
+def resumen_horas():
+    """Control mensual de dotación requerida y horas reales, como el cuadro Excel."""
+    return render_template('resumen_horas.html')
+
+
 @main_bp.route('/justificaciones')
 @login_requerido
 def justificaciones():
@@ -2710,7 +2748,7 @@ def graficos_evolutivo_dotaciones():
 @login_requerido
 def comparativo_anual_clientes():
     anios = {fila[0] for fila in db.session.query(HistoricoClienteMensual.year).distinct().all()}
-    anios.update(int(fila[0]) for fila in db.session.query(func.extract('year', Facturacion2026.fecha)).distinct().all() if fila[0])
+    anios.update(anios_facturacion_disponibles())
     anios.update(fila[0].year for fila in db.session.query(DotacionClienteMensual.fecha).distinct().all() if fila[0])
     anios = sorted(anio for anio in anios if anio >= 2024)
     return render_template('comparativo_anual_clientes.html', anios_comparativo=anios,
@@ -2824,7 +2862,7 @@ def api_share():
         usa_dotaciones = {int(year): float(valor) for year, valor in base_usa['dotaciones'].items()}
     anios_historico = {x[0] for x in db.session.query(HistoricoClienteMensual.year).distinct().all()}
     anios_dotacion = {x[0] for x in db.session.query(func.extract('year', DotacionClienteMensual.fecha)).distinct().all()}
-    anios_facturacion = {x[0] for x in db.session.query(func.extract('year', Facturacion2026.fecha)).distinct().all()}
+    anios_facturacion = anios_facturacion_disponibles()
     anios = sorted({
         int(x) for x in anios_historico | anios_dotacion | anios_facturacion
         if x and int(x) >= 2020
@@ -2840,13 +2878,10 @@ def api_share():
                 'real': float(base.get('horas_realizadas') or 0),
                 'snapshot': float(base.get('_fact_snapshot_real') or 0),
             }
-        facturado = db.session.query(
-            func.strftime('%Y-%m', Facturacion2026.fecha) if db.engine.dialect.name == 'sqlite' else func.to_char(Facturacion2026.fecha, 'YYYY-MM'),
-            Facturacion2026.cliente, func.sum(Facturacion2026.horas_facturadas),
-        ).filter(func.extract('year', Facturacion2026.fecha) == year).group_by(
-            func.strftime('%Y-%m', Facturacion2026.fecha) if db.engine.dialect.name == 'sqlite' else func.to_char(Facturacion2026.fecha, 'YYYY-MM'),
-            Facturacion2026.cliente,
-        ).all()
+        facturado = facturacion_por_anio(db.session.query(
+            Facturacion2026.mes, Facturacion2026.cliente,
+            func.sum(Facturacion2026.horas_facturadas),
+        ), year).group_by(Facturacion2026.mes, Facturacion2026.cliente).all()
         for mes, cliente, real_actual in facturado:
             clave = (mes, cliente)
             item = por_clave.setdefault(clave, {'real': 0, 'snapshot': 0})
@@ -3412,6 +3447,34 @@ def api_actualizar_usuario(usuario_id):
     return jsonify({'success': True, 'usuario': usuario.to_dict()})
 
 
+@main_bp.route('/api/usuarios/<int:usuario_id>', methods=['DELETE'])
+@admin_requerido
+def api_eliminar_usuario(usuario_id):
+    actual = usuario_actual()
+    usuario = Usuario.query.get_or_404(usuario_id)
+    data = request.get_json(silent=True) or {}
+    if not validar_confirmacion_accion(data):
+        return jsonify({'success': False, 'errores': ['La contraseña de confirmación no es válida']}), 403
+    if actual and usuario.id == actual.id:
+        return jsonify({'success': False, 'errores': ['No podés eliminar tu propia cuenta']}), 400
+
+    antes = usuario.to_dict()
+    # La auditoría histórica conserva nombre y email, pero libera la FK para
+    # permitir eliminar la cuenta sin perder quién realizó operaciones previas.
+    HistorialCambio.query.filter_by(usuario_id=usuario.id).update(
+        {'usuario_id': None}, synchronize_session=False,
+    )
+    registrar_historial(
+        'eliminacion', 'usuario', usuario.id,
+        f'Usuario eliminado: {usuario.email}',
+        antes=antes,
+        detalle='Cuenta eliminada definitivamente; su auditoría histórica fue conservada.',
+    )
+    db.session.delete(usuario)
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': f'Usuario eliminado: {antes["email"]}'})
+
+
 @main_bp.route('/api/historial', methods=['GET'])
 @admin_requerido
 def api_historial():
@@ -3937,6 +4000,159 @@ def api_resumen():
     return jsonify({
         'success': True,
         'resumen': resumen
+    })
+
+
+@main_bp.route('/api/resumen-horas', methods=['GET'])
+@login_requerido
+def api_resumen_horas():
+    """Resumen integral equivalente a la pestaña RESUMEN del libro operativo."""
+    try:
+        year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
+    if not 2020 <= year <= 2100:
+        return jsonify({'success': False, 'errores': ['El año debe estar entre 2020 y 2100']}), 400
+
+    facturacion = facturacion_por_anio(Facturacion2026.query, year).all()
+    facturacion_operativa = [registro for registro in facturacion if not registro.es_next_gen]
+    facturacion_next_gen = [registro for registro in facturacion if (registro.netx_gen or 0) != 0]
+    dotacion_por_mes = dict(
+        db.session.query(
+            func.strftime('%Y-%m', DotacionClienteMensual.fecha),
+            func.sum(DotacionClienteMensual.dotacion),
+        ).filter(
+            func.extract('year', DotacionClienteMensual.fecha) == year,
+        ).group_by(func.strftime('%Y-%m', DotacionClienteMensual.fecha)).all()
+    )
+    def metricas(registros_grupo, dotacion=0):
+        detalle = metricas_matriz(registros_grupo)
+        tablero = resumen_dashboard(registros_grupo)
+        total_facturado = tablero['total_facturado']
+        total_objetivo = tablero['total_teorico']
+        horas_objetivo = detalle['horas_objetivo']
+        horas_facturadas = detalle['horas_facturadas']
+        valor_hora_promedio = total_facturado / horas_facturadas if horas_facturadas else 0
+        vh_objetivo_resumen = total_objetivo / horas_objetivo if horas_objetivo else 0
+        alcance_facturacion = (
+            (detalle['horas_real'] + detalle['variable_real'] + detalle['penalizaciones_bonos']) / total_objetivo * 100
+            if total_objetivo else 0
+        )
+        total_desvio = tablero['desvio']
+        return {
+            **detalle,
+            'dotacion_requerida': round(float(dotacion or 0), 2),
+            'total_facturado': total_facturado,
+            'total_real': tablero['total_real'],
+            'total_obj': total_objetivo,
+            'total_teorico': total_objetivo,
+            'desvio': tablero['desvio'],
+            'porcentaje_cumplimiento': round(alcance_facturacion, 2),
+            'valor_hora_promedio': round(valor_hora_promedio, 2),
+            'vh_objetivo_resumen': round(vh_objetivo_resumen, 2),
+            'porcentaje_alcance_vh': round((valor_hora_promedio / vh_objetivo_resumen * 100) if vh_objetivo_resumen else 0, 2),
+            'total_desvio': round(total_desvio, 2),
+            'porcentaje_desvio': round((total_desvio / total_objetivo * 100) if total_objetivo else 0, 2),
+            'participacion_desvio_horas': round((detalle['desvio_horas_monto'] / total_desvio * 100) if total_desvio else 0, 2),
+            'participacion_desvio_variable': round((detalle['desvio_variable'] / total_desvio * 100) if total_desvio else 0, 2),
+            'participacion_desvio_penalizaciones': round((detalle['penalizaciones_bonos'] / total_desvio * 100) if total_desvio else 0, 2),
+            'participacion_desvio_total': 100 if total_desvio else 0,
+        }
+
+    filas = []
+    for mes in range(1, 13):
+        clave = f'{year}-{mes:02d}'
+        registros_mes = [registro for registro in facturacion if registro.mes == clave]
+        filas.append({'nombre': clave, **metricas(registros_mes, dotacion_por_mes.get(clave))})
+    dotaciones_con_dato = [fila['dotacion_requerida'] for fila in filas if fila['dotacion_requerida'] > 0]
+    promedio_dotacion = sum(dotaciones_con_dato) / len(dotaciones_con_dato) if dotaciones_con_dato else 0
+
+    def agrupar(clave):
+        grupos = {}
+        for registro in facturacion:
+            nombre = clave(registro) or 'Sin asignar'
+            grupos.setdefault(nombre, []).append(registro)
+        return [{'nombre': nombre, **metricas(registros)} for nombre, registros in sorted(grupos.items(), key=lambda item: item[0].casefold())]
+
+    trimestres = []
+    for numero, meses in enumerate(((1, 2, 3), (4, 5, 6), (7, 8, 9), (10, 11, 12)), 1):
+        claves = {f'{year}-{mes:02d}' for mes in meses}
+        registros = [registro for registro in facturacion if registro.mes in claves]
+        dotaciones = [float(dotacion_por_mes.get(clave) or 0) for clave in claves if float(dotacion_por_mes.get(clave) or 0) > 0]
+        trimestres.append({'nombre': f'{numero}T', **metricas(registros, sum(dotaciones) / len(dotaciones) if dotaciones else 0)})
+
+    def familia(registro):
+        texto = f'{registro.cliente or ""} {registro.campania or ""}'.casefold()
+        if 'personal' in texto:
+            return 'Personal'
+        if 'santander' in texto or 'getnet' in texto:
+            return 'Santander'
+        return 'Multicampaña'
+
+    total = metricas(facturacion, promedio_dotacion)
+
+    def participaciones(items):
+        base = total['total_facturado']
+        for item in items:
+            item['participacion_operativa'] = round(item['total_facturado'] / base * 100, 2) if base else 0
+        return items
+
+    def agrupar_registros(registros_fuente, clave):
+        grupos_salida = {}
+        for registro in registros_fuente:
+            nombre = clave(registro) or 'Sin asignar'
+            grupos_salida.setdefault(nombre, []).append(registro)
+        return [
+            {'nombre': nombre, **metricas(registros)}
+            for nombre, registros in sorted(grupos_salida.items(), key=lambda item: item[0].casefold())
+        ]
+
+    grupos = participaciones(agrupar_registros(facturacion_operativa, familia))
+    gerencias = participaciones(agrupar_registros(facturacion_operativa, lambda registro: registro.gerente))
+    detalle_jefaturas = []
+    por_jefatura = {}
+    for registro in facturacion_operativa:
+        jefatura = registro.jefe_site or 'Sin asignar'
+        clave_jefatura = normalizar_header(jefatura)
+        grupo = por_jefatura.setdefault(clave_jefatura, {'nombre': jefatura, 'registros': []})
+        grupo['registros'].append(registro)
+    for grupo in sorted(por_jefatura.values(), key=lambda item: item['nombre'].casefold()):
+        jefatura, registros = grupo['nombre'], grupo['registros']
+        meses_jefatura = []
+        for mes in range(1, 13):
+            clave = f'{year}-{mes:02d}'
+            meses_jefatura.append({'nombre': clave, **metricas([r for r in registros if r.mes == clave])})
+        trimestres_jefatura = []
+        for numero, meses in enumerate(((1, 2, 3), (4, 5, 6), (7, 8, 9), (10, 11, 12)), 1):
+            claves = {f'{year}-{mes:02d}' for mes in meses}
+            trimestres_jefatura.append({'nombre': f'{numero}T', **metricas([r for r in registros if r.mes in claves])})
+        detalle_jefaturas.append({
+            'nombre': jefatura,
+            'total': metricas(registros),
+            'meses': meses_jefatura,
+            'trimestres': trimestres_jefatura,
+        })
+    jefaturas = participaciones([
+        {'nombre': item['nombre'], **item['total']}
+        for item in detalle_jefaturas
+    ])
+    next_gen = []
+    for mes in range(1, 13):
+        clave = f'{year}-{mes:02d}'
+        registros_mes = [registro for registro in facturacion_next_gen if registro.mes == clave]
+        next_gen.append({'nombre': clave, **metricas(registros_mes)})
+
+    return jsonify({
+        'success': True,
+        'year': year,
+        'filas': filas,
+        'trimestres': trimestres,
+        'grupos': grupos,
+        'gerencias': gerencias,
+        'jefaturas': jefaturas,
+        'detalle_jefaturas': detalle_jefaturas,
+        'next_gen': next_gen,
+        'total': total,
     })
 
 
@@ -6432,7 +6648,7 @@ def api_indicadores():
         valores = [float(getattr(item, campo) or 0) for item in actuales if float(getattr(item, campo) or 0) > 0]
         return round(sum(valores) / len(valores), 2) if valores else 0
 
-    facturacion = Facturacion2026.query.filter(func.extract('year', Facturacion2026.fecha) == year).all()
+    facturacion = facturacion_por_anio(Facturacion2026.query, year).all()
     requerido = round(sum(float(item.horas_objetivo or 0) for item in facturacion), 2)
     realizado = round(sum(float(item.horas_facturadas or 0) for item in facturacion), 2)
     cumplimiento = realizado / requerido if requerido else 0
@@ -6637,9 +6853,9 @@ def cliente_variacion_horas(nombre, campania=None):
 
 
 def base_horas_clientes(anio):
-    filas = Facturacion2026.query.with_entities(
+    filas = facturacion_por_anio(Facturacion2026.query.with_entities(
         Facturacion2026.cliente, func.sum(Facturacion2026.horas_facturadas)
-    ).filter(func.extract('year', Facturacion2026.fecha) == anio).group_by(Facturacion2026.cliente).all()
+    ), anio).group_by(Facturacion2026.cliente).all()
     if filas:
         resultado = {}
         for cliente, horas in filas:
@@ -6659,15 +6875,15 @@ def api_variacion_horas_clientes():
     year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
     anterior = year - 1
     meses = [item['value'] for item in opciones_meses_proyeccion(year)]
-    reales_por_mes = dict(Facturacion2026.query.with_entities(
+    reales_por_mes = dict(facturacion_por_anio(Facturacion2026.query.with_entities(
         Facturacion2026.mes, func.sum(Facturacion2026.horas_facturadas)
-    ).filter(func.extract('year', Facturacion2026.fecha) == year).group_by(Facturacion2026.mes).all())
+    ), year).group_by(Facturacion2026.mes).all())
     corte = max((mes for mes in meses if mes in reales_por_mes), default=None)
 
     reales = {}
-    filas_reales = Facturacion2026.query.with_entities(
+    filas_reales = facturacion_por_anio(Facturacion2026.query.with_entities(
         Facturacion2026.cliente, func.sum(Facturacion2026.horas_facturadas)
-    ).filter(func.extract('year', Facturacion2026.fecha) == year).group_by(Facturacion2026.cliente).all()
+    ), year).group_by(Facturacion2026.cliente).all()
     for cliente, horas in filas_reales:
         clave = cliente_variacion_horas(cliente)
         reales[clave] = reales.get(clave, 0) + float(horas or 0)
@@ -6854,6 +7070,57 @@ def api_dashboard_operativo():
     return jsonify({'success': True, 'year': year, 'meses': meses, 'columnas': DASHBOARD_COLUMNAS, 'filas': datos})
 
 
+def importar_historico_desde_libro(libro):
+    """Importa literalmente A:U de Historico, agrupado como sus SUMIFS."""
+    nombre = next((n for n in libro.sheetnames if normalizar_header(n) == 'historico'), None)
+    if not nombre:
+        return 0
+    grupos = {}
+    campos = (
+        ('horas_dotacion_activa', 8), ('horas_ausentismo', 9),
+        ('dotacion_promedio', 10), ('bajas', 11), ('horas_requeridas', 12),
+        ('horas_realizadas', 13), ('pagadas', 14), ('logueo', 15),
+        ('dotacion_requerida', 20),
+    )
+    for row in libro[nombre].iter_rows(min_row=3, max_col=21, values_only=True):
+        fecha, cliente = row[5], str(row[3] or '').strip()
+        if not isinstance(fecha, (datetime, date)) or not cliente:
+            continue
+        mes = fecha.strftime('%Y-%m')
+        clave = (mes, cliente)
+        item = grupos.setdefault(clave, {
+            'year': fecha.year, 'empresa': '', 'site': '', 'industria': '',
+            **{campo: 0.0 for campo, _ in campos},
+            '_pagadas_presente': False, '_logueo_presente': False,
+        })
+        item['empresa'] = row[0] or item['empresa']
+        item['site'] = row[1] or item['site']
+        item['industria'] = row[2] or item['industria']
+        for campo, indice in campos:
+            item[campo] += parse_numero(row[indice]) if row[indice] not in (None, '') else 0
+        item['_pagadas_presente'] |= row[14] not in (None, '')
+        item['_logueo_presente'] |= row[15] not in (None, '')
+
+    # Cada hoja es una foto completa de los meses que contiene. Se reemplazan
+    # sólo esos meses para que nombres corregidos no queden sumados dos veces.
+    meses = {mes for mes, _cliente in grupos}
+    if meses:
+        HistoricoClienteMensual.query.filter(HistoricoClienteMensual.mes.in_(meses)).delete(
+            synchronize_session=False
+        )
+    for (mes, cliente), item in grupos.items():
+        base = {campo: item[campo] for campo, _ in campos
+                if campo not in ('pagadas', 'logueo')}
+        base.update({campo: item[campo] for campo in ('empresa', 'site', 'industria')})
+        db.session.add(HistoricoClienteMensual(
+            year=item['year'], mes=mes, cliente=cliente,
+            datos_base=json.dumps(base, ensure_ascii=False),
+            pagadas=item['pagadas'] if item['_pagadas_presente'] else None,
+            logueo=item['logueo'] if item['_logueo_presente'] else None,
+        ))
+    return len(grupos)
+
+
 @main_bp.route('/api/dashboard-operativo/importar', methods=['POST'])
 @carga_requerida
 def api_importar_dashboard_operativo():
@@ -6874,8 +7141,9 @@ def api_importar_dashboard_operativo():
     importadas, antes, despues, errores = 0, [], [], []
     for numero_fila, row in enumerate(hoja.iter_rows(min_row=3, values_only=True), 3):
         valores = list(row)
-        if len(valores) < 41:
-            valores += [None] * (41 - len(valores))
+        columnas_necesarias = len(DASHBOARD_COLUMNAS) + 1  # A vacía + B:BC
+        if len(valores) < columnas_necesarias:
+            valores += [None] * (columnas_necesarias - len(valores))
         fecha, cliente, campania = valores[5], str(valores[6] or '').strip(), str(valores[7] or '').strip()
         if not isinstance(fecha, (datetime, date)) or not cliente or not campania:
             continue
@@ -6900,11 +7168,17 @@ def api_importar_dashboard_operativo():
     if not importadas:
         db.session.rollback()
         return jsonify({'success': False, 'errores': errores or ['No se encontraron filas válidas en la hoja Dashboard']}), 400
+    historicas = importar_historico_desde_libro(libro)
     registrar_historial('importacion', 'dashboard_operativo', archivo.filename,
-                        f'Dashboard operativo importado: {importadas} fila(s)',
+                        f'Dashboard operativo importado: {importadas} fila(s); Histórico: {historicas} fila(s)',
                         antes={'filas': antes}, despues={'filas': despues})
     db.session.commit()
-    return jsonify({'success': True, 'mensaje': f'{importadas} fila(s) importada(s). Las bajas manuales existentes se conservaron.'})
+    mensaje = f'{importadas} fila(s) de Dashboard importada(s).'
+    if historicas:
+        mensaje += f' Histórico actualizado exactamente con {historicas} fila(s).'
+    else:
+        mensaje += ' El archivo no contenía una hoja Histórico.'
+    return jsonify({'success': True, 'mensaje': mensaje})
 
 
 @main_bp.route('/api/dashboard-operativo/<int:registro_id>/bajas', methods=['POST'])
@@ -6933,78 +7207,63 @@ def api_guardar_bajas_dashboard(registro_id):
 def api_historico_clientes():
     year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
     mes_filtro = str(request.args.get('mes') or '').strip()
-    registros = HistoricoClienteMensual.query.filter_by(year=year).all()
-    por_clave = {(r.mes, r.cliente): {'registro': r, '_tiene_base': True, **r.base_dict()} for r in registros}
-
-    # Los indicadores operativos actuales se reconstruyen siempre desde Dashboard.
-    for fila in DashboardOperativo.query.filter_by(year=year).all():
-        clave = (fila.mes, fila.cliente)
-        item = por_clave.setdefault(clave, {'registro': None})
-        item['_fuente_actual'] = True
-        if item.get('_tiene_base') and not item.get('_ocultar_sin_cambios'):
+    # Histórico es la única fuente de los indicadores. Los valores importados
+    # no se sustituyen durante la lectura por Dashboard ni por Facturación.
+    consolidadas = {}
+    campos_suma = (
+        'horas_dotacion_activa', 'horas_ausentismo', 'dotacion_promedio',
+        'bajas', 'horas_requeridas', 'horas_realizadas', 'dotacion_requerida',
+    )
+    for registro in HistoricoClienteMensual.query.filter_by(year=year).all():
+        if mes_filtro and registro.mes != mes_filtro:
             continue
-        if 'horas_requeridas_facturacion' not in item:
-            item['horas_requeridas'] = 0
-            item['horas_realizadas'] = 0
-        d = fila.datos_dict()
-        def n(campo):
-            try: return float(d.get(campo) or 0)
-            except (TypeError, ValueError): return 0.0
-        item['horas_dotacion_activa'] = item.get('horas_dotacion_activa_dashboard', 0) + n('agentes_activos') * 6
-        item['horas_dotacion_activa_dashboard'] = item['horas_dotacion_activa']
-        item['horas_ausentismo'] = item.get('horas_ausentismo_dashboard', 0) + sum(n(c) for c in ('ausencias_varias','falta_insumos','sin_luz','sin_internet')) * 6
-        item['horas_ausentismo_dashboard'] = item['horas_ausentismo']
-        item['dotacion_promedio'] = item.get('dotacion_promedio_dashboard', 0) + n('dotacion_promedio')
-        item['dotacion_promedio_dashboard'] = item['dotacion_promedio']
-        item['bajas'] = item.get('bajas_dashboard', 0) + float(fila.bajas_manual or 0)
-        item['bajas_dashboard'] = item['bajas']
-        item['dotacion_requerida'] = item.get('dotacion_requerida_dashboard', 0) + n('agentes_requeridos')
-        item['dotacion_requerida_dashboard'] = item['dotacion_requerida']
-
-    # Horas objetivo y cumplidas se suman directamente desde Facturación por cliente.
-    facturacion = Facturacion2026.query.filter(func.extract('year', Facturacion2026.fecha) == year).all()
-    for fila in facturacion:
-        if not float(fila.horas_objetivo or 0) and not float(fila.horas_facturadas or 0):
+        base = registro.base_dict()
+        fila = {
+            'id': registro.id, 'mes': registro.mes, 'year': year,
+            'cliente': registro.cliente, 'empresa': base.get('empresa'),
+            'site': base.get('site'), 'industria': base.get('industria'),
+            **{campo: float(base.get(campo) or 0) for campo in campos_suma},
+            'pagadas': float(registro.pagadas) if registro.pagadas is not None else None,
+            'logueo': float(registro.logueo) if registro.logueo is not None else None,
+            'fuentes': ['historico'],
+            'fuentes_campos': {campo: 'historico' for campo in (
+                'horas', 'operativos', 'dotacion_requerida', 'pagadas_logueo')},
+        }
+        clave = (registro.mes, normalizar_header(registro.cliente))
+        destino = consolidadas.get(clave)
+        if destino is None:
+            consolidadas[clave] = dict(fila)
             continue
-        clave = (fila.fecha.strftime('%Y-%m'), fila.cliente)
-        item = por_clave.setdefault(clave, {'registro': None})
-        item['_fuente_actual'] = True
-        item['_fact_actual_obj'] = item.get('_fact_actual_obj', 0) + float(fila.horas_objetivo or 0)
-        item['_fact_actual_real'] = item.get('_fact_actual_real', 0) + float(fila.horas_facturadas or 0)
-
-    for item in por_clave.values():
-        if '_fact_actual_obj' not in item:
-            continue
-        delta_obj = item['_fact_actual_obj'] - float(item.get('_fact_snapshot_obj') or 0)
-        delta_real = item['_fact_actual_real'] - float(item.get('_fact_snapshot_real') or 0)
-        if item.get('_tiene_base'):
-            item['horas_requeridas'] = (0 if item.get('_ocultar_sin_cambios') else float(item.get('horas_requeridas') or 0)) + delta_obj
-            item['horas_realizadas'] = (0 if item.get('_ocultar_sin_cambios') else float(item.get('horas_realizadas') or 0)) + delta_real
-            item['_delta_facturacion'] = abs(delta_obj) > .001 or abs(delta_real) > .001
-        else:
-            item['horas_requeridas'], item['horas_realizadas'] = item['_fact_actual_obj'], item['_fact_actual_real']
-
-    filas = []
-    for (mes, cliente), d in sorted(por_clave.items()):
-        if mes_filtro and mes != mes_filtro: continue
-        if d.get('_ocultar_sin_cambios') and not d.get('_delta_facturacion'):
-            continue
-        registro = d.get('registro')
-        req, real = float(d.get('horas_requeridas') or 0), float(d.get('horas_realizadas') or 0)
-        activa, ausencia = float(d.get('horas_dotacion_activa') or 0), float(d.get('horas_ausentismo') or 0)
-        dot, bajas = float(d.get('dotacion_promedio') or 0), float(d.get('bajas') or 0)
-        pagadas = float(registro.pagadas) if registro and registro.pagadas is not None else None
-        logueo = float(registro.logueo) if registro and registro.logueo is not None else None
-        filas.append({'id': registro.id if registro else None, 'mes': mes, 'year': year, 'cliente': cliente,
-            'empresa': d.get('empresa'), 'site': d.get('site'), 'industria': d.get('industria'),
-            'horas_dotacion_activa': activa, 'horas_ausentismo': ausencia,
-            'dotacion_promedio': dot, 'bajas': bajas, 'horas_requeridas': req,
-            'horas_realizadas': real, 'pagadas': pagadas, 'logueo': logueo,
+        for campo in campos_suma:
+            destino[campo] = float(destino.get(campo) or 0) + float(fila.get(campo) or 0)
+        for campo in ('pagadas', 'logueo'):
+            valores = [valor for valor in (destino.get(campo), fila.get(campo)) if valor is not None]
+            destino[campo] = sum(float(valor) for valor in valores) if valores else None
+        if destino.get('id') is None and fila.get('id') is not None:
+            destino['id'] = fila['id']
+        for campo in ('empresa', 'site', 'industria'):
+            destino[campo] = destino.get(campo) or fila.get(campo)
+        destino['fuentes'] = list(dict.fromkeys((destino.get('fuentes') or []) + (fila.get('fuentes') or [])))
+        for campo, fuente in (fila.get('fuentes_campos') or {}).items():
+            actual = destino.setdefault('fuentes_campos', {}).get(campo)
+            if actual and fuente and fuente not in actual.split('+'):
+                destino['fuentes_campos'][campo] = f'{actual}+{fuente}'
+            elif not actual:
+                destino['fuentes_campos'][campo] = fuente
+    filas = list(consolidadas.values())
+    for fila in filas:
+        req, real = float(fila.get('horas_requeridas') or 0), float(fila.get('horas_realizadas') or 0)
+        activa, ausencia = float(fila.get('horas_dotacion_activa') or 0), float(fila.get('horas_ausentismo') or 0)
+        dot, bajas = float(fila.get('dotacion_promedio') or 0), float(fila.get('bajas') or 0)
+        pagadas, logueo = fila.get('pagadas'), fila.get('logueo')
+        fila.update({
             'cumplimiento_horas': real / req if req else None,
-            'abs': ausencia / activa if activa else None, 'rotacion': bajas / dot if dot else None,
-            'eficiencia': pagadas / logueo if pagadas is not None and logueo else None,
-            'dotacion_requerida': d.get('dotacion_requerida')})
-    meses = sorted({m for m, _ in por_clave})
+            'abs': ausencia / activa if activa else None,
+            'rotacion': bajas / dot if dot else None,
+            'eficiencia': float(pagadas) / float(logueo) if pagadas is not None and logueo else None,
+        })
+    filas.sort(key=lambda fila: (fila['mes'], normalizar_header(fila['cliente'])))
+    meses = sorted({fila['mes'] for fila in filas})
     return jsonify({'success': True, 'year': year, 'meses': meses, 'filas': filas})
 
 
@@ -7027,45 +7286,24 @@ def cliente_cumplimiento_facturacion(nombre):
 @main_bp.route('/api/cumplimiento-horas-clientes', methods=['GET'])
 @login_requerido
 def api_cumplimiento_horas_clientes():
-    """Consolida variantes de cliente antes de aplicar cambios de Facturación."""
+    """Cumplimiento de horas exactamente desde la base histórica importada."""
     year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
     grupos = {}
 
     def nuevo(mes, cliente):
-        return {'mes': mes, 'year': year, 'cliente': cliente, 'base_obj': 0.0,
-                'base_real': 0.0, 'snapshot_obj': 0.0, 'snapshot_real': 0.0,
-                'tiene_snapshot': False, 'actual_obj': 0.0, 'actual_real': 0.0,
-                'tiene_actual': False}
+        return {'mes': mes, 'year': year, 'cliente': cliente,
+                'objetivo': 0.0, 'realizado': 0.0}
 
     for registro in HistoricoClienteMensual.query.filter_by(year=year).all():
         cliente = cliente_cumplimiento_facturacion(registro.cliente)
         item = grupos.setdefault((registro.mes, cliente), nuevo(registro.mes, cliente))
         datos = registro.base_dict()
-        item['base_obj'] += float(datos.get('horas_requeridas') or 0)
-        item['base_real'] += float(datos.get('horas_realizadas') or 0)
-        if '_fact_snapshot_obj' in datos or '_fact_snapshot_real' in datos:
-            item['tiene_snapshot'] = True
-            item['snapshot_obj'] += float(datos.get('_fact_snapshot_obj') or 0)
-            item['snapshot_real'] += float(datos.get('_fact_snapshot_real') or 0)
-
-    for fila in Facturacion2026.query.filter(func.extract('year', Facturacion2026.fecha) == year).all():
-        if not float(fila.horas_objetivo or 0) and not float(fila.horas_facturadas or 0):
-            continue
-        mes, cliente = fila.fecha.strftime('%Y-%m'), cliente_cumplimiento_facturacion(fila.cliente)
-        item = grupos.setdefault((mes, cliente), nuevo(mes, cliente))
-        item['tiene_actual'] = True
-        item['actual_obj'] += float(fila.horas_objetivo or 0)
-        item['actual_real'] += float(fila.horas_facturadas or 0)
+        item['objetivo'] += float(datos.get('horas_requeridas') or 0)
+        item['realizado'] += float(datos.get('horas_realizadas') or 0)
 
     filas = []
     for item in grupos.values():
-        if item['tiene_actual'] and item['tiene_snapshot']:
-            objetivo = item['base_obj'] + item['actual_obj'] - item['snapshot_obj']
-            realizado = item['base_real'] + item['actual_real'] - item['snapshot_real']
-        elif item['tiene_actual'] and not (item['base_obj'] or item['base_real']):
-            objetivo, realizado = item['actual_obj'], item['actual_real']
-        else:
-            objetivo, realizado = item['base_obj'], item['base_real']
+        objetivo, realizado = item['objetivo'], item['realizado']
         if objetivo or realizado:
             filas.append({'mes': item['mes'], 'year': year, 'cliente': item['cliente'],
                           'horas_requeridas': round(objetivo, 6),
@@ -7086,7 +7324,7 @@ def api_cumplimiento_facturacion_clientes():
             'alcanzado_variable': 0, 'alcanzado_penalizaciones_bonos': 0,
         })
 
-    registros = Facturacion2026.query.filter(func.extract('year', Facturacion2026.fecha) == year).all()
+    registros = facturacion_por_anio(Facturacion2026.query, year).all()
     for registro in registros:
         if registro.es_next_gen:
             continue
@@ -7142,10 +7380,7 @@ def api_cumplimiento_facturacion_clientes():
             'bonos_penalizaciones': bonos_actual, 'total': total_actual,
             'porcentaje_desvio': total_actual / objetivo_actual if objetivo_actual else None,
         })
-    anios_facturacion = {
-        int(item[0]) for item in db.session.query(func.extract('year', Facturacion2026.fecha)).distinct().all()
-        if item[0]
-    }
+    anios_facturacion = anios_facturacion_disponibles()
     anios_disponibles = sorted({int(anio) for anio in historico} | anios_facturacion)
     resumen_anual.sort(key=lambda item: item['year'], reverse=True)
     return jsonify({'success': True, 'year': year, 'anios': anios_disponibles,
@@ -7164,12 +7399,12 @@ def api_comparativo_interanual():
     cumplimiento_anterior = base.get('cumplimiento_facturacion', [None] * 12)
     desvio_anterior = base.get('desvio_facturacion', [None] * 12)
 
-    registros = Facturacion2026.query.filter(func.extract('year', Facturacion2026.fecha) == year).all()
+    registros = facturacion_por_anio(Facturacion2026.query, year).all()
     acumulados = {mes: {'obj_fact': 0.0, 'real_fact': 0.0, 'obj_hs': 0.0, 'real_hs': 0.0, 'cantidad': 0} for mes in range(1, 13)}
     for registro in registros:
         if registro.es_next_gen:
             continue
-        mes = registro.fecha.month
+        mes = int(registro.mes[5:7])
         item = acumulados[mes]
         item['obj_fact'] += float(registro.objetivo_facturacion_horas or 0) + float(registro.variable_objetivo or 0)
         item['real_fact'] += float(registro.total_facturado_control or 0)
@@ -7258,9 +7493,9 @@ def api_variacion_anual():
     nombres = [item['label'] for item in meses]
 
     def horas_reales(anio):
-        filas = Facturacion2026.query.with_entities(
+        filas = facturacion_por_anio(Facturacion2026.query.with_entities(
             Facturacion2026.mes, func.sum(Facturacion2026.horas_facturadas)
-        ).filter(func.extract('year', Facturacion2026.fecha) == anio).group_by(Facturacion2026.mes).all()
+        ), anio).group_by(Facturacion2026.mes).all()
         resultado = {mes: round(float(total or 0), 2) for mes, total in filas}
         if resultado:
             return resultado
@@ -8711,35 +8946,52 @@ def api_importar_datos():
                 'errores': ['Hay datos existentes que coinciden por fecha, cliente, gerente, jefe de site, campania y sub campania.']
             }), 409
 
+        grupos_reemplazo = {}
+        items_nuevos = []
         for indice, item, existentes in items_validos:
             if existentes and confirmar_reemplazo:
-                principal = existentes[0]
-                antes = snapshot_modelo(principal)
-                try:
-                    actualizar_registro_facturacion(
-                        principal,
+                clave = clave_reemplazo_importacion(item)
+                grupo = grupos_reemplazo.setdefault(clave, {
+                    'items': [], 'existentes': {registro.id: registro for registro in existentes},
+                })
+                grupo['items'].append((indice, item))
+                grupo['existentes'].update({registro.id: registro for registro in existentes})
+            else:
+                items_nuevos.append((indice, item))
+
+        # Una clave puede representar varias líneas aditivas de la planilla.
+        # Se reemplaza el conjunto completo de forma atómica para que una
+        # reimportación de agosto no colapse dos líneas en una ni duplique total.
+        for clave, grupo in grupos_reemplazo.items():
+            existentes = list(grupo['existentes'].values())
+            antes_grupo = [snapshot_modelo(registro) for registro in existentes]
+            try:
+                for registro in existentes:
+                    db.session.delete(registro)
+                db.session.flush()
+                nuevos = []
+                for indice, item in grupo['items']:
+                    nuevo = crear_registro_facturacion(
                         item,
                         exigir_configuracion_valor_hora=False,
                         preservar_facturado_manual=True,
                     )
-                    for duplicado in existentes[1:]:
-                        db.session.delete(duplicado)
-                    despues = snapshot_modelo(principal)
-                    registrar_historial(
-                        'edicion',
-                        'facturacion',
-                        principal.id,
-                        f'Facturacion reemplazada por importacion: {principal.cliente} / {principal.mes}',
-                        antes=antes,
-                        despues=despues,
-                        detalle=f'Fila {indice}. Coincidencia exacta por fecha y nombres comerciales.',
-                    )
                     guardar_porcentaje_variable_importado(item)
-                    reemplazados += 1
-                except Exception as exc:
-                    errores.append(f'Fila {indice}: {exc}')
-                continue
+                    nuevos.append(nuevo)
+                db.session.flush()
+                registrar_historial(
+                    'edicion', 'facturacion', existentes[0].id,
+                    f'Grupo de facturación reemplazado: {grupo["items"][0][1]["cliente"]} / {grupo["items"][0][1]["mes"]}',
+                    antes={'filas': antes_grupo},
+                    despues={'filas': [snapshot_modelo(registro) for registro in nuevos]},
+                    detalle=f'{len(existentes)} fila(s) anteriores reemplazadas por {len(nuevos)} fila(s) importadas.',
+                )
+                reemplazados += len(nuevos)
+            except Exception as exc:
+                primera_fila = grupo['items'][0][0]
+                errores.append(f'Fila {primera_fila}: {exc}')
 
+        for indice, item in items_nuevos:
             try:
                 crear_registro_facturacion(
                     item,
@@ -8890,17 +9142,22 @@ def api_configurar_valor_hora_campania(campania_id):
     if not campania:
         return jsonify({'success': False, 'errores': ['La campaña no existe']}), 404
     data = request.get_json() or {}
-    if not isinstance(data.get('valor_hora_variable'), bool):
-        return jsonify({'success': False, 'errores': ['Debe indicar Sí o No']}), 400
+    valor_hora_variable = data.get('valor_hora_variable')
+    if valor_hora_variable is not None and not isinstance(valor_hora_variable, bool):
+        return jsonify({'success': False, 'errores': ['Debe indicar Sí, No o Sin configurar']}), 400
     antes = campania.to_dict()
-    campania.valor_hora_variable = data['valor_hora_variable']
+    campania.valor_hora_variable = valor_hora_variable
     db.session.flush()
     despues = campania.to_dict()
     registrar_historial(
         'edicion', 'campania', campania.id,
         f'Configuración de valor hora: {campania.cliente} / {campania.nombre}',
         antes=antes, despues=despues,
-        detalle='Variable' if campania.valor_hora_variable else 'Repite valor hora objetivo',
+        detalle=(
+            'Variable' if campania.valor_hora_variable is True
+            else 'Repite valor hora objetivo' if campania.valor_hora_variable is False
+            else 'Sin configurar'
+        ),
     )
     db.session.commit()
     return jsonify({
