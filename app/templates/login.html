@@ -20,6 +20,11 @@
         </div>
 
         <div id="alertaLogin" class="mb-4 hidden rounded border px-3 py-2 text-sm"></div>
+        <div id="bloqueoLogin" class="mb-4 hidden rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+            <p>Demasiados intentos fallidos. Podrás volver a ingresar en
+                <strong id="temporizadorLogin" role="timer" aria-live="off">05:00</strong>.
+            </p>
+        </div>
 
         <form id="formLogin" class="space-y-4">
             {% if requiere_setup %}
@@ -33,8 +38,9 @@
                 <input id="email" type="email" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" autocomplete="email" required>
             </div>
             <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">Contrasena</label>
-                <input id="password" type="password" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" autocomplete="{% if requiere_setup %}new-password{% else %}current-password{% endif %}" required>
+                <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
+                <input id="password" type="password" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" autocomplete="{% if requiere_setup %}new-password{% else %}current-password{% endif %}" {% if requiere_setup %}minlength="8"{% endif %} required>
+                {% if requiere_setup %}<p class="mt-1 text-xs text-slate-500">Mínimo 8 caracteres, con mayúsculas, minúsculas y números.</p>{% endif %}
             </div>
             <button type="submit" class="flex h-10 w-full items-center justify-center gap-2 rounded bg-slate-800 px-4 text-sm font-semibold text-white hover:bg-slate-700">
                 <i class="fas fa-right-to-bracket"></i>
@@ -48,11 +54,63 @@
 {% block scripts %}
 <script>
 const requiereSetup = {{ 'true' if requiere_setup else 'false' }};
+const bloqueoInicial = {{ bloqueo_login|tojson }};
+const campoEmail = document.getElementById('email');
+const botonIngresar = document.querySelector('#formLogin button[type="submit"]');
+const bloqueos = new Map();
+let temporizador = null;
+let enviando = false;
+
+function emailActual() {
+    return campoEmail.value.trim().toLowerCase();
+}
+
+function actualizarTemporizador() {
+    const email = emailActual();
+    const hasta = bloqueos.get(email);
+    const segundos = hasta ? Math.max(0, Math.ceil((hasta - Date.now()) / 1000)) : 0;
+    document.getElementById('bloqueoLogin').classList.toggle('hidden', segundos === 0);
+    botonIngresar.disabled = enviando || segundos > 0;
+    if (segundos > 0) {
+        document.getElementById('alertaLogin').classList.add('hidden');
+        const minutos = String(Math.floor(segundos / 60)).padStart(2, '0');
+        document.getElementById('temporizadorLogin').textContent = `${minutos}:${String(segundos % 60).padStart(2, '0')}`;
+    } else {
+        clearInterval(temporizador);
+        temporizador = null;
+        if (hasta) {
+            bloqueos.delete(email);
+            mostrarAlerta('Ya puedes volver a intentar ingresar.', true);
+        }
+    }
+    return segundos;
+}
+
+function iniciarTemporizador(email, segundos) {
+    bloqueos.set(email, Date.now() + segundos * 1000);
+    sincronizarTemporizador();
+}
+
+function sincronizarTemporizador() {
+    clearInterval(temporizador);
+    temporizador = null;
+    if (actualizarTemporizador() > 0) {
+        temporizador = setInterval(actualizarTemporizador, 250);
+    }
+}
+
+campoEmail.addEventListener('input', sincronizarTemporizador);
+document.addEventListener('visibilitychange', sincronizarTemporizador);
+if (!requiereSetup && bloqueoInicial.retry_after > 0) {
+    campoEmail.value = bloqueoInicial.email;
+    iniciarTemporizador(bloqueoInicial.email, bloqueoInicial.retry_after);
+}
 
 document.getElementById('formLogin').addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (enviando || actualizarTemporizador() > 0) return;
     const payload = {
-        email: document.getElementById('email').value,
+        email: emailActual(),
         password: document.getElementById('password').value,
     };
     if (requiereSetup) {
@@ -60,17 +118,31 @@ document.getElementById('formLogin').addEventListener('submit', async (event) =>
     }
 
     const endpoint = requiereSetup ? '/api/usuarios/setup' : '/api/auth/login';
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    });
-    const data = await response.json();
-    if (!data.success) {
-        mostrarAlerta((data.errores || ['No se pudo ingresar']).join('. '), false);
-        return;
+    enviando = true;
+    botonIngresar.disabled = true;
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (response.status === 429 && data.retry_after > 0) {
+            iniciarTemporizador(payload.email, data.retry_after);
+            return;
+        }
+        if (!data.success) {
+            mostrarAlerta((data.errores || ['No se pudo ingresar']).join('. '), false);
+            return;
+        }
+        sessionStorage.setItem('contraerMenuAlIngresar', 'true');
+        window.location.href = data.requiere_cambio_password ? '/cambiar-contrasena' : '/';
+    } catch (error) {
+        mostrarAlerta('No se pudo conectar. Vuelve a intentar.', false);
+    } finally {
+        enviando = false;
+        actualizarTemporizador();
     }
-    window.location.href = data.requiere_cambio_password ? '/cambiar-contrasena' : '/';
 });
 
 function mostrarAlerta(texto, ok) {

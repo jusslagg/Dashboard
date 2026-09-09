@@ -55,6 +55,12 @@
             body.sidebar-collapsed #sidebarSeedButton { padding-left: 0.75rem; padding-right: 0.75rem; }
             body.sidebar-collapsed #sidebarToggleIcon { transform: rotate(180deg); }
         }
+        .password-field { position: relative; display: block; }
+        .password-field input { padding-right: 3rem; }
+        .password-field input::-ms-reveal { display: none; }
+        .password-toggle { position: absolute; right: 0; bottom: 0; width: 2.75rem; height: 2.5rem; display: flex; align-items: center; justify-content: center; color: #64748b; border-radius: 0.25rem; }
+        .password-toggle:hover { color: #0f172a; background: #f1f5f9; }
+        .password-toggle:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -76,11 +82,11 @@
             <nav id="sidebarNav" class="flex-1 p-3 md:p-4 flex md:block gap-2 overflow-x-auto md:overflow-x-hidden text-sm">
                 {% if usuario_actual and usuario_actual.puede_ver_facturacion %}
                 <section class="min-w-fit md:min-w-0 md:mb-3" data-sidebar-group="facturacion">
-                    <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="true" aria-controls="sidebarGroupFacturacion" onclick="toggleSidebarGroup('facturacion')">
+                    <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="false" aria-controls="sidebarGroupFacturacion" onclick="toggleSidebarGroup('facturacion')">
                         <span><i class="fas fa-file-invoice-dollar mr-2 w-4"></i><span class="sidebar-text">Facturación</span></span>
                         <i class="fas fa-chevron-down text-[10px]"></i>
                     </button>
-                    <div id="sidebarGroupFacturacion" class="sidebar-group-content">
+                    <div id="sidebarGroupFacturacion" class="sidebar-group-content" hidden>
                         <a href="/resumen-horas" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/resumen-horas' %}active{% endif %}">
                             <i class="fas fa-chart-pie w-6"></i><span class="sidebar-text">Resumen</span>
                         </a>
@@ -115,11 +121,11 @@
 
                 {% if usuario_actual and usuario_actual.puede_ver_proyecciones %}
                 <section class="min-w-fit md:min-w-0 md:mb-3" data-sidebar-group="proyectados">
-                    <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="true" aria-controls="sidebarGroupProyectados" onclick="toggleSidebarGroup('proyectados')">
+                    <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="false" aria-controls="sidebarGroupProyectados" onclick="toggleSidebarGroup('proyectados')">
                         <span><i class="fas fa-calendar-check mr-2 w-4"></i><span class="sidebar-text">Proyectados</span></span>
                         <i class="fas fa-chevron-down text-[10px]"></i>
                     </button>
-                    <div id="sidebarGroupProyectados" class="sidebar-group-content">
+                    <div id="sidebarGroupProyectados" class="sidebar-group-content" hidden>
                         <a href="/matriz-proyecciones" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/matriz-proyecciones' %}active{% endif %}">
                             <i class="fas fa-calendar-days w-6"></i><span class="sidebar-text">Proyecciones</span>
                         </a>
@@ -135,6 +141,9 @@
                         <a href="/control-proyecciones" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/control-proyecciones' %}active{% endif %}">
                             <i class="fas fa-chart-simple w-6"></i><span class="sidebar-text">Control proyecciones</span>
                         </a>
+                        <a href="/notificaciones-proyecciones" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/notificaciones-proyecciones' %}active{% endif %}">
+                            <i class="fas fa-bell w-6"></i><span class="sidebar-text">Notificaciones</span>
+                        </a>
                         <a href="/calendario-operativo" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/calendario-operativo' %}active{% endif %}">
                             <i class="fas fa-calendar-check w-6"></i><span class="sidebar-text">Calendario operativo</span>
                         </a>
@@ -144,11 +153,11 @@
 
                 {% if usuario_actual and usuario_actual.puede_ver_directorio %}
                 <section class="min-w-fit md:min-w-0 md:mb-3" data-sidebar-group="directorio">
-                    <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="true" aria-controls="sidebarGroupDirectorio" onclick="toggleSidebarGroup('directorio')">
+                    <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="false" aria-controls="sidebarGroupDirectorio" onclick="toggleSidebarGroup('directorio')">
                         <span><i class="fas fa-chart-pie mr-2 w-4"></i><span class="sidebar-text">Directorio</span></span>
                         <i class="fas fa-chevron-down text-[10px]"></i>
                     </button>
-                    <div id="sidebarGroupDirectorio" class="sidebar-group-content">
+                    <div id="sidebarGroupDirectorio" class="sidebar-group-content" hidden>
                         <a href="/reloj" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/reloj' %}active{% endif %}">
                             <i class="fas fa-gauge-high w-6"></i><span class="sidebar-text">Reloj</span>
                         </a>
@@ -201,16 +210,18 @@
                 </section>
                 {% endif %}
 
-                {% if usuario_actual and usuario_actual.puede_administrar_usuarios %}
+                {% if usuario_actual and (usuario_actual.puede_eliminar or usuario_actual.puede_administrar_usuarios) %}
                 <section class="min-w-fit md:min-w-0" data-sidebar-group="administracion">
-                    <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="true" aria-controls="sidebarGroupAdministracion" onclick="toggleSidebarGroup('administracion')">
+                    <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="false" aria-controls="sidebarGroupAdministracion" onclick="toggleSidebarGroup('administracion')">
                         <span><i class="fas fa-gear mr-2 w-4"></i><span class="sidebar-text">Administración</span></span>
                         <i class="fas fa-chevron-down text-[10px]"></i>
                     </button>
-                    <div id="sidebarGroupAdministracion" class="sidebar-group-content">
+                    <div id="sidebarGroupAdministracion" class="sidebar-group-content" hidden>
+                        {% if usuario_actual and usuario_actual.puede_eliminar %}
                         <a href="/historial" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/historial' %}active{% endif %}">
                             <i class="fas fa-clock-rotate-left w-6"></i><span class="sidebar-text">Historial</span>
                         </a>
+                        {% endif %}
                         {% if usuario_actual and usuario_actual.puede_administrar_usuarios %}
                         <a href="/usuarios" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded {% if request.path == '/usuarios' %}active{% endif %}">
                             <i class="fas fa-users-gear w-6"></i><span class="sidebar-text">Usuarios</span>
@@ -221,11 +232,11 @@
                 {% endif %}
 
                 <section class="min-w-fit md:min-w-0" data-sidebar-group="ayuda">
-                    <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="true" aria-controls="sidebarGroupAyuda" onclick="toggleSidebarGroup('ayuda')">
+                    <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="false" aria-controls="sidebarGroupAyuda" onclick="toggleSidebarGroup('ayuda')">
                         <span><i class="fas fa-circle-question mr-2 w-4"></i><span class="sidebar-text">Ayuda</span></span>
                         <i class="fas fa-chevron-down text-[10px]"></i>
                     </button>
-                    <div id="sidebarGroupAyuda" class="sidebar-group-content">
+                    <div id="sidebarGroupAyuda" class="sidebar-group-content" hidden>
                         <a href="/guia-usuario" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/guia-usuario' %}active{% endif %}">
                             <i class="fas fa-book-open w-6"></i><span class="sidebar-text">Guía de usuario</span>
                         </a>
@@ -366,16 +377,18 @@
         }
 
         function initSidebarGroups() {
+            const contraerAlIngresar = sessionStorage.getItem('contraerMenuAlIngresar') === 'true';
             document.querySelectorAll('[data-sidebar-group]').forEach(section => {
                 const group = section.dataset.sidebarGroup;
                 const button = section.querySelector('.sidebar-group-toggle');
                 const content = section.querySelector('.sidebar-group-content');
-                const hasActiveLink = Boolean(section.querySelector('.sidebar-link.active'));
+                if (contraerAlIngresar) localStorage.removeItem(`sidebarGroup:${group}`);
                 const saved = localStorage.getItem(`sidebarGroup:${group}`);
-                const expanded = hasActiveLink || saved !== 'closed';
+                const expanded = !contraerAlIngresar && saved === 'open';
                 button?.setAttribute('aria-expanded', expanded ? 'true' : 'false');
                 if (content) content.hidden = !expanded;
             });
+            if (contraerAlIngresar) sessionStorage.removeItem('contraerMenuAlIngresar');
         }
 
         function toggleSidebarGroup(group) {
@@ -428,6 +441,7 @@
             }
         }
     </script>
+    <script src="{{ url_for('static', filename='password-fields.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

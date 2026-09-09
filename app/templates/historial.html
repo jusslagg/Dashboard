@@ -76,9 +76,18 @@ async function cargarHistorial() {
     if (entidad) params.set('entidad', entidad);
 
     params.set('_ts', Date.now());
-    const response = await fetch('/api/historial?' + params.toString(), { cache: 'no-store' });
-    const data = await response.json();
     const contenedor = document.getElementById('listaHistorial');
+    let data;
+    try {
+        const response = await fetch('/api/historial?' + params.toString(), { cache: 'no-store' });
+        data = await response.json();
+        if (!response.ok) throw new Error((data.errores || ['No se pudo cargar el historial']).join(' | '));
+    } catch (error) {
+        historialActual = [];
+        contenedor.innerHTML = `<div class="px-4 py-8 text-center text-rose-600">${escapeHtml(error.message)}</div>`;
+        renderDetalle(null);
+        return;
+    }
     if (!data.success || !data.historial.length) {
         historialActual = [];
         contenedor.innerHTML = '<div class="px-4 py-8 text-center text-gray-500">No hay movimientos para mostrar</div>';
@@ -205,8 +214,15 @@ async function deshacerMovimiento(id) {
     const item = historialActual.find(evento => evento.id === id);
     if (!item) return;
     if (!confirm(`¿Deshacer este movimiento?\\n${item.resumen}`)) return;
-    const response = await fetch(`/api/historial/${id}/deshacer`, { method: 'POST' });
-    const data = await response.json();
+    let data;
+    try {
+        const response = await fetch(`/api/historial/${id}/deshacer`, { method: 'POST' });
+        data = await response.json();
+        if (!response.ok) throw new Error((data.errores || ['No se pudo deshacer']).join(' | '));
+    } catch (error) {
+        alert(error.message || 'No se pudo deshacer el movimiento');
+        return;
+    }
     if (!data.success) {
         alert((data.errores || ['No se pudo deshacer']).join(' | '));
         return;

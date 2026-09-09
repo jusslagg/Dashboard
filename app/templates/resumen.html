@@ -188,6 +188,8 @@ let meses = [];
 let filas = [];
 let totalGeneral = { meses: {}, total: 0 };
 let clientesSeleccionados = new Set();
+let gruposFiltro = [];
+let grupoSeleccionado = '';
 
 document.addEventListener('DOMContentLoaded', () => {
     crearIconos();
@@ -206,6 +208,8 @@ async function cargarResumen() {
     meses = data.meses || [];
     filas = data.filas_resumen || [];
     totalGeneral = data.total_general || { meses: {}, total: 0 };
+    gruposFiltro = data.grupos_filtro || [];
+    if (!gruposFiltro.some(grupo => grupo.nombre === grupoSeleccionado)) grupoSeleccionado = '';
     popularFiltros();
     renderResumen();
     crearIconos();
@@ -227,9 +231,13 @@ function setLoadingState() {
 function popularFiltros() {
     const conceptoActual = document.getElementById('filtroConcepto').value;
     const campaniaActual = document.getElementById('filtroCampania').value;
-    const detalles = filas.filter(item => item.tipo !== 'total_site');
+    const detalles = filas.filter(item => item.tipo === 'total_campania');
     const clientes = [...new Set(detalles.map(item => item.cliente).filter(Boolean))].sort();
-    const conceptos = [...new Set(detalles.map(item => item.concepto).filter(Boolean))].sort();
+    const conceptos = [...new Set(filas
+        .filter(item => item.tipo === 'concepto')
+        .map(item => item.concepto)
+        .filter(Boolean)
+    )].sort();
     clientesSeleccionados = new Set([...clientesSeleccionados].filter(cliente => clientes.includes(cliente)));
     renderOpcionesClientes(clientes);
     document.getElementById('filtroConcepto').innerHTML = '<option value="">Todos los conceptos</option>' + conceptos.map(concepto =>
@@ -245,15 +253,11 @@ function renderOpcionesClientes(clientes) {
             <button type="button" onclick="limpiarClientes()" class="rounded px-2 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-100">
                 Todos
             </button>
-            <button type="button" onclick="seleccionarGrupoPersonal()" class="rounded bg-blue-50 px-2 py-2 text-left text-xs font-semibold text-blue-700 hover:bg-blue-100">
-                Grupo Personal
-            </button>
-            <button type="button" onclick="seleccionarGrupoGetnet()" class="rounded bg-emerald-50 px-2 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-100">
-                Grupo Getnet
-            </button>
-            <button type="button" onclick="seleccionarGrupoSantander()" class="rounded bg-red-50 px-2 py-2 text-left text-xs font-semibold text-red-700 hover:bg-red-100">
-                Grupo Santander
-            </button>
+            ${gruposFiltro.map((grupo, indice) => `
+                <button type="button" onclick="seleccionarGrupo(decodeURIComponent('${encodeAttr(grupo.nombre)}'))" class="rounded px-2 py-2 text-left text-xs font-semibold ${grupoSeleccionado === grupo.nombre ? 'bg-violet-600 text-white' : colorGrupo(indice)}">
+                    Grupo ${escapeHtml(grupo.nombre)}
+                </button>
+            `).join('')}
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .25rem;">
             ${clientes.map(cliente => `
@@ -279,6 +283,7 @@ function togglePanelClientes(forzar) {
 }
 
 function toggleCliente(cliente, seleccionado) {
+    grupoSeleccionado = '';
     if (seleccionado) clientesSeleccionados.add(cliente);
     else clientesSeleccionados.delete(cliente);
     actualizarLabelClientes();
@@ -287,6 +292,7 @@ function toggleCliente(cliente, seleccionado) {
 }
 
 function limpiarClientes() {
+    grupoSeleccionado = '';
     clientesSeleccionados.clear();
     document.querySelectorAll('#filtroClienteOpciones input[type="checkbox"]').forEach(input => { input.checked = false; });
     actualizarLabelClientes();
@@ -294,42 +300,27 @@ function limpiarClientes() {
     renderResumen();
 }
 
-function seleccionarGrupoPersonal() {
-    seleccionarClientesPor(cliente => normalizar(cliente).startsWith('personal'));
-}
-
 function clientesDisponibles() {
     return [...new Set(filas
-        .filter(item => item.tipo !== 'total_site')
+        .filter(item => item.tipo === 'total_campania')
         .map(item => item.cliente)
         .filter(Boolean)
     )].sort();
 }
 
-function seleccionarClientesPor(predicado) {
-    const clientes = clientesDisponibles();
-    clientesSeleccionados = new Set(clientes.filter(predicado));
-    renderOpcionesClientes(clientes);
+function seleccionarGrupo(nombre) {
+    grupoSeleccionado = grupoSeleccionado === nombre ? '' : nombre;
+    clientesSeleccionados.clear();
+    renderOpcionesClientes(clientesDisponibles());
     actualizarFiltroCampania();
     renderResumen();
 }
 
-function seleccionarGrupoGetnet() {
-    const getnet = new Set(['santander getnet', 'santander getnet onboarding']);
-    seleccionarClientesPor(cliente => getnet.has(normalizar(cliente)));
-}
-
-function seleccionarGrupoSantander() {
-    const getnet = new Set(['santander getnet', 'santander getnet onboarding']);
-    seleccionarClientesPor(cliente => {
-        const nombre = normalizar(cliente);
-        return nombre.startsWith('santander') && !getnet.has(nombre);
-    });
-}
-
 function actualizarLabelClientes() {
     const seleccionados = [...clientesSeleccionados];
-    document.getElementById('filtroClienteLabel').textContent = seleccionados.length === 0
+    document.getElementById('filtroClienteLabel').textContent = grupoSeleccionado
+        ? `Grupo ${grupoSeleccionado}`
+        : seleccionados.length === 0
         ? 'Todos los clientes'
         : seleccionados.length === 1
             ? seleccionados[0]
@@ -339,8 +330,9 @@ function actualizarLabelClientes() {
 function actualizarFiltroCampania(valorActual) {
     const actual = valorActual === undefined ? document.getElementById('filtroCampania').value : valorActual;
     const campanias = [...new Set(filas
-        .filter(item => item.tipo !== 'total_site')
+        .filter(item => item.tipo === 'total_campania')
         .filter(item => !clientesSeleccionados.size || clientesSeleccionados.has(item.cliente))
+        .filter(item => !grupoSeleccionado || perteneceAlGrupo(item, grupoSeleccionado))
         .map(item => item.campania)
         .filter(Boolean)
     )].sort();
@@ -355,11 +347,33 @@ function obtenerFilasFiltradas() {
     const campania = document.getElementById('filtroCampania').value;
     return filas.filter(item => {
         if (clientesSeleccionados.size && !clientesSeleccionados.has(item.cliente)) return false;
+        if (grupoSeleccionado && !perteneceAlGrupo(item, grupoSeleccionado)) return false;
         if (concepto && item.concepto !== concepto) return false;
         if (campania && item.campania !== campania) return false;
         if (!texto) return true;
         return normalizar(`${item.cliente} ${item.concepto} ${item.campania}`).includes(texto);
     });
+}
+
+function perteneceAlGrupo(item, nombreGrupo) {
+    if (item.tipo === 'total_cat' || item.tipo === 'total_site' || item.tipo === 'total_grupo') return false;
+    const grupo = gruposFiltro.find(actual => actual.nombre === nombreGrupo);
+    if (!grupo) return false;
+    const cliente = normalizar(item.cliente);
+    const campania = normalizar(item.campania);
+    const gruposCampania = gruposFiltro.filter(actual => actual.miembros.some(
+        miembro => normalizar(miembro.campania) === campania
+    ));
+    if (gruposCampania.length) return gruposCampania.some(actual => actual.nombre === nombreGrupo);
+    return grupo.miembros.some(miembro => {
+        if (!miembro.incluir_cliente) return false;
+        const clienteBase = normalizar(miembro.cliente);
+        return cliente === clienteBase || cliente.startsWith(`${clienteBase} `);
+    });
+}
+
+function colorGrupo(indice) {
+    return ['bg-blue-50 text-blue-700 hover:bg-blue-100', 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100', 'bg-red-50 text-red-700 hover:bg-red-100', 'bg-amber-50 text-amber-700 hover:bg-amber-100'][indice % 4];
 }
 
 function calcularTotal(filasBase) {
@@ -576,6 +590,7 @@ function filtrosActivos() {
         const label = nombres.length <= 2 ? nombres.join(', ') : `${nombres.length} clientes`;
         filtros.push({ key: 'clientes', label: `Clientes: ${label}` });
     }
+    if (grupoSeleccionado) filtros.push({ key: 'grupo', label: `Grupo: ${grupoSeleccionado}` });
     if (concepto) filtros.push({ key: 'concepto', label: `Concepto: ${concepto}` });
     if (campania) filtros.push({ key: 'campania', label: `Campaña: ${campania}` });
     return filtros;
@@ -598,7 +613,7 @@ function renderActiveChips() {
 }
 
 function quitarFiltro(key) {
-    if (key === 'clientes') {
+    if (key === 'clientes' || key === 'grupo') {
         limpiarClientes();
         return;
     }
@@ -619,6 +634,7 @@ function limpiarFiltros() {
         if (element) element.value = '';
     });
     clientesSeleccionados.clear();
+    grupoSeleccionado = '';
     document.querySelectorAll('#filtroClienteOpciones input[type="checkbox"]').forEach(input => { input.checked = false; });
     actualizarLabelClientes();
     actualizarFiltroCampania();

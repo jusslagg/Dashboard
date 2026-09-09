@@ -128,7 +128,7 @@
 <div id="alertasDashboard" class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6"></div>
 
 <!-- KPIs -->
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
     <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
         <div class="flex items-center justify-between">
             <div>
@@ -165,14 +165,29 @@
         </div>
     </div>
 
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
     <div class="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500">% Cumplimiento</p>
+                <p class="text-sm text-gray-500">Cumplimiento de facturación</p>
                 <p class="text-2xl font-bold text-gray-800" id="kpiCumplimiento">0%</p>
             </div>
             <div class="bg-purple-100 p-3 rounded-full">
                 <i class="fas fa-percent text-purple-500 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-500">Cumplimiento de horas</p>
+                <p class="text-2xl font-bold text-gray-800" id="kpiCumplimientoHoras" title="Horas facturadas / Horas objetivo × 100">0%</p>
+            </div>
+            <div class="bg-blue-100 p-3 rounded-full">
+                <i class="fas fa-stopwatch text-blue-500 text-xl" aria-hidden="true"></i>
             </div>
         </div>
     </div>
@@ -497,12 +512,16 @@ async function leerJsonSeguro(response) {
 }
 
 function actualizarKPIs(kpis) {
+    const cumplimientoFacturacion = kpis.porcentaje_cumplimiento_facturacion ?? kpis.porcentaje_cumplimiento ?? 0;
+    const cumplimientoHoras = kpis.porcentaje_cumplimiento_horas ?? 0;
     document.getElementById('kpiTotalFacturado').textContent = formatCurrency(kpis.total_facturado || kpis.total_real || 0);
     document.getElementById('kpiTotalTeorico').textContent = formatCurrency(kpis.total_teorico || 0);
     document.getElementById('kpiDesvio').textContent = formatCurrency(kpis.desvio || 0);
     document.getElementById('kpiDesvio').className = `text-2xl font-bold ${(kpis.desvio || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`;
-    document.getElementById('kpiCumplimiento').textContent = (kpis.porcentaje_cumplimiento || 0).toFixed(1) + '%';
-    document.getElementById('kpiCumplimiento').className = `text-2xl font-bold ${(kpis.porcentaje_cumplimiento || 0) >= 100 ? 'text-green-600' : 'text-red-600'}`;
+    document.getElementById('kpiCumplimiento').textContent = cumplimientoFacturacion.toFixed(1) + '%';
+    document.getElementById('kpiCumplimiento').className = `text-2xl font-bold ${cumplimientoFacturacion >= 100 ? 'text-green-600' : 'text-red-600'}`;
+    document.getElementById('kpiCumplimientoHoras').textContent = cumplimientoHoras.toFixed(1) + '%';
+    document.getElementById('kpiCumplimientoHoras').className = `text-2xl font-bold ${cumplimientoHoras >= 100 ? 'text-green-600' : 'text-red-600'}`;
     document.getElementById('kpiHorasObjetivo').textContent = formatNumber(kpis.horas_objetivo || 0);
     document.getElementById('kpiHorasFacturadas').textContent = formatNumber(kpis.horas_facturadas || 0);
 }

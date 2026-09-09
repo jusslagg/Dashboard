@@ -63,6 +63,7 @@
 
 <div class="bg-white rounded-lg shadow p-5">
     <form id="formCargar" onsubmit="guardarDatos(event)">
+        <div id="mensaje" class="mb-4 hidden" role="status" aria-live="polite"></div>
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
             <label class="flex items-center justify-between rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
                 <span><strong class="block text-sm text-cyan-950">¿Es NextGen?</strong><span class="text-xs text-cyan-700">Activá para una carga rápida</span></span>
@@ -82,7 +83,7 @@
             </div>
 
             <div id="grupoBotonNextGenCarga" class="hidden sm:self-end">
-                <button type="button" onclick="guardarNextGenRapido()" class="w-full rounded bg-cyan-700 px-4 py-2 font-semibold text-white hover:bg-cyan-800">
+                <button type="button" data-guardar-carga onclick="guardarNextGenRapido()" class="w-full rounded bg-cyan-700 px-4 py-2 font-semibold text-white hover:bg-cyan-800 disabled:cursor-wait disabled:opacity-60">
                     <i class="fas fa-save mr-2"></i>Guardar NextGen
                 </button>
             </div>
@@ -284,11 +285,27 @@
             <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <h3 class="font-semibold text-gray-800">Items del mismo cliente</h3>
-                    <p class="text-sm text-gray-500 mt-1">Agregue varias lineas de VH y guardelas juntas con la misma cabecera.</p>
+                    <p class="text-sm text-gray-500 mt-1">La línea en edición se muestra y se suma al total mientras completa los datos.</p>
                 </div>
                 <button type="button" onclick="agregarLineaActual()" class="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium">
                     <i class="fas fa-layer-group mr-2"></i>Agregar linea al lote
                 </button>
+            </div>
+            <div id="resumenLote" role="status" aria-live="polite" aria-atomic="true" class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
+                <div>
+                    <p class="text-sm font-semibold text-blue-900">Resumen del lote</p>
+                    <p class="mt-1 text-sm text-slate-600"><span id="cantidadLineasLote">0 líneas agregadas</span> · Pendientes de guardar</p>
+                </div>
+                <div class="flex flex-wrap gap-4">
+                    <div>
+                        <p class="text-sm text-blue-900">Total facturado</p>
+                        <strong id="totalFacturadoLote" class="text-2xl font-bold text-blue-900">$0,00</strong>
+                    </div>
+                    <div>
+                        <p class="text-sm text-blue-900">Cumplimiento de horas</p>
+                        <strong id="cumplimientoHorasLote" class="text-2xl font-bold text-blue-900" title="Horas facturadas del lote / Horas objetivo del lote × 100">0%</strong>
+                    </div>
+                </div>
             </div>
             <div class="mt-4 overflow-x-auto">
                 <table class="w-full text-sm">
@@ -301,19 +318,30 @@
                             <th class="px-3 py-2 text-right">Hs Penal.</th>
                             <th class="px-3 py-2 text-right">VH Obj</th>
                             <th class="px-3 py-2 text-right">VH Alc.</th>
-                            <th class="px-3 py-2 text-right">Total Real</th>
+                            <th class="px-3 py-2 text-right">Total facturado</th>
                             <th class="px-3 py-2 text-center">Accion</th>
                         </tr>
                     </thead>
                     <tbody id="tablaLineasPendientes">
                         <tr><td colspan="9" class="px-3 py-6 text-center text-gray-500">Todavia no hay lineas agregadas</td></tr>
                     </tbody>
+                    <tfoot class="border-t bg-blue-50 font-semibold text-blue-900">
+                        <tr>
+                            <th colspan="2" scope="row" class="px-3 py-3 text-left">Total del lote</th>
+                            <td id="totalHorasObjetivoLote" class="px-3 py-3 text-right">0,00</td>
+                            <td id="totalHorasFacturadasLote" class="px-3 py-3 text-right">0,00</td>
+                            <td id="totalHorasPenalizadasLote" class="px-3 py-3 text-right">0,00</td>
+                            <td colspan="2"></td>
+                            <td id="totalImporteTablaLote" class="px-3 py-3 text-right">$0,00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
 
         <div class="mt-5 p-4 bg-gray-50 rounded-lg">
-            <h3 class="font-semibold text-gray-700 mb-2">Vista Previa de Cálculos</h3>
+            <h3 class="font-semibold text-gray-700 mb-2">Vista previa de la línea en edición</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-3 text-sm [&>div]:bg-white [&>div]:border [&>div]:border-gray-200 [&>div]:rounded [&>div]:px-3 [&>div]:py-2">
                 <div>
                     <span class="text-gray-500">VH Objetivo:</span>
@@ -338,10 +366,6 @@
                 <div>
                     <span class="text-gray-500">Fact. Horas:</span>
                     <span id="previewFacturadoHoras" class="font-semibold ml-2">$0.00</span>
-                </div>
-                <div>
-                    <span class="text-gray-500">% Cump. Horas:</span>
-                    <span id="previewCumplimientoHoras" class="font-semibold ml-2">0%</span>
                 </div>
                 <div>
                     <span class="text-gray-500">Horas Penalizacion ADH:</span>
@@ -388,7 +412,11 @@
                     <span id="previewTotalTeorico" class="font-semibold ml-2">$0.00</span>
                 </div>
                 <div>
-                    <span class="text-gray-500">% Cumplimiento:</span>
+                    <span class="text-gray-500">Cumplimiento de horas:</span>
+                    <span id="previewCumplimientoHoras" class="font-semibold ml-2">0%</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Cumplimiento de facturación:</span>
                     <span id="previewCumplimiento" class="font-semibold ml-2">0%</span>
                 </div>
             </div>
@@ -398,13 +426,12 @@
             <button type="button" onclick="limpiarFormulario()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded font-medium">
                 <i class="fas fa-trash mr-2"></i>Limpiar
             </button>
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium">
+            <button type="submit" data-guardar-carga class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium disabled:cursor-wait disabled:opacity-60">
                 <i class="fas fa-save mr-2"></i>Guardar
             </button>
         </div>
     </form>
 
-    <div id="mensaje" class="mt-4 hidden"></div>
 </div>
 </div>
 
@@ -475,6 +502,7 @@ let campaniaPendienteConfiguracion = null;
 let excepcionActiva = null;
 let justificacionIndex = 0;
 let lineasPendientes = [];
+let guardandoDatos = false;
 const TIPO_VH_PERSONAL_COBRANZAS = 'Personal Cobranzas';
 const puedeEliminarExcepciones = {% if usuario_actual and usuario_actual.puede_eliminar %}true{% else %}false{% endif %};
 
@@ -508,6 +536,7 @@ const labelsCampo = {
 
 document.addEventListener('DOMContentLoaded', async function() {
     completarFechasIniciales();
+    renderLineasPendientes();
     document.getElementById('formImportar').addEventListener('submit', importarDatos);
     await cargarAsignaciones();
     await cargarConfiguracionCampanias();
@@ -603,14 +632,25 @@ function actualizarModoNextGenCarga() {
     });
     if (activo) {
         camposOcultosNextGen.filter(id => !['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio', 'tipo_jornada'].includes(id))
-            .forEach(id => { const campo = document.getElementById(id); if (campo) campo.value = '0'; });
+            .forEach(id => { const campo = document.getElementById(id); if (campo) campo.value = ''; });
     }
     if (activo) calcularPreview();
     else aplicarExcepcionSeleccionada();
 }
 
-function guardarNextGenRapido() {
-    guardarDatos({ preventDefault() {} });
+async function guardarNextGenRapido() {
+    const boton = document.querySelector('#grupoBotonNextGenCarga button');
+    const contenidoOriginal = boton.innerHTML;
+    boton.disabled = true;
+    boton.setAttribute('aria-busy', 'true');
+    boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Guardando...';
+    try {
+        await guardarDatos({ preventDefault() {} });
+    } finally {
+        boton.disabled = false;
+        boton.removeAttribute('aria-busy');
+        boton.innerHTML = contenidoOriginal;
+    }
 }
 
 async function cargarConfiguracionCampanias() {
@@ -956,6 +996,9 @@ function lineaTieneDatos(linea) {
         || linea.horas_penalizadas > 0
         || linea.valor_hora_objetivo > 0
         || linea.valor_hora > 0
+        || linea.importe_fijo > 0
+        || (linea.facturado_horas_manual || 0) !== 0
+        || (linea.tarifacion || 0) !== 0
         || linea.variable_objetivo > 0
         || linea.variable_productivo !== 0
         || linea.bonos !== 0
@@ -998,7 +1041,6 @@ function agregarLineaActual() {
         return;
     }
     lineasPendientes.push(linea);
-    renderLineasPendientes();
     limpiarCamposLinea();
     mostrarMensaje('Linea agregada al lote', 'success');
 }
@@ -1008,23 +1050,53 @@ function eliminarLineaPendiente(index) {
     renderLineasPendientes();
 }
 
+function calcularTotalFacturadoLinea(linea) {
+    const horasNetas = Math.max(linea.horas_facturadas - linea.horas_penalizadas, 0);
+    const facturadoHoras = linea.importe_fijo > 0
+        ? linea.importe_fijo
+        : (linea.facturado_horas_manual ?? horasNetas * linea.valor_hora);
+    const total = facturadoHoras + linea.bonos - Math.abs(linea.penalizaciones)
+        + linea.variable_productivo + (linea.tarifacion || 0) + linea.netx_gen + linea.otros;
+    // Sumar los importes a dos decimales que se muestran en cada fila.
+    return Math.sign(total) * Math.round((Math.abs(total) + Number.EPSILON) * 100) / 100;
+}
+
 function renderLineasPendientes() {
     const tbody = document.getElementById('tablaLineasPendientes');
-    if (!lineasPendientes.length) {
+    // La línea actual solo participa de la vista; se agrega una vez al confirmar o guardar.
+    const lineasAgregadas = esModoNextGen() ? [] : lineasPendientes;
+    const lineaActual = capturarLineaActual();
+    const tieneEdicion = lineaTieneDatos(lineaActual);
+    const lineasVisibles = tieneEdicion ? [...lineasAgregadas, lineaActual] : lineasAgregadas;
+    const totales = lineasVisibles.reduce((suma, linea) => {
+        suma.horasObjetivo += linea.horas_objetivo;
+        suma.horasFacturadas += linea.horas_facturadas;
+        suma.horasPenalizadas += linea.horas_penalizadas;
+        suma.centavos += Math.round(calcularTotalFacturadoLinea(linea) * 100);
+        return suma;
+    }, { horasObjetivo: 0, horasFacturadas: 0, horasPenalizadas: 0, centavos: 0 });
+    const totalFormateado = formatCurrency(totales.centavos / 100);
+    document.getElementById('cantidadLineasLote').textContent = `${lineasAgregadas.length} ${lineasAgregadas.length === 1 ? 'línea agregada' : 'líneas agregadas'}${tieneEdicion ? ' + 1 en edición' : ''}`;
+    document.getElementById('totalFacturadoLote').textContent = totalFormateado;
+    document.getElementById('totalImporteTablaLote').textContent = totalFormateado;
+    document.getElementById('totalHorasObjetivoLote').textContent = formatNumber(totales.horasObjetivo);
+    document.getElementById('totalHorasFacturadasLote').textContent = formatNumber(totales.horasFacturadas);
+    document.getElementById('totalHorasPenalizadasLote').textContent = formatNumber(totales.horasPenalizadas);
+    const cumplimientoHoras = totales.horasObjetivo > 0
+        ? (totales.horasFacturadas / totales.horasObjetivo) * 100 : 0;
+    document.getElementById('cumplimientoHorasLote').textContent = cumplimientoHoras.toFixed(1) + '%';
+    if (!lineasVisibles.length) {
         tbody.innerHTML = '<tr><td colspan="9" class="px-3 py-6 text-center text-gray-500">Todavia no hay lineas agregadas</td></tr>';
         return;
     }
-    tbody.innerHTML = lineasPendientes.map((linea, index) => {
+    tbody.innerHTML = lineasVisibles.map((linea, index) => {
+        const enEdicion = tieneEdicion && index === lineasAgregadas.length;
         const valorHoraAlcanzado = linea.valor_hora;
-        const horasNetas = Math.max(linea.horas_facturadas - linea.horas_penalizadas, 0);
-        const facturadoHoras = linea.facturado_horas_manual !== null ? linea.facturado_horas_manual : (linea.importe_fijo !== null ? linea.importe_fijo : horasNetas * valorHoraAlcanzado);
-        const totalReal = linea.importe_fijo !== null
-            ? linea.importe_fijo + linea.bonos + linea.penalizaciones
-            : facturadoHoras + linea.bonos + linea.penalizaciones;
+        const totalReal = calcularTotalFacturadoLinea(linea);
         return `
-            <tr class="border-t hover:bg-blue-50/40">
+            <tr ${enEdicion ? 'data-linea-en-edicion="true"' : ''} class="border-t ${enEdicion ? 'bg-amber-50' : 'hover:bg-blue-50/40'}">
                 <td class="px-3 py-2 font-semibold">${index + 1}</td>
-                <td class="px-3 py-2">${escapeHtml(linea.tipo_jornada)}</td>
+                <td class="px-3 py-2">${escapeHtml(linea.tipo_jornada || (esModoNextGen() ? 'NextGen' : 'Sin tipo VH'))}</td>
                 <td class="px-3 py-2 text-right">${formatNumber(linea.horas_objetivo)}</td>
                 <td class="px-3 py-2 text-right">${formatNumber(linea.horas_facturadas)}</td>
                 <td class="px-3 py-2 text-right">${formatNumber(linea.horas_penalizadas)}</td>
@@ -1032,9 +1104,10 @@ function renderLineasPendientes() {
                 <td class="px-3 py-2 text-right">${formatCurrency(valorHoraAlcanzado)}</td>
                 <td class="px-3 py-2 text-right font-semibold">${formatCurrency(totalReal)}</td>
                 <td class="px-3 py-2 text-center">
+                    ${enEdicion ? '<span class="text-xs font-semibold text-amber-800">En edición</span>' : `
                     <button type="button" onclick="eliminarLineaPendiente(${index})" class="inline-flex h-8 w-8 items-center justify-center rounded bg-red-50 text-red-600 hover:bg-red-100" title="Eliminar linea">
                         <i class="fas fa-trash"></i>
-                    </button>
+                    </button>`}
                 </td>
             </tr>
         `;
@@ -1080,7 +1153,7 @@ function calcularPreview() {
     const bonos = parseNumeroCampo('bonos');
     const variableProductivo = parseNumeroCampo('variable_productivo');
     const penalizaciones = parseNumeroCampo('penalizaciones');
-    const netxGen = parseNumeroCampo('netx_gen');
+    const netxGen = esModoNextGen() ? parseNumeroCampo('next_gen_importe') : parseNumeroCampo('netx_gen');
     const otros = parseNumeroCampo('otros');
 
     const valorHoraAlcanzado = valorHora;
@@ -1122,10 +1195,12 @@ function calcularPreview() {
     document.getElementById('previewDesvio').className = `font-semibold ml-2 ${desvio >= 0 ? 'text-green-600' : 'text-red-600'}`;
     document.getElementById('previewCumplimiento').textContent = cumplimiento.toFixed(1) + '%';
     document.getElementById('previewCumplimiento').className = `font-semibold ml-2 ${cumplimiento >= 100 ? 'text-green-600' : 'text-red-600'}`;
+    renderLineasPendientes();
 }
 
 async function guardarDatos(event) {
     event.preventDefault();
+    if (guardandoDatos) return;
 
     const asociacion = esModoNextGen()
         ? asignaciones.find(item => item.es_next_gen && item.cliente === document.getElementById('nombre_next_gen').value)
@@ -1164,6 +1239,8 @@ async function guardarDatos(event) {
         return;
     }
 
+    guardandoDatos = true;
+    document.querySelectorAll('[data-guardar-carga]').forEach(boton => { boton.disabled = true; });
     try {
         for (let index = 0; index < lineasAGuardar.length; index += 1) {
             const response = await fetch('/api/cargar', {
@@ -1191,6 +1268,9 @@ async function guardarDatos(event) {
         limpiarFormulario();
     } catch (error) {
         mostrarMensaje('Error al guardar los datos', 'error');
+    } finally {
+        guardandoDatos = false;
+        document.querySelectorAll('[data-guardar-carga]').forEach(boton => { boton.disabled = false; });
     }
 }
 
@@ -1335,11 +1415,11 @@ function mostrarAlertaReemplazo(result) {
     ).join('\n');
     const extra = conflictos.length > 8 ? `\n...y ${conflictos.length - 8} coincidencia(s) mas.` : '';
     const mensaje = [
-        'Se encontraron datos ya cargados que coinciden exactamente por fecha y nombres comerciales.',
+        'Ya existen datos de Personal para el período indicado.',
         '',
         detalle + extra,
         '',
-        'Si continuas, esos registros existentes se reemplazaran por los del archivo importado.'
+        'Si continuás, se reemplazará el mes completo de Personal por los registros del archivo. Los demás clientes no se modifican.'
     ].join('\n');
 
     if (confirm(mensaje)) {

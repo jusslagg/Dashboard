@@ -36,8 +36,9 @@
         <div><label class="mb-1 block text-sm font-medium text-gray-700">Jefe de site asignado</label><select id="jefeSiteAsignado" class="h-10 w-full rounded border border-gray-300 px-3 text-sm"><option value="">Sin asignar</option></select><p class="mt-1 text-xs text-slate-500">Solo se utiliza si no eliges gerente. Ambos vacíos = sin restricción.</p></div>
         <fieldset class="md:col-span-2 xl:col-span-4 rounded-lg border border-slate-200 bg-slate-50 p-3"><legend class="px-2 text-sm font-bold text-slate-700">Accesos del usuario</legend><div id="permisosAlta" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"></div></fieldset>
         <div>
-            <label class="mb-1 block text-sm font-medium text-gray-700">Contrasena</label>
-            <input id="password" type="password" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" required>
+            <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
+            <input id="password" type="password" minlength="8" autocomplete="new-password" class="h-10 w-full rounded border border-gray-300 px-3 text-sm" required>
+            <p class="mt-1 text-xs text-slate-500">Mínimo 8 caracteres, con mayúsculas, minúsculas y números.</p>
         </div>
         <button type="submit" class="h-10 rounded bg-slate-800 px-4 text-sm font-semibold text-white hover:bg-slate-700">
             <i class="fas fa-plus mr-2"></i>Crear

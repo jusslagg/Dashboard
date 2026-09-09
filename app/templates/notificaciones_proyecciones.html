@@ -1,0 +1,239 @@
+{% extends "layout.html" %}
+
+{% block title %}Notificaciones de proyecciones - Facturación{% endblock %}
+
+{% block content %}
+<div class="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Proyectados</p>
+        <h1 class="text-3xl font-bold text-gray-950">Notificaciones de cambios</h1>
+        <p class="mt-1 max-w-3xl text-sm text-slate-500">Comparación mensual por campaña centrada en dotación y precio. Las horas se normalizan para excluir el efecto de la cantidad de días laborables.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <select id="yearFiltro" onchange="cargarNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm">
+            {% for year in anios_disponibles %}<option value="{{ year }}"{% if year == anio_actual %} selected{% endif %}>{{ year }}</option>{% endfor %}
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+        <button type="button" onclick="cargarNotificaciones()" class="inline-flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+            <i class="fas fa-rotate-right"></i>Actualizar
+        </button>
+        <button type="button" onclick="exportarReporte()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-emerald-600 px-4 text-sm font-medium text-white hover:bg-emerald-700">
+            <i class="fas fa-file-excel mr-2"></i>Exportar Excel
+        </button>
+    </div>
+</div>
+
+<section class="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+    <article class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Cambios positivos</p>
+        <p id="kpiPositivas" class="mt-2 text-2xl font-black text-emerald-800">0</p>
+    </article>
+    <article class="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-wide text-rose-700">Cambios negativos</p>
+        <p id="kpiNegativas" class="mt-2 text-2xl font-black text-rose-800">0</p>
+    </article>
+    <article class="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Cambios mixtos</p>
+        <p id="kpiMixtas" class="mt-2 text-2xl font-black text-amber-800">0</p>
+    </article>
+    <article class="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Impacto neto</p>
+        <p id="kpiImpacto" class="mt-2 text-2xl font-black text-blue-900">$ 0,00</p>
+    </article>
+</section>
+
+<section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-200 p-4">
+        <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
+            <input id="buscarFiltro" type="search" oninput="renderNotificaciones()" placeholder="Buscar site, cliente, campaña o detalle..." class="h-10 rounded-md border border-slate-300 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            <select id="mesFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm"><option value="">Todos los meses</option></select>
+            <select id="estadoFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm">
+                <option value="">Todos los estados</option>
+                <option value="positiva">Positivos</option>
+                <option value="negativa">Negativos</option>
+                <option value="mixta">Mixtos</option>
+            </select>
+            <select id="metricaFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm"><option value="">Todas las métricas</option></select>
+            <button type="button" onclick="limpiarFiltros()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                <i class="fas fa-circle-xmark"></i>Limpiar
+            </button>
+        </div>
+        <p id="contador" class="mt-3 text-xs text-slate-500">Cargando cambios...</p>
+        <p class="mt-1 text-xs font-medium text-blue-700"><i class="fas fa-circle-info mr-1"></i>El impacto usa las horas por persona del mes anterior; los días laborables del mes no generan notificaciones.</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[1320px] border-collapse text-sm">
+            <thead class="bg-slate-100 text-slate-700">
+                <tr>
+                    <th class="px-3 py-3 text-left">Mes</th>
+                    <th class="px-3 py-3 text-left">Cliente</th>
+                    <th class="px-3 py-3 text-right">Cambio de dotación</th>
+                    <th class="px-3 py-3 text-right">Cambio de horas</th>
+                    <th class="px-3 py-3 text-right">Cambio de precio</th>
+                    <th class="px-3 py-3 text-right">Cambio total $</th>
+                    <th class="px-3 py-3 text-left">Lectura</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyNotificaciones"><tr><td colspan="7" class="px-4 py-10 text-center text-slate-500">Cargando datos...</td></tr></tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let datosNotificaciones = { notificaciones: [], meses: [], metricas: [] };
+let filtrosInicializados = false;
+
+document.addEventListener('DOMContentLoaded', cargarNotificaciones);
+
+async function cargarNotificaciones() {
+    document.getElementById('contador').textContent = 'Cargando cambios...';
+    document.getElementById('tbodyNotificaciones').innerHTML = '<tr><td colspan="7" class="px-4 py-10 text-center text-slate-500">Cargando datos...</td></tr>';
+    try {
+        const year = document.getElementById('yearFiltro').value;
+        const response = await fetch(`/api/notificaciones-proyecciones?year=${encodeURIComponent(year)}&_=${Date.now()}`, { cache: 'no-store' });
+        datosNotificaciones = await response.json();
+        if (!response.ok || !datosNotificaciones.success) throw new Error('No se pudieron cargar las notificaciones');
+        popularFiltros();
+        renderNotificaciones();
+    } catch (error) {
+        document.getElementById('contador').textContent = error.message;
+        document.getElementById('tbodyNotificaciones').innerHTML = '<tr><td colspan="7" class="px-4 py-10 text-center text-rose-600">No se pudieron cargar los cambios.</td></tr>';
+    }
+}
+
+function popularFiltros() {
+    const mesActual = document.getElementById('mesFiltro').value;
+    const metricaActual = document.getElementById('metricaFiltro').value;
+    document.getElementById('mesFiltro').innerHTML = '<option value="">Todos los meses</option>' + (datosNotificaciones.meses || []).map(mes =>
+        `<option value="${escapeHtml(mes.value)}" ${mes.value === mesActual ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`
+    ).join('');
+    document.getElementById('metricaFiltro').innerHTML = '<option value="">Todas las métricas</option>' + (datosNotificaciones.metricas || []).map(metrica =>
+        `<option value="${escapeHtml(metrica.value)}" ${metrica.value === metricaActual ? 'selected' : ''}>${escapeHtml(metrica.label)}</option>`
+    ).join('');
+    if (!filtrosInicializados) {
+        const numeroMes = String(new Date().getMonth() + 1).padStart(2, '0');
+        const mesReporte = `${document.getElementById('yearFiltro').value}-${numeroMes}`;
+        if ([...document.getElementById('mesFiltro').options].some(option => option.value === mesReporte)) {
+            document.getElementById('mesFiltro').value = mesReporte;
+        }
+        filtrosInicializados = true;
+    }
+}
+
+function notificacionesVisibles() {
+    const buscar = normalizar(document.getElementById('buscarFiltro').value);
+    const mes = document.getElementById('mesFiltro').value;
+    const estado = document.getElementById('estadoFiltro').value;
+    const metrica = document.getElementById('metricaFiltro').value;
+    return (datosNotificaciones.notificaciones || []).filter(item => {
+        const texto = normalizar(`${item.site} ${item.cliente} ${item.campania} ${item.detalle}`);
+        return (!buscar || texto.includes(buscar))
+            && (!mes || item.mes === mes)
+            && (!estado || item.estado === estado)
+            && (!metrica || (item.metricas_cambiadas || []).includes(metrica));
+    }).sort((a, b) => b.mes.localeCompare(a.mes) || Math.abs(b.impacto_facturacion) - Math.abs(a.impacto_facturacion));
+}
+
+function renderNotificaciones() {
+    const items = notificacionesVisibles();
+    document.getElementById('kpiPositivas').textContent = items.filter(item => item.estado === 'positiva').length.toLocaleString('es-AR');
+    document.getElementById('kpiNegativas').textContent = items.filter(item => item.estado === 'negativa').length.toLocaleString('es-AR');
+    document.getElementById('kpiMixtas').textContent = items.filter(item => item.estado === 'mixta').length.toLocaleString('es-AR');
+    const impacto = items.reduce((total, item) => total + Number(item.impacto_facturacion || 0), 0);
+    const kpiImpacto = document.getElementById('kpiImpacto');
+    kpiImpacto.textContent = moneda(impacto);
+    kpiImpacto.className = `mt-2 text-2xl font-black ${impacto < 0 ? 'text-rose-700' : impacto > 0 ? 'text-emerald-700' : 'text-blue-900'}`;
+    document.getElementById('contador').textContent = `${items.length.toLocaleString('es-AR')} cliente(s) con cambios · desplegá cada fila para ver los servicios que explican el desvío.`;
+    document.getElementById('tbodyNotificaciones').innerHTML = items.map(filaNotificacion).join('')
+        || '<tr><td colspan="7" class="px-4 py-10 text-center text-slate-500">No hay cambios para los filtros seleccionados.</td></tr>';
+}
+
+function filaNotificacion(item) {
+    const tono = item.estado === 'positiva'
+        ? 'bg-emerald-100 text-emerald-800'
+        : item.estado === 'negativa' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800';
+    const detalleServicios = (item.servicios || []).map(servicio => `
+        <tr class="border-t border-slate-200 align-top">
+            <td class="py-2 pr-3"><strong class="block text-slate-900">${escapeHtml(servicio.campania)}</strong><span class="text-[11px] text-slate-500">${escapeHtml(servicio.site)}</span></td>
+            <td class="px-2 py-2 text-right">${resumenCambio(servicio, 'dotacion_requerida', 'numero')}</td>
+            <td class="px-2 py-2 text-right">${resumenCambio(servicio, 'horas_proyectadas', 'numero', ' h')}</td>
+            <td class="px-2 py-2 text-right">${resumenCambio(servicio, 'precio_final', 'moneda', '/h')}</td>
+            <td class="px-2 py-2 text-right font-bold ${servicio.impacto_facturacion < 0 ? 'text-rose-700' : 'text-emerald-700'}">${impactoServicio(servicio)}</td>
+            <td class="py-2 pl-3 text-slate-700">${escapeHtml(servicio.lectura)}</td>
+        </tr>`).join('');
+    return `
+        <tr class="border-t border-slate-200 align-top hover:bg-slate-50">
+            <td class="px-3 py-4"><strong class="block text-slate-900">${escapeHtml(item.mes_label)}</strong><span class="text-xs text-slate-500">vs. ${escapeHtml(item.mes_anterior_label)}</span></td>
+            <td class="px-3 py-4"><strong class="block text-base text-slate-950">${escapeHtml(item.cliente)}</strong><span class="mt-1 block text-xs text-slate-500">${item.cantidad_servicios} ${item.cantidad_servicios === 1 ? 'servicio con cambio' : 'servicios con cambios'}</span></td>
+            <td class="px-3 py-4 text-right tabular-nums">${resumenCambio(item, 'dotacion_requerida', 'numero')}</td>
+            <td class="px-3 py-4 text-right tabular-nums">${resumenCambio(item, 'horas_proyectadas', 'numero', ' h')}</td>
+            <td class="px-3 py-4 text-right tabular-nums">${resumenCambio(item, 'precio_final', 'moneda', '/h')}</td>
+            <td class="px-3 py-4 text-right"><span class="inline-flex items-center gap-2 whitespace-nowrap text-lg"><span class="h-4 w-4 rounded-full ${item.impacto_facturacion < 0 ? 'bg-rose-500' : item.impacto_facturacion > 0 ? 'bg-emerald-400' : 'bg-slate-300'}" aria-hidden="true"></span><strong class="tabular-nums ${item.impacto_facturacion < 0 ? 'text-rose-700' : item.impacto_facturacion > 0 ? 'text-emerald-700' : 'text-slate-600'}">${monedaCompacta(item.impacto_facturacion)}</strong></span><span class="mt-1 block text-xs text-slate-500">${moneda(item.facturacion_anterior)} → ${moneda(item.facturacion_actual)}</span></td>
+            <td class="max-w-[390px] px-3 py-4">
+                <span class="mb-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${tono}">${escapeHtml(item.estado)}</span>
+                <p class="leading-5 text-slate-800">${escapeHtml(item.lectura)}</p>
+            </td>
+        </tr>
+        <tr class="border-t border-slate-100 bg-slate-50/60">
+            <td colspan="7" class="px-4 py-2">
+                <details><summary class="cursor-pointer py-1 text-xs font-semibold text-blue-700">Ver detalle de ${item.cantidad_servicios} ${item.cantidad_servicios === 1 ? 'servicio' : 'servicios'} de ${escapeHtml(item.cliente)}</summary><div class="mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white p-3"><table class="w-full min-w-[1000px] text-xs"><thead><tr class="text-slate-500"><th class="pb-2 text-left">Servicio</th><th class="px-2 pb-2 text-right">Dotación</th><th class="px-2 pb-2 text-right">Horas</th><th class="px-2 pb-2 text-right">Precio</th><th class="px-2 pb-2 text-right">Impacto</th><th class="pb-2 pl-3 text-left">Lectura</th></tr></thead><tbody>${detalleServicios}</tbody></table></div></details>
+            </td>
+        </tr>`;
+}
+
+function resumenCambio(item, metrica, tipo, sufijo = '') {
+    const valores = item.comparacion[metrica];
+    if (Math.abs(Number(valores.diferencia)) <= 0.005) {
+        return `<span class="block text-xs text-slate-500">Sin cambio</span><strong class="text-slate-800">${formatoMetrica(valores.actual, tipo)}${sufijo}</strong>`;
+    }
+    const color = valores.diferencia < 0 ? 'text-rose-700' : 'text-emerald-700';
+    return `<span class="block whitespace-nowrap text-slate-800">${formatoMetrica(valores.anterior, tipo)} → ${formatoMetrica(valores.actual, tipo)}${sufijo}</span><strong class="mt-1 block ${color}">${formatoMetrica(valores.diferencia, tipo, true)}${sufijo}</strong>`;
+}
+
+function impactoServicio(servicio) {
+    const sinPrecio = Math.abs(Number(servicio.comparacion.precio_final.anterior)) <= 0.005
+        && Math.abs(Number(servicio.comparacion.precio_final.actual)) <= 0.005;
+    const cambiaVolumen = Math.abs(Number(servicio.comparacion.dotacion_requerida.diferencia)) > 0.005
+        || Math.abs(Number(servicio.comparacion.horas_proyectadas.diferencia)) > 0.005;
+    if (sinPrecio && cambiaVolumen && Math.abs(Number(servicio.impacto_facturacion)) <= 0.005) {
+        return '<span class="text-[11px] text-slate-500">Incluido en el bloque</span>';
+    }
+    return monedaCompacta(servicio.impacto_facturacion);
+}
+
+function exportarReporte() {
+    const params = new URLSearchParams({ year: document.getElementById('yearFiltro').value });
+    const filtros = { mes: 'mesFiltro', estado: 'estadoFiltro', metrica: 'metricaFiltro', buscar: 'buscarFiltro' };
+    Object.entries(filtros).forEach(([clave, id]) => { const valor = document.getElementById(id).value.trim(); if (valor) params.set(clave, valor); });
+    window.location.href = `/api/notificaciones-proyecciones/exportar?${params.toString()}`;
+}
+
+function limpiarFiltros() {
+    ['buscarFiltro', 'mesFiltro', 'estadoFiltro', 'metricaFiltro'].forEach(id => { document.getElementById(id).value = ''; });
+    renderNotificaciones();
+}
+
+function moneda(valor) {
+    return Number(valor || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function monedaFirmada(valor) { return `${Number(valor) > 0 ? '+' : ''}${moneda(valor)}`; }
+function monedaCompacta(valor) {
+    const valorNumero = Number(valor || 0);
+    const signo = valorNumero > 0 ? '+' : valorNumero < 0 ? '-' : '';
+    const absoluto = Math.abs(valorNumero);
+    if (absoluto >= 1000000) return `${signo}$ ${(absoluto / 1000000).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} M`;
+    return `${signo}${moneda(absoluto)}`;
+}
+function numero(valor, firmado = false) { return `${firmado && Number(valor) > 0 ? '+' : ''}${Number(valor || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+function formatoMetrica(valor, tipo, firmado = false) {
+    if (tipo === 'moneda') return `${firmado && Number(valor) > 0 ? '+' : ''}${moneda(valor)}`;
+    if (tipo === 'porcentaje') return `${numero(valor, firmado)}%`;
+    return numero(valor, firmado);
+}
+function normalizar(valor) { return String(valor || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+function escapeHtml(valor) { return String(valor ?? '').replace(/[&<>"']/g, caracter => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[caracter])); }
+</script>
+{% endblock %}

@@ -84,9 +84,9 @@ function render() {
             ${meses.map(m => {
                 const dato = fila.meses[m.value] || {id:null,monto:0};
                 return `<td class="border-b border-r border-slate-200 p-1.5">
-                    <input type="number" step="0.01" min="0" value="${dato.monto || 0}" ${dato.id ? '' : 'disabled'}
-                        onchange="guardar(${dato.id || 'null'}, this)"
-                        onfocus="this.select()" class="h-9 w-full rounded border border-slate-300 bg-white px-2 text-right tabular-nums disabled:bg-slate-100">
+                    <input type="number" step="0.01" min="0" value="${dato.monto || 0}"
+                        onchange="guardar(${dato.id || 'null'}, this, '${encodeURIComponent(JSON.stringify({site: fila.site, cliente: fila.cliente, campania: fila.campania, mes: m.value}))}')"
+                        onfocus="this.select()" class="h-9 w-full rounded border border-slate-300 bg-white px-2 text-right tabular-nums">
                 </td>`;
             }).join('')}
         </tr>`;
@@ -94,14 +94,14 @@ function render() {
     document.getElementById('contador').textContent = `${visibles.length} campaña(s). Los cambios se guardan al salir del campo.`;
 }
 
-async function guardar(id, input) {
-    if (!id) return;
+async function guardar(id, input, raw) {
+    const identidad = JSON.parse(decodeURIComponent(raw));
     input.disabled = true;
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const response = await fetch('/api/suma-fija', {
         method: 'POST', credentials: 'same-origin',
         headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
-        body: JSON.stringify({id, monto: input.value}),
+        body: JSON.stringify({id, ...identidad, monto: input.value}),
     });
     const data = await response.json();
     input.disabled = false;

@@ -1147,6 +1147,7 @@ class AsignacionComercial(db.Model):
     campania = db.Column(db.String(100), nullable=False)
     subcampania = db.Column(db.String(100), nullable=False)
     tipo_negocio = db.Column(db.String(100), nullable=True)
+    grupo_facturacion = db.Column(db.String(100), nullable=True, index=True)
     es_next_gen = db.Column(db.Boolean, default=False, nullable=False)
     activa = db.Column(db.Boolean, default=True, nullable=False)
     vigencia_desde = db.Column(db.String(7), nullable=True, index=True)
@@ -1180,6 +1181,7 @@ class AsignacionComercial(db.Model):
             'campania': self.campania,
             'subcampania': self.subcampania,
             'tipo_negocio': self.tipo_negocio,
+            'grupo_facturacion': self.grupo_facturacion,
             'es_next_gen': bool(self.es_next_gen),
             'activa': self.activa,
             'vigencia_desde': self.vigencia_desde,

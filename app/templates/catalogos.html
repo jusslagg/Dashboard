@@ -52,6 +52,12 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de negocio</label>
                 <input id="tipo_negocio" name="tipo_negocio" type="text" placeholder="Opcional" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
+            <div id="grupoFacturacionCampo">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Grupo en Facturación horas</label>
+                <input id="grupo_facturacion" name="grupo_facturacion" type="text" list="gruposFacturacionDisponibles" placeholder="Sin grupo" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <datalist id="gruposFacturacionDisponibles"></datalist>
+                <p class="mt-1 text-xs text-gray-500">Asigná aquí el servicio a Personal, Getnet, Santander o a un grupo nuevo.</p>
+            </div>
             <div id="grupoVigenciaDesde" class="hidden rounded border border-blue-100 bg-blue-50 p-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Aplicar desde mes</label>
                 <input id="vigencia_desde" name="vigencia_desde" type="month" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -129,6 +135,12 @@
                     <option value="">Todos</option>
                 </select>
             </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold text-gray-600">Grupo Facturación horas</label>
+                <select id="filtroGrupoFacturacionCatalogo" data-filtro-catalogo="grupo_facturacion" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Todos</option>
+                </select>
+            </div>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full min-w-[1080px] text-sm">
@@ -141,13 +153,14 @@
                         <th class="px-4 py-3 text-left font-semibold text-gray-600">Campaña</th>
                         <th class="px-4 py-3 text-left font-semibold text-gray-600">Sub campaña</th>
                         <th class="px-4 py-3 text-left font-semibold text-gray-600">Tipo negocio</th>
+                        <th class="px-4 py-3 text-left font-semibold text-gray-600">Grupo Facturación horas</th>
                         <th class="px-4 py-3 text-center font-semibold text-gray-600">Estado</th>
                         <th class="px-4 py-3 text-center font-semibold text-gray-600">Accion</th>
                     </tr>
                 </thead>
                 <tbody id="tablaAsignaciones">
                     <tr>
-                        <td colspan="9" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                        <td colspan="10" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
                     </tr>
                 </tbody>
             </table>
@@ -239,6 +252,7 @@ function actualizarModoNextGen() {
         campo.closest('div').classList.toggle('hidden', activo);
     });
     document.getElementById('tipo_negocio').closest('div').classList.toggle('hidden', activo);
+    document.getElementById('grupoFacturacionCampo').classList.toggle('hidden', activo);
 }
 
 function inicializarMensajeServidor() {
@@ -271,13 +285,21 @@ async function cargarAsignaciones() {
         const response = await fetch('/api/asignaciones?activas=0&_ts=' + Date.now(), { cache: 'no-store' });
         data = await leerRespuestaJson(response);
     } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="9" class="px-4 py-8 text-center text-red-600">${escapeHtml(error.message || 'No se pudieron cargar las asociaciones.')}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="px-4 py-8 text-center text-red-600">${escapeHtml(error.message || 'No se pudieron cargar las asociaciones.')}</td></tr>`;
         return;
     }
     asignacionesCatalogo = data.success ? (data.asignaciones || []) : [];
     poblarClientesExcepcion();
     poblarFiltrosCatalogo();
+    poblarGruposFacturacion();
     renderAsignaciones();
+}
+
+function poblarGruposFacturacion() {
+    const grupos = [...new Set(asignacionesCatalogo.map(item => String(item.grupo_facturacion || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    document.getElementById('gruposFacturacionDisponibles').innerHTML = grupos
+        .map(grupo => `<option value="${escapeHtml(grupo)}"></option>`).join('');
 }
 
 function inicializarFiltrosCatalogo() {
@@ -295,6 +317,7 @@ function poblarFiltrosCatalogo() {
         ['filtroJefeSiteCatalogo', 'jefe_site', 'Todos'],
         ['filtroSubcampaniaCatalogo', 'subcampania', 'Todas'],
         ['filtroTipoNegocioCatalogo', 'tipo_negocio', 'Todos'],
+        ['filtroGrupoFacturacionCatalogo', 'grupo_facturacion', 'Todos'],
     ];
     filtros.forEach(([id, campo, label]) => {
         const select = document.getElementById(id);
@@ -326,6 +349,7 @@ function asignacionesFiltradas() {
             item.campania,
             item.subcampania,
             item.tipo_negocio,
+            item.grupo_facturacion,
             item.es_next_gen ? 'nextgen' : '',
             item.activa ? 'activa' : 'inactiva'
         ].join(' ')).includes(texto);
@@ -341,11 +365,11 @@ function renderAsignaciones() {
         : '';
 
     if (asignacionesCatalogo.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">No hay asociaciones cargadas</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">No hay asociaciones cargadas</td></tr>';
         return;
     }
     if (asignaciones.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">No hay asociaciones que coincidan con los filtros</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">No hay asociaciones que coincidan con los filtros</td></tr>';
         return;
     }
 
@@ -358,6 +382,7 @@ function renderAsignaciones() {
             <td class="px-4 py-3">${escapeHtml(item.campania)}</td>
             <td class="px-4 py-3">${escapeHtml(item.subcampania)}</td>
             <td class="px-4 py-3">${escapeHtml(item.tipo_negocio || '-')}</td>
+            <td class="px-4 py-3">${item.grupo_facturacion ? `<span class="rounded-full bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">${escapeHtml(item.grupo_facturacion)}</span>` : '<span class="text-slate-400">Sin grupo</span>'}</td>
             <td class="px-4 py-3 text-center">
                 <span class="px-2 py-1 rounded text-xs font-semibold ${item.activa ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">
                     ${item.activa ? 'Activa' : 'Inactiva'}
@@ -456,6 +481,7 @@ function getPayload() {
         campania: document.getElementById('campania').value,
         subcampania: document.getElementById('subcampania').value,
         tipo_negocio: document.getElementById('tipo_negocio').value,
+        grupo_facturacion: document.getElementById('grupo_facturacion').value,
         vigencia_desde: document.getElementById('vigencia_desde').value
     };
 }
@@ -543,7 +569,7 @@ async function verificarAsignacionGuardada(id, esperado) {
 
     const campos = esperado.es_next_gen
         ? ['es_next_gen']
-        : ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio', 'es_next_gen'];
+        : ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio', 'grupo_facturacion', 'es_next_gen'];
     const distinto = campos.find(campo => String(data.asignacion[campo] ?? '') !== String(esperado[campo] ?? ''));
     if (distinto) {
         return {
@@ -563,6 +589,7 @@ function editarAsignacion(item) {
     document.getElementById('campania').value = item.campania;
     document.getElementById('subcampania').value = item.subcampania;
     document.getElementById('tipo_negocio').value = item.tipo_negocio || '';
+    document.getElementById('grupo_facturacion').value = item.grupo_facturacion || '';
     document.getElementById('es_next_gen').checked = Boolean(item.es_next_gen);
     document.getElementById('nombre_next_gen').value = item.es_next_gen ? item.cliente : '';
     actualizarModoNextGen();

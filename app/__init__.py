@@ -306,6 +306,8 @@ def ensure_schema():
         db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN jefe_site VARCHAR(100)"))
     if asignacion_columns and 'tipo_negocio' not in asignacion_columns:
         db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN tipo_negocio VARCHAR(100)"))
+    if asignacion_columns and 'grupo_facturacion' not in asignacion_columns:
+        db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN grupo_facturacion VARCHAR(100)"))
     if asignacion_columns and 'es_next_gen' not in asignacion_columns:
         db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN es_next_gen BOOLEAN DEFAULT 0 NOT NULL"))
     if asignacion_columns and 'vigencia_desde' not in asignacion_columns:
@@ -328,6 +330,20 @@ def ensure_schema():
             "CREATE INDEX IF NOT EXISTS ix_asignaciones_comerciales_vigencia_hasta "
             "ON asignaciones_comerciales (vigencia_hasta)"
         ))
+        db.session.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_asignaciones_comerciales_grupo_facturacion "
+            "ON asignaciones_comerciales (grupo_facturacion)"
+        ))
+        db.session.execute(text("""
+            UPDATE asignaciones_comerciales
+            SET grupo_facturacion = CASE
+                WHEN lower(cliente) LIKE 'personal%' OR lower(campania) LIKE 'personal%' THEN 'Personal'
+                WHEN lower(campania) IN ('santander getnet', 'santander getnet onboarding') THEN 'Getnet'
+                WHEN lower(cliente) LIKE 'santander%' OR lower(campania) LIKE 'santander%' THEN 'Santander'
+                ELSE grupo_facturacion
+            END
+            WHERE grupo_facturacion IS NULL OR trim(grupo_facturacion) = ''
+        """))
         db.session.execute(text("""
             INSERT INTO campanias (cliente, nombre, activa, creado_en)
             SELECT DISTINCT a.cliente, a.campania, 1, CURRENT_TIMESTAMP

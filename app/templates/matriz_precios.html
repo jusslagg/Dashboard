@@ -30,8 +30,12 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-    <section class="rounded-lg bg-white p-5 shadow">
+<div class="space-y-5">
+    <details class="rounded-lg bg-white shadow">
+        <summary class="cursor-pointer list-none border-b border-slate-200 px-5 py-4 font-semibold text-slate-800">
+            <i class="fas fa-sliders mr-2 text-blue-600"></i>Herramientas avanzadas: inflación, alcance y fijo mensual
+        </summary>
+    <section class="max-w-xl p-5">
         <div class="mb-5 border-b border-slate-200 pb-5">
             <div class="mb-4">
                 <h2 class="font-semibold text-gray-900">Aplicar inflacion</h2>
@@ -128,13 +132,15 @@
             </button>
         </form>
     </section>
+    </details>
 
     <section class="rounded-lg bg-white shadow">
         <div class="border-b border-gray-200 px-4 py-3">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                    <h2 class="font-semibold text-gray-900">Precios cargados</h2>
+                    <h2 class="font-semibold text-gray-900">Matriz mensual de precios</h2>
                     <p id="contadorPrecios" class="mt-1 text-xs text-gray-500">Cargando...</p>
+                    <p class="mt-1 text-xs font-medium text-blue-700">Editá una celda y presioná Enter o salí del campo. El nuevo precio se replica desde ese mes hacia los meses siguientes.</p>
                 </div>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-4">
                     <input id="buscarPrecio" type="search" oninput="renderPrecios()" placeholder="Buscar..." class="h-10 rounded border border-gray-300 px-3 text-sm">
@@ -143,26 +149,14 @@
                     <select id="filtroCampania" onchange="renderPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
                 </div>
             </div>
+            <div id="mensajeGrillaPrecios" class="mt-3 hidden rounded px-3 py-2 text-sm" role="status" aria-live="polite"></div>
         </div>
         <div class="overflow-auto">
-            <table class="w-full min-w-[1160px] border-collapse text-sm">
-                <thead class="bg-slate-100 text-slate-900">
-                    <tr>
-                        <th class="border border-slate-200 px-3 py-2 text-left">Site</th>
-                        <th class="border border-slate-200 px-3 py-2 text-left">Cliente</th>
-                        <th class="border border-slate-200 px-3 py-2 text-left">Campania</th>
-                        <th class="border border-slate-200 px-3 py-2 text-center">Anio</th>
-                        <th class="border border-slate-200 px-3 py-2 text-center">Mes</th>
-                        <th class="border border-slate-200 px-3 py-2 text-right">Precio</th>
-                        <th class="border border-slate-200 px-3 py-2 text-right">Alcance</th>
-                        <th class="border border-slate-200 px-3 py-2 text-right">Precio final</th>
-                        <th class="border border-slate-200 px-3 py-2 text-right">Fijo mensual</th>
-                        <th class="border border-slate-200 px-3 py-2 text-center">Accion</th>
-                    </tr>
-                </thead>
+            <table class="w-full border-collapse text-xs" style="min-width: 1920px; table-layout: fixed">
+                <thead id="theadPrecios" class="sticky top-0 z-10 bg-blue-900 text-white"></thead>
                 <tbody id="tbodyPrecios">
                     <tr>
-                        <td colspan="10" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                        <td colspan="15" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
                     </tr>
                 </tbody>
             </table>
@@ -295,7 +289,7 @@ function popularFiltros() {
     const siteActual = document.getElementById('filtroSite').value;
     const clienteActual = document.getElementById('filtroCliente').value;
     const sites = [...new Set([...asociaciones, ...precios].map(item => item.site).filter(Boolean))].sort();
-    const clientes = [...new Set(precios.map(item => item.cliente).filter(Boolean))].sort();
+    const clientes = [...new Set([...asociaciones, ...precios].map(item => item.cliente).filter(Boolean))].sort();
     document.getElementById('filtroSite').innerHTML = '<option value="">Todos los sites</option>' + sites.map(site =>
         `<option value="${escapeHtml(site)}" ${site === siteActual ? 'selected' : ''}>${escapeHtml(site)}</option>`
     ).join('');
@@ -308,7 +302,7 @@ function popularFiltros() {
 function actualizarFiltroCampania() {
     const cliente = document.getElementById('filtroCliente').value;
     const actual = document.getElementById('filtroCampania').value;
-    const campanias = [...new Set(precios
+    const campanias = [...new Set([...asociaciones, ...precios]
         .filter(item => !cliente || item.cliente === cliente)
         .map(item => item.campania)
         .filter(Boolean)
@@ -473,35 +467,161 @@ function renderPrecios() {
     const site = document.getElementById('filtroSite').value;
     const cliente = document.getElementById('filtroCliente').value;
     const campania = document.getElementById('filtroCampania').value;
-    const filtradas = precios.filter(item => {
+    const year = document.getElementById('yearFiltro').value;
+    const mesesYear = meses.filter(item => item.value.startsWith(`${year}-`));
+    document.getElementById('theadPrecios').innerHTML = `<tr>
+        <th class="sticky z-20 border border-blue-700 bg-blue-100 px-3 py-2 text-left text-slate-950" style="left: 0; width: 160px; min-width: 160px">Cuenta</th>
+        <th class="sticky z-20 border border-blue-700 bg-blue-100 px-3 py-2 text-left text-slate-950" style="left: 160px; width: 192px; min-width: 192px">Site</th>
+        <th class="sticky z-20 border border-blue-700 bg-blue-100 px-3 py-2 text-left text-slate-950" style="left: 352px; width: 224px; min-width: 224px">Cliente</th>
+        ${mesesYear.map(item => `<th class="border border-blue-700 px-2 py-2 text-center" style="width: 112px; min-width: 112px; background-color: #1e3a8a; color: #ffffff">${escapeHtml(item.label)}</th>`).join('')}
+    </tr>`;
+
+    const filasPorClave = new Map();
+    [...asociaciones, ...precios].forEach(item => {
+        if (!item.cliente || !item.campania) return;
+        const clave = `${normalizar(item.cliente)}\u0000${normalizar(item.campania)}`;
+        const existente = filasPorClave.get(clave) || { cliente: item.cliente, campania: item.campania, site: item.site || 'Sin site' };
+        if ((!existente.site || existente.site === 'Sin site') && item.site) existente.site = item.site;
+        filasPorClave.set(clave, existente);
+    });
+    const filas = [...filasPorClave.values()].sort((a, b) =>
+        a.cliente.localeCompare(b.cliente, 'es') || a.campania.localeCompare(b.campania, 'es')
+    );
+    const filtradas = filas.filter(item => {
         if (site && item.site !== site) return false;
         if (cliente && item.cliente !== cliente) return false;
         if (campania && item.campania !== campania) return false;
-        if (!texto) return true;
-        return normalizar(`${item.site} ${item.cliente} ${item.campania} ${item.mes_label}`).includes(texto);
+        return !texto || normalizar(`${item.cliente} ${item.site} ${item.campania}`).includes(texto);
     });
-    document.getElementById('contadorPrecios').textContent = `${filtradas.length} de ${precios.length} precio(s)`;
+    document.getElementById('contadorPrecios').textContent = `${filtradas.length} de ${filas.length} filas · ${mesesYear.length} meses`;
     if (!filtradas.length) {
-        tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">No hay precios cargados</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${mesesYear.length + 3}" class="px-4 py-8 text-center text-gray-500">No hay clientes para los filtros seleccionados</td></tr>`;
         return;
     }
-    tbody.innerHTML = filtradas.map(item => `
-        <tr class="hover:bg-slate-50">
-            <td class="border border-gray-200 px-3 py-2">${escapeHtml(item.site || 'Sin site')}</td>
-            <td class="border border-gray-200 px-3 py-2">${escapeHtml(item.cliente)}</td>
-            <td class="border border-gray-200 px-3 py-2 font-semibold text-gray-900">${escapeHtml(item.campania)}</td>
-            <td class="border border-gray-200 px-3 py-2 text-center">${item.year}</td>
-            <td class="border border-gray-200 px-3 py-2 text-center">${escapeHtml(item.mes_label)}</td>
-            <td class="border border-gray-200 px-3 py-2 text-right">${formatCurrency(item.precio_base)}</td>
-            <td class="border border-gray-200 px-3 py-2 text-right">${formatPercent(item.alcance_porcentaje)}</td>
-            <td class="border border-gray-200 bg-blue-50 px-3 py-2 text-right font-semibold text-blue-900">${formatCurrency(item.precio_final)}</td>
-            <td class="border border-gray-200 bg-emerald-50 px-3 py-2 text-right font-semibold text-emerald-900">${formatCurrency(item.importe_fijo_mensual)}</td>
-            <td class="border border-gray-200 px-3 py-2 text-center">
-                <button type="button" onclick="editarPrecio(${item.id})" class="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"><i class="fas fa-pen"></i></button>
-                <button type="button" onclick="eliminarPrecio(${item.id})" class="ml-1 rounded bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-700"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>
-    `).join('');
+    const preciosPorClave = new Map(precios.map(item => [`${normalizar(item.cliente)}\u0000${normalizar(item.campania)}\u0000${item.mes}`, item]));
+    tbody.innerHTML = filtradas.map((fila, indice) => {
+        const fondo = indice % 2 ? 'bg-slate-50' : 'bg-white';
+        const celdas = mesesYear.map(mes => {
+            const precio = preciosPorClave.get(`${normalizar(fila.cliente)}\u0000${normalizar(fila.campania)}\u0000${mes.value}`);
+            const valor = Number(precio?.precio_final || 0);
+            return `<td class="border border-slate-300 p-0 ${valor > 0 ? 'bg-white' : 'bg-slate-50'}">
+                <input type="text" inputmode="decimal" value="${escapeHtml(formatCurrencyCell(valor))}"
+                    data-cliente="${escapeHtml(fila.cliente)}" data-campania="${escapeHtml(fila.campania)}"
+                    data-site="${escapeHtml(fila.site || '')}" data-mes="${mes.value}" data-original="${valor}"
+                    onfocus="iniciarEdicionPrecioCelda(this)" onblur="guardarPrecioCelda(this)" onkeydown="teclaPrecioCelda(event, this)"
+                    class="h-9 w-full border-0 bg-transparent px-2 text-right text-xs font-medium tabular-nums text-slate-900 outline-none focus:bg-amber-50 focus:ring-2 focus:ring-inset focus:ring-blue-500">
+            </td>`;
+        }).join('');
+        return `<tr class="${fondo} hover:bg-blue-50/40">
+            <td class="sticky z-[2] border border-slate-300 ${fondo} px-2 py-2 font-medium text-slate-900" style="left: 0; width: 160px; min-width: 160px">${escapeHtml(fila.cliente)}</td>
+            <td class="sticky z-[2] border border-slate-300 ${fondo} px-2 py-2 text-slate-700" style="left: 160px; width: 192px; min-width: 192px">${escapeHtml(fila.site || 'Sin site')}</td>
+            <td class="sticky z-[2] border border-slate-300 ${fondo} px-2 py-2 font-semibold text-slate-950" style="left: 352px; width: 224px; min-width: 224px">${escapeHtml(fila.campania)}</td>
+            ${celdas}
+        </tr>`;
+    }).join('');
+}
+
+function formatCurrencyCell(value) {
+    return '$ ' + Number(value || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function numeroMonedaCelda(value) {
+    let texto = String(value ?? '').trim().replace(/[$\s]/g, '');
+    if (!texto) return 0;
+    const ultimaComa = texto.lastIndexOf(',');
+    const ultimoPunto = texto.lastIndexOf('.');
+    if (ultimaComa >= 0 && ultimoPunto >= 0) {
+        const decimal = ultimaComa > ultimoPunto ? ',' : '.';
+        const miles = decimal === ',' ? /\./g : /,/g;
+        texto = texto.replace(miles, '').replace(decimal, '.');
+    } else if (ultimaComa >= 0) {
+        texto = texto.replace(/\./g, '').replace(',', '.');
+    } else if ((texto.match(/\./g) || []).length > 1) {
+        texto = texto.replace(/\./g, '');
+    }
+    const valor = Number(texto);
+    return Number.isFinite(valor) ? valor : NaN;
+}
+
+function iniciarEdicionPrecioCelda(input) {
+    if (input.dataset.editando === 'true') return;
+    input.dataset.editando = 'true';
+    input.value = Number(input.dataset.original || 0).toLocaleString('es-AR', { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    input.select();
+}
+
+function teclaPrecioCelda(event, input) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        input.blur();
+    } else if (event.key === 'Escape') {
+        input.dataset.cancelar = 'true';
+        input.blur();
+    }
+}
+
+async function guardarPrecioCelda(input) {
+    if (input.dataset.editando !== 'true') return;
+    input.dataset.editando = 'false';
+    const original = Number(input.dataset.original || 0);
+    if (input.dataset.cancelar === 'true') {
+        delete input.dataset.cancelar;
+        input.value = formatCurrencyCell(original);
+        return;
+    }
+    const precioFinal = numeroMonedaCelda(input.value);
+    if (!Number.isFinite(precioFinal) || precioFinal < 0) {
+        mostrarMensajeGrilla('Ingresá un precio válido mayor o igual a cero.', 'error');
+        input.value = formatCurrencyCell(original);
+        return;
+    }
+    if (Math.abs(precioFinal - original) < 0.005) {
+        input.value = formatCurrencyCell(original);
+        return;
+    }
+    const existente = precios.find(item => normalizar(item.cliente) === normalizar(input.dataset.cliente)
+        && normalizar(item.campania) === normalizar(input.dataset.campania) && item.mes === input.dataset.mes);
+    let alcance = Number(existente?.alcance_porcentaje ?? 100);
+    if (alcance <= 0) alcance = 100;
+    const payload = {
+        id: existente?.id || null,
+        site: input.dataset.site,
+        cliente: existente?.cliente || input.dataset.cliente,
+        campania: existente?.campania || input.dataset.campania,
+        year: Number(input.dataset.mes.slice(0, 4)),
+        mes: input.dataset.mes,
+        precio_base: precioFinal * 100 / alcance,
+        alcance_porcentaje: alcance,
+        importe_fijo_mensual: Number(existente?.importe_fijo_mensual || 0),
+    };
+    input.disabled = true;
+    input.classList.add('bg-blue-50');
+    try {
+        const response = await fetch('/api/matriz-precios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error((data.errores || ['No se pudo guardar']).join(', '));
+        mostrarMensajeGrilla(`${input.dataset.campania}: ${formatCurrencyCell(precioFinal)} desde ${etiquetaMesCelda(input.dataset.mes)}. ${data.mensaje}`, 'success');
+        await cargarPrecios();
+    } catch (error) {
+        input.disabled = false;
+        input.classList.remove('bg-blue-50');
+        input.value = formatCurrencyCell(original);
+        mostrarMensajeGrilla(error.message || 'No se pudo guardar el precio.', 'error');
+    }
+}
+
+function etiquetaMesCelda(mes) {
+    return meses.find(item => item.value === mes)?.label || mes;
+}
+
+function mostrarMensajeGrilla(mensaje, tipo) {
+    const contenedor = document.getElementById('mensajeGrillaPrecios');
+    contenedor.className = `mt-3 rounded px-3 py-2 text-sm ${tipo === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`;
+    contenedor.textContent = mensaje;
 }
 
 function limpiarFormulario(resetMensaje = true) {
