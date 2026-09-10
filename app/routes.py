@@ -1,7 +1,7 @@
 ﻿# filepath: app/routes.py
 from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
 from app import db, get_csrf_token
-from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
+from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProformaPersonal, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, SeguimientoPersonalImportacion, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
 import calendar
 from collections import defaultdict
@@ -20,6 +20,7 @@ import textwrap
 import time
 import unicodedata
 import zipfile
+import zlib
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
@@ -2430,6 +2431,33 @@ def restaurar_site_proyeccion_snapshot(registro, snapshot):
     registro.campania_destino = snapshot.get('campania_destino') or None
 
 
+def buscar_proforma_personal_snapshot(snapshot):
+    if not snapshot:
+        return None
+    if snapshot.get('id'):
+        encontrada = db.session.get(ProformaPersonal, snapshot['id'])
+        if encontrada:
+            return encontrada
+    return ProformaPersonal.query.filter_by(
+        fdv=snapshot.get('fdv'), periodo=snapshot.get('periodo'),
+        negocio=snapshot.get('negocio'), sitio_proveedor=snapshot.get('sitio_proveedor'),
+        segmento=snapshot.get('segmento'), subsitio=snapshot.get('subsitio') or None,
+        tipo_hora=snapshot.get('tipo_hora'),
+    ).first()
+
+
+def restaurar_proforma_personal_snapshot(registro, snapshot):
+    campos = (
+        'fdv', 'periodo', 'negocio', 'sitio_proveedor', 'segmento', 'subsitio', 'tipo_hora',
+        'total_horas', 'precio', 'monto_fijo', 'porcentaje_bono_kpi_vs',
+        'monto_variable_kpi_vs', 'porcentaje_bono_ac', 'monto_variable_ac',
+        'monto_variable', 'total_proyeccion', 'bono_porcentaje_total', 'archivo_origen',
+    )
+    for campo in campos:
+        valor = snapshot.get(campo)
+        setattr(registro, campo, (valor or None) if campo == 'subsitio' else valor)
+
+
 def lista_snapshots_historial(value):
     if not value:
         return []
@@ -2445,6 +2473,8 @@ def lista_snapshots_historial(value):
         return value['next_gen']
     if isinstance(value, dict) and isinstance(value.get('sites_proyeccion'), list):
         return value['sites_proyeccion']
+    if isinstance(value, dict) and isinstance(value.get('proformas'), list):
+        return value['proformas']
     if isinstance(value, dict) and isinstance(value.get('filas'), list):
         return value['filas']
     if isinstance(value, dict) and value.get('tipo_registro') in ('dolar', 'producto'):
@@ -2753,6 +2783,25 @@ def favicon():
 def cargar():
     """Vista de carga de datos"""
     return render_template('cargar.html')
+
+
+@main_bp.route('/carga-datos-personal')
+@carga_requerida
+def carga_datos_personal():
+    """Carga mensual focalizada de horas proyectadas de Personal."""
+    year_actual = datetime.utcnow().year
+    years = {year_actual}
+    for (mes,) in db.session.query(ProyeccionMatriz.mes).filter(
+        ProyeccionMatriz.tipo_plp.isnot(None),
+        ProyeccionMatriz.tipo_plp != '',
+    ).distinct().all():
+        if mes and re.fullmatch(r'\d{4}-\d{2}', mes):
+            years.add(int(mes[:4]))
+    return render_template(
+        'carga_datos_personal.html',
+        anio_actual=year_actual,
+        anios_disponibles=sorted(years, reverse=True),
+    )
 
 
 @main_bp.route('/control')
@@ -3637,7 +3686,7 @@ def deshacer_item_historial(item):
         return {'success': False, 'errores': ['Este movimiento ya es un deshacer']}, 400
     if historial_movimiento_deshace(item.id):
         return {'success': False, 'errores': ['Este movimiento ya fue deshecho']}, 400
-    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion', 'dotaciones_clientes_mensuales', 'graficos_dotaciones_mensuales', 'dashboard_operativo', 'historico_cliente', 'ratio_eli_mensual', 'ratio_eli_ii_mensual')
+    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion', 'proforma_personal', 'seguimiento_personal', 'dotaciones_clientes_mensuales', 'graficos_dotaciones_mensuales', 'dashboard_operativo', 'historico_cliente', 'ratio_eli_mensual', 'ratio_eli_ii_mensual')
     if item.entidad not in entidades_permitidas:
         return {'success': False, 'errores': ['Este tipo de movimiento todavía no admite deshacer']}, 400
 
@@ -3645,6 +3694,45 @@ def deshacer_item_historial(item):
     despues = item._json(item.despues) or {}
     antes_snapshots = lista_snapshots_historial(antes)
     despues_snapshots = lista_snapshots_historial(despues)
+
+    if item.entidad == 'seguimiento_personal':
+        importacion_id = despues.get('id') or item.entidad_id
+        importacion = db.session.get(SeguimientoPersonalImportacion, int(importacion_id)) if str(importacion_id or '').isdigit() else None
+        if importacion:
+            db.session.delete(importacion)
+        registrar_historial(
+            'deshacer', item.entidad, str(importacion_id or ''),
+            f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes,
+        )
+        db.session.commit()
+        return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho: importación eliminada'}, 200
+
+    if item.entidad == 'proforma_personal':
+        cantidad = max(len(antes_snapshots), len(despues_snapshots))
+        restauradas = 0
+        eliminadas = 0
+        for indice in range(cantidad):
+            snapshot_antes = antes_snapshots[indice] if indice < len(antes_snapshots) else None
+            snapshot_despues = despues_snapshots[indice] if indice < len(despues_snapshots) else None
+            actual = buscar_proforma_personal_snapshot(snapshot_despues) or buscar_proforma_personal_snapshot(snapshot_antes)
+            if snapshot_antes:
+                if not actual:
+                    actual = ProformaPersonal()
+                    db.session.add(actual)
+                restaurar_proforma_personal_snapshot(actual, snapshot_antes)
+                restauradas += 1
+            elif actual:
+                db.session.delete(actual)
+                eliminadas += 1
+        registrar_historial(
+            'deshacer', item.entidad, item.entidad_id,
+            f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes,
+        )
+        db.session.commit()
+        return {
+            'success': True,
+            'mensaje': f'Movimiento #{item.id} deshecho: {restauradas} restaurada(s) y {eliminadas} nueva(s) eliminada(s)',
+        }, 200
 
     if item.entidad == 'ratio_eli_ii_mensual':
         snapshots = [snapshot for snapshot in antes_snapshots + despues_snapshots if snapshot]
@@ -8833,6 +8921,737 @@ def api_edicion_masiva_proyecciones_plp():
         'proyecciones': [item.to_dict() for item in guardadas],
         'eliminadas': eliminadas,
     })
+
+
+@main_bp.route('/api/carga-datos-personal', methods=['GET'])
+@login_requerido
+def api_carga_datos_personal():
+    """Datos PLP del año para la pantalla de carga específica de Personal."""
+    try:
+        year = int(request.args.get('year') or datetime.utcnow().year)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
+    if not 2020 <= year <= 2100:
+        return jsonify({'success': False, 'errores': ['El año debe estar entre 2020 y 2100']}), 400
+    meses = opciones_meses_proyeccion(year)
+    claves_mes = [mes['value'] for mes in meses]
+    registros = ProyeccionMatriz.query.filter(
+        ProyeccionMatriz.mes.in_(claves_mes),
+        ProyeccionMatriz.tipo_plp.isnot(None),
+        ProyeccionMatriz.tipo_plp != '',
+    ).order_by(ProyeccionMatriz.mes, ProyeccionMatriz.tipo_plp, ProyeccionMatriz.campania).all()
+    return jsonify({
+        'success': True,
+        'year': year,
+        'meses': meses,
+        'servicios': list(SERVICIOS_PERSONAL),
+        'cargas_semanales': list(CARGAS_SEMANALES_PROYECCION),
+        'proyecciones': [registro.to_dict() for registro in registros],
+    })
+
+
+ENCABEZADOS_PROFORMA_PERSONAL = (
+    'FDV', 'PERIODO', 'NEGOCIO', 'SITIO_PROVEEDOR', 'SEGMENTO', 'SUBSITIO',
+    'TIPO_HORA', 'TOTAL_HORAS', 'PRECIO', 'MONTO_FIJO',
+    'PORCENTAJE_BONO_KPI_VS', 'MONTO_VARIABLE_KPI_VS',
+    'PORCENTAJE_BONO_AC', 'MONTO_VARIABLE_AC', 'MONTO_VARIABLE', 'TOTAL_PROYECCION',
+)
+
+
+def periodo_proforma(valor):
+    if isinstance(valor, (datetime, date)):
+        texto = valor.strftime('%Y%m')
+    elif isinstance(valor, (int, float)) and not isinstance(valor, bool):
+        texto = str(int(valor))
+    else:
+        texto = re.sub(r'\D', '', str(valor or ''))
+    if not re.fullmatch(r'\d{6}', texto):
+        return None
+    try:
+        datetime.strptime(texto, '%Y%m')
+    except ValueError:
+        return None
+    return texto
+
+
+def porcentaje_proforma_excel(celda):
+    valor = parse_numero(celda.value)
+    return valor * 100 if '%' in str(celda.number_format or '') else valor
+
+
+@main_bp.route('/api/proforma-personal', methods=['GET'])
+@login_requerido
+def api_proforma_personal():
+    periodo = periodo_proforma(request.args.get('periodo')) if request.args.get('periodo') else None
+    query = ProformaPersonal.query
+    if periodo:
+        query = query.filter_by(periodo=periodo)
+    registros = query.order_by(
+        ProformaPersonal.periodo.desc(), ProformaPersonal.segmento,
+        ProformaPersonal.tipo_hora, ProformaPersonal.id,
+    ).all()
+    periodos = [fila[0] for fila in db.session.query(ProformaPersonal.periodo).distinct().order_by(ProformaPersonal.periodo.desc()).all()]
+    movimientos = HistorialCambio.query.filter_by(
+        entidad='proforma_personal', accion='importacion',
+    ).order_by(HistorialCambio.creado_en.desc(), HistorialCambio.id.desc()).all()
+    importaciones = []
+    for movimiento in movimientos:
+        valores_antes = lista_snapshots_historial(movimiento._json(movimiento.antes) or {})
+        valores_despues = lista_snapshots_historial(movimiento._json(movimiento.despues) or {})
+        archivo_origen = next((fila.get('archivo_origen') for fila in valores_despues if fila and fila.get('archivo_origen')), '')
+        importaciones.append({
+            'id': movimiento.id,
+            'archivo': archivo_origen,
+            'periodos': [valor for valor in str(movimiento.entidad_id or '').split(',') if valor],
+            'filas': len(valores_despues),
+            'creadas': sum(1 for fila in valores_antes if not fila),
+            'actualizadas': sum(1 for fila in valores_antes if fila),
+            'usuario': movimiento.usuario_nombre or movimiento.usuario_email or 'Usuario',
+            'fecha': movimiento.creado_en.isoformat() if movimiento.creado_en else None,
+            'deshecha': historial_movimiento_deshace(movimiento.id),
+        })
+    return jsonify({
+        'success': True,
+        'periodos': periodos,
+        'proformas': [registro.to_dict() for registro in registros],
+        'importaciones': importaciones,
+    })
+
+
+@main_bp.route('/api/proforma-personal/template', methods=['GET'])
+@login_requerido
+def api_template_proforma_personal():
+    """Plantilla con la misma hoja y columnas A:P de la Proforma Personal."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = 'PIC_PROF_PAGO_CAT'
+    hoja.merge_cells('A2:O2')
+    hoja['A2'] = 'PROYECCION'
+    hoja['A2'].font = Font(bold=True, color='FFFFFF', size=12)
+    hoja['A2'].fill = PatternFill('solid', fgColor='1F4E78')
+    hoja['A2'].alignment = Alignment(horizontal='center')
+    hoja['P2'] = '=SUM(P4:P1000)'
+    hoja['P2'].font = Font(bold=True, color='FFFFFF')
+    hoja['P2'].fill = PatternFill('solid', fgColor='1F4E78')
+    hoja['P2'].number_format = '$ #,##0.00'
+
+    borde = Border(
+        left=Side(style='thin', color='9EADBA'), right=Side(style='thin', color='9EADBA'),
+        top=Side(style='thin', color='9EADBA'), bottom=Side(style='thin', color='9EADBA'),
+    )
+    for columna, encabezado in enumerate(ENCABEZADOS_PROFORMA_PERSONAL, start=1):
+        celda = hoja.cell(3, columna, encabezado)
+        celda.font = Font(bold=True, color='FFFFFF')
+        celda.fill = PatternFill('solid', fgColor='4472C4')
+        celda.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        celda.border = borde
+    anchos = [30, 12, 16, 20, 38, 24, 16, 14, 16, 18, 26, 22, 23, 20, 20, 22]
+    for columna, ancho in enumerate(anchos, start=1):
+        hoja.column_dimensions[get_column_letter(columna)].width = ancho
+    for fila in range(4, 1001):
+        hoja.cell(fila, 8).number_format = '#,##0.00'
+        for columna in (9, 10, 12, 14, 15, 16):
+            hoja.cell(fila, columna).number_format = '$ #,##0.00'
+        # En K y M se ingresa 5 para 5% y 0,5 para 0,5%, tal como el archivo de referencia.
+        hoja.cell(fila, 11).number_format = '0.00'
+        hoja.cell(fila, 13).number_format = '0.00'
+    hoja.freeze_panes = 'A4'
+    hoja.auto_filter.ref = 'A3:P1000'
+    hoja.row_dimensions[3].height = 34
+    salida = io.BytesIO()
+    libro.save(salida)
+    salida.seek(0)
+    return send_file(
+        salida,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='Template_Proforma_Personal.xlsx',
+    )
+
+
+@main_bp.route('/api/proforma-personal/importar', methods=['POST'])
+@carga_requerida
+def api_importar_proforma_personal():
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        return jsonify({'success': False, 'errores': ['Seleccione el archivo de proforma']}), 400
+    if not archivo.filename.lower().endswith('.xlsx'):
+        return jsonify({'success': False, 'errores': ['La proforma debe ser un archivo .xlsx']}), 400
+    contenido = archivo.read()
+    if not contenido:
+        return jsonify({'success': False, 'errores': ['El archivo está vacío']}), 400
+    if len(contenido) > 20 * 1024 * 1024:
+        return jsonify({'success': False, 'errores': ['El archivo supera el máximo de 20 MB']}), 400
+    try:
+        from openpyxl import load_workbook
+        libro = load_workbook(io.BytesIO(contenido), data_only=True, read_only=False)
+        hoja = libro[libro.sheetnames[0]]
+    except Exception:
+        return jsonify({'success': False, 'errores': ['No se pudo leer el archivo Excel']}), 400
+
+    fila_encabezado = None
+    for numero in range(1, min(hoja.max_row, 20) + 1):
+        encontrados = tuple(str(hoja.cell(numero, columna).value or '').strip().upper() for columna in range(1, 17))
+        if encontrados == ENCABEZADOS_PROFORMA_PERSONAL:
+            fila_encabezado = numero
+            break
+    if fila_encabezado is None:
+        return jsonify({
+            'success': False,
+            'errores': ['No se encontraron las 16 columnas esperadas, de FDV a TOTAL_PROYECCION, en el orden original.'],
+        }), 400
+
+    errores = []
+    entradas = []
+    claves_archivo = set()
+    for numero in range(fila_encabezado + 1, hoja.max_row + 1):
+        celdas = [hoja.cell(numero, columna) for columna in range(1, 17)]
+        if not any(celda.value not in (None, '') for celda in celdas):
+            continue
+        fdv = str(celdas[0].value or '').strip()
+        periodo = periodo_proforma(celdas[1].value)
+        negocio = str(celdas[2].value or '').strip()
+        sitio = str(celdas[3].value or '').strip()
+        segmento = str(celdas[4].value or '').strip()
+        subsitio = str(celdas[5].value or '').strip() or None
+        tipo_hora = str(celdas[6].value or '').strip()
+        faltantes = [nombre for nombre, valor in (
+            ('FDV', fdv), ('PERIODO', periodo), ('NEGOCIO', negocio),
+            ('SITIO_PROVEEDOR', sitio), ('SEGMENTO', segmento), ('TIPO_HORA', tipo_hora),
+        ) if not valor]
+        if faltantes:
+            errores.append(f'Fila {numero}: faltan o son inválidos {", ".join(faltantes)}')
+            continue
+        try:
+            total_horas = parse_numero(celdas[7].value)
+            precio = parse_numero(celdas[8].value)
+            monto_fijo = parse_numero(celdas[9].value)
+            porcentaje_kpi = porcentaje_proforma_excel(celdas[10])
+            monto_kpi = parse_numero(celdas[11].value)
+            porcentaje_ac = porcentaje_proforma_excel(celdas[12])
+            monto_ac = parse_numero(celdas[13].value)
+            monto_variable = parse_numero(celdas[14].value)
+            total_proyeccion = parse_numero(celdas[15].value)
+        except (TypeError, ValueError):
+            errores.append(f'Fila {numero}: contiene un valor numérico no válido entre TOTAL_HORAS y TOTAL_PROYECCION')
+            continue
+        clave = tuple(normalizar_header(valor) for valor in (fdv, periodo, negocio, sitio, segmento, subsitio or '', tipo_hora))
+        if clave in claves_archivo:
+            errores.append(f'Fila {numero}: la combinación de período, segmento y tipo de hora está repetida')
+            continue
+        claves_archivo.add(clave)
+        entradas.append({
+            'fdv': fdv, 'periodo': periodo, 'negocio': negocio, 'sitio_proveedor': sitio,
+            'segmento': segmento, 'subsitio': subsitio, 'tipo_hora': tipo_hora,
+            'total_horas': total_horas, 'precio': precio, 'monto_fijo': monto_fijo,
+            'porcentaje_bono_kpi_vs': porcentaje_kpi, 'monto_variable_kpi_vs': monto_kpi,
+            'porcentaje_bono_ac': porcentaje_ac, 'monto_variable_ac': monto_ac,
+            'monto_variable': monto_variable, 'total_proyeccion': total_proyeccion,
+            'bono_porcentaje_total': porcentaje_kpi + porcentaje_ac,
+        })
+    if errores:
+        return jsonify({'success': False, 'errores': errores[:30]}), 400
+    if not entradas:
+        return jsonify({'success': False, 'errores': ['No se encontraron filas de datos debajo del encabezado']}), 400
+
+    antes = []
+    guardadas = []
+    creadas = 0
+    actualizadas = 0
+    for entrada in entradas:
+        existente = ProformaPersonal.query.filter_by(
+            fdv=entrada['fdv'], periodo=entrada['periodo'], negocio=entrada['negocio'],
+            sitio_proveedor=entrada['sitio_proveedor'], segmento=entrada['segmento'],
+            subsitio=entrada['subsitio'], tipo_hora=entrada['tipo_hora'],
+        ).first()
+        antes.append(existente.to_dict() if existente else None)
+        if existente:
+            actualizadas += 1
+        else:
+            existente = ProformaPersonal()
+            db.session.add(existente)
+            creadas += 1
+        for campo, valor in entrada.items():
+            setattr(existente, campo, valor)
+        existente.archivo_origen = archivo.filename[:255]
+        guardadas.append(existente)
+    db.session.flush()
+    periodos = sorted({entrada['periodo'] for entrada in entradas})
+    registrar_historial(
+        'importacion', 'proforma_personal', ','.join(periodos),
+        f'Proforma Personal “{archivo.filename[:120]}”: {creadas} nueva(s), {actualizadas} actualizada(s)',
+        antes={'proformas': antes},
+        despues={'proformas': [registro.to_dict() for registro in guardadas]},
+    )
+    db.session.commit()
+    seguimiento_configurado = SeguimientoPersonalImportacion.query.first() is not None
+    return jsonify({
+        'success': True,
+        'mensaje': (
+            f'Proforma importada: {creadas} nueva(s) y {actualizadas} actualizada(s). '
+            + ('Las hojas de seguimiento se recalcularon automáticamente.' if seguimiento_configurado else 'Cargue una vez la configuración inicial del seguimiento para habilitar los cálculos encadenados.')
+        ),
+        'creadas': creadas,
+        'actualizadas': actualizadas,
+        'seguimiento_actualizado': seguimiento_configurado,
+        'periodos': periodos,
+        'proformas': [registro.to_dict() for registro in guardadas],
+    })
+
+
+HOJAS_SEGUIMIENTO_PERSONAL = {
+    'base_objetivo_masivo': 'Base objetivo Masivo',
+    'auxiliar_horas_plp_masivo': 'Auxiliar Horas PLP masivo',
+    'precios': 'Precios',
+    '2026': '2026',
+    'aux': 'aux',
+}
+
+
+def valor_celda_seguimiento(valor):
+    if isinstance(valor, (datetime, date)):
+        return {'valor': valor.isoformat(), 'tipo': 'fecha'}
+    if isinstance(valor, float) and (math.isnan(valor) or math.isinf(valor)):
+        return {'valor': None, 'tipo': 'numero'}
+    return {'valor': valor, 'tipo': 'numero' if isinstance(valor, (int, float)) and not isinstance(valor, bool) else 'texto'}
+
+
+def estilo_celda_seguimiento(celda):
+    fill = celda.fill.fgColor.rgb if celda.fill and celda.fill.fgColor.type == 'rgb' else None
+    color = celda.font.color.rgb if celda.font and celda.font.color and celda.font.color.type == 'rgb' else None
+    return {
+        'bold': bool(celda.font and celda.font.bold),
+        'italic': bool(celda.font and celda.font.italic),
+        'fill': fill[-6:] if fill and len(fill) >= 6 else None,
+        'color': color[-6:] if color and len(color) >= 6 else None,
+        'align': celda.alignment.horizontal if celda.alignment else None,
+        'wrap': bool(celda.alignment and celda.alignment.wrap_text),
+        'format': celda.number_format or 'General',
+    }
+
+
+def extraer_hoja_seguimiento(hoja_formulas, hoja_valores):
+    ultima_fila = 1
+    ultima_columna = 1
+    formulas = 0
+    referencias_rotas = []
+    for fila in hoja_formulas.iter_rows():
+        for celda in fila:
+            if celda.value is None:
+                continue
+            ultima_fila = max(ultima_fila, celda.row)
+            ultima_columna = max(ultima_columna, celda.column)
+            if isinstance(celda.value, str) and celda.value.startswith('='):
+                formulas += 1
+                if '#REF!' in celda.value:
+                    referencias_rotas.append(celda.coordinate)
+
+    estilos = {}
+    filas = []
+    for numero_fila in range(1, ultima_fila + 1):
+        fila_salida = []
+        for numero_columna in range(1, ultima_columna + 1):
+            celda_formula = hoja_formulas.cell(numero_fila, numero_columna)
+            es_formula = isinstance(celda_formula.value, str) and celda_formula.value.startswith('=')
+            valor = hoja_valores.cell(numero_fila, numero_columna).value if es_formula else celda_formula.value
+            serializado = valor_celda_seguimiento(valor)
+            dato = {'v': serializado['valor'], 't': serializado['tipo'], 's': str(celda_formula.style_id)}
+            if es_formula:
+                dato['f'] = celda_formula.value
+            fila_salida.append(dato)
+            clave_estilo = str(celda_formula.style_id)
+            if clave_estilo not in estilos:
+                estilos[clave_estilo] = estilo_celda_seguimiento(celda_formula)
+        filas.append(fila_salida)
+
+    return {
+        'nombre': hoja_formulas.title,
+        'filas': filas,
+        'cantidad_filas': ultima_fila,
+        'cantidad_columnas': ultima_columna,
+        'cantidad_formulas': formulas,
+        'referencias_rotas': referencias_rotas,
+        'estilos': estilos,
+        'anchos': {
+            hoja_formulas.cell(1, columna).column_letter: hoja_formulas.column_dimensions[hoja_formulas.cell(1, columna).column_letter].width
+            for columna in range(1, ultima_columna + 1)
+        },
+        'freeze': str(hoja_formulas.freeze_panes or ''),
+    }
+
+
+def contenido_seguimiento_personal(importacion):
+    return json.loads(zlib.decompress(importacion.contenido_hojas).decode('utf-8'))
+
+
+def celda_seguimiento_automatica(valor=None, formula=None, estilo='auto_text'):
+    serializado = valor_celda_seguimiento(valor)
+    celda = {'v': serializado['valor'], 't': serializado['tipo'], 's': estilo}
+    if formula:
+        celda['f'] = formula
+    return celda
+
+
+def estilos_automaticos_seguimiento(hoja):
+    hoja.setdefault('estilos', {}).update({
+        'auto_text': {'bold': False, 'italic': False, 'fill': None, 'color': None, 'align': 'left', 'wrap': False, 'format': 'General'},
+        'auto_number': {'bold': False, 'italic': False, 'fill': None, 'color': None, 'align': 'right', 'wrap': False, 'format': '#,##0.00'},
+        'auto_money': {'bold': False, 'italic': False, 'fill': None, 'color': None, 'align': 'right', 'wrap': False, 'format': '$ #,##0.00'},
+        'auto_percent': {'bold': False, 'italic': False, 'fill': None, 'color': None, 'align': 'right', 'wrap': False, 'format': '0.00%'},
+        'auto_date': {'bold': False, 'italic': False, 'fill': None, 'color': None, 'align': 'center', 'wrap': False, 'format': 'mmm-yy'},
+    })
+
+
+def valor_fila_seguimiento(fila, indice, default=None):
+    if indice >= len(fila):
+        return default
+    valor = fila[indice]
+    return valor.get('v', default) if isinstance(valor, dict) else valor
+
+
+def periodo_valor_seguimiento(valor):
+    if isinstance(valor, str):
+        coincidencia = re.match(r'^(\d{4})-(\d{2})', valor)
+        if coincidencia:
+            return f'{coincidencia.group(1)}{coincidencia.group(2)}'
+    return periodo_proforma(valor)
+
+
+def tipo_hora_seguimiento(tipo):
+    clave = normalizar_header(tipo)
+    sufijo = ' II' if re.search(r'\bii\b|\b2\b', clave) else ''
+    if 'feriad' in clave:
+        return f'Feriados{sufijo}'
+    if 'nocturn' in clave:
+        return f'Nocturnas{sufijo}'
+    if 'capac' in clave:
+        return 'Capacitaciones'
+    return f'Diurnas{sufijo}'
+
+
+def actualizar_metadata_hoja_seguimiento(hoja):
+    hoja['cantidad_filas'] = len(hoja.get('filas') or [])
+    hoja['cantidad_formulas'] = sum(
+        1 for fila in hoja.get('filas') or [] for celda in fila
+        if isinstance(celda, dict) and celda.get('f')
+    )
+
+
+def aplicar_proformas_a_seguimiento(contenido):
+    proformas = ProformaPersonal.query.order_by(ProformaPersonal.periodo, ProformaPersonal.segmento, ProformaPersonal.tipo_hora).all()
+    if not proformas:
+        return contenido
+    hojas = contenido.get('hojas') or {}
+    requeridas = {'base_objetivo_masivo', 'auxiliar_horas_plp_masivo', 'precios', '2026', 'aux'}
+    if not requeridas.issubset(hojas):
+        return contenido
+
+    periodos = {item.periodo for item in proformas}
+    meses_nombre = ('enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre')
+    fecha_periodo = lambda periodo: f'{periodo[:4]}-{periodo[4:]}-01T00:00:00'
+
+    hoja_aux = hojas['aux']
+    estilos_automaticos_seguimiento(hoja_aux)
+    mapa_aux = {}
+    for fila in hoja_aux.get('filas', [])[1:]:
+        campania = valor_fila_seguimiento(fila, 1)
+        if campania:
+            mapa_aux.setdefault(normalizar_header(campania), {
+                'campania': campania,
+                'segmento': valor_fila_seguimiento(fila, 2) or campania,
+                'jefatura': valor_fila_seguimiento(fila, 3) or '',
+                'tipo_negocio': valor_fila_seguimiento(fila, 4) or '',
+                'proforma': valor_fila_seguimiento(fila, 5) or 'Personal',
+                'backup': valor_fila_seguimiento(fila, 6) or valor_fila_seguimiento(fila, 2) or campania,
+            })
+    asignaciones = AsignacionComercial.query.filter_by(activa=True).all()
+    mapa_asignaciones = {}
+    for asignacion in asignaciones:
+        for nombre in (asignacion.subcampania, asignacion.campania):
+            if nombre:
+                mapa_asignaciones.setdefault(normalizar_header(nombre), asignacion)
+    for item in proformas:
+        clave = normalizar_header(item.segmento)
+        if clave in mapa_aux:
+            continue
+        asignacion = mapa_asignaciones.get(clave)
+        clasificacion = {
+            'campania': item.segmento,
+            'segmento': item.segmento,
+            'jefatura': asignacion.jefe_site if asignacion else '',
+            'tipo_negocio': (asignacion.tipo_negocio if asignacion else None) or item.negocio,
+            'proforma': (asignacion.cliente if asignacion and normalizar_header(asignacion.cliente).startswith('personal') else 'Personal'),
+            'backup': item.segmento,
+        }
+        mapa_aux[clave] = clasificacion
+        nueva = [celda_seguimiento_automatica() for _ in range(hoja_aux['cantidad_columnas'])]
+        for indice, valor in enumerate((None, clasificacion['campania'], clasificacion['segmento'], clasificacion['jefatura'], clasificacion['tipo_negocio'], clasificacion['proforma'], clasificacion['backup'])):
+            nueva[indice] = celda_seguimiento_automatica(valor)
+        hoja_aux['filas'].append(nueva)
+    actualizar_metadata_hoja_seguimiento(hoja_aux)
+
+    hoja_precios = hojas['precios']
+    estilos_automaticos_seguimiento(hoja_precios)
+    precios_por_periodo_tipo = defaultdict(list)
+    for item in proformas:
+        clave = (item.periodo, tipo_hora_seguimiento(item.tipo_hora))
+        if not any(abs(float(item.precio or 0) - existente) < 0.005 for existente in precios_por_periodo_tipo[clave]):
+            precios_por_periodo_tipo[clave].append(float(item.precio or 0))
+    filas_tipo = {}
+    for indice, fila in enumerate(hoja_precios.get('filas', [])):
+        tipo = valor_fila_seguimiento(fila, 1)
+        if tipo:
+            filas_tipo[normalizar_header(tipo)] = indice
+    for (periodo, tipo), valores in precios_por_periodo_tipo.items():
+        indice_columna = int(periodo[4:]) + 1
+        tipos_destino = [tipo]
+        if len(valores) > 1 and not tipo.endswith(' II'):
+            tipos_destino.append(f'{tipo} II')
+        for posicion, precio in enumerate(sorted(valores)):
+            destino = tipos_destino[min(posicion, len(tipos_destino) - 1)]
+            indice_fila = filas_tipo.get(normalizar_header(destino))
+            if indice_fila is not None and indice_columna < len(hoja_precios['filas'][indice_fila]):
+                hoja_precios['filas'][indice_fila][indice_columna] = celda_seguimiento_automatica(precio, estilo='auto_money')
+        for fila in hoja_precios.get('filas', [])[13:]:
+            if periodo_valor_seguimiento(valor_fila_seguimiento(fila, 1)) != periodo:
+                continue
+            tipo_fila = valor_fila_seguimiento(fila, 3)
+            candidatos = precios_por_periodo_tipo.get((periodo, tipo_fila), [])
+            if candidatos:
+                fila[2] = celda_seguimiento_automatica(candidatos[0], estilo='auto_money')
+    actualizar_metadata_hoja_seguimiento(hoja_precios)
+
+    hoja_2026 = hojas['2026']
+    estilos_automaticos_seguimiento(hoja_2026)
+    cabecera_2026 = hoja_2026.get('filas', [])[:1]
+    historicas_2026 = [
+        fila for fila in hoja_2026.get('filas', [])[1:]
+        if not (periodo_valor_seguimiento(valor_fila_seguimiento(fila, 2)) in periodos and normalizar_header(valor_fila_seguimiento(fila, 3)) == 'proyectada')
+    ]
+    nuevas_2026 = []
+    for item in proformas:
+        clasificacion = mapa_aux[normalizar_header(item.segmento)]
+        numero = len(cabecera_2026) + len(historicas_2026) + len(nuevas_2026) + 1
+        horas = float(item.total_horas or 0)
+        precio = float(item.precio or 0)
+        monto_horas = float(item.monto_fijo or horas * precio)
+        bono = float(item.monto_variable or 0)
+        porcentaje = float(item.bono_porcentaje_total or 0) / 100
+        total = float(item.total_proyeccion or monto_horas + bono)
+        tipo_hora = tipo_hora_seguimiento(item.tipo_hora)
+        valores = [
+            clasificacion['tipo_negocio'], clasificacion['proforma'], fecha_periodo(item.periodo), 'Proyectada',
+            fecha_periodo(item.periodo), item.segmento, horas, precio, monto_horas, porcentaje, bono,
+            monto_horas + bono, 0, total, None, meses_nombre[int(item.periodo[4:]) - 1],
+            clasificacion['segmento'], tipo_hora, clasificacion['jefatura'], None,
+        ]
+        estilos = ['auto_text', 'auto_text', 'auto_date', 'auto_text', 'auto_date', 'auto_text', 'auto_number', 'auto_money', 'auto_money', 'auto_percent', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_text']
+        formulas = {8: f'=G{numero}*H{numero}', 10: f'=I{numero}*J{numero}', 11: f'=I{numero}+K{numero}', 13: f'=SUM(L{numero}:M{numero})', 15: f'=TEXT(E{numero},"MMMM")'}
+        fila = [celda_seguimiento_automatica(valor, formulas.get(indice), estilos[indice]) for indice, valor in enumerate(valores)]
+        while len(fila) < hoja_2026['cantidad_columnas']:
+            fila.append(celda_seguimiento_automatica())
+        nuevas_2026.append(fila)
+    hoja_2026['filas'] = cabecera_2026 + historicas_2026 + nuevas_2026
+    actualizar_metadata_hoja_seguimiento(hoja_2026)
+
+    hoja_auxiliar = hojas['auxiliar_horas_plp_masivo']
+    estilos_automaticos_seguimiento(hoja_auxiliar)
+    cabecera_auxiliar = hoja_auxiliar.get('filas', [])[:1]
+    historicas_auxiliar = [
+        fila for fila in hoja_auxiliar.get('filas', [])[1:]
+        if not (periodo_valor_seguimiento(valor_fila_seguimiento(fila, 3)) in periodos and normalizar_header(valor_fila_seguimiento(fila, 4)) == 'proyectada')
+    ]
+    total_por_campania = defaultdict(float)
+    for item in proformas:
+        total_por_campania[(item.periodo, normalizar_header(item.segmento))] += float(item.total_horas or 0)
+    nuevas_auxiliar = []
+    for item in proformas:
+        numero = len(cabecera_auxiliar) + len(historicas_auxiliar) + len(nuevas_auxiliar) + 1
+        horas = float(item.total_horas or 0)
+        precio = float(item.precio or 0)
+        total_campania = total_por_campania[(item.periodo, normalizar_header(item.segmento))]
+        participacion = horas / total_campania if total_campania else 0
+        tipo_hora = tipo_hora_seguimiento(item.tipo_hora)
+        valores = [item.negocio, item.segmento, tipo_hora, fecha_periodo(item.periodo), 'Proyectada', horas, 'Definitiva', 0, horas, horas, horas, 0, None, horas, participacion, 0, precio, float(item.monto_fijo or horas * precio), 0]
+        estilos = ['auto_text', 'auto_text', 'auto_text', 'auto_date', 'auto_text', 'auto_number', 'auto_text', 'auto_number', 'auto_number', 'auto_number', 'auto_number', 'auto_percent', 'auto_text', 'auto_number', 'auto_percent', 'auto_number', 'auto_money', 'auto_money', 'auto_money']
+        formulas = {8: f'=K{numero}*L{numero}+K{numero}', 10: f'=MIN(J{numero},SUMIFS(H:H,D:D,D{numero},B:B,B{numero})*1.03)', 14: f'=N{numero}/SUMIFS(N:N,B:B,B{numero},D:D,D{numero})', 17: f'=Q{numero}*K{numero}', 18: f'=-Q{numero}*(K{numero}-I{numero})'}
+        fila = [celda_seguimiento_automatica(valor, formulas.get(indice), estilos[indice]) for indice, valor in enumerate(valores)]
+        while len(fila) < hoja_auxiliar['cantidad_columnas']:
+            fila.append(celda_seguimiento_automatica())
+        nuevas_auxiliar.append(fila)
+    hoja_auxiliar['filas'] = cabecera_auxiliar + historicas_auxiliar + nuevas_auxiliar
+    actualizar_metadata_hoja_seguimiento(hoja_auxiliar)
+
+    hoja_base = hojas['base_objetivo_masivo']
+    estilos_automaticos_seguimiento(hoja_base)
+    factores_objetivo = {}
+    for fila in hoja_base.get('filas', [])[2:]:
+        campania = valor_fila_seguimiento(fila, 3)
+        tipo = valor_fila_seguimiento(fila, 4)
+        vh_real = valor_fila_seguimiento(fila, 8)
+        vh_objetivo = valor_fila_seguimiento(fila, 16)
+        if campania and tipo and isinstance(vh_real, (int, float)) and isinstance(vh_objetivo, (int, float)) and vh_real:
+            factores_objetivo[(normalizar_header(campania), normalizar_header(tipo))] = float(vh_objetivo) / float(vh_real)
+    prefijo_base = hoja_base.get('filas', [])[:2]
+    historicas_base = [
+        fila for fila in hoja_base.get('filas', [])[2:]
+        if not (periodo_valor_seguimiento(valor_fila_seguimiento(fila, 5)) in periodos and normalizar_header(valor_fila_seguimiento(fila, 15)) == 'proyectada')
+    ]
+    nuevas_base = []
+    for item in proformas:
+        clasificacion = mapa_aux[normalizar_header(item.segmento)]
+        numero = len(prefijo_base) + len(historicas_base) + len(nuevas_base) + 1
+        horas = float(item.total_horas or 0)
+        precio = float(item.precio or 0)
+        monto_horas = float(item.monto_fijo or horas * precio)
+        bono = float(item.monto_variable or 0)
+        total = float(item.total_proyeccion or monto_horas + bono)
+        vh_alcanzado = total / horas if horas else 0
+        tipo_hora = tipo_hora_seguimiento(item.tipo_hora)
+        factor_objetivo = factores_objetivo.get((normalizar_header(item.segmento), normalizar_header(tipo_hora)), 1)
+        valor_hora_objetivo = precio * factor_objetivo
+        facturacion_objetivo_horas = horas * precio
+        objetivo_bono = (valor_hora_objetivo * horas) - facturacion_objetivo_horas
+        valores = [clasificacion['tipo_negocio'], 'Personal Masivo', clasificacion['proforma'], item.segmento, tipo_hora, fecha_periodo(item.periodo), horas, horas, precio, monto_horas, None, bono, 0, 0, total, 'Proyectada', valor_hora_objetivo, vh_alcanzado, facturacion_objetivo_horas, objetivo_bono, facturacion_objetivo_horas + objetivo_bono, monto_horas, bono, 0, total]
+        estilos = ['auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_date', 'auto_number', 'auto_number', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_text', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money']
+        formulas = {9: f'=H{numero}*I{numero}', 14: f'=SUM(J{numero}:N{numero})', 17: f'=IFERROR(O{numero}/H{numero},0)', 18: f'=G{numero}*I{numero}', 19: f'=Q{numero}*G{numero}-S{numero}', 20: f'=S{numero}+T{numero}', 21: f'=J{numero}', 22: f'=L{numero}', 23: f'=M{numero}', 24: f'=V{numero}+W{numero}+X{numero}'}
+        nuevas_base.append([celda_seguimiento_automatica(valor, formulas.get(indice), estilos[indice]) for indice, valor in enumerate(valores)])
+    hoja_base['filas'] = prefijo_base + historicas_base + nuevas_base
+    actualizar_metadata_hoja_seguimiento(hoja_base)
+    contenido['automatico_desde_proforma'] = True
+    contenido['periodos_proforma'] = sorted(periodos)
+    return contenido
+
+
+@main_bp.route('/api/seguimiento-personal', methods=['GET'])
+@login_requerido
+def api_seguimiento_personal():
+    importaciones = SeguimientoPersonalImportacion.query.order_by(
+        SeguimientoPersonalImportacion.creado_en.desc(), SeguimientoPersonalImportacion.id.desc(),
+    ).all()
+    return jsonify({
+        'success': True,
+        'hojas': [{'clave': clave, 'nombre': nombre} for clave, nombre in HOJAS_SEGUIMIENTO_PERSONAL.items()],
+        'importaciones': [item.to_dict() for item in importaciones],
+    })
+
+
+@main_bp.route('/api/seguimiento-personal/hoja', methods=['GET'])
+@login_requerido
+def api_hoja_seguimiento_personal():
+    importacion_id = request.args.get('importacion_id', type=int)
+    clave_hoja = request.args.get('hoja', '').strip()
+    if clave_hoja not in HOJAS_SEGUIMIENTO_PERSONAL:
+        return jsonify({'success': False, 'errores': ['La hoja solicitada no es válida']}), 400
+    importacion = db.session.get(SeguimientoPersonalImportacion, importacion_id) if importacion_id else SeguimientoPersonalImportacion.query.order_by(
+        SeguimientoPersonalImportacion.creado_en.desc(), SeguimientoPersonalImportacion.id.desc(),
+    ).first()
+    if not importacion:
+        return jsonify({'success': True, 'importacion': None, 'hoja': None})
+    contenido = aplicar_proformas_a_seguimiento(contenido_seguimiento_personal(importacion))
+    return jsonify({'success': True, 'importacion': importacion.to_dict(), 'hoja': contenido['hojas'][clave_hoja]})
+
+
+@main_bp.route('/api/seguimiento-personal/<int:importacion_id>/descargar', methods=['GET'])
+@login_requerido
+def api_descargar_seguimiento_personal(importacion_id):
+    importacion = db.session.get(SeguimientoPersonalImportacion, importacion_id)
+    if not importacion:
+        return jsonify({'success': False, 'errores': ['La importación ya no existe']}), 404
+    return send_file(
+        io.BytesIO(importacion.contenido_xlsx),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=importacion.archivo,
+    )
+
+
+@main_bp.route('/api/seguimiento-personal/importar', methods=['POST'])
+@carga_requerida
+def api_importar_seguimiento_personal():
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        return jsonify({'success': False, 'errores': ['Seleccione el archivo de seguimiento Personal']}), 400
+    if not archivo.filename.lower().endswith('.xlsx'):
+        return jsonify({'success': False, 'errores': ['El seguimiento debe ser un archivo .xlsx']}), 400
+    contenido = archivo.read()
+    if not contenido:
+        return jsonify({'success': False, 'errores': ['El archivo está vacío']}), 400
+    if len(contenido) > 25 * 1024 * 1024:
+        return jsonify({'success': False, 'errores': ['El archivo supera el máximo de 25 MB']}), 400
+    try:
+        from openpyxl import load_workbook
+        libro_formulas = load_workbook(io.BytesIO(contenido), data_only=False, read_only=False)
+        libro_valores = load_workbook(io.BytesIO(contenido), data_only=True, read_only=False)
+    except Exception:
+        return jsonify({'success': False, 'errores': ['No se pudo leer el archivo Excel']}), 400
+
+    nombres_reales = {normalizar_header(nombre): nombre for nombre in libro_formulas.sheetnames}
+    faltantes = [nombre for nombre in HOJAS_SEGUIMIENTO_PERSONAL.values() if normalizar_header(nombre) not in nombres_reales]
+    if faltantes:
+        return jsonify({'success': False, 'errores': [f'Faltan las hojas requeridas: {", ".join(faltantes)}']}), 400
+
+    hojas = {}
+    total_filas = 0
+    total_formulas = 0
+    total_advertencias = 0
+    for clave, nombre_esperado in HOJAS_SEGUIMIENTO_PERSONAL.items():
+        nombre_real = nombres_reales[normalizar_header(nombre_esperado)]
+        hoja = extraer_hoja_seguimiento(libro_formulas[nombre_real], libro_valores[nombre_real])
+        hojas[clave] = hoja
+        total_filas += hoja['cantidad_filas']
+        total_formulas += hoja['cantidad_formulas']
+        total_advertencias += len(hoja['referencias_rotas'])
+
+    fechas = []
+    hoja_2026 = libro_formulas[nombres_reales[normalizar_header('2026')]]
+    for fila in range(2, hoja_2026.max_row + 1):
+        # La columna C es "Mes Facturado"; la E puede contener meses de servicio anteriores.
+        valor = hoja_2026.cell(fila, 3).value
+        if isinstance(valor, (datetime, date)):
+            fechas.append(valor)
+    periodo_referencia = ''
+    if fechas:
+        meses = ('ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic')
+        minimo, maximo = min(fechas), max(fechas)
+        periodo_referencia = f'{meses[minimo.month - 1]}-{str(minimo.year)[-2:]} a {meses[maximo.month - 1]}-{str(maximo.year)[-2:]}'
+
+    paquete = {'version': 1, 'hojas': hojas}
+    importacion = SeguimientoPersonalImportacion(
+        archivo=archivo.filename[:255],
+        periodo_referencia=periodo_referencia,
+        contenido_hojas=zlib.compress(json.dumps(paquete, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9),
+        contenido_xlsx=contenido,
+        cantidad_hojas=len(hojas),
+        cantidad_filas=total_filas,
+        cantidad_formulas=total_formulas,
+        advertencias=total_advertencias,
+        usuario_id=usuario_actual().id if usuario_actual() else None,
+    )
+    db.session.add(importacion)
+    db.session.flush()
+    resumen = f'Seguimiento Personal “{archivo.filename[:120]}”: {len(hojas)} hojas, {total_filas} filas y {total_formulas} fórmulas'
+    registrar_historial(
+        'importacion', 'seguimiento_personal', str(importacion.id), resumen,
+        antes=None, despues=importacion.to_dict(),
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'Archivo registrado: {len(hojas)} hojas y {total_formulas} fórmulas preservadas',
+        'importacion': importacion.to_dict(),
+    })
+
+
+@main_bp.route('/api/carga-datos-personal', methods=['POST'])
+@carga_requerida
+def api_guardar_carga_datos_personal():
+    """Guarda la carga Personal con la transacción validada del editor PLP."""
+    return api_edicion_masiva_proyecciones_plp.__wrapped__()
 
 
 @main_bp.route('/api/proyecciones-plp/template', methods=['GET'])

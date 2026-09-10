@@ -1,0 +1,738 @@
+{% extends "layout.html" %}
+
+{% block title %}Carga de datos Personal - Facturación{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-[1500px] space-y-5">
+    <div>
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Facturación</p>
+            <h1 class="text-3xl font-bold text-slate-950">Carga de datos Personal</h1>
+            <p class="mt-1 text-sm text-slate-600">Importación y consulta de Proforma y Seguimiento Personal.</p>
+        </div>
+    </div>
+
+    <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+        <div class="flex min-w-max gap-2" id="tabsCargaPersonal">
+            <button id="tabCargaProforma" type="button" onclick="seleccionarPestanaCargaPersonal('proforma')" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white">Proforma</button>
+            <button id="tabCargaBaseObjetivoMasivo" type="button" onclick="seleccionarPestanaCargaPersonal('base_objetivo_masivo')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Base objetivo Masivo</button>
+            <button id="tabCargaAuxiliar" type="button" onclick="seleccionarPestanaCargaPersonal('auxiliar_horas_plp_masivo')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Auxiliar Horas PLP Masivo</button>
+            <button id="tabCargaPrecios" type="button" onclick="seleccionarPestanaCargaPersonal('precios')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Precios</button>
+            <button id="tabCarga2026" type="button" onclick="seleccionarPestanaCargaPersonal('2026')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">2026</button>
+            <button id="tabCargaAux" type="button" onclick="seleccionarPestanaCargaPersonal('aux')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Aux</button>
+        </div>
+    </div>
+
+    <div id="contenidoProformaPersonal" class="space-y-5">
+        <section class="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-950">
+            <div class="font-bold"><i class="fas fa-circle-info mr-2"></i>Formato de Proforma</div>
+            <p class="mt-1">Se importan las 16 columnas originales, desde <strong>FDV</strong> hasta <strong>TOTAL_PROYECCION</strong>. Los valores cero son válidos. K y M se respetan como porcentajes separados y <strong>BONO TOTAL (K + M)</strong> los suma: por ejemplo, 5% + 0,5% = 5,5%. Después de cargar la configuración inicial, cada Proforma actualiza automáticamente las otras cinco pestañas.</p>
+        </section>
+
+        <section class="rounded-xl border border-indigo-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-indigo-950">Importar archivo de Proforma</h2>
+                    <p class="mt-1 text-sm text-indigo-700">Use el archivo Excel con la estructura original. Las filas existentes con la misma identificación se actualizan.</p>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <a href="/api/proforma-personal/template" class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700"><i class="fas fa-file-excel mr-2"></i>Descargar template</a>
+                    <input id="archivoProformaPersonal" type="file" accept=".xlsx" class="block max-w-sm rounded border border-slate-300 bg-white text-sm file:mr-3 file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-semibold">
+                    <button id="importarProformaBtn" type="button" onclick="importarProformaPersonal()" class="h-10 whitespace-nowrap rounded bg-indigo-600 px-5 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"><i class="fas fa-upload mr-2"></i>Importar Proforma</button>
+                </div>
+            </div>
+            <div id="mensajeProformaPersonal" class="mx-5 mb-5 hidden rounded-lg p-3 text-sm"></div>
+        </section>
+
+        <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-200 px-5 py-4">
+                <h2 class="font-bold text-slate-950"><i class="fas fa-clock-rotate-left mr-2 text-slate-500"></i>Importaciones realizadas</h2>
+                <p class="mt-1 text-xs text-slate-500">Cada archivo se registra como un lote independiente. Las cargas posteriores no eliminan filas ausentes.</p>
+            </div>
+            <div class="max-h-72 overflow-auto">
+                <table class="w-full min-w-[850px] border-collapse text-sm">
+                    <thead class="sticky top-0 bg-slate-100 text-slate-700"><tr><th class="border-b px-4 py-2 text-left">Fecha</th><th class="border-b px-4 py-2 text-left">Archivo</th><th class="border-b px-4 py-2 text-left">Período</th><th class="border-b px-4 py-2 text-right">Filas</th><th class="border-b px-4 py-2 text-right">Nuevas</th><th class="border-b px-4 py-2 text-right">Actualizadas</th><th class="border-b px-4 py-2 text-left">Usuario</th><th class="border-b px-4 py-2 text-center">Estado</th></tr></thead>
+                    <tbody id="tbodyImportacionesProforma"><tr><td colspan="8" class="p-6 text-center text-slate-500">Todavía no hay importaciones registradas.</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="rounded-xl border border-blue-200 bg-white p-4 shadow-sm"><div class="text-xs font-bold uppercase text-slate-500">Total horas</div><div id="kpiProformaHoras" class="mt-2 text-2xl font-black text-blue-950">0</div></div>
+            <div class="rounded-xl border border-emerald-200 bg-white p-4 shadow-sm"><div class="text-xs font-bold uppercase text-slate-500">Monto fijo</div><div id="kpiProformaFijo" class="mt-2 text-2xl font-black text-emerald-800">$ 0</div></div>
+            <div class="rounded-xl border border-amber-200 bg-white p-4 shadow-sm"><div class="text-xs font-bold uppercase text-slate-500">Bonos monetarios (L + N)</div><div id="kpiProformaBonos" class="mt-2 text-2xl font-black text-amber-800">$ 0</div></div>
+            <div class="rounded-xl border border-violet-200 bg-white p-4 shadow-sm"><div class="text-xs font-bold uppercase text-slate-500">Total proyección</div><div id="kpiProformaTotal" class="mt-2 text-2xl font-black text-violet-900">$ 0</div></div>
+        </div>
+
+        <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                <div><h2 class="text-lg font-bold text-slate-950">Proformas importadas</h2><p id="contadorProformaPersonal" class="mt-1 text-xs text-slate-500">Cargando...</p></div>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <select id="filtroPeriodoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los períodos</option></select>
+                    <input id="buscarProformaPersonal" type="search" oninput="renderProformaPersonal()" class="h-10 rounded border border-slate-300 px-3 text-sm" placeholder="Buscar segmento...">
+                </div>
+            </div>
+            <div class="max-h-[650px] overflow-auto p-4">
+                <table id="tablaProformaPersonal" class="min-w-[2500px] border-collapse text-xs">
+                    <thead class="sticky top-0 bg-slate-900 text-white"><tr>
+                        <th class="border border-slate-700 px-2 py-2 text-left">A · FDV</th><th class="border border-slate-700 px-2 py-2">B · PERIODO</th><th class="border border-slate-700 px-2 py-2 text-left">C · NEGOCIO</th><th class="border border-slate-700 px-2 py-2 text-left">D · SITIO_PROVEEDOR</th><th class="border border-slate-700 px-2 py-2 text-left">E · SEGMENTO</th><th class="border border-slate-700 px-2 py-2 text-left">F · SUBSITIO</th><th class="border border-slate-700 px-2 py-2 text-left">G · TIPO_HORA</th><th class="border border-slate-700 px-2 py-2 text-right">H · TOTAL_HORAS</th><th class="border border-slate-700 px-2 py-2 text-right">I · PRECIO</th><th class="border border-slate-700 px-2 py-2 text-right">J · MONTO_FIJO</th><th class="border border-slate-700 px-2 py-2 text-right">K · % BONO KPI VS</th><th class="border border-slate-700 px-2 py-2 text-right">L · MONTO VAR. KPI VS</th><th class="border border-slate-700 px-2 py-2 text-right">M · % BONO AC</th><th class="border border-violet-600 bg-violet-800 px-2 py-2 text-right">BONO TOTAL K + M</th><th class="border border-slate-700 px-2 py-2 text-right">N · MONTO VAR. AC</th><th class="border border-slate-700 px-2 py-2 text-right">O · MONTO_VARIABLE</th><th class="border border-slate-700 px-2 py-2 text-right">P · TOTAL_PROYECCION</th>
+                    </tr></thead>
+                    <tbody id="tbodyProformaPersonal"><tr><td colspan="17" class="p-8 text-center text-slate-500">Todavía no hay proformas importadas.</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div id="contenidoSeguimientoPersonal" class="hidden space-y-5">
+        <section class="rounded-xl border border-indigo-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-4 p-5 xl:flex-row xl:items-end xl:justify-between">
+                <div class="max-w-2xl">
+                    <h2 class="text-lg font-bold text-indigo-950">Configuración inicial del seguimiento</h2>
+                    <p class="mt-1 text-sm text-indigo-700">Cargue este archivo completo una sola vez. Se toman Base objetivo Masivo, Auxiliar Horas PLP masivo, Precios, 2026 y aux como punto de partida; desde entonces sólo deberá importar la Proforma.</p>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input id="archivoSeguimientoPersonal" type="file" accept=".xlsx" class="block max-w-sm rounded border border-slate-300 bg-white text-sm file:mr-3 file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-semibold">
+                    <button id="importarSeguimientoBtn" type="button" onclick="importarSeguimientoPersonal()" class="h-10 whitespace-nowrap rounded bg-indigo-600 px-5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60"><i class="fas fa-gears mr-2"></i>Cargar configuración inicial</button>
+                </div>
+            </div>
+            <div id="mensajeSeguimientoPersonal" class="mx-5 mb-5 hidden rounded-lg p-3 text-sm"></div>
+        </section>
+
+        <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-3 border-b border-slate-200 p-5 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Hoja del seguimiento</p>
+                    <h2 id="tituloHojaSeguimiento" class="mt-1 text-xl font-bold text-slate-950">Base objetivo Masivo</h2>
+                    <p id="detalleHojaSeguimiento" class="mt-1 text-xs text-slate-500">Seleccione o importe un archivo.</p>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <select id="versionSeguimientoPersonal" onchange="cargarHojaSeguimiento()" class="h-10 min-w-[280px] rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Sin configuración</option></select>
+                    <a id="descargarSeguimientoPersonal" href="#" class="pointer-events-none inline-flex h-10 items-center justify-center rounded border border-emerald-300 bg-emerald-50 px-4 text-sm font-bold text-emerald-800 opacity-50"><i class="fas fa-file-excel mr-2"></i>Descargar versión</a>
+                </div>
+            </div>
+            <div id="logicaHojaSeguimiento" class="border-b border-blue-100 bg-blue-50 px-5 py-3 text-sm text-blue-950"></div>
+            <div id="alertasHojaSeguimiento" class="hidden border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-800"></div>
+            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <input id="buscarHojaSeguimiento" type="search" oninput="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="h-10 w-full max-w-md rounded border border-slate-300 px-3 text-sm" placeholder="Buscar en la hoja...">
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="cambiarPaginaHoja(-1)" class="h-9 rounded border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50"><i class="fas fa-chevron-left"></i></button>
+                    <span id="paginaHojaSeguimiento" class="min-w-[130px] text-center text-sm text-slate-600">Página 1 de 1</span>
+                    <button type="button" onclick="cambiarPaginaHoja(1)" class="h-9 rounded border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div id="formulaHojaSeguimiento" class="hidden border-b border-slate-200 bg-slate-50 px-5 py-2 font-mono text-xs text-slate-700"></div>
+            <div class="max-h-[680px] overflow-auto">
+                <table id="tablaHojaSeguimiento" class="border-collapse text-xs">
+                    <thead id="theadHojaSeguimiento" class="sticky top-0 z-20 bg-slate-800 text-white"></thead>
+                    <tbody id="tbodyHojaSeguimiento"><tr><td class="p-8 text-center text-slate-500">Todavía no hay un archivo de seguimiento importado.</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div id="contenidoHorasPersonal" class="hidden space-y-5">
+    <section class="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-950">
+        <div class="font-bold"><i class="fas fa-circle-info mr-2"></i>Cómo se actualizan los datos</div>
+        <p class="mt-1">La combinación <strong>clasificación + mes + campaña</strong> identifica cada registro. Si ya existe, reemplaza sus horas; si es nueva, la crea. Las filas sin horas se omiten.</p>
+    </section>
+
+    <section class="rounded-xl border border-amber-200 bg-white shadow-sm">
+        <div class="border-b border-amber-100 px-5 py-4">
+            <h2 class="text-lg font-bold text-amber-950"><i class="fas fa-paste mr-2"></i>Pegar tabla</h2>
+            <p class="mt-1 text-sm text-amber-800">Pegá cuatro columnas: clasificación, mes, campaña y horas. Acepta Excel, tablas con “|” y texto separado por punto y coma.</p>
+        </div>
+        <div class="p-5">
+            <textarea id="tablaPersonal" rows="10" class="w-full resize-y rounded-lg border border-amber-300 bg-amber-50/30 p-4 font-mono text-sm leading-6 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Personal | sep-26 | ABONOS | 6421,00&#10;Personal CX | sep-26 | CUSTOMER OPEN | 2.472"></textarea>
+            <div class="mt-3 flex flex-wrap justify-end gap-2">
+                <button type="button" onclick="limpiarCargaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"><i class="fas fa-eraser mr-2"></i>Limpiar</button>
+                <button type="button" onclick="prepararCargaPersonal()" class="h-10 rounded bg-amber-600 px-5 text-sm font-semibold text-white hover:bg-amber-700"><i class="fas fa-table mr-2"></i>Preparar filas</button>
+            </div>
+            <div id="mensajePersonal" class="mt-4 hidden rounded-lg p-3 text-sm"></div>
+        </div>
+    </section>
+
+    <section id="previewPersonal" class="hidden rounded-xl border border-emerald-200 bg-white shadow-sm">
+        <div class="flex flex-col gap-3 border-b border-emerald-100 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-emerald-950">Vista previa</h2>
+                <div id="totalesPersonal" class="mt-2 flex flex-wrap gap-2"></div>
+            </div>
+            <button id="guardarPersonalBtn" type="button" onclick="guardarCargaPersonal()" class="h-10 rounded bg-emerald-600 px-5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"><i class="fas fa-save mr-2"></i>Guardar datos Personal</button>
+        </div>
+        <div class="max-h-[520px] overflow-auto p-4">
+            <table class="w-full min-w-[850px] border-collapse text-sm">
+                <thead class="sticky top-0 bg-emerald-50 text-emerald-950">
+                    <tr>
+                        <th class="border border-emerald-100 px-3 py-2 text-left">Clasificación</th>
+                        <th class="border border-emerald-100 px-3 py-2 text-left">Mes</th>
+                        <th class="border border-emerald-100 px-3 py-2 text-left">Campaña</th>
+                        <th class="border border-emerald-100 px-3 py-2 text-right">Horas</th>
+                        <th class="border border-emerald-100 px-3 py-2 text-center">Resultado</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyPreviewPersonal"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-slate-950">Datos Personal cargados</h2>
+                <p id="contadorPersonal" class="mt-1 text-xs text-slate-500">Cargando...</p>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row">
+                <select id="filtroMesPersonal" onchange="renderDatosPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"></select>
+                <input id="buscarPersonal" type="search" oninput="renderDatosPersonal()" class="h-10 rounded border border-slate-300 px-3 text-sm" placeholder="Buscar campaña...">
+            </div>
+        </div>
+        <div class="max-h-[600px] overflow-auto p-4">
+            <table class="w-full min-w-[850px] border-collapse text-sm">
+                <thead class="sticky top-0 bg-slate-100 text-slate-900">
+                    <tr>
+                        <th class="border border-slate-200 px-3 py-2 text-left">Clasificación</th>
+                        <th class="border border-slate-200 px-3 py-2 text-left">Mes</th>
+                        <th class="border border-slate-200 px-3 py-2 text-left">Campaña</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">Horas</th>
+                        <th class="border border-slate-200 px-3 py-2 text-right">% cumplimiento</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyDatosPersonal"><tr><td colspan="5" class="p-8 text-center text-slate-500">Cargando...</td></tr></tbody>
+            </table>
+        </div>
+    </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let proformasPersonal = [];
+let importacionesProforma = [];
+let importacionesSeguimiento = [];
+let hojaSeguimientoActiva = 'base_objetivo_masivo';
+let datosHojaSeguimiento = null;
+let paginaHojaSeguimiento = 1;
+const filasPorPaginaSeguimiento = 100;
+let datosPersonal = [];
+let mesesPersonal = [];
+let serviciosPersonalCarga = ['Personal', 'Personal CX', 'Personal Soporte', 'Personal SMB'];
+let filasPreparadasPersonal = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    cargarProformaPersonal();
+    cargarVersionesSeguimiento();
+});
+
+function normalizarPersonal(valor) {
+    return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function escaparPersonal(valor) {
+    return String(valor ?? '').replace(/[&<>"']/g, caracter => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[caracter]));
+}
+
+function formatoHorasPersonal(valor) {
+    return Number(valor || 0).toLocaleString('es-AR', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+}
+
+function formatoMonedaProforma(valor) {
+    return Number(valor || 0).toLocaleString('es-AR', {style: 'currency', currency: 'ARS', minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+const configuracionHojasSeguimiento = {
+    base_objetivo_masivo: {
+        tab: 'tabCargaBaseObjetivoMasivo', nombre: 'Base objetivo Masivo',
+        logica: 'Consolida por campaña, tipo de hora y mes. Toma horas de 2026 y del Auxiliar, busca el valor hora en Precios y calcula facturación de horas, variable, penalizaciones, total y objetivos.'
+    },
+    auxiliar_horas_plp_masivo: {
+        tab: 'tabCargaAuxiliar', nombre: 'Auxiliar Horas PLP Masivo',
+        logica: 'Cruza las horas PLP proyectadas y definitivas con 2026. Aplica el tope del 103%, el ajuste de adhesión, distribuye el tipo de hora y valoriza diferencias con la tarifa de Precios.'
+    },
+    precios: {
+        tab: 'tabCargaPrecios', nombre: 'Precios',
+        logica: 'Mantiene la matriz mensual por tipo de hora. Las fórmulas trasladan valores entre meses y generan la clave tipo de hora + mes que utilizan el Auxiliar y 2026.'
+    },
+    '2026': {
+        tab: 'tabCarga2026', nombre: '2026',
+        logica: 'Es el motor de facturación: horas × precio, bono sobre facturado, penalidades y total general. Aux clasifica campaña, segmento, jefatura y negocio; Precios identifica el tipo de tarifa.'
+    },
+    aux: {
+        tab: 'tabCargaAux', nombre: 'Aux',
+        logica: 'Es el catálogo de correspondencias. Relaciona cada campaña con segmento, jefatura, tipo de negocio, proforma y segmento de respaldo para alimentar las búsquedas del resto de las hojas.'
+    }
+};
+
+function seleccionarPestanaCargaPersonal(clave) {
+    const esProforma = clave === 'proforma';
+    document.getElementById('contenidoProformaPersonal').classList.toggle('hidden', !esProforma);
+    document.getElementById('contenidoSeguimientoPersonal').classList.toggle('hidden', esProforma);
+    const tabs = ['tabCargaProforma', ...Object.values(configuracionHojasSeguimiento).map(item => item.tab)];
+    tabs.forEach(id => {
+        const activo = esProforma ? id === 'tabCargaProforma' : id === configuracionHojasSeguimiento[clave]?.tab;
+        document.getElementById(id).className = activo
+            ? 'rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white'
+            : 'rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100';
+    });
+    if (!esProforma && configuracionHojasSeguimiento[clave]) {
+        hojaSeguimientoActiva = clave;
+        paginaHojaSeguimiento = 1;
+        document.getElementById('tituloHojaSeguimiento').textContent = configuracionHojasSeguimiento[clave].nombre;
+        document.getElementById('logicaHojaSeguimiento').innerHTML = `<strong>Lógica:</strong> ${escaparPersonal(configuracionHojasSeguimiento[clave].logica)} <span class="ml-2 text-blue-700">Las celdas con <strong>fx</strong> conservan la fórmula original; haga clic para verla.</span>`;
+        cargarHojaSeguimiento();
+    }
+}
+
+function mostrarMensajeSeguimiento(texto, tipo = 'error') {
+    const mensaje = document.getElementById('mensajeSeguimientoPersonal');
+    mensaje.className = `mx-5 mb-5 rounded-lg border p-3 text-sm ${tipo === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`;
+    mensaje.textContent = texto;
+}
+
+async function cargarVersionesSeguimiento(seleccionarId = null) {
+    try {
+        const response = await fetch(`/api/seguimiento-personal?_=${Date.now()}`, {cache: 'no-store'});
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudieron cargar las importaciones']).join(' | '));
+        importacionesSeguimiento = data.importaciones || [];
+        const selector = document.getElementById('versionSeguimientoPersonal');
+        const anterior = seleccionarId ? String(seleccionarId) : selector.value;
+        selector.innerHTML = importacionesSeguimiento.length ? importacionesSeguimiento.map(item => {
+            const fecha = item.creado_en ? new Date(item.creado_en).toLocaleString('es-AR', {dateStyle: 'short', timeStyle: 'short'}) : '';
+            return `<option value="${item.id}">${escaparPersonal(fecha)} · ${escaparPersonal(item.archivo)} · ${escaparPersonal(item.periodo_referencia)}</option>`;
+        }).join('') : '<option value="">Sin configuración</option>';
+        if ([...selector.options].some(option => option.value === anterior)) selector.value = anterior;
+        actualizarDescargaSeguimiento();
+    } catch (error) {
+        mostrarMensajeSeguimiento(error.message);
+    }
+}
+
+function actualizarDescargaSeguimiento() {
+    const id = document.getElementById('versionSeguimientoPersonal').value;
+    const enlace = document.getElementById('descargarSeguimientoPersonal');
+    enlace.href = id ? `/api/seguimiento-personal/${encodeURIComponent(id)}/descargar` : '#';
+    enlace.classList.toggle('pointer-events-none', !id);
+    enlace.classList.toggle('opacity-50', !id);
+}
+
+async function cargarHojaSeguimiento() {
+    const contenedor = document.getElementById('contenidoSeguimientoPersonal');
+    if (contenedor.classList.contains('hidden')) return;
+    const id = document.getElementById('versionSeguimientoPersonal').value;
+    actualizarDescargaSeguimiento();
+    document.getElementById('tbodyHojaSeguimiento').innerHTML = '<tr><td class="p-8 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i>Cargando hoja...</td></tr>';
+    try {
+        const parametros = new URLSearchParams({hoja: hojaSeguimientoActiva});
+        if (id) parametros.set('importacion_id', id);
+        const response = await fetch(`/api/seguimiento-personal/hoja?${parametros.toString()}&_=${Date.now()}`, {cache: 'no-store'});
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudo cargar la hoja']).join(' | '));
+        datosHojaSeguimiento = data.hoja;
+        paginaHojaSeguimiento = 1;
+        const detalle = document.getElementById('detalleHojaSeguimiento');
+        const alertas = document.getElementById('alertasHojaSeguimiento');
+        if (!data.hoja) {
+            detalle.textContent = 'Importe el archivo de seguimiento para consultar esta hoja.';
+            alertas.classList.add('hidden');
+        } else {
+            detalle.textContent = `${data.importacion.archivo} · ${data.hoja.cantidad_filas} filas · ${data.hoja.cantidad_columnas} columnas · ${data.hoja.cantidad_formulas.toLocaleString('es-AR')} fórmulas`;
+            const rotas = data.hoja.referencias_rotas || [];
+            alertas.classList.toggle('hidden', !rotas.length);
+            alertas.innerHTML = rotas.length ? `<strong><i class="fas fa-triangle-exclamation mr-2"></i>Referencias rotas:</strong> ${escaparPersonal(rotas.join(', '))}. Estas fórmulas ya llegan con #REF! desde el Excel.` : '';
+        }
+        document.getElementById('formulaHojaSeguimiento').classList.add('hidden');
+        renderHojaSeguimiento();
+    } catch (error) {
+        datosHojaSeguimiento = null;
+        document.getElementById('tbodyHojaSeguimiento').innerHTML = `<tr><td class="p-8 text-center text-rose-700">${escaparPersonal(error.message)}</td></tr>`;
+    }
+}
+
+function letraColumnaSeguimiento(numero) {
+    let resultado = '';
+    while (numero > 0) {
+        numero--;
+        resultado = String.fromCharCode(65 + (numero % 26)) + resultado;
+        numero = Math.floor(numero / 26);
+    }
+    return resultado;
+}
+
+function formatoCeldaSeguimiento(celda, estilo) {
+    if (celda.v === null || celda.v === undefined) return '';
+    if (celda.t === 'fecha') {
+        const fecha = new Date(`${String(celda.v).slice(0, 10)}T00:00:00`);
+        return Number.isNaN(fecha.getTime()) ? String(celda.v) : fecha.toLocaleDateString('es-AR');
+    }
+    if (celda.t === 'numero') {
+        const valor = Number(celda.v);
+        const formato = String(estilo?.format || '');
+        if (formato.includes('%')) return `${(valor * 100).toLocaleString('es-AR', {maximumFractionDigits: 2})}%`;
+        if (/[$€£]/.test(formato)) return valor.toLocaleString('es-AR', {style: 'currency', currency: 'ARS', maximumFractionDigits: 2});
+        return valor.toLocaleString('es-AR', {maximumFractionDigits: 4});
+    }
+    return String(celda.v);
+}
+
+function seleccionarFormulaSeguimiento(coordenada, formula) {
+    const barra = document.getElementById('formulaHojaSeguimiento');
+    barra.classList.remove('hidden');
+    barra.textContent = `${coordenada}  ${formula}`;
+}
+
+function renderHojaSeguimiento() {
+    const thead = document.getElementById('theadHojaSeguimiento');
+    const tbody = document.getElementById('tbodyHojaSeguimiento');
+    if (!datosHojaSeguimiento) {
+        thead.innerHTML = '';
+        tbody.innerHTML = '<tr><td class="p-8 text-center text-slate-500">Todavía no hay un archivo de seguimiento importado.</td></tr>';
+        document.getElementById('paginaHojaSeguimiento').textContent = 'Página 1 de 1';
+        return;
+    }
+    const consulta = normalizarPersonal(document.getElementById('buscarHojaSeguimiento').value);
+    const filas = datosHojaSeguimiento.filas.map((celdas, indice) => ({celdas, numero: indice + 1})).filter(fila => !consulta || fila.celdas.some(celda => normalizarPersonal(`${celda.v ?? ''} ${celda.f ?? ''}`).includes(consulta)));
+    const paginas = Math.max(1, Math.ceil(filas.length / filasPorPaginaSeguimiento));
+    paginaHojaSeguimiento = Math.min(Math.max(1, paginaHojaSeguimiento), paginas);
+    const desde = (paginaHojaSeguimiento - 1) * filasPorPaginaSeguimiento;
+    const visibles = filas.slice(desde, desde + filasPorPaginaSeguimiento);
+    thead.innerHTML = `<tr><th class="sticky left-0 z-30 min-w-[48px] border border-slate-600 bg-slate-800 px-2 py-2">#</th>${Array.from({length: datosHojaSeguimiento.cantidad_columnas}, (_, indice) => {
+        const letra = letraColumnaSeguimiento(indice + 1);
+        const ancho = Math.min(360, Math.max(80, Number(datosHojaSeguimiento.anchos?.[letra] || 12) * 7));
+        return `<th class="border border-slate-600 px-2 py-2" style="min-width:${ancho}px">${letra}</th>`;
+    }).join('')}</tr>`;
+    tbody.innerHTML = visibles.length ? visibles.map(fila => `<tr>${
+        `<th class="sticky left-0 z-10 border border-slate-300 bg-slate-100 px-2 py-2 text-right font-semibold text-slate-500">${fila.numero}</th>`
+    }${fila.celdas.map((celda, indice) => {
+        const estilo = datosHojaSeguimiento.estilos?.[celda.s] || {};
+        const formula = celda.f || '';
+        const rota = formula.includes('#REF!') || String(celda.v || '').includes('#REF!');
+        const css = [`background-color:${rota ? '#fff1f2' : estilo.fill ? `#${estilo.fill}` : '#ffffff'}`, estilo.color ? `color:#${estilo.color}` : '', estilo.bold ? 'font-weight:700' : '', estilo.italic ? 'font-style:italic' : '', estilo.align ? `text-align:${estilo.align}` : '', estilo.wrap ? 'white-space:normal' : 'white-space:nowrap'].filter(Boolean).join(';');
+        const coordenada = `${letraColumnaSeguimiento(indice + 1)}${fila.numero}`;
+        return `<td class="relative border border-slate-200 px-2 py-1.5 ${formula ? 'cursor-pointer' : ''}" style="${css}" ${formula ? `title="${escaparPersonal(formula)}" onclick="seleccionarFormulaSeguimiento('${coordenada}', ${JSON.stringify(formula).replace(/"/g, '&quot;')})"` : ''}>${formula ? '<span class="absolute right-0.5 top-0.5 text-[8px] font-bold text-blue-600">fx</span>' : ''}${escaparPersonal(formatoCeldaSeguimiento(celda, estilo))}</td>`;
+    }).join('')}</tr>`).join('') : `<tr><td colspan="${datosHojaSeguimiento.cantidad_columnas + 1}" class="p-8 text-center text-slate-500">No hay filas que coincidan con la búsqueda.</td></tr>`;
+    document.getElementById('paginaHojaSeguimiento').textContent = `Página ${paginaHojaSeguimiento} de ${paginas} · ${filas.length} filas`;
+}
+
+function cambiarPaginaHoja(direccion) {
+    paginaHojaSeguimiento += direccion;
+    renderHojaSeguimiento();
+}
+
+async function importarSeguimientoPersonal() {
+    const input = document.getElementById('archivoSeguimientoPersonal');
+    if (!input.files.length) return mostrarMensajeSeguimiento('Seleccione el archivo Excel de seguimiento Personal.');
+    const boton = document.getElementById('importarSeguimientoBtn');
+    const contenidoBoton = boton.innerHTML;
+    boton.disabled = true;
+    boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Analizando fórmulas...';
+    const formulario = new FormData();
+    formulario.append('archivo', input.files[0]);
+    try {
+        const response = await fetch('/api/seguimiento-personal/importar', {method: 'POST', credentials: 'same-origin', body: formulario});
+        const data = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : null;
+        if (!response.ok || !data?.success) throw new Error((data?.errores || [`No se pudo importar (error ${response.status})`]).join(' | '));
+        mostrarMensajeSeguimiento(data.mensaje, 'success');
+        input.value = '';
+        await cargarVersionesSeguimiento(data.importacion.id);
+        await cargarHojaSeguimiento();
+    } catch (error) {
+        mostrarMensajeSeguimiento(error.message || 'No se pudo importar el seguimiento.');
+    } finally {
+        boton.disabled = false;
+        boton.innerHTML = contenidoBoton;
+    }
+}
+
+function mostrarMensajeProforma(texto, tipo = 'error') {
+    const mensaje = document.getElementById('mensajeProformaPersonal');
+    mensaje.className = `mx-5 mb-5 rounded-lg border p-3 text-sm ${tipo === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`;
+    mensaje.textContent = texto;
+}
+
+async function cargarProformaPersonal() {
+    try {
+        const response = await fetch(`/api/proforma-personal?_=${Date.now()}`, {cache: 'no-store'});
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudieron cargar las proformas']).join(' | '));
+        proformasPersonal = data.proformas || [];
+        importacionesProforma = data.importaciones || [];
+        const filtro = document.getElementById('filtroPeriodoProforma');
+        const actual = filtro.value;
+        filtro.innerHTML = '<option value="">Todos los períodos</option>' + (data.periodos || []).map(periodo => `<option value="${escaparPersonal(periodo)}">${escaparPersonal(periodo.slice(4, 6))}/${escaparPersonal(periodo.slice(0, 4))}</option>`).join('');
+        if ((data.periodos || []).includes(actual)) filtro.value = actual;
+        renderProformaPersonal();
+        renderImportacionesProforma();
+    } catch (error) {
+        document.getElementById('tbodyProformaPersonal').innerHTML = `<tr><td colspan="17" class="p-8 text-center text-rose-700">${escaparPersonal(error.message)}</td></tr>`;
+    }
+}
+
+function renderImportacionesProforma() {
+    const tbody = document.getElementById('tbodyImportacionesProforma');
+    if (!importacionesProforma.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-500">Todavía no hay importaciones registradas.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = importacionesProforma.map(item => {
+        const fecha = item.fecha ? new Date(item.fecha).toLocaleString('es-AR', {dateStyle: 'short', timeStyle: 'short'}) : '-';
+        const periodos = (item.periodos || []).map(periodo => `${periodo.slice(4, 6)}/${periodo.slice(0, 4)}`).join(', ');
+        return `<tr class="hover:bg-slate-50">
+            <td class="border-b border-slate-100 px-4 py-2 whitespace-nowrap">${escaparPersonal(fecha)}</td>
+            <td class="border-b border-slate-100 px-4 py-2 font-semibold">${escaparPersonal(item.archivo || 'Sin nombre')}</td>
+            <td class="border-b border-slate-100 px-4 py-2">${escaparPersonal(periodos || '-')}</td>
+            <td class="border-b border-slate-100 px-4 py-2 text-right font-bold">${Number(item.filas || 0)}</td>
+            <td class="border-b border-slate-100 px-4 py-2 text-right text-emerald-700">${Number(item.creadas || 0)}</td>
+            <td class="border-b border-slate-100 px-4 py-2 text-right text-blue-700">${Number(item.actualizadas || 0)}</td>
+            <td class="border-b border-slate-100 px-4 py-2">${escaparPersonal(item.usuario)}</td>
+            <td class="border-b border-slate-100 px-4 py-2 text-center"><span class="rounded-full px-2 py-1 text-xs font-bold ${item.deshecha ? 'bg-slate-100 text-slate-600' : 'bg-emerald-100 text-emerald-800'}">${item.deshecha ? 'Deshecha' : 'Activa'}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+function renderProformaPersonal() {
+    const periodo = document.getElementById('filtroPeriodoProforma').value;
+    const busqueda = normalizarPersonal(document.getElementById('buscarProformaPersonal').value);
+    const filas = proformasPersonal.filter(item => (!periodo || item.periodo === periodo) && (!busqueda || normalizarPersonal(`${item.fdv} ${item.negocio} ${item.sitio_proveedor} ${item.segmento} ${item.subsitio} ${item.tipo_hora}`).includes(busqueda)));
+    document.getElementById('contadorProformaPersonal').textContent = `${filas.length} de ${proformasPersonal.length} fila(s)`;
+    document.getElementById('kpiProformaHoras').textContent = formatoHorasPersonal(filas.reduce((suma, item) => suma + Number(item.total_horas || 0), 0));
+    document.getElementById('kpiProformaFijo').textContent = formatoMonedaProforma(filas.reduce((suma, item) => suma + Number(item.monto_fijo || 0), 0));
+    document.getElementById('kpiProformaBonos').textContent = formatoMonedaProforma(filas.reduce((suma, item) => suma + Number(item.monto_variable_kpi_vs || 0) + Number(item.monto_variable_ac || 0), 0));
+    document.getElementById('kpiProformaTotal').textContent = formatoMonedaProforma(filas.reduce((suma, item) => suma + Number(item.total_proyeccion || 0), 0));
+    document.getElementById('tbodyProformaPersonal').innerHTML = filas.length ? filas.map(item => `
+        <tr class="hover:bg-indigo-50/40">
+            <td class="border border-slate-200 px-2 py-2">${escaparPersonal(item.fdv)}</td>
+            <td class="border border-slate-200 px-2 py-2 text-center tabular-nums">${escaparPersonal(item.periodo)}</td>
+            <td class="border border-slate-200 px-2 py-2">${escaparPersonal(item.negocio)}</td>
+            <td class="border border-slate-200 px-2 py-2">${escaparPersonal(item.sitio_proveedor)}</td>
+            <td class="border border-slate-200 px-2 py-2 font-semibold">${escaparPersonal(item.segmento)}</td>
+            <td class="border border-slate-200 px-2 py-2">${escaparPersonal(item.subsitio)}</td>
+            <td class="border border-slate-200 px-2 py-2">${escaparPersonal(item.tipo_hora)}</td>
+            <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoHorasPersonal(item.total_horas)}</td>
+            <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoMonedaProforma(item.precio)}</td>
+            <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoMonedaProforma(item.monto_fijo)}</td>
+            <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoHorasPersonal(item.porcentaje_bono_kpi_vs)}%</td>
+            <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoMonedaProforma(item.monto_variable_kpi_vs)}</td>
+            <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoHorasPersonal(item.porcentaje_bono_ac)}%</td>
+            <td class="border border-violet-200 bg-violet-50 px-2 py-2 text-right font-bold text-violet-900 tabular-nums">${formatoHorasPersonal(item.bono_porcentaje_total)}%</td>
+            <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoMonedaProforma(item.monto_variable_ac)}</td>
+            <td class="border border-slate-200 px-2 py-2 text-right font-semibold tabular-nums">${formatoMonedaProforma(item.monto_variable)}</td>
+            <td class="border border-slate-200 px-2 py-2 text-right font-bold tabular-nums">${formatoMonedaProforma(item.total_proyeccion)}</td>
+        </tr>`).join('') : '<tr><td colspan="17" class="p-8 text-center text-slate-500">Todavía no hay proformas importadas para el filtro seleccionado.</td></tr>';
+}
+
+async function importarProformaPersonal() {
+    const input = document.getElementById('archivoProformaPersonal');
+    if (!input.files.length) return mostrarMensajeProforma('Seleccione el archivo Excel de Proforma.');
+    const boton = document.getElementById('importarProformaBtn');
+    const contenido = boton.innerHTML;
+    boton.disabled = true;
+    boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Importando...';
+    const formulario = new FormData();
+    formulario.append('archivo', input.files[0]);
+    try {
+        const response = await fetch('/api/proforma-personal/importar', {method: 'POST', credentials: 'same-origin', body: formulario});
+        const data = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : null;
+        if (!response.ok || !data?.success) throw new Error((data?.errores || [`No se pudo importar (error ${response.status})`]).join(' | '));
+        mostrarMensajeProforma(data.mensaje, 'success');
+        input.value = '';
+        await cargarProformaPersonal();
+        if (data.periodos?.length === 1) {
+            document.getElementById('filtroPeriodoProforma').value = data.periodos[0];
+            renderProformaPersonal();
+        }
+    } catch (error) {
+        mostrarMensajeProforma(error.message || 'No se pudo importar la Proforma.');
+    } finally {
+        boton.disabled = false;
+        boton.innerHTML = contenido;
+    }
+}
+
+function mostrarMensajePersonal(texto, tipo = 'error') {
+    const mensaje = document.getElementById('mensajePersonal');
+    const clases = tipo === 'success'
+        ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+        : tipo === 'info' ? 'border border-blue-200 bg-blue-50 text-blue-800' : 'border border-rose-200 bg-rose-50 text-rose-800';
+    mensaje.className = `mt-4 rounded-lg p-3 text-sm ${clases}`;
+    mensaje.textContent = texto;
+}
+
+async function cargarDatosPersonal() {
+    const year = document.getElementById('yearPersonal').value;
+    try {
+        const response = await fetch(`/api/carga-datos-personal?year=${encodeURIComponent(year)}&_=${Date.now()}`, {cache: 'no-store'});
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudieron cargar los datos Personal']).join(' | '));
+        datosPersonal = data.proyecciones || [];
+        mesesPersonal = data.meses || [];
+        serviciosPersonalCarga = data.servicios || serviciosPersonalCarga;
+        const filtro = document.getElementById('filtroMesPersonal');
+        const mesActual = filtro.value;
+        filtro.innerHTML = '<option value="">Todos los meses</option>' + mesesPersonal.map(mes => `<option value="${escaparPersonal(mes.value)}">${escaparPersonal(mes.label)}</option>`).join('');
+        if (mesesPersonal.some(mes => mes.value === mesActual)) filtro.value = mesActual;
+        renderDatosPersonal();
+    } catch (error) {
+        document.getElementById('tbodyDatosPersonal').innerHTML = `<tr><td colspan="5" class="p-8 text-center text-rose-700">${escaparPersonal(error.message)}</td></tr>`;
+    }
+}
+
+function renderDatosPersonal() {
+    const mes = document.getElementById('filtroMesPersonal').value;
+    const busqueda = normalizarPersonal(document.getElementById('buscarPersonal').value);
+    const filas = datosPersonal.filter(item => (!mes || item.mes === mes) && (!busqueda || normalizarPersonal(`${item.tipo_plp} ${item.campania}`).includes(busqueda)));
+    document.getElementById('contadorPersonal').textContent = `${filas.length} de ${datosPersonal.length} registro(s)`;
+    document.getElementById('tbodyDatosPersonal').innerHTML = filas.length ? filas.map(item => `
+        <tr class="hover:bg-slate-50">
+            <td class="border border-slate-200 px-3 py-2 font-semibold">${escaparPersonal(item.tipo_plp)}</td>
+            <td class="border border-slate-200 px-3 py-2">${escaparPersonal(item.mes_label || item.mes)}</td>
+            <td class="border border-slate-200 px-3 py-2">${escaparPersonal(item.campania)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right font-bold tabular-nums">${formatoHorasPersonal(item.horas_requeridas)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right tabular-nums">${formatoHorasPersonal(item.porcentaje_cumplimiento)}%</td>
+        </tr>`).join('') : '<tr><td colspan="5" class="p-8 text-center text-slate-500">No hay datos para el filtro seleccionado.</td></tr>';
+}
+
+function separarFilaPersonal(linea) {
+    const limpia = linea.replace(/\u00a0/g, ' ').trim();
+    if (!limpia) return [];
+    if (limpia.includes('|')) return limpia.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(celda => celda.trim());
+    if (limpia.includes('\t')) return limpia.split('\t').map(celda => celda.trim());
+    if (limpia.includes(';')) return limpia.split(';').map(celda => celda.trim());
+    return [];
+}
+
+function clasificacionPersonal(valor) {
+    const clave = normalizarPersonal(valor);
+    const disponibles = Object.fromEntries(serviciosPersonalCarga.map(tipo => [normalizarPersonal(tipo), tipo]));
+    return disponibles[clave] || ({'personal':'Personal','personal cx':'Personal CX','personal soporte':'Personal Soporte','personal smb':'Personal SMB'})[clave] || '';
+}
+
+function convertirMesPersonal(valor, yearSeleccionado) {
+    const clave = normalizarPersonal(valor).replace(/\s+/g, '');
+    const numeros = {ene:1,enero:1,feb:2,febrero:2,mar:3,marzo:3,abr:4,abril:4,may:5,mayo:5,jun:6,junio:6,jul:7,julio:7,ago:8,agosto:8,sep:9,sept:9,septiembre:9,oct:10,octubre:10,nov:11,noviembre:11,dic:12,diciembre:12};
+    if (/^\d{4}-\d{1,2}$/.test(clave)) {
+        const [year, mes] = clave.split('-').map(Number);
+        return year === Number(yearSeleccionado) && mes >= 1 && mes <= 12 ? `${year}-${String(mes).padStart(2, '0')}` : '';
+    }
+    const partes = clave.match(/^([a-z]+)[\/-]?(\d{2,4})$/);
+    if (!partes) return '';
+    let year = Number(partes[2]);
+    if (year < 100) year += 2000;
+    return numeros[partes[1]] && year === Number(yearSeleccionado) ? `${year}-${String(numeros[partes[1]]).padStart(2, '0')}` : '';
+}
+
+function convertirHorasPersonal(valor) {
+    let texto = String(valor ?? '').replace(/\u00a0/g, '').replace(/[$\s]/g, '').trim();
+    if (!texto) return null;
+    if (texto.includes(',')) texto = texto.replace(/\./g, '').replace(',', '.');
+    else if (/^[-+]?\d{1,3}(\.\d{3})+$/.test(texto)) texto = texto.replace(/\./g, '');
+    const horas = Number(texto);
+    return Number.isFinite(horas) && horas >= 0 ? horas : NaN;
+}
+
+function prepararCargaPersonal() {
+    const year = Number(document.getElementById('yearPersonal').value);
+    const errores = [];
+    const filas = [];
+    const claves = new Set();
+    let omitidas = 0;
+    document.getElementById('tablaPersonal').value.split(/\r?\n/).forEach((linea, indice) => {
+        const celdas = separarFilaPersonal(linea);
+        if (!celdas.length) return;
+        if (celdas.every(celda => /^:?-{3,}:?$/.test(celda.replace(/\s/g, '')))) return;
+        if (['clasificacion', 'clasificacion plp', 'tipo plp'].includes(normalizarPersonal(celdas[0]))) return;
+        if (celdas.length < 4) return errores.push(`Línea ${indice + 1}: se esperaban cuatro columnas.`);
+        const tipo = clasificacionPersonal(celdas[0]);
+        const mes = convertirMesPersonal(celdas[1], year);
+        const campania = celdas[2].replace(/\s+/g, ' ').trim();
+        const horas = convertirHorasPersonal(celdas[3]);
+        if (horas === null) return void (omitidas += 1);
+        if (!tipo) errores.push(`Línea ${indice + 1}: clasificación “${celdas[0]}” no válida.`);
+        else if (!mes) errores.push(`Línea ${indice + 1}: mes “${celdas[1]}” no corresponde a ${year}.`);
+        else if (!campania) errores.push(`Línea ${indice + 1}: falta la campaña.`);
+        else if (Number.isNaN(horas)) errores.push(`Línea ${indice + 1}: horas “${celdas[3]}” no válidas.`);
+        else {
+            const clave = `${normalizarPersonal(tipo)}|${mes}|${normalizarPersonal(campania)}`;
+            if (claves.has(clave)) errores.push(`Línea ${indice + 1}: ${campania} está repetida.`);
+            else { claves.add(clave); filas.push({tipo_plp: tipo, mes, campania, horas, clave}); }
+        }
+    });
+    if (errores.length || !filas.length) {
+        filasPreparadasPersonal = [];
+        document.getElementById('previewPersonal').classList.add('hidden');
+        return mostrarMensajePersonal(errores.length ? errores.slice(0, 15).join(' | ') : 'No se encontraron filas con horas para preparar.');
+    }
+    const existentes = new Map(datosPersonal.map(item => [`${normalizarPersonal(item.tipo_plp)}|${item.mes}|${normalizarPersonal(item.campania)}`, item]));
+    filasPreparadasPersonal = filas.map(fila => {
+        const existente = existentes.get(fila.clave);
+        return {...fila, id: existente?.id || null, carga_semanal: existente?.carga_semanal || 'L a V', carga_horaria: existente?.carga_horaria || 6, porcentaje_cumplimiento: existente?.porcentaje_cumplimiento ?? 100, existe: Boolean(existente)};
+    });
+    renderPreviewPersonal(omitidas);
+}
+
+function renderPreviewPersonal(omitidas) {
+    const totales = filasPreparadasPersonal.reduce((resultado, fila) => {
+        resultado[fila.tipo_plp] = (resultado[fila.tipo_plp] || 0) + fila.horas;
+        return resultado;
+    }, {});
+    const total = filasPreparadasPersonal.reduce((suma, fila) => suma + fila.horas, 0);
+    document.getElementById('totalesPersonal').innerHTML = `<span class="rounded bg-emerald-700 px-3 py-1 text-xs font-bold text-white">Total: ${formatoHorasPersonal(total)} h</span>` + Object.entries(totales).map(([tipo, horas]) => `<span class="rounded bg-emerald-50 px-3 py-1 text-xs text-emerald-900 ring-1 ring-emerald-200"><strong>${escaparPersonal(tipo)}:</strong> ${formatoHorasPersonal(horas)} h</span>`).join('');
+    document.getElementById('tbodyPreviewPersonal').innerHTML = filasPreparadasPersonal.map(fila => `
+        <tr class="hover:bg-emerald-50/40">
+            <td class="border border-emerald-100 px-3 py-2 font-semibold">${escaparPersonal(fila.tipo_plp)}</td>
+            <td class="border border-emerald-100 px-3 py-2">${escaparPersonal(fila.mes)}</td>
+            <td class="border border-emerald-100 px-3 py-2">${escaparPersonal(fila.campania)}</td>
+            <td class="border border-emerald-100 px-3 py-2 text-right font-bold tabular-nums">${formatoHorasPersonal(fila.horas)}</td>
+            <td class="border border-emerald-100 px-3 py-2 text-center"><span class="rounded-full px-2 py-1 text-xs font-bold ${fila.existe ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'}">${fila.existe ? 'Reemplaza' : 'Nueva'}</span></td>
+        </tr>`).join('');
+    document.getElementById('previewPersonal').classList.remove('hidden');
+    mostrarMensajePersonal(`${filasPreparadasPersonal.length} fila(s) preparadas${omitidas ? `; ${omitidas} sin horas omitida(s)` : ''}. Revisá la vista previa antes de guardar.`, 'info');
+    document.getElementById('previewPersonal').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+async function guardarCargaPersonal() {
+    if (!filasPreparadasPersonal.length) return mostrarMensajePersonal('Primero prepará una tabla con datos.');
+    const boton = document.getElementById('guardarPersonalBtn');
+    const contenido = boton.innerHTML;
+    boton.disabled = true;
+    boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Guardando...';
+    const filas = filasPreparadasPersonal.map(fila => ({
+        id: fila.id,
+        eliminar: false,
+        tipo_plp: fila.tipo_plp,
+        mes: fila.mes,
+        campania: fila.campania,
+        horas: fila.horas,
+        carga_semanal: fila.carga_semanal,
+        carga_horaria: fila.carga_horaria,
+        porcentaje_cumplimiento: fila.porcentaje_cumplimiento,
+    }));
+    try {
+        const response = await fetch('/api/carga-datos-personal', {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            credentials: 'same-origin', body: JSON.stringify({year: document.getElementById('yearPersonal').value, filas}),
+        });
+        const data = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : null;
+        if (!response.ok || !data?.success) throw new Error((data?.errores || [`No se pudo guardar (error ${response.status})`]).join(' | '));
+        const cantidad = filasPreparadasPersonal.length;
+        filasPreparadasPersonal = [];
+        document.getElementById('tablaPersonal').value = '';
+        document.getElementById('previewPersonal').classList.add('hidden');
+        mostrarMensajePersonal(`${cantidad} registro(s) de Personal guardados correctamente.`, 'success');
+        await cargarDatosPersonal();
+    } catch (error) {
+        mostrarMensajePersonal(error.message || 'No se pudo guardar la carga Personal.');
+    } finally {
+        boton.disabled = false;
+        boton.innerHTML = contenido;
+    }
+}
+
+function limpiarCargaPersonal() {
+    document.getElementById('tablaPersonal').value = '';
+    filasPreparadasPersonal = [];
+    document.getElementById('previewPersonal').classList.add('hidden');
+    document.getElementById('mensajePersonal').classList.add('hidden');
+}
+</script>
+{% endblock %}

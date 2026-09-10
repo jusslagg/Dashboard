@@ -97,6 +97,9 @@
                         <a href="/cargar" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/cargar' %}active{% endif %}">
                             <i class="fas fa-plus-circle w-6"></i><span class="sidebar-text">Cargar Datos</span>
                         </a>
+                        <a href="/carga-datos-personal" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/carga-datos-personal' %}active{% endif %}">
+                            <i class="fas fa-users-rectangle w-6"></i><span class="sidebar-text">Carga de datos Personal</span>
+                        </a>
                         {% endif %}
                         {% if usuario_actual and usuario_actual.puede_ver_catalogos %}
                         <a href="/catalogos" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/catalogos' %}active{% endif %}">

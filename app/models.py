@@ -690,6 +690,95 @@ class ProyeccionMatrizJornada(db.Model):
         }
 
 
+class ProformaPersonal(db.Model):
+    __tablename__ = 'proforma_personal'
+
+    id = db.Column(db.Integer, primary_key=True)
+    fdv = db.Column(db.String(150), nullable=False)
+    periodo = db.Column(db.String(6), nullable=False, index=True)
+    negocio = db.Column(db.String(100), nullable=False)
+    sitio_proveedor = db.Column(db.String(100), nullable=False)
+    segmento = db.Column(db.String(150), nullable=False)
+    subsitio = db.Column(db.String(150), nullable=True)
+    tipo_hora = db.Column(db.String(50), nullable=False)
+    total_horas = db.Column(HORAS, default=0, nullable=False)
+    precio = db.Column(HORAS, default=0, nullable=False)
+    monto_fijo = db.Column(HORAS, default=0, nullable=False)
+    porcentaje_bono_kpi_vs = db.Column(PORCENTAJE, default=0, nullable=False)
+    monto_variable_kpi_vs = db.Column(HORAS, default=0, nullable=False)
+    porcentaje_bono_ac = db.Column(PORCENTAJE, default=0, nullable=False)
+    monto_variable_ac = db.Column(HORAS, default=0, nullable=False)
+    monto_variable = db.Column(HORAS, default=0, nullable=False)
+    total_proyeccion = db.Column(HORAS, default=0, nullable=False)
+    bono_porcentaje_total = db.Column(PORCENTAJE, default=0, nullable=False)
+    archivo_origen = db.Column(db.String(255), nullable=True)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            'fdv', 'periodo', 'negocio', 'sitio_proveedor', 'segmento', 'subsitio', 'tipo_hora',
+            name='uq_proforma_personal_fila',
+        ),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'fdv': self.fdv,
+            'periodo': self.periodo,
+            'negocio': self.negocio,
+            'sitio_proveedor': self.sitio_proveedor,
+            'segmento': self.segmento,
+            'subsitio': self.subsitio or '',
+            'tipo_hora': self.tipo_hora,
+            'total_horas': self.total_horas or 0,
+            'precio': self.precio or 0,
+            'monto_fijo': self.monto_fijo or 0,
+            'porcentaje_bono_kpi_vs': self.porcentaje_bono_kpi_vs or 0,
+            'monto_variable_kpi_vs': self.monto_variable_kpi_vs or 0,
+            'porcentaje_bono_ac': self.porcentaje_bono_ac or 0,
+            'monto_variable_ac': self.monto_variable_ac or 0,
+            'monto_variable': self.monto_variable or 0,
+            'total_proyeccion': self.total_proyeccion or 0,
+            'bono_porcentaje_total': self.bono_porcentaje_total or 0,
+            'archivo_origen': self.archivo_origen or '',
+            'creado_en': self.creado_en.isoformat() if self.creado_en else None,
+            'actualizado_en': self.actualizado_en.isoformat() if self.actualizado_en else None,
+        }
+
+
+class SeguimientoPersonalImportacion(db.Model):
+    __tablename__ = 'seguimiento_personal_importaciones'
+
+    id = db.Column(db.Integer, primary_key=True)
+    archivo = db.Column(db.String(255), nullable=False)
+    periodo_referencia = db.Column(db.String(100), nullable=True)
+    contenido_hojas = db.Column(db.LargeBinary, nullable=False)
+    contenido_xlsx = db.Column(db.LargeBinary, nullable=False)
+    cantidad_hojas = db.Column(db.Integer, default=5, nullable=False)
+    cantidad_filas = db.Column(db.Integer, default=0, nullable=False)
+    cantidad_formulas = db.Column(db.Integer, default=0, nullable=False)
+    advertencias = db.Column(db.Integer, default=0, nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    usuario = db.relationship('Usuario', foreign_keys=[usuario_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'archivo': self.archivo,
+            'periodo_referencia': self.periodo_referencia or '',
+            'cantidad_hojas': self.cantidad_hojas,
+            'cantidad_filas': self.cantidad_filas,
+            'cantidad_formulas': self.cantidad_formulas,
+            'advertencias': self.advertencias,
+            'usuario': self.usuario.nombre if self.usuario else 'Usuario eliminado',
+            'creado_en': self.creado_en.isoformat() if self.creado_en else None,
+        }
+
+
 class PersonalDistribucionHoras(db.Model):
     __tablename__ = 'personal_distribucion_horas'
 
