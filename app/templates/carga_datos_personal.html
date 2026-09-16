@@ -33,21 +33,28 @@
             <div class="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <h2 class="text-lg font-bold text-indigo-950">Importar archivo de Proforma</h2>
-                    <p class="mt-1 text-sm text-indigo-700">Use el archivo Excel con la estructura original. Las filas existentes con la misma identificación se actualizan.</p>
+                    <p class="mt-1 text-sm text-indigo-700">Elegí el tipo antes de importar. Cada tipo conserva su información aunque corresponda al mismo mes.</p>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row">
                     <a href="/api/proforma-personal/template" class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700"><i class="fas fa-file-excel mr-2"></i>Descargar template</a>
+                    <select id="tipoProformaPersonal" onchange="actualizarAvisoTipoProforma()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm font-semibold">
+                        <option value="">Seleccionar tipo...</option>
+                        <option value="Masivo">Masivo</option>
+                        <option value="Personal Pay">Personal Pay</option>
+                        <option value="Soporte">Soporte</option>
+                    </select>
                     <input id="archivoProformaPersonal" type="file" accept=".xlsx" class="block max-w-sm rounded border border-slate-300 bg-white text-sm file:mr-3 file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-semibold">
                     <button id="importarProformaBtn" type="button" onclick="importarProformaPersonal()" class="h-10 whitespace-nowrap rounded bg-indigo-600 px-5 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"><i class="fas fa-upload mr-2"></i>Importar Proforma</button>
                 </div>
             </div>
+            <div id="avisoTipoProforma" class="mx-5 mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Seleccione el tipo de Proforma para identificar el lote que se cargar&aacute;.</div>
             <div id="mensajeProformaPersonal" class="mx-5 mb-5 hidden rounded-lg p-3 text-sm"></div>
         </section>
 
         <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
             <div class="border-b border-slate-200 px-5 py-4">
                 <h2 class="font-bold text-slate-950"><i class="fas fa-clock-rotate-left mr-2 text-slate-500"></i>Importaciones realizadas</h2>
-                <p class="mt-1 text-xs text-slate-500">Cada archivo se registra como un lote independiente. Las cargas posteriores no eliminan filas ausentes.</p>
+                <p class="mt-1 text-xs text-slate-500">Si volvés a cargar el mismo tipo y mes, ese lote se reemplaza completo. Los otros tipos del mes no se modifican.</p>
             </div>
             <div class="max-h-72 overflow-auto">
                 <table class="w-full min-w-[850px] border-collapse text-sm">
@@ -69,22 +76,23 @@
                 <div><h2 class="text-lg font-bold text-slate-950">Proformas importadas</h2><p id="contadorProformaPersonal" class="mt-1 text-xs text-slate-500">Cargando...</p></div>
                 <div class="flex flex-col gap-2 sm:flex-row">
                     <select id="filtroPeriodoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los períodos</option></select>
+                    <select id="filtroTipoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos</option><option value="Masivo">Masivo</option><option value="Personal Pay">Personal Pay</option><option value="Soporte">Soporte</option></select>
                     <input id="buscarProformaPersonal" type="search" oninput="renderProformaPersonal()" class="h-10 rounded border border-slate-300 px-3 text-sm" placeholder="Buscar segmento...">
                 </div>
             </div>
             <div class="max-h-[650px] overflow-auto p-4">
-                <table id="tablaProformaPersonal" class="min-w-[2500px] border-collapse text-xs">
+                <table id="tablaProformaPersonal" class="w-full min-w-[1450px] border-collapse text-sm">
                     <thead class="sticky top-0 bg-slate-900 text-white"><tr>
-                        <th class="border border-slate-700 px-2 py-2 text-left">A · FDV</th><th class="border border-slate-700 px-2 py-2">B · PERIODO</th><th class="border border-slate-700 px-2 py-2 text-left">C · NEGOCIO</th><th class="border border-slate-700 px-2 py-2 text-left">D · SITIO_PROVEEDOR</th><th class="border border-slate-700 px-2 py-2 text-left">E · SEGMENTO</th><th class="border border-slate-700 px-2 py-2 text-left">F · SUBSITIO</th><th class="border border-slate-700 px-2 py-2 text-left">G · TIPO_HORA</th><th class="border border-slate-700 px-2 py-2 text-right">H · TOTAL_HORAS</th><th class="border border-slate-700 px-2 py-2 text-right">I · PRECIO</th><th class="border border-slate-700 px-2 py-2 text-right">J · MONTO_FIJO</th><th class="border border-slate-700 px-2 py-2 text-right">K · % BONO KPI VS</th><th class="border border-slate-700 px-2 py-2 text-right">L · MONTO VAR. KPI VS</th><th class="border border-slate-700 px-2 py-2 text-right">M · % BONO AC</th><th class="border border-violet-600 bg-violet-800 px-2 py-2 text-right">BONO TOTAL K + M</th><th class="border border-slate-700 px-2 py-2 text-right">N · MONTO VAR. AC</th><th class="border border-slate-700 px-2 py-2 text-right">O · MONTO_VARIABLE</th><th class="border border-slate-700 px-2 py-2 text-right">P · TOTAL_PROYECCION</th>
+                        <th class="border border-slate-700 px-3 py-2 text-left">Tipo</th><th class="border border-slate-700 px-3 py-2">Período</th><th class="border border-slate-700 px-3 py-2 text-left">Negocio</th><th class="border border-slate-700 px-3 py-2 text-left">Campaña</th><th class="border border-slate-700 px-3 py-2 text-left">Tipo de hora</th><th class="border border-slate-700 px-3 py-2 text-right">Horas</th><th class="border border-slate-700 px-3 py-2 text-right">Precio</th><th class="border border-slate-700 px-3 py-2 text-right">Monto fijo</th><th class="border border-slate-700 px-3 py-2 text-right">Bono KPI</th><th class="border border-slate-700 px-3 py-2 text-right">Bono AC</th><th class="border border-slate-700 px-3 py-2 text-right">Variable</th><th class="border border-slate-700 px-3 py-2 text-right">Total</th>
                     </tr></thead>
-                    <tbody id="tbodyProformaPersonal"><tr><td colspan="17" class="p-8 text-center text-slate-500">Todavía no hay proformas importadas.</td></tr></tbody>
+                    <tbody id="tbodyProformaPersonal"><tr><td colspan="12" class="p-8 text-center text-slate-500">Todavía no hay proformas importadas.</td></tr></tbody>
                 </table>
             </div>
         </section>
     </div>
 
     <div id="contenidoSeguimientoPersonal" class="hidden space-y-5">
-        <section class="rounded-xl border border-indigo-200 bg-white shadow-sm">
+        <section id="configuracionInicialSeguimiento" class="rounded-xl border border-indigo-200 bg-white shadow-sm">
             <div class="flex flex-col gap-4 p-5 xl:flex-row xl:items-end xl:justify-between">
                 <div class="max-w-2xl">
                     <h2 class="text-lg font-bold text-indigo-950">Configuración inicial del seguimiento</h2>
@@ -107,25 +115,55 @@
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row">
                     <select id="versionSeguimientoPersonal" onchange="cargarHojaSeguimiento()" class="h-10 min-w-[280px] rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Sin configuración</option></select>
-                    <a id="descargarSeguimientoPersonal" href="#" class="pointer-events-none inline-flex h-10 items-center justify-center rounded border border-emerald-300 bg-emerald-50 px-4 text-sm font-bold text-emerald-800 opacity-50"><i class="fas fa-file-excel mr-2"></i>Descargar versión</a>
                 </div>
             </div>
             <div id="logicaHojaSeguimiento" class="border-b border-blue-100 bg-blue-50 px-5 py-3 text-sm text-blue-950"></div>
             <div id="alertasHojaSeguimiento" class="hidden border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-800"></div>
-            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <input id="buscarHojaSeguimiento" type="search" oninput="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="h-10 w-full max-w-md rounded border border-slate-300 px-3 text-sm" placeholder="Buscar en la hoja...">
+            <div id="resumenHojaSeguimiento" class="grid gap-3 border-b border-slate-200 bg-slate-50/70 p-5 sm:grid-cols-2 xl:grid-cols-5"></div>
+            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-3 xl:flex-row xl:items-center xl:justify-between">
+                <div class="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    <input id="buscarHojaSeguimiento" type="search" oninput="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="h-10 rounded border border-slate-300 px-3 text-sm" placeholder="Buscar campaña o dato...">
+                    <select id="filtroPeriodoHojaSeguimiento" onchange="cambiarPeriodoHojaSeguimiento()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los períodos</option></select>
+                    <select id="filtroEstadoHojaSeguimiento" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los estados</option></select>
+                    <select id="filtroEmpresa2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las empresas</option></select>
+                    <select id="filtroNegocio2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos de negocio</option></select>
+                    <select id="filtroCampania2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las campañas</option></select>
+                    <select id="filtroTipoHora2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos de hora</option></select>
+                    <select id="filtroJefatura2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las jefaturas</option></select>
+                    <select id="filtroGrupoAuxiliar" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-auxiliar hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los grupos</option></select>
+                    <select id="filtroCampaniaAuxiliar" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-auxiliar hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las campañas</option></select>
+                    <select id="filtroTipoVHAuxiliar" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-auxiliar hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos VH</option></select>
+                    <select id="filtroSegmentoAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los segmentos</option></select>
+                    <select id="filtroJefaturaAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las jefaturas</option></select>
+                    <select id="filtroNegocioAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos de negocio</option></select>
+                    <select id="filtroProformaAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los grupos de Proforma</option></select>
+                </div>
                 <div class="flex items-center gap-2">
+                    <button id="guardarCambiosHorasAuxiliar" type="button" onclick="guardarCambiosHorasAuxiliarPersonal()" class="hidden h-9 rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"><i class="fas fa-save mr-1"></i> Guardar cambios</button>
+                    <button id="guardarCambiosAuxNormalizacion" type="button" onclick="guardarCambiosAuxNormalizacionPersonal()" class="hidden h-9 rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"><i class="fas fa-save mr-1"></i> Guardar correspondencias</button>
                     <button type="button" onclick="cambiarPaginaHoja(-1)" class="h-9 rounded border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50"><i class="fas fa-chevron-left"></i></button>
                     <span id="paginaHojaSeguimiento" class="min-w-[130px] text-center text-sm text-slate-600">Página 1 de 1</span>
                     <button type="button" onclick="cambiarPaginaHoja(1)" class="h-9 rounded border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
-            <div id="formulaHojaSeguimiento" class="hidden border-b border-slate-200 bg-slate-50 px-5 py-2 font-mono text-xs text-slate-700"></div>
             <div class="max-h-[680px] overflow-auto">
-                <table id="tablaHojaSeguimiento" class="border-collapse text-xs">
-                    <thead id="theadHojaSeguimiento" class="sticky top-0 z-20 bg-slate-800 text-white"></thead>
+                <table id="tablaHojaSeguimiento" class="w-full min-w-[1050px] border-collapse text-sm">
+                    <thead id="theadHojaSeguimiento" class="sticky top-0 z-20 bg-slate-100 text-slate-700"></thead>
                     <tbody id="tbodyHojaSeguimiento"><tr><td class="p-8 text-center text-slate-500">Todavía no hay un archivo de seguimiento importado.</td></tr></tbody>
                 </table>
+            </div>
+            <div id="panelPublicarDashboardPersonal" class="hidden border-t border-emerald-200 bg-emerald-50 px-5 py-4">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <div class="font-bold text-emerald-950"><i class="fas fa-chart-line mr-2"></i>Pasar el período al dashboard principal</div>
+                        <p id="detallePublicarDashboardPersonal" class="mt-1 text-sm text-emerald-800">Seleccione un período para publicar exactamente los totales previsualizados.</p>
+                    </div>
+                    <button id="publicarDashboardPersonal" type="button" onclick="publicarSeguimientoPersonalDashboard()" class="h-10 whitespace-nowrap rounded bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"><i class="fas fa-upload mr-2"></i>Pasar al dashboard</button>
+                </div>
+            </div>
+            <div class="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4">
+                <span id="estadoPasoSeguimiento" class="text-sm text-slate-600"></span>
+                <button id="siguientePasoSeguimiento" type="button" onclick="irSiguientePasoSeguimiento()" class="rounded bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-indigo-700">Continuar</button>
             </div>
         </section>
     </div>
@@ -212,6 +250,12 @@ let importacionesProforma = [];
 let importacionesSeguimiento = [];
 let hojaSeguimientoActiva = 'base_objetivo_masivo';
 let datosHojaSeguimiento = null;
+let periodosProformaSeguimiento = [];
+let periodosDefinitivosAuxiliarSeguimiento = [];
+let cierresAuxiliarSeguimiento = [];
+let validacionesDashboardSeguimiento = {};
+const cambiosHorasAuxiliarSeguimiento = new Map();
+const cambiosAuxNormalizacionSeguimiento = new Map();
 let paginaHojaSeguimiento = 1;
 const filasPorPaginaSeguimiento = 100;
 let datosPersonal = [];
@@ -240,7 +284,7 @@ function formatoMonedaProforma(valor) {
     return Number(valor || 0).toLocaleString('es-AR', {style: 'currency', currency: 'ARS', minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 
-const configuracionHojasSeguimiento = {
+const configuracionHojasSeguimientoExcel = {
     base_objetivo_masivo: {
         tab: 'tabCargaBaseObjetivoMasivo', nombre: 'Base objetivo Masivo',
         logica: 'Consolida por campaña, tipo de hora y mes. Toma horas de 2026 y del Auxiliar, busca el valor hora en Precios y calcula facturación de horas, variable, penalizaciones, total y objetivos.'
@@ -255,11 +299,39 @@ const configuracionHojasSeguimiento = {
     },
     '2026': {
         tab: 'tabCarga2026', nombre: '2026',
-        logica: 'Es el motor de facturación: horas × precio, bono sobre facturado, penalidades y total general. Aux clasifica campaña, segmento, jefatura y negocio; Precios identifica el tipo de tarifa.'
+        logica: 'Es el motor de facturación: respeta las horas, precio, monto fijo, bonos y total informados por la Proforma. Aux clasifica campaña, segmento, jefatura y negocio; Precios identifica el tipo de tarifa.'
     },
     aux: {
         tab: 'tabCargaAux', nombre: 'Aux',
         logica: 'Es el catálogo de correspondencias. Relaciona cada campaña con segmento, jefatura, tipo de negocio, proforma y segmento de respaldo para alimentar las búsquedas del resto de las hojas.'
+    }
+};
+
+const configuracionHojasSeguimiento = {
+    base_objetivo_masivo: {
+        tab: 'tabCargaBaseObjetivoMasivo', nombre: 'Base objetivo Masivo', siguiente: 'auxiliar_horas_plp_masivo', inicio: 2, periodo: 5, estado: 15,
+        logica: 'Consolida por campaña, tipo de hora y mes. Permite revisar objetivos, horas facturadas y valorización antes de continuar.',
+        columnas: [[5,'Período','fecha'],[1,'Grupo','texto'],[3,'Campaña','texto'],[4,'Tipo de hora','texto'],[15,'Estado','estado'],[6,'Objetivo horas','horas'],[7,'Horas facturadas','horas'],[8,'Valor hora','moneda'],[9,'Facturado horas','moneda'],[11,'Variable','moneda'],[12,'Ajustes','moneda'],[14,'Total facturado','moneda']]
+    },
+    auxiliar_horas_plp_masivo: {
+        tab: 'tabCargaAuxiliar', nombre: 'Auxiliar Horas PLP Masivo', siguiente: 'precios', especial: 'auxiliar_horas', periodo: 3, estado: 17,
+        logica: 'Replica la estructura del archivo. Complete F para la proyección y H cuando llegue el cierre definitivo; la definitiva pasa a ser la versión vigente del período.',
+        columnas: [[0,'GRUPO','texto'],[1,'Campaña','texto'],[2,'Tipo VH','texto'],[3,'Mes','fecha'],[4,'Proforma','estado'],[5,'Horas PLANIFICADAS PLP','horas_editables'],[6,'Proforma','estado'],[7,'Horas PLANIFICADAS CIERRE DE TRÁFICO','horas_editables'],[8,'HORAS CÁLCULO NETAS CIERRE DE TRÁFICO','horas'],[9,'Brutas','horas_editables'],[10,'Brutas c/Tope','horas'],[11,'% ADH','porcentaje_editable'],[12,'x','texto'],[13,'HORAS FACTURADAS PROYECTADAS','horas'],[14,'% tipo hs','porcentaje'],[15,'HORAS FACTURADAS DEFINITIVAS','horas'],[16,'PRECIO','moneda'],[17,'Estado vigente','estado']]
+    },
+    precios: {
+        tab: 'tabCargaPrecios', nombre: 'Precios', siguiente: '2026', especial: 'precios', periodo: 0, estado: null,
+        logica: 'Presenta cada precio como un registro simple de tipo de hora y período para verificarlo antes de valorizar la facturación.',
+        columnas: [[0,'Período','fecha'],[1,'Tipo de hora','texto'],[2,'Precio','moneda']]
+    },
+    '2026': {
+        tab: 'tabCarga2026', nombre: '2026', siguiente: 'aux', inicio: 1, periodo: 2, estado: 3,
+        logica: 'Vista final valorizada. Respeta el período, las horas, el precio, los bonos y el total informados por cada Proforma.',
+        columnas: [[2,'Período','fecha'],[1,'Empresa','texto'],[0,'Tipo de negocio','texto'],[5,'Campaña','texto'],[17,'Tipo de hora','texto'],[3,'Estado','estado'],[6,'Horas','horas'],[7,'Precio','moneda'],[8,'Facturado horas','moneda'],[9,'Bono','porcentaje'],[10,'Facturado bono','moneda'],[12,'Ajustes','moneda'],[13,'Total','moneda'],[18,'Jefatura','texto']]
+    },
+    aux: {
+        tab: 'tabCargaAux', nombre: 'Aux', siguiente: null, especial: 'aux_normalizacion', inicio: 1, periodo: null, estado: null,
+        logica: 'Normaliza el nombre original de cada campaña. Sus cinco correspondencias alimentan Base objetivo Masivo y la vista 2026.',
+        columnas: [[1,'Campaña original','texto_fijo'],[2,'Segmento normalizado','texto_editable'],[3,'Jefatura','texto_editable'],[4,'Tipo de negocio','texto_editable'],[5,'Proforma','texto_editable'],[6,'Segmento de respaldo','texto_editable']]
     }
 };
 
@@ -277,8 +349,27 @@ function seleccionarPestanaCargaPersonal(clave) {
     if (!esProforma && configuracionHojasSeguimiento[clave]) {
         hojaSeguimientoActiva = clave;
         paginaHojaSeguimiento = 1;
+        document.getElementById('buscarHojaSeguimiento').value = '';
+        document.getElementById('filtroPeriodoHojaSeguimiento').value = '';
+        document.getElementById('filtroEstadoHojaSeguimiento').value = '';
+        document.querySelectorAll('.filtro-detalle-2026').forEach(elemento => {
+            elemento.classList.toggle('hidden', clave !== '2026');
+            elemento.value = '';
+        });
+        document.querySelectorAll('.filtro-detalle-auxiliar').forEach(elemento => {
+            elemento.classList.toggle('hidden', clave !== 'auxiliar_horas_plp_masivo');
+            elemento.value = '';
+        });
+        document.querySelectorAll('.filtro-detalle-aux').forEach(elemento => {
+            elemento.classList.toggle('hidden', clave !== 'aux');
+            elemento.value = '';
+        });
+        document.getElementById('filtroPeriodoHojaSeguimiento').classList.toggle('hidden', clave === 'aux');
+        document.getElementById('filtroEstadoHojaSeguimiento').classList.toggle('hidden', clave === 'aux');
+        actualizarBotonCambiosHorasAuxiliar();
+        actualizarBotonCambiosAuxNormalizacion();
         document.getElementById('tituloHojaSeguimiento').textContent = configuracionHojasSeguimiento[clave].nombre;
-        document.getElementById('logicaHojaSeguimiento').innerHTML = `<strong>Lógica:</strong> ${escaparPersonal(configuracionHojasSeguimiento[clave].logica)} <span class="ml-2 text-blue-700">Las celdas con <strong>fx</strong> conservan la fórmula original; haga clic para verla.</span>`;
+        document.getElementById('logicaHojaSeguimiento').innerHTML = `<strong>Control del paso:</strong> ${escaparPersonal(configuracionHojasSeguimiento[clave].logica)}`;
         cargarHojaSeguimiento();
     }
 }
@@ -295,6 +386,7 @@ async function cargarVersionesSeguimiento(seleccionarId = null) {
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudieron cargar las importaciones']).join(' | '));
         importacionesSeguimiento = data.importaciones || [];
+        document.getElementById('configuracionInicialSeguimiento').classList.toggle('hidden', importacionesSeguimiento.length > 0);
         const selector = document.getElementById('versionSeguimientoPersonal');
         const anterior = seleccionarId ? String(seleccionarId) : selector.value;
         selector.innerHTML = importacionesSeguimiento.length ? importacionesSeguimiento.map(item => {
@@ -309,11 +401,7 @@ async function cargarVersionesSeguimiento(seleccionarId = null) {
 }
 
 function actualizarDescargaSeguimiento() {
-    const id = document.getElementById('versionSeguimientoPersonal').value;
-    const enlace = document.getElementById('descargarSeguimientoPersonal');
-    enlace.href = id ? `/api/seguimiento-personal/${encodeURIComponent(id)}/descargar` : '#';
-    enlace.classList.toggle('pointer-events-none', !id);
-    enlace.classList.toggle('opacity-50', !id);
+    return;
 }
 
 async function cargarHojaSeguimiento() {
@@ -329,6 +417,10 @@ async function cargarHojaSeguimiento() {
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudo cargar la hoja']).join(' | '));
         datosHojaSeguimiento = data.hoja;
+        periodosProformaSeguimiento = data.periodos_proforma || [];
+        periodosDefinitivosAuxiliarSeguimiento = data.periodos_definitivos_auxiliar || [];
+        cierresAuxiliarSeguimiento = data.cierres_auxiliar || [];
+        validacionesDashboardSeguimiento = data.validaciones_dashboard || {};
         paginaHojaSeguimiento = 1;
         const detalle = document.getElementById('detalleHojaSeguimiento');
         const alertas = document.getElementById('alertasHojaSeguimiento');
@@ -336,12 +428,10 @@ async function cargarHojaSeguimiento() {
             detalle.textContent = 'Importe el archivo de seguimiento para consultar esta hoja.';
             alertas.classList.add('hidden');
         } else {
-            detalle.textContent = `${data.importacion.archivo} · ${data.hoja.cantidad_filas} filas · ${data.hoja.cantidad_columnas} columnas · ${data.hoja.cantidad_formulas.toLocaleString('es-AR')} fórmulas`;
-            const rotas = data.hoja.referencias_rotas || [];
-            alertas.classList.toggle('hidden', !rotas.length);
-            alertas.innerHTML = rotas.length ? `<strong><i class="fas fa-triangle-exclamation mr-2"></i>Referencias rotas:</strong> ${escaparPersonal(rotas.join(', '))}. Estas fórmulas ya llegan con #REF! desde el Excel.` : '';
+            detalle.textContent = `${data.importacion.archivo} · ${Math.max(0, data.hoja.cantidad_filas - 1).toLocaleString('es-AR')} registros disponibles`;
+            alertas.classList.add('hidden');
         }
-        document.getElementById('formulaHojaSeguimiento').classList.add('hidden');
+        prepararFiltrosHojaSeguimiento();
         renderHojaSeguimiento();
     } catch (error) {
         datosHojaSeguimiento = null;
@@ -381,7 +471,7 @@ function seleccionarFormulaSeguimiento(coordenada, formula) {
     barra.textContent = `${coordenada}  ${formula}`;
 }
 
-function renderHojaSeguimiento() {
+function renderHojaSeguimientoExcel() {
     const thead = document.getElementById('theadHojaSeguimiento');
     const tbody = document.getElementById('tbodyHojaSeguimiento');
     if (!datosHojaSeguimiento) {
@@ -412,6 +502,504 @@ function renderHojaSeguimiento() {
         return `<td class="relative border border-slate-200 px-2 py-1.5 ${formula ? 'cursor-pointer' : ''}" style="${css}" ${formula ? `title="${escaparPersonal(formula)}" onclick="seleccionarFormulaSeguimiento('${coordenada}', ${JSON.stringify(formula).replace(/"/g, '&quot;')})"` : ''}>${formula ? '<span class="absolute right-0.5 top-0.5 text-[8px] font-bold text-blue-600">fx</span>' : ''}${escaparPersonal(formatoCeldaSeguimiento(celda, estilo))}</td>`;
     }).join('')}</tr>`).join('') : `<tr><td colspan="${datosHojaSeguimiento.cantidad_columnas + 1}" class="p-8 text-center text-slate-500">No hay filas que coincidan con la búsqueda.</td></tr>`;
     document.getElementById('paginaHojaSeguimiento').textContent = `Página ${paginaHojaSeguimiento} de ${paginas} · ${filas.length} filas`;
+}
+
+function periodoVistaSeguimiento(valor) {
+    const texto = String(valor ?? '');
+    const iso = texto.match(/^(\d{4})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}`;
+    const compacto = texto.replace(/\D/g, '');
+    if (/^\d{6}$/.test(compacto)) return `${compacto.slice(0, 4)}-${compacto.slice(4)}`;
+    return '';
+}
+
+function formatoVistaSeguimiento(valor, tipo) {
+    if (valor === null || valor === undefined || valor === '') return '—';
+    if (tipo === 'fecha') {
+        const periodo = periodoVistaSeguimiento(valor);
+        if (!periodo) return String(valor);
+        const [year, mes] = periodo.split('-');
+        return `${mes}/${year}`;
+    }
+    if (tipo === 'moneda') return formatoMonedaProforma(valor);
+    if (tipo === 'horas') return `${formatoHorasPersonal(valor)} h`;
+    if (tipo === 'porcentaje') return `${(Number(valor || 0) * 100).toLocaleString('es-AR', {maximumFractionDigits: 2})}%`;
+    return String(valor);
+}
+
+function numeroPrevisualizacionAuxiliar(valor) {
+    if (valor === null || valor === undefined || String(valor).trim() === '') return null;
+    let texto = String(valor).trim().replace(/\s/g, '');
+    if (texto.includes(',') && texto.includes('.')) texto = texto.replace(/\./g, '').replace(',', '.');
+    else if (texto.includes(',')) texto = texto.replace(',', '.');
+    else if (texto.includes('.')) {
+        const partes = texto.split('.');
+        if (partes.length > 1 && partes[0].length >= 1 && partes[0].length <= 3 && partes.slice(1).every(parte => parte.length === 3)) texto = partes.join('');
+    }
+    const numero = Number(texto);
+    return Number.isFinite(numero) ? numero : null;
+}
+
+function construirVistaSeguimiento() {
+    if (!datosHojaSeguimiento) return {columnas: [], filas: []};
+    const config = configuracionHojasSeguimiento[hojaSeguimientoActiva];
+    if (config.especial === 'auxiliar_horas') {
+        const filas = datosHojaSeguimiento.filas.slice(1).map(fila => {
+            const valores = Array.from({length: 17}, (_, indice) => fila[indice]?.v ?? null);
+            const periodo = periodoVistaSeguimiento(valores[3]);
+            const identidad = {periodo, grupo: valores[0], campania: valores[1], tipo_vh: valores[2]};
+            const claveEdicion = [periodo, normalizarPersonal(valores[0]), normalizarPersonal(valores[1]), normalizarPersonal(valores[2])].join('|');
+            const pendiente = cambiosHorasAuxiliarSeguimiento.get(claveEdicion);
+            if (pendiente) {
+                valores[5] = numeroPrevisualizacionAuxiliar(pendiente.proyectada);
+                valores[7] = numeroPrevisualizacionAuxiliar(pendiente.definitiva);
+                valores[9] = numeroPrevisualizacionAuxiliar(pendiente.brutas);
+                const adh = numeroPrevisualizacionAuxiliar(pendiente.adh);
+                valores[11] = adh === null ? null : adh / 100;
+            }
+            return {
+                valores,
+                identidad, claveEdicion, pendiente,
+            };
+        }).filter(fila => fila.valores.slice(0, 17).some(valor => valor !== null && valor !== undefined && valor !== ''));
+
+        const cierresPrevisualizados = new Set();
+        const totales = new Map();
+        filas.forEach(fila => {
+            const periodoCompacto = fila.identidad.periodo.replace('-', '');
+            const claveCampania = [periodoCompacto, normalizarPersonal(fila.identidad.grupo), normalizarPersonal(fila.identidad.campania)].join('|');
+            const actual = totales.get(claveCampania) || {definitivas: 0, brutas: 0};
+            actual.definitivas += Number(fila.valores[7]) || 0;
+            actual.brutas += Number(fila.valores[9]) || 0;
+            totales.set(claveCampania, actual);
+            if (fila.valores[7] !== null && fila.valores[7] !== '') cierresPrevisualizados.add(claveCampania);
+        });
+        filas.forEach(fila => {
+            const periodoCompacto = fila.identidad.periodo.replace('-', '');
+            const claveCampania = [periodoCompacto, normalizarPersonal(fila.identidad.grupo), normalizarPersonal(fila.identidad.campania)].join('|');
+            const definitiva = periodosDefinitivosAuxiliarSeguimiento.includes(periodoCompacto) || cierresPrevisualizados.has(claveCampania);
+            const horasBrutas = fila.valores[9] === null ? null : Number(fila.valores[9]);
+            const acumulado = totales.get(claveCampania);
+            let horasConTope = horasBrutas;
+            if (horasBrutas !== null && definitiva && acumulado.definitivas && acumulado.brutas > acumulado.definitivas * 1.03) {
+                horasConTope = acumulado.definitivas * 1.03 * horasBrutas / acumulado.brutas;
+            }
+            fila.valores[10] = horasConTope;
+            fila.valores[8] = horasConTope === null ? null : horasConTope * (1 + (Number(fila.valores[11]) || 0));
+            const horasFacturadas = (Number(fila.valores[13]) || 0) + (Number(fila.valores[15]) || 0);
+            fila.valores[13] = definitiva ? 0 : horasFacturadas;
+            fila.valores[15] = definitiva ? horasFacturadas : 0;
+            fila.valores.push(definitiva ? 'Definitiva' : 'Proyectada');
+        });
+        return {columnas: config.columnas, filas};
+    }
+    if (config.especial === 'aux_normalizacion') {
+        const vistos = new Set();
+        const filas = [];
+        datosHojaSeguimiento.filas.slice(1).forEach(fila => {
+            const valores = [1, 2, 3, 4, 5, 6].map(indice => fila[indice]?.v ?? '');
+            const origen = String(valores[0] || '').trim();
+            const claveEdicion = normalizarPersonal(origen);
+            if (!claveEdicion || vistos.has(claveEdicion)) return;
+            vistos.add(claveEdicion);
+            const pendiente = cambiosAuxNormalizacionSeguimiento.get(claveEdicion);
+            if (pendiente) {
+                valores[1] = pendiente.segmento;
+                valores[2] = pendiente.jefatura;
+                valores[3] = pendiente.tipo_negocio;
+                valores[4] = pendiente.proforma;
+                valores[5] = pendiente.backup;
+            }
+            filas.push({valores, identidad: {origen}, claveEdicion, pendiente});
+        });
+        return {columnas: config.columnas, filas};
+    }
+    if (config.especial === 'precios') {
+        const filas = [];
+        const meses = datosHojaSeguimiento.filas[2] || [];
+        datosHojaSeguimiento.filas.slice(3, 10).forEach(fila => {
+            const tipoHora = fila[1]?.v;
+            if (!tipoHora) return;
+            for (let columna = 2; columna <= 13; columna++) {
+                const periodo = meses[columna]?.v;
+                const precio = fila[columna]?.v;
+                if (periodo && precio !== null && precio !== undefined && precio !== '') {
+                    filas.push({valores: [periodo, tipoHora, Number(precio)]});
+                }
+            }
+        });
+        return {columnas: config.columnas, filas};
+    }
+    const filas = datosHojaSeguimiento.filas.slice(config.inicio || 0).map(fila => ({
+        valores: config.columnas.map(([indice]) => fila[indice]?.v ?? null),
+    })).filter(fila => fila.valores.some(valor => valor !== null && valor !== undefined && valor !== ''));
+    return {columnas: config.columnas, filas};
+}
+
+function prepararFiltrosHojaSeguimiento() {
+    const vista = construirVistaSeguimiento();
+    const config = configuracionHojasSeguimiento[hojaSeguimientoActiva];
+    const filtroPeriodo = document.getElementById('filtroPeriodoHojaSeguimiento');
+    const filtroEstado = document.getElementById('filtroEstadoHojaSeguimiento');
+    const indicePeriodo = config.columnas.findIndex(([indice]) => indice === config.periodo);
+    const indiceEstado = config.columnas.findIndex(([indice]) => indice === config.estado);
+    const periodos = [...new Set(vista.filas.map(fila => periodoVistaSeguimiento(fila.valores[indicePeriodo])).filter(Boolean))].sort().reverse();
+    filtroPeriodo.innerHTML = '<option value="">Todos los períodos</option>' + periodos.map(periodo => `<option value="${periodo}">${formatoVistaSeguimiento(periodo, 'fecha')}</option>`).join('');
+    const estados = indiceEstado >= 0 ? [...new Set(vista.filas.map(fila => String(fila.valores[indiceEstado] || '').trim()).filter(Boolean))].sort() : [];
+    filtroEstado.innerHTML = estados.length ? '<option value="">Todos los estados</option>' + estados.map(estado => `<option value="${escaparPersonal(estado)}">${escaparPersonal(estado)}</option>`).join('') : '<option value="">Sin filtro de estado</option>';
+    filtroEstado.disabled = !estados.length;
+    const periodoProforma = periodoVistaSeguimiento(periodosProformaSeguimiento[0]);
+    if (periodoProforma && periodos.includes(periodoProforma)) filtroPeriodo.value = periodoProforma;
+    const periodoActivo = filtroPeriodo.value;
+    const estadosPeriodo = periodoActivo && indiceEstado >= 0
+        ? [...new Set(vista.filas.filter(fila => periodoVistaSeguimiento(fila.valores[indicePeriodo]) === periodoActivo).map(fila => normalizarPersonal(fila.valores[indiceEstado])).filter(Boolean))]
+        : [];
+    // Un período puede tener campañas ya cerradas y otras aún proyectadas.
+    // En ese caso se muestran ambas para que los totales representen la foto
+    // completa que se pasará al dashboard.
+    const estadoInicial = estadosPeriodo.length === 1 ? estadosPeriodo[0] : '';
+    const opcionEstadoInicial = estados.find(estado => normalizarPersonal(estado) === estadoInicial);
+    if (opcionEstadoInicial && hojaSeguimientoActiva !== 'precios') filtroEstado.value = opcionEstadoInicial;
+    if (hojaSeguimientoActiva === '2026') {
+        const filtros = [
+            ['filtroEmpresa2026', 1, 'Todas las empresas'],
+            ['filtroNegocio2026', 2, 'Todos los tipos de negocio'],
+            ['filtroCampania2026', 3, 'Todas las campañas'],
+            ['filtroTipoHora2026', 4, 'Todos los tipos de hora'],
+            ['filtroJefatura2026', 13, 'Todas las jefaturas'],
+        ];
+        filtros.forEach(([id, indice, etiqueta]) => {
+            const selector = document.getElementById(id);
+            const opciones = [...new Set(vista.filas.map(fila => String(fila.valores[indice] || '').trim()).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, 'es', {sensitivity: 'base'}));
+            selector.innerHTML = `<option value="">${etiqueta}</option>` + opciones.map(opcion => `<option value="${escaparPersonal(opcion)}">${escaparPersonal(opcion)}</option>`).join('');
+        });
+    }
+    if (hojaSeguimientoActiva === 'auxiliar_horas_plp_masivo') {
+        const filtros = [
+            ['filtroGrupoAuxiliar', 0, 'Todos los grupos'],
+            ['filtroCampaniaAuxiliar', 1, 'Todas las campañas'],
+            ['filtroTipoVHAuxiliar', 2, 'Todos los tipos VH'],
+        ];
+        filtros.forEach(([id, indice, etiqueta]) => {
+            const selector = document.getElementById(id);
+            const opciones = [...new Set(vista.filas.map(fila => String(fila.valores[indice] || '').trim()).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, 'es', {sensitivity: 'base'}));
+            selector.innerHTML = `<option value="">${etiqueta}</option>` + opciones.map(opcion => `<option value="${escaparPersonal(opcion)}">${escaparPersonal(opcion)}</option>`).join('');
+        });
+    }
+    if (hojaSeguimientoActiva === 'aux') {
+        const filtros = [
+            ['filtroSegmentoAux', 1, 'Todos los segmentos'],
+            ['filtroJefaturaAux', 2, 'Todas las jefaturas'],
+            ['filtroNegocioAux', 3, 'Todos los tipos de negocio'],
+            ['filtroProformaAux', 4, 'Todos los grupos de Proforma'],
+        ];
+        filtros.forEach(([id, indice, etiqueta]) => {
+            const selector = document.getElementById(id);
+            const opciones = [...new Set(vista.filas.map(fila => String(fila.valores[indice] || '').trim()).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, 'es', {sensitivity: 'base'}));
+            selector.innerHTML = `<option value="">${etiqueta}</option>` + opciones.map(opcion => `<option value="${escaparPersonal(opcion)}">${escaparPersonal(opcion)}</option>`).join('');
+        });
+    }
+}
+
+function filasFiltradasSeguimiento(vista) {
+    const config = configuracionHojasSeguimiento[hojaSeguimientoActiva];
+    const consulta = normalizarPersonal(document.getElementById('buscarHojaSeguimiento').value);
+    const periodo = document.getElementById('filtroPeriodoHojaSeguimiento').value;
+    const estado = normalizarPersonal(document.getElementById('filtroEstadoHojaSeguimiento').value);
+    const indicePeriodo = config.columnas.findIndex(([indice]) => indice === config.periodo);
+    const indiceEstado = config.columnas.findIndex(([indice]) => indice === config.estado);
+    const filtros2026 = hojaSeguimientoActiva === '2026' ? [
+        [1, document.getElementById('filtroEmpresa2026').value],
+        [2, document.getElementById('filtroNegocio2026').value],
+        [3, document.getElementById('filtroCampania2026').value],
+        [4, document.getElementById('filtroTipoHora2026').value],
+        [13, document.getElementById('filtroJefatura2026').value],
+    ] : [];
+    const filtrosAuxiliar = hojaSeguimientoActiva === 'auxiliar_horas_plp_masivo' ? [
+        [0, document.getElementById('filtroGrupoAuxiliar').value],
+        [1, document.getElementById('filtroCampaniaAuxiliar').value],
+        [2, document.getElementById('filtroTipoVHAuxiliar').value],
+    ] : [];
+    const filtrosAux = hojaSeguimientoActiva === 'aux' ? [
+        [1, document.getElementById('filtroSegmentoAux').value],
+        [2, document.getElementById('filtroJefaturaAux').value],
+        [3, document.getElementById('filtroNegocioAux').value],
+        [4, document.getElementById('filtroProformaAux').value],
+    ] : [];
+    return vista.filas.filter(fila => {
+        if (consulta && !normalizarPersonal(fila.valores.join(' ')).includes(consulta)) return false;
+        if (periodo && periodoVistaSeguimiento(fila.valores[indicePeriodo]) !== periodo) return false;
+        if (estado && normalizarPersonal(fila.valores[indiceEstado]) !== estado) return false;
+        if (filtros2026.some(([indice, valor]) => valor && normalizarPersonal(fila.valores[indice]) !== normalizarPersonal(valor))) return false;
+        if (filtrosAuxiliar.some(([indice, valor]) => valor && normalizarPersonal(fila.valores[indice]) !== normalizarPersonal(valor))) return false;
+        if (filtrosAux.some(([indice, valor]) => valor && normalizarPersonal(fila.valores[indice]) !== normalizarPersonal(valor))) return false;
+        return true;
+    });
+}
+
+function cambiarPeriodoHojaSeguimiento() {
+    paginaHojaSeguimiento = 1;
+    const periodo = document.getElementById('filtroPeriodoHojaSeguimiento').value;
+    const selectorEstado = document.getElementById('filtroEstadoHojaSeguimiento');
+    const vista = construirVistaSeguimiento();
+    const config = configuracionHojasSeguimiento[hojaSeguimientoActiva];
+    const indicePeriodo = config.columnas.findIndex(([indice]) => indice === config.periodo);
+    const indiceEstado = config.columnas.findIndex(([indice]) => indice === config.estado);
+    const estados = periodo && indiceEstado >= 0
+        ? [...new Set(vista.filas.filter(fila => periodoVistaSeguimiento(fila.valores[indicePeriodo]) === periodo).map(fila => String(fila.valores[indiceEstado] || '')).filter(Boolean))]
+        : [];
+    selectorEstado.value = estados.length === 1 ? estados[0] : '';
+    renderHojaSeguimiento();
+}
+
+function actualizarBotonCambiosHorasAuxiliar() {
+    const boton = document.getElementById('guardarCambiosHorasAuxiliar');
+    if (!boton) return;
+    const cantidad = cambiosHorasAuxiliarSeguimiento.size;
+    boton.classList.toggle('hidden', hojaSeguimientoActiva !== 'auxiliar_horas_plp_masivo');
+    boton.disabled = cantidad === 0;
+    boton.innerHTML = `<i class="fas fa-save mr-1"></i> Guardar cambios${cantidad ? ` (${cantidad})` : ''}`;
+}
+
+function marcarHorasAuxiliarPersonal(input) {
+    const fila = input.closest('tr');
+    const identidad = JSON.parse(input.dataset.identidad || '{}');
+    const clave = [identidad.periodo, normalizarPersonal(identidad.grupo), normalizarPersonal(identidad.campania), normalizarPersonal(identidad.tipo_vh)].join('|');
+    cambiosHorasAuxiliarSeguimiento.set(clave, {
+        ...identidad,
+        proyectada: fila.querySelector('[data-campo-horas="proyectada"]')?.value ?? '',
+        definitiva: fila.querySelector('[data-campo-horas="definitiva"]')?.value ?? '',
+        brutas: fila.querySelector('[data-campo-horas="brutas"]')?.value ?? '',
+        adh: fila.querySelector('[data-campo-horas="adh"]')?.value ?? '',
+    });
+    fila.querySelectorAll('[data-campo-horas]').forEach(celda => celda.classList.add('border-amber-400', 'bg-amber-50'));
+    actualizarBotonCambiosHorasAuxiliar();
+    renderHojaSeguimiento();
+}
+
+async function guardarCambiosHorasAuxiliarPersonal() {
+    if (!cambiosHorasAuxiliarSeguimiento.size) return;
+    const boton = document.getElementById('guardarCambiosHorasAuxiliar');
+    boton.disabled = true;
+    boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...';
+    try {
+        const response = await fetch('/api/seguimiento-personal/auxiliar-horas/lote', {
+            method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                importacion_id: document.getElementById('versionSeguimientoPersonal').value,
+                filas: [...cambiosHorasAuxiliarSeguimiento.values()],
+            }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudieron guardar las horas']).join(' | '));
+        cambiosHorasAuxiliarSeguimiento.clear();
+        mostrarMensajeSeguimiento(data.mensaje, 'success');
+        await cargarHojaSeguimiento();
+    } catch (error) {
+        mostrarMensajeSeguimiento(error.message);
+        actualizarBotonCambiosHorasAuxiliar();
+    }
+}
+
+function actualizarBotonCambiosAuxNormalizacion() {
+    const boton = document.getElementById('guardarCambiosAuxNormalizacion');
+    if (!boton) return;
+    const cantidad = cambiosAuxNormalizacionSeguimiento.size;
+    boton.classList.toggle('hidden', hojaSeguimientoActiva !== 'aux');
+    boton.disabled = cantidad === 0;
+    boton.innerHTML = `<i class="fas fa-save mr-1"></i> Guardar correspondencias${cantidad ? ` (${cantidad})` : ''}`;
+}
+
+function marcarAuxNormalizacionPersonal(input) {
+    const fila = input.closest('tr');
+    const identidad = JSON.parse(input.dataset.identidad || '{}');
+    const clave = normalizarPersonal(identidad.origen);
+    cambiosAuxNormalizacionSeguimiento.set(clave, {
+        origen: identidad.origen,
+        segmento: fila.querySelector('[data-campo-aux="segmento"]')?.value.trim() ?? '',
+        jefatura: fila.querySelector('[data-campo-aux="jefatura"]')?.value.trim() ?? '',
+        tipo_negocio: fila.querySelector('[data-campo-aux="tipo_negocio"]')?.value.trim() ?? '',
+        proforma: fila.querySelector('[data-campo-aux="proforma"]')?.value.trim() ?? '',
+        backup: fila.querySelector('[data-campo-aux="backup"]')?.value.trim() ?? '',
+    });
+    fila.querySelectorAll('[data-campo-aux]').forEach(celda => celda.classList.add('border-amber-400', 'bg-amber-50'));
+    actualizarBotonCambiosAuxNormalizacion();
+}
+
+async function guardarCambiosAuxNormalizacionPersonal() {
+    if (!cambiosAuxNormalizacionSeguimiento.size) return;
+    const boton = document.getElementById('guardarCambiosAuxNormalizacion');
+    boton.disabled = true;
+    boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...';
+    try {
+        const response = await fetch('/api/seguimiento-personal/aux-normalizacion/lote', {
+            method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                importacion_id: document.getElementById('versionSeguimientoPersonal').value,
+                filas: [...cambiosAuxNormalizacionSeguimiento.values()],
+            }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudieron guardar las correspondencias']).join(' | '));
+        cambiosAuxNormalizacionSeguimiento.clear();
+        mostrarMensajeSeguimiento(data.mensaje, 'success');
+        await cargarHojaSeguimiento();
+    } catch (error) {
+        mostrarMensajeSeguimiento(error.message);
+        actualizarBotonCambiosAuxNormalizacion();
+    }
+}
+
+function sumarVista(filas, indice) {
+    return filas.reduce((suma, fila) => suma + (Number(fila.valores[indice]) || 0), 0);
+}
+
+function tarjetaResumenSeguimiento(etiqueta, valor, tono = 'blue') {
+    const tonos = {blue:'border-blue-200 text-blue-950',emerald:'border-emerald-200 text-emerald-800',amber:'border-amber-200 text-amber-800',violet:'border-violet-200 text-violet-900',slate:'border-slate-200 text-slate-900'};
+    return `<div class="rounded-xl border bg-white p-4 shadow-sm ${tonos[tono] || tonos.blue}"><div class="text-xs font-bold uppercase tracking-wide text-slate-500">${escaparPersonal(etiqueta)}</div><div class="mt-2 text-xl font-black tabular-nums">${valor}</div></div>`;
+}
+
+function renderResumenHojaSeguimiento(filas) {
+    let tarjetas = [];
+    if (hojaSeguimientoActiva === 'base_objetivo_masivo') {
+        const objetivo = sumarVista(filas, 5), facturadas = sumarVista(filas, 6);
+        tarjetas = [['Registros', filas.length.toLocaleString('es-AR'),'slate'],['Objetivo',`${formatoHorasPersonal(objetivo)} h`,'blue'],['Facturadas',`${formatoHorasPersonal(facturadas)} h`,'emerald'],['Cumplimiento',`${(objetivo ? facturadas / objetivo * 100 : 0).toLocaleString('es-AR',{maximumFractionDigits:2})}%`,'amber'],['Total facturado',formatoMonedaProforma(sumarVista(filas,11)),'violet']];
+    } else if (hojaSeguimientoActiva === 'auxiliar_horas_plp_masivo') {
+        const horasPlanificadasVigentes = filas.reduce((total, fila) => total + (
+            normalizarPersonal(fila.valores[17]) === 'definitiva'
+                ? (Number(fila.valores[7]) || 0)
+                : (Number(fila.valores[5]) || 0)
+        ), 0);
+        const horasFacturadasVigentes = filas.reduce((total, fila) => total + (
+            normalizarPersonal(fila.valores[17]) === 'definitiva'
+                ? (Number(fila.valores[15]) || 0)
+                : (Number(fila.valores[13]) || 0)
+        ), 0);
+        tarjetas = [['Registros',filas.length.toLocaleString('es-AR'),'slate'],['Horas planificadas PLP vigentes',`${formatoHorasPersonal(horasPlanificadasVigentes)} h`,'blue'],['Facturadas vigentes',`${formatoHorasPersonal(horasFacturadasVigentes)} h`,'emerald'],['Facturadas proyectadas',`${formatoHorasPersonal(sumarVista(filas,13))} h`,'amber'],['Facturadas definitivas',`${formatoHorasPersonal(sumarVista(filas,15))} h`,'violet']];
+    } else if (hojaSeguimientoActiva === 'precios') {
+        const precios = filas.map(fila => Number(fila.valores[2])).filter(Number.isFinite);
+        const promedio = precios.length ? precios.reduce((a,b)=>a+b,0)/precios.length : 0;
+        tarjetas = [['Precios',precios.length.toLocaleString('es-AR'),'slate'],['Promedio',formatoMonedaProforma(promedio),'blue'],['Mínimo',formatoMonedaProforma(precios.length ? Math.min(...precios) : 0),'emerald'],['Máximo',formatoMonedaProforma(precios.length ? Math.max(...precios) : 0),'violet']];
+    } else if (hojaSeguimientoActiva === '2026') {
+        tarjetas = [['Registros',filas.length.toLocaleString('es-AR'),'slate'],['Horas',`${formatoHorasPersonal(sumarVista(filas,6))} h`,'blue'],['Facturado horas',formatoMonedaProforma(sumarVista(filas,8)),'emerald'],['Bonos',formatoMonedaProforma(sumarVista(filas,10)),'amber'],['Total',formatoMonedaProforma(sumarVista(filas,12)),'violet']];
+    } else if (hojaSeguimientoActiva === 'aux') {
+        const unicos = indice => new Set(filas.map(fila => fila.valores[indice]).filter(Boolean)).size;
+        const pendientes = filas.filter(fila => !fila.valores[1] || !fila.valores[2] || !fila.valores[3] || !fila.valores[4]).length;
+        tarjetas = [['Nombres de origen',filas.length.toLocaleString('es-AR'),'slate'],['Segmentos',unicos(1).toLocaleString('es-AR'),'blue'],['Jefaturas',unicos(2).toLocaleString('es-AR'),'emerald'],['Tipos de negocio',unicos(3).toLocaleString('es-AR'),'violet'],['Pendientes de normalizar',pendientes.toLocaleString('es-AR'),'amber']];
+    } else {
+        const unicos = indice => new Set(filas.map(fila => fila.valores[indice]).filter(Boolean)).size;
+        tarjetas = [['Campañas',unicos(0).toLocaleString('es-AR'),'blue'],['Segmentos',unicos(1).toLocaleString('es-AR'),'emerald'],['Jefaturas',unicos(2).toLocaleString('es-AR'),'amber'],['Tipos de negocio',unicos(3).toLocaleString('es-AR'),'violet']];
+    }
+    document.getElementById('resumenHojaSeguimiento').innerHTML = tarjetas.map(([etiqueta,valor,tono]) => tarjetaResumenSeguimiento(etiqueta,valor,tono)).join('');
+}
+
+function renderHojaSeguimiento() {
+    const thead = document.getElementById('theadHojaSeguimiento');
+    const tbody = document.getElementById('tbodyHojaSeguimiento');
+    if (!datosHojaSeguimiento) {
+        thead.innerHTML = '';
+        tbody.innerHTML = '<tr><td class="p-8 text-center text-slate-500">Todavía no hay información preparada.</td></tr>';
+        document.getElementById('resumenHojaSeguimiento').innerHTML = '';
+        return;
+    }
+    const vista = construirVistaSeguimiento();
+    const filas = filasFiltradasSeguimiento(vista);
+    renderResumenHojaSeguimiento(filas);
+    const paginas = Math.max(1, Math.ceil(filas.length / filasPorPaginaSeguimiento));
+    paginaHojaSeguimiento = Math.min(Math.max(1, paginaHojaSeguimiento), paginas);
+    const desde = (paginaHojaSeguimiento - 1) * filasPorPaginaSeguimiento;
+    const visibles = filas.slice(desde, desde + filasPorPaginaSeguimiento);
+    thead.innerHTML = `<tr>${vista.columnas.map(([,etiqueta,tipo]) => `<th class="border-b border-slate-200 px-3 py-3 ${['moneda','horas','horas_editables','porcentaje','porcentaje_editable'].includes(tipo) ? 'text-right' : 'text-left'}">${escaparPersonal(etiqueta)}</th>`).join('')}</tr>`;
+    tbody.innerHTML = visibles.length ? visibles.map(fila => `<tr class="hover:bg-indigo-50/40">${fila.valores.map((valor, indice) => {
+        const tipo = vista.columnas[indice][2];
+        if (tipo === 'estado') return `<td class="border-b border-slate-100 px-3 py-2"><span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-800">${escaparPersonal(valor || '—')}</span></td>`;
+        if (tipo === 'texto_editable') {
+            const campos = {1: 'segmento', 2: 'jefatura', 3: 'tipo_negocio', 4: 'proforma', 5: 'backup'};
+            const campo = campos[indice];
+            const identidad = escaparPersonal(JSON.stringify(fila.identidad || {}));
+            const pendiente = Boolean(fila.pendiente);
+            return `<td class="min-w-[210px] border-b border-slate-100 px-2 py-1.5"><input type="text" data-campo-aux="${campo}" data-identidad="${identidad}" value="${escaparPersonal(valor ?? '')}" onchange="marcarAuxNormalizacionPersonal(this)" class="w-full rounded border ${pendiente ? 'border-amber-400 bg-amber-50' : 'border-indigo-300 bg-indigo-50'} px-2 py-1.5 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100" placeholder="Pendiente"></td>`;
+        }
+        if (tipo === 'horas_editables' || tipo === 'porcentaje_editable') {
+            const campos = {5: 'proyectada', 7: 'definitiva', 9: 'brutas', 11: 'adh'};
+            const campo = campos[indice];
+            const identidad = escaparPersonal(JSON.stringify(fila.identidad || {}));
+            const valorGuardado = tipo === 'porcentaje_editable' && valor !== null && valor !== '' ? Number(valor) * 100 : (valor ?? '');
+            const valorInput = fila.pendiente && Object.prototype.hasOwnProperty.call(fila.pendiente, campo) ? fila.pendiente[campo] : valorGuardado;
+            const pendiente = Boolean(fila.pendiente);
+            const reemplazada = campo === 'proyectada' && normalizarPersonal(fila.valores[17]) === 'definitiva';
+            return `<td class="border-b border-slate-100 px-2 py-1.5"><input type="text" inputmode="decimal" data-campo-horas="${campo}" data-identidad="${identidad}" value="${escaparPersonal(valorInput)}" onchange="marcarHorasAuxiliarPersonal(this)" class="w-32 rounded border ${pendiente ? 'border-amber-400 bg-amber-50' : 'border-indigo-300 bg-indigo-50'} ${reemplazada ? 'text-slate-400 line-through' : ''} px-2 py-1.5 text-right font-bold tabular-nums outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100" placeholder="Completar" title="${reemplazada ? 'Reemplazada por el cierre definitivo' : ''}">${tipo === 'porcentaje_editable' ? '<span class="ml-1 font-bold text-slate-500">%</span>' : ''}</td>`;
+        }
+        return `<td class="border-b border-slate-100 px-3 py-2 ${['moneda','horas','porcentaje'].includes(tipo) ? 'text-right font-semibold tabular-nums' : ''}">${escaparPersonal(formatoVistaSeguimiento(valor,tipo))}</td>`;
+    }).join('')}</tr>`).join('') : `<tr><td colspan="${vista.columnas.length}" class="p-8 text-center text-slate-500">No hay registros para los filtros seleccionados.</td></tr>`;
+    document.getElementById('paginaHojaSeguimiento').textContent = `Página ${paginaHojaSeguimiento} de ${paginas} · ${filas.length.toLocaleString('es-AR')} registros`;
+    const config = configuracionHojasSeguimiento[hojaSeguimientoActiva];
+    const boton = document.getElementById('siguientePasoSeguimiento');
+    document.getElementById('estadoPasoSeguimiento').textContent = config.siguiente ? 'Revisá los totales filtrados antes de continuar.' : 'Último control antes de preparar la carga al dashboard.';
+    boton.textContent = config.siguiente ? `Continuar a ${configuracionHojasSeguimiento[config.siguiente].nombre}` : 'Revisión final completada';
+    boton.classList.toggle('hidden', !config.siguiente);
+    actualizarBotonCambiosHorasAuxiliar();
+    actualizarBotonCambiosAuxNormalizacion();
+    actualizarPanelPublicacionDashboardPersonal(filas);
+}
+
+function actualizarPanelPublicacionDashboardPersonal(filas = []) {
+    const panel = document.getElementById('panelPublicarDashboardPersonal');
+    const boton = document.getElementById('publicarDashboardPersonal');
+    const detalle = document.getElementById('detallePublicarDashboardPersonal');
+    if (!panel || !boton || !detalle) return;
+    const visible = hojaSeguimientoActiva === 'base_objetivo_masivo' && Boolean(datosHojaSeguimiento);
+    panel.classList.toggle('hidden', !visible);
+    if (!visible) return;
+    const periodo = document.getElementById('filtroPeriodoHojaSeguimiento').value;
+    const errores = periodo ? (validacionesDashboardSeguimiento[periodo.replace('-', '')] || []) : [];
+    boton.disabled = !periodo || !filas.length || errores.length > 0;
+    if (!periodo) {
+        detalle.textContent = 'Seleccione un período para publicar exactamente los totales previsualizados.';
+        return;
+    }
+    if (errores.length) {
+        detalle.textContent = `${formatoVistaSeguimiento(periodo, 'fecha')}: faltan ${errores.length} campaña(s) por completar en el Auxiliar. ${errores[0]}`;
+        return;
+    }
+    const estados = [...new Set(filas.map(fila => String(fila.valores[4] || '')).filter(Boolean))];
+    detalle.textContent = `${formatoVistaSeguimiento(periodo, 'fecha')}: ${filas.length.toLocaleString('es-AR')} filas ${estados.length ? `(${estados.join(' / ')})` : ''}. Al publicar, este mes completo de Personal reemplaza la versión anterior.`;
+}
+
+async function publicarSeguimientoPersonalDashboard() {
+    const periodo = document.getElementById('filtroPeriodoHojaSeguimiento').value;
+    const importacionId = document.getElementById('versionSeguimientoPersonal').value;
+    if (!periodo) return mostrarMensajeSeguimiento('Seleccione un período antes de pasar los datos al dashboard.');
+    const boton = document.getElementById('publicarDashboardPersonal');
+    const contenidoAnterior = boton.innerHTML;
+    boton.disabled = true;
+    boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Actualizando dashboard...';
+    try {
+        const response = await fetch('/api/seguimiento-personal/dashboard', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({importacion_id: importacionId, periodo}),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudo actualizar el dashboard']).join(' | '));
+        mostrarMensajeSeguimiento(`${data.mensaje} Puede revisarlo ahora en el Dashboard de Facturación.`, 'success');
+        document.getElementById('detallePublicarDashboardPersonal').textContent = `${data.periodo}: ${data.creadas} filas vigentes; ${data.reemplazadas} anteriores reemplazadas. La operación quedó registrada en Historial.`;
+    } catch (error) {
+        mostrarMensajeSeguimiento(error.message || 'No se pudo actualizar el dashboard.');
+    } finally {
+        boton.innerHTML = contenidoAnterior;
+        boton.disabled = false;
+        renderHojaSeguimiento();
+    }
+}
+
+function irSiguientePasoSeguimiento() {
+    const siguiente = configuracionHojasSeguimiento[hojaSeguimientoActiva]?.siguiente;
+    if (siguiente) seleccionarPestanaCargaPersonal(siguiente);
 }
 
 function cambiarPaginaHoja(direccion) {
@@ -450,6 +1038,14 @@ function mostrarMensajeProforma(texto, tipo = 'error') {
     mensaje.textContent = texto;
 }
 
+function actualizarAvisoTipoProforma() {
+    const tipo = document.getElementById('tipoProformaPersonal').value;
+    const aviso = document.getElementById('avisoTipoProforma');
+    aviso.innerHTML = tipo
+        ? `<strong>${escaparPersonal(tipo)}:</strong> si alguno de los meses del archivo ya fue cargado para este tipo, se reemplazar&aacute; solamente ese lote. Los otros tipos del mismo mes se conservar&aacute;n.`
+        : 'Seleccione el tipo de Proforma para identificar el lote que se cargar&aacute;.';
+}
+
 async function cargarProformaPersonal() {
     try {
         const response = await fetch(`/api/proforma-personal?_=${Date.now()}`, {cache: 'no-store'});
@@ -464,7 +1060,7 @@ async function cargarProformaPersonal() {
         renderProformaPersonal();
         renderImportacionesProforma();
     } catch (error) {
-        document.getElementById('tbodyProformaPersonal').innerHTML = `<tr><td colspan="17" class="p-8 text-center text-rose-700">${escaparPersonal(error.message)}</td></tr>`;
+        document.getElementById('tbodyProformaPersonal').innerHTML = `<tr><td colspan="12" class="p-8 text-center text-rose-700">${escaparPersonal(error.message)}</td></tr>`;
     }
 }
 
@@ -479,7 +1075,7 @@ function renderImportacionesProforma() {
         const periodos = (item.periodos || []).map(periodo => `${periodo.slice(4, 6)}/${periodo.slice(0, 4)}`).join(', ');
         return `<tr class="hover:bg-slate-50">
             <td class="border-b border-slate-100 px-4 py-2 whitespace-nowrap">${escaparPersonal(fecha)}</td>
-            <td class="border-b border-slate-100 px-4 py-2 font-semibold">${escaparPersonal(item.archivo || 'Sin nombre')}</td>
+            <td class="border-b border-slate-100 px-4 py-2 font-semibold"><span class="mr-2 rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-800">${escaparPersonal(item.tipo_proforma || 'Masivo')}</span>${escaparPersonal(item.archivo || 'Sin nombre')}</td>
             <td class="border-b border-slate-100 px-4 py-2">${escaparPersonal(periodos || '-')}</td>
             <td class="border-b border-slate-100 px-4 py-2 text-right font-bold">${Number(item.filas || 0)}</td>
             <td class="border-b border-slate-100 px-4 py-2 text-right text-emerald-700">${Number(item.creadas || 0)}</td>
@@ -492,8 +1088,9 @@ function renderImportacionesProforma() {
 
 function renderProformaPersonal() {
     const periodo = document.getElementById('filtroPeriodoProforma').value;
+    const tipo = document.getElementById('filtroTipoProforma').value;
     const busqueda = normalizarPersonal(document.getElementById('buscarProformaPersonal').value);
-    const filas = proformasPersonal.filter(item => (!periodo || item.periodo === periodo) && (!busqueda || normalizarPersonal(`${item.fdv} ${item.negocio} ${item.sitio_proveedor} ${item.segmento} ${item.subsitio} ${item.tipo_hora}`).includes(busqueda)));
+    const filas = proformasPersonal.filter(item => (!periodo || item.periodo === periodo) && (!tipo || item.tipo_proforma === tipo) && (!busqueda || normalizarPersonal(`${item.tipo_proforma} ${item.fdv} ${item.negocio} ${item.sitio_proveedor} ${item.segmento} ${item.subsitio} ${item.tipo_hora}`).includes(busqueda)));
     document.getElementById('contadorProformaPersonal').textContent = `${filas.length} de ${proformasPersonal.length} fila(s)`;
     document.getElementById('kpiProformaHoras').textContent = formatoHorasPersonal(filas.reduce((suma, item) => suma + Number(item.total_horas || 0), 0));
     document.getElementById('kpiProformaFijo').textContent = formatoMonedaProforma(filas.reduce((suma, item) => suma + Number(item.monto_fijo || 0), 0));
@@ -501,34 +1098,32 @@ function renderProformaPersonal() {
     document.getElementById('kpiProformaTotal').textContent = formatoMonedaProforma(filas.reduce((suma, item) => suma + Number(item.total_proyeccion || 0), 0));
     document.getElementById('tbodyProformaPersonal').innerHTML = filas.length ? filas.map(item => `
         <tr class="hover:bg-indigo-50/40">
-            <td class="border border-slate-200 px-2 py-2">${escaparPersonal(item.fdv)}</td>
-            <td class="border border-slate-200 px-2 py-2 text-center tabular-nums">${escaparPersonal(item.periodo)}</td>
+            <td class="border border-slate-200 px-2 py-2 font-bold text-indigo-800">${escaparPersonal(item.tipo_proforma || 'Masivo')}</td>
+            <td class="border border-slate-200 px-2 py-2 text-center tabular-nums">${escaparPersonal(formatoVistaSeguimiento(item.periodo, 'fecha'))}</td>
             <td class="border border-slate-200 px-2 py-2">${escaparPersonal(item.negocio)}</td>
-            <td class="border border-slate-200 px-2 py-2">${escaparPersonal(item.sitio_proveedor)}</td>
             <td class="border border-slate-200 px-2 py-2 font-semibold">${escaparPersonal(item.segmento)}</td>
-            <td class="border border-slate-200 px-2 py-2">${escaparPersonal(item.subsitio)}</td>
             <td class="border border-slate-200 px-2 py-2">${escaparPersonal(item.tipo_hora)}</td>
             <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoHorasPersonal(item.total_horas)}</td>
             <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoMonedaProforma(item.precio)}</td>
             <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoMonedaProforma(item.monto_fijo)}</td>
             <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoHorasPersonal(item.porcentaje_bono_kpi_vs)}%</td>
-            <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoMonedaProforma(item.monto_variable_kpi_vs)}</td>
             <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoHorasPersonal(item.porcentaje_bono_ac)}%</td>
-            <td class="border border-violet-200 bg-violet-50 px-2 py-2 text-right font-bold text-violet-900 tabular-nums">${formatoHorasPersonal(item.bono_porcentaje_total)}%</td>
-            <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoMonedaProforma(item.monto_variable_ac)}</td>
             <td class="border border-slate-200 px-2 py-2 text-right font-semibold tabular-nums">${formatoMonedaProforma(item.monto_variable)}</td>
             <td class="border border-slate-200 px-2 py-2 text-right font-bold tabular-nums">${formatoMonedaProforma(item.total_proyeccion)}</td>
-        </tr>`).join('') : '<tr><td colspan="17" class="p-8 text-center text-slate-500">Todavía no hay proformas importadas para el filtro seleccionado.</td></tr>';
+        </tr>`).join('') : '<tr><td colspan="12" class="p-8 text-center text-slate-500">Todavía no hay proformas importadas para el filtro seleccionado.</td></tr>';
 }
 
 async function importarProformaPersonal() {
     const input = document.getElementById('archivoProformaPersonal');
+    const tipo = document.getElementById('tipoProformaPersonal').value;
+    if (!tipo) return mostrarMensajeProforma('Seleccione si la Proforma es Masivo, Personal Pay o Soporte.');
     if (!input.files.length) return mostrarMensajeProforma('Seleccione el archivo Excel de Proforma.');
     const boton = document.getElementById('importarProformaBtn');
     const contenido = boton.innerHTML;
     boton.disabled = true;
     boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Importando...';
     const formulario = new FormData();
+    formulario.append('tipo_proforma', tipo);
     formulario.append('archivo', input.files[0]);
     try {
         const response = await fetch('/api/proforma-personal/importar', {method: 'POST', credentials: 'same-origin', body: formulario});

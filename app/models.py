@@ -368,8 +368,6 @@ class FacturacionAnio(db.Model):
 
     @property
     def objetivo_facturacion_horas(self):
-        if self.usa_importe_fijo:
-            return self.importe_fijo
         if self.objetivo_separar_ajuste_vh:
             return self.horas_objetivo * self.valor_hora_alcanzado
         return self.horas_objetivo * self.valor_hora_objetivo_calculo
@@ -493,11 +491,23 @@ class FacturacionAnio(db.Model):
         return self.facturacion_objetivo
 
     @property
+    def total_comparable(self):
+        """Facturación que participa del desvío contra el objetivo."""
+        if self.es_next_gen:
+            return 0
+        return (
+            self.facturado_horas
+            + self.facturado_bono
+            + self.variable_productivo_calculo
+            + self.penalizaciones_incumplimientos
+        )
+
+    @property
     def desvio(self):
         """Calcula el desvio real contra objetivo."""
         if self.es_next_gen:
             return 0
-        return self.total_real - self.total_teorico
+        return self.total_comparable - self.total_teorico
 
     @property
     def porcentaje_cumplimiento(self):
@@ -508,7 +518,7 @@ class FacturacionAnio(db.Model):
             return 100
         if self.total_teorico == 0:
             return 0
-        return (self.total_real / self.total_teorico) * 100
+        return (self.total_comparable / self.total_teorico) * 100
 
     def to_dict(self):
         return {
@@ -558,13 +568,10 @@ class FacturacionAnio(db.Model):
             'total_real': round(self.total_dashboard, 2),
             'monto_final_con_tarifacion': round(self.monto_final_con_tarifacion, 2),
             'total_dashboard': round(self.total_dashboard, 2),
+            'total_comparable': round(self.total_comparable, 2),
             'total_teorico': round(self.total_teorico, 2),
-            'desvio': round(0 if self.es_next_gen else self.total_dashboard - self.total_teorico, 2),
-            'porcentaje_cumplimiento': round(
-                (self.total_dashboard / self.total_teorico * 100)
-                if self.total_teorico > 0 and not self.es_next_gen else 0,
-                2
-            )
+            'desvio': round(self.desvio, 2),
+            'porcentaje_cumplimiento': round(self.porcentaje_cumplimiento, 2),
         }
 
 
@@ -694,6 +701,7 @@ class ProformaPersonal(db.Model):
     __tablename__ = 'proforma_personal'
 
     id = db.Column(db.Integer, primary_key=True)
+    tipo_proforma = db.Column(db.String(30), default='Masivo', nullable=False, index=True)
     fdv = db.Column(db.String(150), nullable=False)
     periodo = db.Column(db.String(6), nullable=False, index=True)
     negocio = db.Column(db.String(100), nullable=False)
@@ -717,14 +725,15 @@ class ProformaPersonal(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint(
-            'fdv', 'periodo', 'negocio', 'sitio_proveedor', 'segmento', 'subsitio', 'tipo_hora',
-            name='uq_proforma_personal_fila',
+            'tipo_proforma', 'fdv', 'periodo', 'negocio', 'sitio_proveedor', 'segmento', 'subsitio', 'tipo_hora',
+            name='uq_proforma_personal_fila_tipo',
         ),
     )
 
     def to_dict(self):
         return {
             'id': self.id,
+            'tipo_proforma': self.tipo_proforma or 'Masivo',
             'fdv': self.fdv,
             'periodo': self.periodo,
             'negocio': self.negocio,

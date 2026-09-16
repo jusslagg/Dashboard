@@ -8,8 +8,8 @@ from app import create_app, db
 from app.models import HistorialCambio, SeguimientoPersonalImportacion
 from app.routes import deshacer_item_historial
 
-archivo = Path(r'C:\Users\jegil\Desktop\2026 Seguimiento Personal Facturacion Variable Agosto.xlsx')
-archivo_proforma = Path(r'C:\Users\jegil\Desktop\Proforma Proyectada Cable 08-2026.xlsx')
+archivo = Path(r'C:\Users\jegil\Downloads\2026 Seguimiento Personal Facturacion Variable Agosto.xlsx')
+archivo_proforma = Path(r'C:\Users\jegil\Downloads\Proforma Proyectada Cable 08-2026.xlsx')
 app = create_app()
 
 with app.test_client() as client, app.app_context():
@@ -47,33 +47,43 @@ with app.test_client() as client, app.app_context():
 
         respuesta_proforma = client.post(
             '/api/proforma-personal/importar',
-            data={'archivo': (io.BytesIO(archivo_proforma.read_bytes()), archivo_proforma.name)},
+            data={'tipo_proforma': 'Masivo', 'archivo': (io.BytesIO(archivo_proforma.read_bytes()), archivo_proforma.name)},
             headers={'X-CSRF-Token': 'verificacion-seguimiento'},
             content_type='multipart/form-data',
         )
         assert respuesta_proforma.status_code == 200, respuesta_proforma.get_data(as_text=True)
         assert respuesta_proforma.get_json()['seguimiento_actualizado'] is True
+        proformas_importadas = respuesta_proforma.get_json()['proformas']
+        cantidad_proformas = len(proformas_importadas)
+        assert cantidad_proformas > 6
         generadas = {}
         for clave in ('base_objetivo_masivo', 'auxiliar_horas_plp_masivo', 'precios', '2026', 'aux'):
             generadas[clave] = client.get(f"/api/seguimiento-personal/hoja?importacion_id={importacion['id']}&hoja={clave}").get_json()['hoja']
         print('generadas', {clave: hoja['cantidad_filas'] for clave, hoja in generadas.items()})
-        assert generadas['2026']['cantidad_filas'] == 1145
-        assert generadas['auxiliar_horas_plp_masivo']['cantidad_filas'] >= 6
-        assert generadas['base_objetivo_masivo']['cantidad_filas'] >= 6
-        ultima_2026 = generadas['2026']['filas'][-1]
-        assert ultima_2026[2]['v'].startswith('2026-08-01') and ultima_2026[3]['v'] == 'Proyectada'
-        assert round(ultima_2026[8]['v'], 2) == round(10220.0891 * 21298.78, 2)
-        assert generadas['precios']['filas'][3][9]['v'] == 21298.78
+        assert generadas['2026']['cantidad_filas'] == 1139 + cantidad_proformas
+        assert generadas['base_objetivo_masivo']['cantidad_filas'] == 779 + cantidad_proformas
+        equivalencias_tipo = {'FERIADO': 'Feriados', 'NOCTURNA': 'Nocturnas', 'NORMAL': 'Diurnas'}
+        filas_agosto = [fila for fila in generadas['2026']['filas'][1:] if str(fila[2]['v']).startswith('2026-08-01') and fila[3]['v'] == 'Proyectada']
+        assert len(filas_agosto) == cantidad_proformas
+        for origen in proformas_importadas:
+            destino = next(fila for fila in filas_agosto if fila[5]['v'] == origen['segmento'] and fila[17]['v'] == equivalencias_tipo[origen['tipo_hora']])
+            assert round(destino[6]['v'], 4) == round(origen['total_horas'], 4)
+            assert round(destino[7]['v'], 2) == round(origen['precio'], 2)
+            assert round(destino[8]['v'], 2) == round(origen['monto_fijo'], 2)
+            assert round(destino[9]['v'] * 100, 4) == round(origen['bono_porcentaje_total'], 4)
+            assert round(destino[10]['v'], 2) == round(origen['monto_variable'], 2)
+            assert round(destino[13]['v'], 2) == round(origen['total_proyeccion'], 2)
+            assert destino[0]['f'].startswith('=VLOOKUP($Q') and destino[18]['f'].startswith('=IFERROR(VLOOKUP(Q')
         segunda_proforma = client.post(
             '/api/proforma-personal/importar',
-            data={'archivo': (io.BytesIO(archivo_proforma.read_bytes()), archivo_proforma.name)},
+            data={'tipo_proforma': 'Masivo', 'archivo': (io.BytesIO(archivo_proforma.read_bytes()), archivo_proforma.name)},
             headers={'X-CSRF-Token': 'verificacion-seguimiento'},
             content_type='multipart/form-data',
         )
-        assert segunda_proforma.status_code == 200 and segunda_proforma.get_json()['actualizadas'] == 6
+        assert segunda_proforma.status_code == 200 and segunda_proforma.get_json()['actualizadas'] == cantidad_proformas
         filas_2026_segunda = client.get(f"/api/seguimiento-personal/hoja?importacion_id={importacion['id']}&hoja=2026").get_json()['hoja']['filas']
         agosto_proyectado = [fila for fila in filas_2026_segunda[1:] if str(fila[2]['v']).startswith('2026-08-01') and fila[3]['v'] == 'Proyectada']
-        assert len(agosto_proyectado) == 6
+        assert len(agosto_proyectado) == cantidad_proformas
 
         descarga = client.get(f"/api/seguimiento-personal/{importacion['id']}/descargar")
         assert descarga.status_code == 200 and len(descarga.data) == archivo.stat().st_size
@@ -88,7 +98,7 @@ with app.test_client() as client, app.app_context():
             'filas': importacion['cantidad_filas'],
             'formulas': importacion['cantidad_formulas'],
             'advertencias': importacion['advertencias'],
-            'proformas_automaticas': len(respuesta_proforma.get_json()['proformas']),
+            'proformas_automaticas': cantidad_proformas,
             'deshacer': estado,
         })
     finally:

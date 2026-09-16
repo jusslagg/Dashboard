@@ -297,6 +297,8 @@ def ensure_schema():
         if 'staff_importe' not in ratio_ii_columns:
             db.session.execute(text('ALTER TABLE ratio_eli_ii_mensual ADD COLUMN staff_importe NUMERIC(18,2) DEFAULT 0 NOT NULL'))
         db.session.commit()
+    asegurar_tipos_proforma_personal()
+    inspector = inspect(db.engine)
     asegurar_administrador_inicial_db()
     if not inspector.has_table('facturacion_anio'):
         return
@@ -592,6 +594,115 @@ def asegurar_administrador_inicial_db():
             resumen=f'Usuario inicial promovido a administrador: {primer_usuario.email}',
             antes=f'{{"rol": "{rol_anterior}"}}',
             despues='{"rol": "administrador"}',
+        ))
+    db.session.commit()
+
+
+def asegurar_tipos_proforma_personal():
+    """Separa los lotes Masivo, Personal Pay y Soporte sin perder cargas previas."""
+    inspector = inspect(db.engine)
+    if not inspector.has_table('proforma_personal'):
+        return
+    columnas = {column['name'] for column in inspector.get_columns('proforma_personal')}
+    if 'tipo_proforma' not in columnas:
+        db.session.execute(text(
+            "ALTER TABLE proforma_personal ADD COLUMN tipo_proforma VARCHAR(30) DEFAULT 'Masivo' NOT NULL"
+        ))
+        db.session.commit()
+    inspector = inspect(db.engine)
+    unicos = inspector.get_unique_constraints('proforma_personal')
+    columnas_nuevas = {
+        'tipo_proforma', 'fdv', 'periodo', 'negocio', 'sitio_proveedor',
+        'segmento', 'subsitio', 'tipo_hora',
+    }
+    tiene_unico_nuevo = any(set(restriccion.get('column_names') or ()) == columnas_nuevas for restriccion in unicos)
+    if db.engine.dialect.name == 'sqlite' and not tiene_unico_nuevo:
+        for indice in db.session.execute(text('PRAGMA index_list(proforma_personal)')).mappings():
+            if not indice.get('unique'):
+                continue
+            nombre_indice = str(indice.get('name') or '').replace("'", "''")
+            columnas_indice = {
+                fila['name'] for fila in db.session.execute(
+                    text(f"PRAGMA index_info('{nombre_indice}')")
+                ).mappings()
+            }
+            if columnas_indice == columnas_nuevas:
+                tiene_unico_nuevo = True
+                break
+    if tiene_unico_nuevo:
+        db.session.execute(text(
+            "UPDATE proforma_personal SET tipo_proforma = 'Masivo' "
+            "WHERE tipo_proforma IS NULL OR trim(tipo_proforma) = ''"
+        ))
+        db.session.commit()
+        return
+
+    if db.engine.dialect.name == 'sqlite':
+        db.session.execute(text("""
+            CREATE TABLE proforma_personal_nueva (
+                id INTEGER NOT NULL PRIMARY KEY,
+                tipo_proforma VARCHAR(30) DEFAULT 'Masivo' NOT NULL,
+                fdv VARCHAR(150) NOT NULL,
+                periodo VARCHAR(6) NOT NULL,
+                negocio VARCHAR(100) NOT NULL,
+                sitio_proveedor VARCHAR(100) NOT NULL,
+                segmento VARCHAR(150) NOT NULL,
+                subsitio VARCHAR(150),
+                tipo_hora VARCHAR(50) NOT NULL,
+                total_horas NUMERIC(20,10) DEFAULT 0 NOT NULL,
+                precio NUMERIC(20,10) DEFAULT 0 NOT NULL,
+                monto_fijo NUMERIC(20,10) DEFAULT 0 NOT NULL,
+                porcentaje_bono_kpi_vs NUMERIC(15,10) DEFAULT 0 NOT NULL,
+                monto_variable_kpi_vs NUMERIC(20,10) DEFAULT 0 NOT NULL,
+                porcentaje_bono_ac NUMERIC(15,10) DEFAULT 0 NOT NULL,
+                monto_variable_ac NUMERIC(20,10) DEFAULT 0 NOT NULL,
+                monto_variable NUMERIC(20,10) DEFAULT 0 NOT NULL,
+                total_proyeccion NUMERIC(20,10) DEFAULT 0 NOT NULL,
+                bono_porcentaje_total NUMERIC(15,10) DEFAULT 0 NOT NULL,
+                archivo_origen VARCHAR(255),
+                creado_en DATETIME NOT NULL,
+                actualizado_en DATETIME NOT NULL,
+                CONSTRAINT uq_proforma_personal_fila_tipo UNIQUE (
+                    tipo_proforma, fdv, periodo, negocio, sitio_proveedor,
+                    segmento, subsitio, tipo_hora
+                )
+            )
+        """))
+        db.session.execute(text("""
+            INSERT INTO proforma_personal_nueva (
+                id, tipo_proforma, fdv, periodo, negocio, sitio_proveedor, segmento,
+                subsitio, tipo_hora, total_horas, precio, monto_fijo,
+                porcentaje_bono_kpi_vs, monto_variable_kpi_vs, porcentaje_bono_ac,
+                monto_variable_ac, monto_variable, total_proyeccion,
+                bono_porcentaje_total, archivo_origen, creado_en, actualizado_en
+            )
+            SELECT id, COALESCE(NULLIF(trim(tipo_proforma), ''), 'Masivo'), fdv, periodo,
+                negocio, sitio_proveedor, segmento, subsitio, tipo_hora, total_horas,
+                precio, monto_fijo, porcentaje_bono_kpi_vs, monto_variable_kpi_vs,
+                porcentaje_bono_ac, monto_variable_ac, monto_variable, total_proyeccion,
+                bono_porcentaje_total, archivo_origen, creado_en, actualizado_en
+            FROM proforma_personal
+        """))
+        db.session.execute(text('DROP TABLE proforma_personal'))
+        db.session.execute(text('ALTER TABLE proforma_personal_nueva RENAME TO proforma_personal'))
+        db.session.execute(text('CREATE INDEX ix_proforma_personal_periodo ON proforma_personal (periodo)'))
+        db.session.execute(text('CREATE INDEX ix_proforma_personal_tipo_proforma ON proforma_personal (tipo_proforma)'))
+    else:
+        for restriccion in unicos:
+            columnas_restriccion = set(restriccion.get('column_names') or ())
+            nombre = restriccion.get('name')
+            if nombre and columnas_restriccion == columnas_nuevas - {'tipo_proforma'}:
+                db.session.execute(text(f'ALTER TABLE proforma_personal DROP CONSTRAINT "{nombre}"'))
+        db.session.execute(text("""
+            ALTER TABLE proforma_personal
+            ADD CONSTRAINT uq_proforma_personal_fila_tipo UNIQUE (
+                tipo_proforma, fdv, periodo, negocio, sitio_proveedor,
+                segmento, subsitio, tipo_hora
+            )
+        """))
+        db.session.execute(text(
+            'CREATE INDEX IF NOT EXISTS ix_proforma_personal_tipo_proforma '
+            'ON proforma_personal (tipo_proforma)'
         ))
     db.session.commit()
 

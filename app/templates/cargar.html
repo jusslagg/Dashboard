@@ -454,6 +454,7 @@
             <select id="excepcionCargaTipo" class="w-full rounded border border-gray-300 bg-white px-3 py-2">
                 <option value="facturado_horas_manual">Facturado en horas ÷ horas realizadas</option>
                 <option value="facturado_manual_ajustes_vh">Facturado manual con ajustes de VH</option>
+                <option value="separar_ajuste_vh">Separar ajuste de valor hora</option>
             </select>
         </div>
         <div>
@@ -746,8 +747,22 @@ function renderExcepcionesCarga() {
     const tbody = document.getElementById('tablaExcepcionesCarga');
     if (!tbody) return;
     tbody.innerHTML = excepcionesCalculo.length ? excepcionesCalculo.map(item => `
-        <tr class="border-t hover:bg-amber-50/40"><td class="px-4 py-3 font-medium">${escapeHtml(item.cliente)}</td><td class="px-4 py-3">${escapeHtml(item.campania)}</td><td class="px-4 py-3">${item.tipo_calculo === 'facturado_horas_manual' ? 'Facturado en horas ÷ horas realizadas' : `Facturado manual; VH objetivo ${Number(item.ajuste_vh_objetivo_pct || 0) >= 0 ? '+' : ''}${Number(item.ajuste_vh_objetivo_pct || 0)}%; VH alcanzado ${Number(item.ajuste_vh_alcanzado_pct || 0) >= 0 ? '+' : ''}${Number(item.ajuste_vh_alcanzado_pct || 0)}%`}</td><td class="px-4 py-3 text-center">${puedeEliminarExcepciones ? `<button type="button" onclick="eliminarExcepcionCarga(${item.id})" class="rounded bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-700"><i class="fas fa-trash mr-1"></i>Eliminar</button>` : '<span class="text-xs text-slate-400">Sin permiso</span>'}</td></tr>
+        <tr class="border-t hover:bg-amber-50/40"><td class="px-4 py-3 font-medium">${escapeHtml(item.cliente)}</td><td class="px-4 py-3">${escapeHtml(item.campania)}</td><td class="px-4 py-3">${descripcionExcepcion(item)}</td><td class="px-4 py-3 text-center">${puedeEliminarExcepciones ? `<button type="button" onclick="eliminarExcepcionCarga(${item.id})" class="rounded bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-700"><i class="fas fa-trash mr-1"></i>Eliminar</button>` : '<span class="text-xs text-slate-400">Sin permiso</span>'}</td></tr>
     `).join('') : '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">No hay excepciones configuradas</td></tr>';
+}
+
+function descripcionExcepcion(item) {
+    if (item.tipo_calculo === 'facturado_horas_manual') return 'Facturado en horas ÷ horas realizadas';
+    if (item.tipo_calculo === 'separar_ajuste_vh') return 'Separa la diferencia entre VH objetivo y facturado como objetivo bono';
+    return `Facturado manual; VH objetivo ${Number(item.ajuste_vh_objetivo_pct || 0) >= 0 ? '+' : ''}${Number(item.ajuste_vh_objetivo_pct || 0)}%; VH alcanzado ${Number(item.ajuste_vh_alcanzado_pct || 0) >= 0 ? '+' : ''}${Number(item.ajuste_vh_alcanzado_pct || 0)}%`;
+}
+
+function excepcionRequiereFacturadoManual() {
+    return ['facturado_horas_manual', 'facturado_manual_ajustes_vh'].includes(excepcionActiva?.tipo_calculo);
+}
+
+function excepcionSeparaAjusteVH() {
+    return ['facturado_manual_ajustes_vh', 'separar_ajuste_vh'].includes(excepcionActiva?.tipo_calculo);
 }
 
 function mensajeExcepcion(texto, tipo) {
@@ -785,13 +800,14 @@ function aplicarExcepcionSeleccionada() {
     const campania = document.getElementById('campania').value.trim().toLowerCase();
     excepcionActiva = excepcionesCalculo.find(item => item.cliente.trim().toLowerCase() === cliente && item.campania.trim().toLowerCase() === campania) || null;
     const activa = Boolean(excepcionActiva);
+    const requiereManual = excepcionRequiereFacturadoManual();
     const calculaVhDesdeImporte = excepcionActiva?.tipo_calculo === 'facturado_horas_manual';
-    document.getElementById('grupoFacturadoHorasManual').classList.toggle('hidden', !activa);
+    document.getElementById('grupoFacturadoHorasManual').classList.toggle('hidden', !requiereManual);
     document.getElementById('avisoExcepcion').classList.toggle('hidden', !activa);
     const manual = document.getElementById('facturado_horas_manual');
     const valorHora = document.getElementById('valor_hora');
     const noVariable = configuracionCampaniaSeleccionada()?.valor_hora_variable === false;
-    manual.required = activa;
+    manual.required = requiereManual;
     valorHora.readOnly = calculaVhDesdeImporte || noVariable;
     valorHora.classList.toggle('bg-gray-100', calculaVhDesdeImporte || noVariable);
     const importeFijo = document.getElementById('importe_fijo');
@@ -801,7 +817,9 @@ function aplicarExcepcionSeleccionada() {
         importeFijo.value = '';
         document.getElementById('avisoExcepcion').innerHTML = calculaVhDesdeImporte
             ? '<i class="fas fa-calculator mr-2"></i><strong>Excepción aplicada:</strong> Facturado en horas es manual y el VH alcanzado se calcula dividiendo ese importe por las horas facturadas.'
-            : `<i class="fas fa-calculator mr-2"></i><strong>Excepción aplicada:</strong> Facturado en horas es manual; VH objetivo ${Number(excepcionActiva.ajuste_vh_objetivo_pct || 0)}% y VH alcanzado ${Number(excepcionActiva.ajuste_vh_alcanzado_pct || 0)}%.`;
+            : excepcionActiva.tipo_calculo === 'separar_ajuste_vh'
+                ? '<i class="fas fa-calculator mr-2"></i><strong>Regla BBVA aplicada:</strong> la diferencia entre VH objetivo y VH facturado se informa como objetivo bono.'
+                : `<i class="fas fa-calculator mr-2"></i><strong>Excepción aplicada:</strong> Facturado en horas es manual; VH objetivo ${Number(excepcionActiva.ajuste_vh_objetivo_pct || 0)}% y VH alcanzado ${Number(excepcionActiva.ajuste_vh_alcanzado_pct || 0)}%.`;
     }
     else manual.value = '';
     calcularPreview();
@@ -976,7 +994,7 @@ function capturarLineaActual() {
         horas_penalizadas: parseNumeroCampo('horas_penalizadas'),
         valor_hora_objetivo: parseNumeroCampo('valor_hora_objetivo'),
         valor_hora: parseNumeroCampo('valor_hora'),
-        facturado_horas_manual: excepcionActiva ? parseNumeroCampo('facturado_horas_manual') : null,
+        facturado_horas_manual: excepcionRequiereFacturadoManual() ? parseNumeroCampo('facturado_horas_manual') : null,
         tarifacion: parseNumeroCampo('tarifacion') || null,
         importe_fijo: document.getElementById('importe_fijo').value === '' ? null : parseNumeroCampo('importe_fijo'),
         variable_objetivo: parseNumeroCampo('variable_objetivo'),
@@ -1026,7 +1044,7 @@ function validarLinea(linea, indice = 1) {
     if (!sinRestriccionHoras && (linea.valor_hora_objetivo <= 0 || linea.valor_hora <= 0)) {
         errores.push(prefijo + 'los valores hora deben ser mayores a 0');
     }
-    if (excepcionActiva && linea.facturado_horas_manual <= 0) {
+    if (excepcionRequiereFacturadoManual() && linea.facturado_horas_manual <= 0) {
         errores.push(prefijo + 'Facturado en horas debe ser mayor a 0 para esta excepción');
     }
     validarJustificacionesFrontend(linea).forEach(error => errores.push(prefijo + error));
@@ -1138,8 +1156,10 @@ function calcularPreview() {
     const horasPenalizadas = parseNumeroCampo('horas_penalizadas');
     const valorHoraObjetivoBase = parseNumeroCampo('valor_hora_objetivo');
     const usaAjustesVH = excepcionActiva?.tipo_calculo === 'facturado_manual_ajustes_vh';
+    const separaAjusteVH = excepcionSeparaAjusteVH();
+    const usaFacturadoManual = excepcionRequiereFacturadoManual();
     const valorHoraObjetivo = valorHoraObjetivoBase * (1 + (usaAjustesVH ? Number(excepcionActiva?.ajuste_vh_objetivo_pct || 0) : 0) / 100);
-    const facturadoHorasManual = excepcionActiva ? parseNumeroCampo('facturado_horas_manual') : null;
+    const facturadoHorasManual = usaFacturadoManual ? parseNumeroCampo('facturado_horas_manual') : null;
     let valorHora = parseNumeroCampo('valor_hora');
     if (excepcionActiva?.tipo_calculo === 'facturado_horas_manual') {
         valorHora = horasFacturadas > 0 ? facturadoHorasManual / horasFacturadas : 0;
@@ -1159,18 +1179,22 @@ function calcularPreview() {
     const valorHoraAlcanzado = valorHora;
     const horasNetas = Math.max(horasFacturadas - horasPenalizadas, 0);
     const usaImporteFijo = importeFijo !== null && !Number.isNaN(importeFijo);
-    const objetivoHoras = usaImporteFijo ? importeFijo : horasObjetivo * (usaAjustesVH ? valorHoraAlcanzado : valorHoraObjetivo);
-    const objetivoBono = usaAjustesVH ? horasObjetivo * (valorHoraObjetivo - valorHoraAlcanzado) : variableObjetivo;
+    // El importe fijo reemplaza el facturado real, pero no el objetivo. El
+    // objetivo sigue surgiendo de las horas y el valor hora objetivo para que
+    // la diferencia informada se vea como desvio.
+    const objetivoHoras = horasObjetivo * (separaAjusteVH ? valorHoraAlcanzado : valorHoraObjetivo);
+    const objetivoBono = separaAjusteVH ? horasObjetivo * (valorHoraObjetivo - valorHoraAlcanzado) : variableObjetivo;
     const facturacionObjetivo = objetivoHoras + objetivoBono;
-    const facturadoHoras = excepcionActiva ? facturadoHorasManual : (usaImporteFijo ? importeFijo : horasNetas * valorHoraAlcanzado);
+    const facturadoHoras = usaFacturadoManual ? facturadoHorasManual : (usaImporteFijo ? importeFijo : horasNetas * valorHoraAlcanzado);
     const facturadoBono = bonos;
     const totalReal = (usaImporteFijo ? importeFijo : facturadoHoras) + facturadoBono + variableProductivo + penalizaciones + tarifacion + netxGen + otros;
     const montoFinalTarifacion = totalReal;
     const totalTeorico = facturacionObjetivo;
     const desvioHoras = facturadoHoras - objetivoHoras;
-    const desvio = totalReal - totalTeorico;
+    const totalComparable = facturadoHoras + facturadoBono + variableProductivo + penalizaciones;
+    const desvio = totalComparable - totalTeorico;
     const cumplimientoHoras = horasObjetivo > 0 ? (horasFacturadas / horasObjetivo) * 100 : 0;
-    const cumplimiento = totalTeorico > 0 ? (totalReal / totalTeorico) * 100 : 0;
+    const cumplimiento = totalTeorico > 0 ? (totalComparable / totalTeorico) * 100 : 0;
 
     document.getElementById('previewValorHoraObjetivo').textContent = formatCurrency(valorHoraObjetivo);
     document.getElementById('previewValorHoraAlcanzado').textContent = formatCurrency(valorHoraAlcanzado);

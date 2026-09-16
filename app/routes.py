@@ -1,7 +1,7 @@
 ﻿# filepath: app/routes.py
 from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
 from app import db, get_csrf_token
-from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProformaPersonal, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, SeguimientoPersonalImportacion, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
+from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProformaPersonal, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, SeguimientoPersonalImportacion, normalizar_jefe_site, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
 import calendar
 from collections import defaultdict
@@ -685,6 +685,47 @@ def normalizar_header(valor):
     return ' '.join(texto.split())
 
 
+ALIAS_MIXTO_ESTABLES = {
+    'mixto bs as',
+    'santander mixto bs as',
+    'santander mixto estables',
+}
+ALIAS_MIXTO_INGRESOS = {
+    'santander mixto bs as ingresos',
+    'santander mixto ingresos',
+}
+
+
+def nombre_campania_canonico(valor, subcampania=None):
+    """Unifica los nombres históricos de los servicios Mixto de Santander."""
+    clave = normalizar_header(valor)
+    subclave = normalizar_header(subcampania)
+    if clave in ALIAS_MIXTO_INGRESOS or subclave in ALIAS_MIXTO_INGRESOS:
+        return 'Mixto Ingresos'
+    if clave in ALIAS_MIXTO_ESTABLES:
+        if 'ingresos' in subclave:
+            return 'Mixto Ingresos'
+        return 'Mixto Estables'
+    return str(valor or '').strip()
+
+
+def normalizar_identidad_campania(data):
+    """Aplica el nombre canónico sin alterar otras dimensiones comerciales."""
+    campania_original = data.get('campania')
+    subcampania_original = data.get('subcampania')
+    campania = nombre_campania_canonico(campania_original, subcampania_original)
+    subcampania = nombre_campania_canonico(subcampania_original)
+    if campania == 'Mixto Ingresos':
+        subcampania = 'Mixto Ingresos'
+    elif campania == 'Mixto Estables' and normalizar_header(subcampania_original) in ALIAS_MIXTO_ESTABLES:
+        subcampania = 'Mixto Estables'
+    if campania_original is not None:
+        data['campania'] = campania
+    if subcampania_original is not None:
+        data['subcampania'] = subcampania
+    return data
+
+
 def normalizar_site(valor):
     site = str(valor or '').strip()
     clave = normalizar_header(site).replace(' ', '')
@@ -892,6 +933,7 @@ def aplicar_configuracion_valor_hora(data, exigir_configuracion=True):
 
 
 def aplicar_excepcion_calculo(data, exigir_configuracion=True, preservar_facturado_manual=False):
+    normalizar_identidad_campania(data)
     if data.get('es_next_gen'):
         data['facturado_horas_manual'] = None
         return None
@@ -906,20 +948,32 @@ def aplicar_excepcion_calculo(data, exigir_configuracion=True, preservar_factura
         return obtener_excepcion_calculo(data.get('cliente'), data.get('campania'))
     aplicar_configuracion_valor_hora(data, exigir_configuracion=exigir_configuracion)
     excepcion = obtener_excepcion_calculo(data.get('cliente'), data.get('campania'))
-    if not excepcion or excepcion.tipo_calculo not in ('facturado_horas_manual', 'facturado_manual_ajustes_vh'):
+    if not excepcion or excepcion.tipo_calculo not in (
+        'facturado_horas_manual',
+        'facturado_manual_ajustes_vh',
+        'separar_ajuste_vh',
+    ):
         data['facturado_horas_manual'] = None
         return None
     if not data.get('_excepcion_calculo_aplicada'):
-        if excepcion.tipo_calculo == 'facturado_manual_ajustes_vh':
+        if excepcion.tipo_calculo in ('facturado_manual_ajustes_vh', 'separar_ajuste_vh'):
             vh_objetivo_base = parse_numero(data.get('valor_hora_objetivo') or data.get('valor_hora'))
             vh_alcanzado_base = parse_numero(data.get('valor_hora'))
-            data['valor_hora_objetivo'] = vh_objetivo_base * (1 + (excepcion.ajuste_vh_objetivo_pct or 0) / 100)
-            data['valor_hora'] = vh_alcanzado_base * (1 + (excepcion.ajuste_vh_alcanzado_pct or 0) / 100)
+            if excepcion.tipo_calculo == 'facturado_manual_ajustes_vh':
+                data['valor_hora_objetivo'] = vh_objetivo_base * (1 + (excepcion.ajuste_vh_objetivo_pct or 0) / 100)
+                data['valor_hora'] = vh_alcanzado_base * (1 + (excepcion.ajuste_vh_alcanzado_pct or 0) / 100)
+            else:
+                data['valor_hora_objetivo'] = vh_objetivo_base
+                data['valor_hora'] = vh_alcanzado_base
             data['variable_objetivo'] = parse_numero(data.get('horas_objetivo')) * (
                 data['valor_hora_objetivo'] - data['valor_hora']
             )
             data['objetivo_separar_ajuste_vh'] = True
         data['_excepcion_calculo_aplicada'] = True
+    if excepcion.tipo_calculo == 'separar_ajuste_vh':
+        data['facturado_horas_manual'] = None
+        data['importe_fijo'] = None
+        return excepcion
     horas = parse_numero(data.get('horas_facturadas'))
     facturado = parse_numero(data.get('facturado_horas_manual'))
     if horas <= 0:
@@ -946,6 +1000,7 @@ def preparar_payload_edicion_facturacion(registro, data):
 
 
 def crear_registro_facturacion(data, exigir_configuracion_valor_hora=True, preservar_facturado_manual=False):
+    normalizar_identidad_campania(data)
     fecha = parse_fecha(data['fecha'])
     mes = mes_valido(data.get('mes'))
     if not mes:
@@ -996,6 +1051,7 @@ def crear_registro_facturacion(data, exigir_configuracion_valor_hora=True, prese
 
 
 def actualizar_registro_facturacion(registro, data, exigir_configuracion_valor_hora=True, preservar_facturado_manual=False):
+    normalizar_identidad_campania(data)
     fecha = parse_fecha(data['fecha'])
     mes = mes_valido(data.get('mes'))
     if not mes:
@@ -1231,6 +1287,7 @@ def detalle_conflicto_personal_mes(indice, item, existentes):
 
 def resolver_asignacion_importacion(item):
     """Completa gerente y jefe desde Datos Maestros, sin confiar en el archivo."""
+    normalizar_identidad_campania(item)
     cliente = str(item.get('cliente') or '').strip()
     campania = str(item.get('campania') or '').strip()
     subcampania = str(item.get('subcampania') or '').strip()
@@ -1713,7 +1770,7 @@ def obtener_o_crear_asignacion(campos):
 def obtener_o_crear_campania(cliente, nombre):
     """Devuelve el ID canónico para la combinación cliente + campaña."""
     cliente = str(cliente or '').strip()
-    nombre = str(nombre or '').strip()
+    nombre = nombre_campania_canonico(nombre)
     campania = Campania.query.filter_by(cliente=cliente, nombre=nombre).first()
     if campania:
         campania.activa = True
@@ -2439,6 +2496,7 @@ def buscar_proforma_personal_snapshot(snapshot):
         if encontrada:
             return encontrada
     return ProformaPersonal.query.filter_by(
+        tipo_proforma=snapshot.get('tipo_proforma') or 'Masivo',
         fdv=snapshot.get('fdv'), periodo=snapshot.get('periodo'),
         negocio=snapshot.get('negocio'), sitio_proveedor=snapshot.get('sitio_proveedor'),
         segmento=snapshot.get('segmento'), subsitio=snapshot.get('subsitio') or None,
@@ -2448,13 +2506,13 @@ def buscar_proforma_personal_snapshot(snapshot):
 
 def restaurar_proforma_personal_snapshot(registro, snapshot):
     campos = (
-        'fdv', 'periodo', 'negocio', 'sitio_proveedor', 'segmento', 'subsitio', 'tipo_hora',
+        'tipo_proforma', 'fdv', 'periodo', 'negocio', 'sitio_proveedor', 'segmento', 'subsitio', 'tipo_hora',
         'total_horas', 'precio', 'monto_fijo', 'porcentaje_bono_kpi_vs',
         'monto_variable_kpi_vs', 'porcentaje_bono_ac', 'monto_variable_ac',
         'monto_variable', 'total_proyeccion', 'bono_porcentaje_total', 'archivo_origen',
     )
     for campo in campos:
-        valor = snapshot.get(campo)
+        valor = snapshot.get(campo) or ('Masivo' if campo == 'tipo_proforma' else None)
         setattr(registro, campo, (valor or None) if campo == 'subsitio' else valor)
 
 
@@ -3686,7 +3744,7 @@ def deshacer_item_historial(item):
         return {'success': False, 'errores': ['Este movimiento ya es un deshacer']}, 400
     if historial_movimiento_deshace(item.id):
         return {'success': False, 'errores': ['Este movimiento ya fue deshecho']}, 400
-    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion', 'proforma_personal', 'seguimiento_personal', 'dotaciones_clientes_mensuales', 'graficos_dotaciones_mensuales', 'dashboard_operativo', 'historico_cliente', 'ratio_eli_mensual', 'ratio_eli_ii_mensual')
+    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion', 'proforma_personal', 'seguimiento_personal', 'seguimiento_personal_aux', 'seguimiento_personal_dashboard', 'dotaciones_clientes_mensuales', 'graficos_dotaciones_mensuales', 'dashboard_operativo', 'historico_cliente', 'ratio_eli_mensual', 'ratio_eli_ii_mensual')
     if item.entidad not in entidades_permitidas:
         return {'success': False, 'errores': ['Este tipo de movimiento todavía no admite deshacer']}, 400
 
@@ -3694,6 +3752,55 @@ def deshacer_item_historial(item):
     despues = item._json(item.despues) or {}
     antes_snapshots = lista_snapshots_historial(antes)
     despues_snapshots = lista_snapshots_historial(despues)
+
+    if item.entidad == 'seguimiento_personal_dashboard':
+        mes = mes_valido(item.entidad_id)
+        if not mes:
+            return {'success': False, 'errores': ['No se pudo identificar el mes publicado']}, 400
+        actuales = query_reemplazo_personal_mes({'mes': mes}).all()
+        for registro in actuales:
+            db.session.delete(registro)
+        db.session.flush()
+        for snapshot in antes_snapshots:
+            if not snapshot:
+                continue
+            datos = dict(snapshot)
+            datos['_importacion_directa_personal'] = True
+            crear_registro_facturacion(
+                datos,
+                exigir_configuracion_valor_hora=False,
+                preservar_facturado_manual=True,
+            )
+        registrar_historial(
+            'deshacer', item.entidad, mes,
+            f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes,
+        )
+        db.session.commit()
+        return {
+            'success': True,
+            'mensaje': f'Movimiento #{item.id} deshecho: se restauraron {len(antes_snapshots)} fila(s) de Personal para {mes}',
+        }, 200
+
+    if item.entidad == 'seguimiento_personal_aux':
+        importacion = db.session.get(SeguimientoPersonalImportacion, int(item.entidad_id)) if str(item.entidad_id or '').isdigit() else None
+        if not importacion:
+            return {'success': False, 'errores': ['La configuración de seguimiento ya no existe']}, 404
+        contenido = contenido_seguimiento_personal(importacion)
+        ajustes = contenido.setdefault('ajustes_aux_normalizacion', {})
+        for clave, valor_anterior in antes.items():
+            if valor_anterior is None:
+                ajustes.pop(clave, None)
+            else:
+                ajustes[clave] = valor_anterior
+        importacion.contenido_hojas = zlib.compress(
+            json.dumps(contenido, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
+        )
+        registrar_historial(
+            'deshacer', item.entidad, item.entidad_id,
+            f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes,
+        )
+        db.session.commit()
+        return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho: correspondencias de Aux restauradas'}, 200
 
     if item.entidad == 'seguimiento_personal':
         importacion_id = despues.get('id') or item.entidad_id
@@ -3708,6 +3815,32 @@ def deshacer_item_historial(item):
         return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho: importación eliminada'}, 200
 
     if item.entidad == 'proforma_personal':
+        snapshots_con_tipo = [snapshot for snapshot in antes_snapshots + despues_snapshots if snapshot and snapshot.get('tipo_proforma')]
+        if snapshots_con_tipo:
+            alcances = {
+                (snapshot.get('tipo_proforma') or 'Masivo', snapshot.get('periodo'))
+                for snapshot in snapshots_con_tipo if snapshot.get('periodo')
+            }
+            for tipo_proforma, periodo in alcances:
+                ProformaPersonal.query.filter_by(
+                    tipo_proforma=tipo_proforma, periodo=periodo,
+                ).delete(synchronize_session=False)
+            db.session.flush()
+            for snapshot in antes_snapshots:
+                if not snapshot:
+                    continue
+                restaurada = ProformaPersonal()
+                restaurar_proforma_personal_snapshot(restaurada, snapshot)
+                db.session.add(restaurada)
+            registrar_historial(
+                'deshacer', item.entidad, item.entidad_id,
+                f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes,
+            )
+            db.session.commit()
+            return {
+                'success': True,
+                'mensaje': f'Movimiento #{item.id} deshecho: se restauraron {len(antes_snapshots)} fila(s) del lote anterior',
+            }, 200
         cantidad = max(len(antes_snapshots), len(despues_snapshots))
         restauradas = 0
         eliminadas = 0
@@ -4643,7 +4776,7 @@ def api_matriz():
 
 def payload_proyeccion(data):
     cliente = str(data.get('cliente') or '').strip()
-    campania = str(data.get('campania') or '').strip()
+    campania = nombre_campania_canonico(data.get('campania'))
     mes = str(data.get('mes') or '').strip()
     errores = []
     tipo_plp = str(data.get('tipo_plp') or '').strip()
@@ -4776,7 +4909,7 @@ def payload_proyeccion(data):
 
 def payload_precio(data):
     cliente = str(data.get('cliente') or '').strip()
-    campania = str(data.get('campania') or '').strip()
+    campania = nombre_campania_canonico(data.get('campania'))
     mes = str(data.get('mes') or '').strip()
     errores = []
 
@@ -4868,6 +5001,7 @@ def header_mes_fijo_precio(header):
 
 def resolver_cliente_campania_precio(site, nombre, cuenta=''):
     site_normalizado = normalizar_header(site)
+    nombre = nombre_campania_canonico(nombre)
     nombre_normalizado = normalizar_header(nombre)
     cuenta_normalizada = normalizar_header(cuenta)
     asignacion = None
@@ -6070,7 +6204,7 @@ def construir_control_proyecciones_data(year):
 
 
 def normalizar_nombre_variable(valor):
-    nombre = normalizar_header(valor)
+    nombre = normalizar_header(nombre_campania_canonico(valor))
     for sufijo in (' nocturnos', ' nocturno', ' nocturna'):
         if nombre.endswith(sufijo):
             nombre = nombre[:-len(sufijo)] + ' nocturnidad'
@@ -8956,22 +9090,55 @@ ENCABEZADOS_PROFORMA_PERSONAL = (
     'PORCENTAJE_BONO_KPI_VS', 'MONTO_VARIABLE_KPI_VS',
     'PORCENTAJE_BONO_AC', 'MONTO_VARIABLE_AC', 'MONTO_VARIABLE', 'TOTAL_PROYECCION',
 )
+TIPOS_PROFORMA_PERSONAL = ('Masivo', 'Personal Pay', 'Soporte')
 
 
 def periodo_proforma(valor):
     if isinstance(valor, (datetime, date)):
-        texto = valor.strftime('%Y%m')
+        return valor.strftime('%Y%m')
     elif isinstance(valor, (int, float)) and not isinstance(valor, bool):
         texto = str(int(valor))
     else:
-        texto = re.sub(r'\D', '', str(valor or ''))
-    if not re.fullmatch(r'\d{6}', texto):
+        original = normalizar_header(valor)
+        texto = re.sub(r'\D', '', original)
+        meses = {
+            'ene': 1, 'enero': 1, 'feb': 2, 'febrero': 2, 'mar': 3, 'marzo': 3,
+            'abr': 4, 'abril': 4, 'may': 5, 'mayo': 5, 'jun': 6, 'junio': 6,
+            'jul': 7, 'julio': 7, 'ago': 8, 'agosto': 8, 'sep': 9, 'sept': 9,
+            'septiembre': 9, 'oct': 10, 'octubre': 10, 'nov': 11,
+            'noviembre': 11, 'dic': 12, 'diciembre': 12,
+        }
+        coincidencia = re.search(r'([a-z]+)\D*(\d{2,4})', original)
+        if coincidencia and coincidencia.group(1) in meses:
+            anio = int(coincidencia.group(2))
+            anio += 2000 if anio < 100 else 0
+            return f'{anio:04d}{meses[coincidencia.group(1)]:02d}'
+    if re.fullmatch(r'\d{6}', texto) and 1 <= int(texto[4:]) <= 12:
+        periodo = texto
+    elif re.fullmatch(r'\d{6}', texto) and 1 <= int(texto[:2]) <= 12:
+        periodo = f'{texto[2:]}{texto[:2]}'
+    else:
         return None
     try:
-        datetime.strptime(texto, '%Y%m')
+        datetime.strptime(periodo, '%Y%m')
     except ValueError:
         return None
-    return texto
+    return periodo
+
+
+def normalizar_encabezado_proforma(valor):
+    return re.sub(r'[^a-z0-9]+', ' ', normalizar_header(valor)).strip()
+
+
+def tipo_proforma_desde_negocio(negocio):
+    clave = normalizar_header(negocio)
+    if 'soporte' in clave:
+        return 'Soporte'
+    if clave == 'pay' or 'personal pay' in clave:
+        return 'Personal Pay'
+    if 'masivo' in clave or 'cable' in clave:
+        return 'Masivo'
+    return None
 
 
 def porcentaje_proforma_excel(celda):
@@ -8983,11 +9150,14 @@ def porcentaje_proforma_excel(celda):
 @login_requerido
 def api_proforma_personal():
     periodo = periodo_proforma(request.args.get('periodo')) if request.args.get('periodo') else None
+    tipo_proforma = str(request.args.get('tipo_proforma') or '').strip()
     query = ProformaPersonal.query
     if periodo:
         query = query.filter_by(periodo=periodo)
+    if tipo_proforma in TIPOS_PROFORMA_PERSONAL:
+        query = query.filter_by(tipo_proforma=tipo_proforma)
     registros = query.order_by(
-        ProformaPersonal.periodo.desc(), ProformaPersonal.segmento,
+        ProformaPersonal.periodo.desc(), ProformaPersonal.tipo_proforma, ProformaPersonal.segmento,
         ProformaPersonal.tipo_hora, ProformaPersonal.id,
     ).all()
     periodos = [fila[0] for fila in db.session.query(ProformaPersonal.periodo).distinct().order_by(ProformaPersonal.periodo.desc()).all()]
@@ -8998,14 +9168,20 @@ def api_proforma_personal():
     for movimiento in movimientos:
         valores_antes = lista_snapshots_historial(movimiento._json(movimiento.antes) or {})
         valores_despues = lista_snapshots_historial(movimiento._json(movimiento.despues) or {})
+        lote_referencia = next((fila for fila in valores_despues + valores_antes if fila), {})
+        es_lote_tipificado = bool(lote_referencia.get('tipo_proforma'))
+        ids_antes = {fila.get('id') for fila in valores_antes if fila and fila.get('id')}
+        ids_despues = {fila.get('id') for fila in valores_despues if fila and fila.get('id')}
         archivo_origen = next((fila.get('archivo_origen') for fila in valores_despues if fila and fila.get('archivo_origen')), '')
         importaciones.append({
             'id': movimiento.id,
             'archivo': archivo_origen,
+            'tipo_proforma': lote_referencia.get('tipo_proforma') or 'Masivo',
             'periodos': [valor for valor in str(movimiento.entidad_id or '').split(',') if valor],
             'filas': len(valores_despues),
-            'creadas': sum(1 for fila in valores_antes if not fila),
-            'actualizadas': sum(1 for fila in valores_antes if fila),
+            'creadas': len(ids_despues - ids_antes) if es_lote_tipificado else sum(1 for fila in valores_antes if not fila),
+            'actualizadas': len(ids_despues & ids_antes) if es_lote_tipificado else sum(1 for fila in valores_antes if fila),
+            'eliminadas': len(ids_antes - ids_despues) if es_lote_tipificado else 0,
             'usuario': movimiento.usuario_nombre or movimiento.usuario_email or 'Usuario',
             'fecha': movimiento.creado_en.isoformat() if movimiento.creado_en else None,
             'deshecha': historial_movimiento_deshace(movimiento.id),
@@ -9013,6 +9189,7 @@ def api_proforma_personal():
     return jsonify({
         'success': True,
         'periodos': periodos,
+        'tipos_proforma': list(TIPOS_PROFORMA_PERSONAL),
         'proformas': [registro.to_dict() for registro in registros],
         'importaciones': importaciones,
     })
@@ -9076,6 +9253,9 @@ def api_template_proforma_personal():
 @main_bp.route('/api/proforma-personal/importar', methods=['POST'])
 @carga_requerida
 def api_importar_proforma_personal():
+    tipo_proforma = str(request.form.get('tipo_proforma') or '').strip()
+    if tipo_proforma not in TIPOS_PROFORMA_PERSONAL:
+        return jsonify({'success': False, 'errores': ['Seleccione si la Proforma es Masivo, Personal Pay o Soporte']}), 400
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename:
         return jsonify({'success': False, 'errores': ['Seleccione el archivo de proforma']}), 400
@@ -9094,9 +9274,15 @@ def api_importar_proforma_personal():
         return jsonify({'success': False, 'errores': ['No se pudo leer el archivo Excel']}), 400
 
     fila_encabezado = None
+    encabezados_esperados = [
+        {normalizar_encabezado_proforma(valor)} for valor in ENCABEZADOS_PROFORMA_PERSONAL
+    ]
+    encabezados_esperados[10].add('bono kpi vs')
+    encabezados_esperados[12].add('bono ac')
+    encabezados_esperados[14].add('monto variable total')
     for numero in range(1, min(hoja.max_row, 20) + 1):
-        encontrados = tuple(str(hoja.cell(numero, columna).value or '').strip().upper() for columna in range(1, 17))
-        if encontrados == ENCABEZADOS_PROFORMA_PERSONAL:
+        encontrados = tuple(normalizar_encabezado_proforma(hoja.cell(numero, columna).value) for columna in range(1, 17))
+        if all(encontrado in aceptados for encontrado, aceptados in zip(encontrados, encabezados_esperados)):
             fila_encabezado = numero
             break
     if fila_encabezado is None:
@@ -9111,6 +9297,11 @@ def api_importar_proforma_personal():
     for numero in range(fila_encabezado + 1, hoja.max_row + 1):
         celdas = [hoja.cell(numero, columna) for columna in range(1, 17)]
         if not any(celda.value not in (None, '') for celda in celdas):
+            continue
+        # Las proformas suelen incluir renglones descriptivos o servicios sin
+        # carga. Se omiten sólo cuando H:P está completamente vacío; un cero
+        # explícito sigue siendo una fila válida.
+        if all(celda.value in (None, '') for celda in celdas[7:16]):
             continue
         fdv = str(celdas[0].value or '').strip()
         periodo = periodo_proforma(celdas[1].value)
@@ -9145,6 +9336,7 @@ def api_importar_proforma_personal():
             continue
         claves_archivo.add(clave)
         entradas.append({
+            'tipo_proforma': tipo_proforma,
             'fdv': fdv, 'periodo': periodo, 'negocio': negocio, 'sitio_proveedor': sitio,
             'segmento': segmento, 'subsitio': subsitio, 'tipo_hora': tipo_hora,
             'total_horas': total_horas, 'precio': precio, 'monto_fijo': monto_fijo,
@@ -9158,17 +9350,37 @@ def api_importar_proforma_personal():
     if not entradas:
         return jsonify({'success': False, 'errores': ['No se encontraron filas de datos debajo del encabezado']}), 400
 
-    antes = []
+    tipos_detectados = {tipo_proforma_desde_negocio(entrada['negocio']) for entrada in entradas}
+    tipos_detectados.discard(None)
+    if len(tipos_detectados) > 1:
+        return jsonify({'success': False, 'errores': [
+            f'El archivo mezcla tipos de Proforma ({", ".join(sorted(tipos_detectados))}). Sepárelos antes de importar.'
+        ]}), 400
+    if tipos_detectados and tipo_proforma not in tipos_detectados:
+        detectado = next(iter(tipos_detectados))
+        return jsonify({'success': False, 'errores': [
+            f'Seleccionó {tipo_proforma}, pero la columna NEGOCIO corresponde a {detectado}. Cambie el tipo seleccionado o el archivo.'
+        ]}), 400
+
+    periodos = sorted({entrada['periodo'] for entrada in entradas})
+    existentes_lote = ProformaPersonal.query.filter(
+        ProformaPersonal.tipo_proforma == tipo_proforma,
+        ProformaPersonal.periodo.in_(periodos),
+    ).all()
+    antes = [registro.to_dict() for registro in existentes_lote]
+    def clave_proforma(registro):
+        return tuple(normalizar_header(getattr(registro, campo) or '') for campo in (
+            'fdv', 'periodo', 'negocio', 'sitio_proveedor', 'segmento', 'subsitio', 'tipo_hora',
+        ))
+    existentes_por_clave = {clave_proforma(registro): registro for registro in existentes_lote}
     guardadas = []
     creadas = 0
     actualizadas = 0
     for entrada in entradas:
-        existente = ProformaPersonal.query.filter_by(
-            fdv=entrada['fdv'], periodo=entrada['periodo'], negocio=entrada['negocio'],
-            sitio_proveedor=entrada['sitio_proveedor'], segmento=entrada['segmento'],
-            subsitio=entrada['subsitio'], tipo_hora=entrada['tipo_hora'],
-        ).first()
-        antes.append(existente.to_dict() if existente else None)
+        clave = tuple(normalizar_header(entrada.get(campo) or '') for campo in (
+            'fdv', 'periodo', 'negocio', 'sitio_proveedor', 'segmento', 'subsitio', 'tipo_hora',
+        ))
+        existente = existentes_por_clave.pop(clave, None)
         if existente:
             actualizadas += 1
         else:
@@ -9179,11 +9391,13 @@ def api_importar_proforma_personal():
             setattr(existente, campo, valor)
         existente.archivo_origen = archivo.filename[:255]
         guardadas.append(existente)
+    eliminadas = len(existentes_por_clave)
+    for existente in existentes_por_clave.values():
+        db.session.delete(existente)
     db.session.flush()
-    periodos = sorted({entrada['periodo'] for entrada in entradas})
     registrar_historial(
         'importacion', 'proforma_personal', ','.join(periodos),
-        f'Proforma Personal “{archivo.filename[:120]}”: {creadas} nueva(s), {actualizadas} actualizada(s)',
+        f'Proforma {tipo_proforma} “{archivo.filename[:120]}”: {creadas} nueva(s), {actualizadas} actualizada(s), {eliminadas} reemplazada(s)',
         antes={'proformas': antes},
         despues={'proformas': [registro.to_dict() for registro in guardadas]},
     )
@@ -9192,11 +9406,14 @@ def api_importar_proforma_personal():
     return jsonify({
         'success': True,
         'mensaje': (
-            f'Proforma importada: {creadas} nueva(s) y {actualizadas} actualizada(s). '
+            f'Proforma {tipo_proforma} importada para {", ".join(periodos)}: '
+            f'{creadas} nueva(s), {actualizadas} actualizada(s) y {eliminadas} anterior(es) eliminada(s). '
             + ('Las hojas de seguimiento se recalcularon automáticamente.' if seguimiento_configurado else 'Cargue una vez la configuración inicial del seguimiento para habilitar los cálculos encadenados.')
         ),
+        'tipo_proforma': tipo_proforma,
         'creadas': creadas,
         'actualizadas': actualizadas,
+        'eliminadas': eliminadas,
         'seguimiento_actualizado': seguimiento_configurado,
         'periodos': periodos,
         'proformas': [registro.to_dict() for registro in guardadas],
@@ -9341,6 +9558,49 @@ def actualizar_metadata_hoja_seguimiento(hoja):
     )
 
 
+def jefatura_personal_por_tipo_negocio(tipo_negocio):
+    clave = normalizar_header(tipo_negocio)
+    if clave.startswith('retencion'):
+        return 'Del Soto, Alejandro'
+    if clave == 'smb' or clave.startswith('soporte'):
+        return 'Canalini, Walter'
+    if clave.startswith('customer') or clave in {'masivo', 'personal pay'}:
+        return 'Antelo, Micaela'
+    if clave.startswith('ventas'):
+        return 'Chanampa, Pablo'
+    return None
+
+
+def grupo_proforma_personal(tipo_negocio, tipo_proforma=None, cliente=None):
+    """Devuelve el nombre de grupo usado por el libro de seguimiento Personal."""
+    clave_tipo = normalizar_header(tipo_negocio)
+    clave_proforma = normalizar_header(tipo_proforma)
+    clave_cliente = normalizar_header(cliente)
+    if clave_tipo == 'smb' or clave_proforma == 'masivo' and 'smb' in clave_cliente:
+        return 'Personal SMB'
+    if clave_tipo.startswith('soporte') or clave_proforma == 'soporte':
+        return 'Personal SOPORTE'
+    if clave_tipo == 'personal pay' or clave_proforma == 'personal pay':
+        return 'Personal PPAY'
+    if clave_cliente.startswith('personal'):
+        return cliente
+    return 'Personal'
+
+
+def clave_horas_auxiliar_personal(periodo, grupo, campania, tipo_vh):
+    return '|'.join((
+        periodo_valor_seguimiento(periodo) or str(periodo or '').strip(),
+        normalizar_header(grupo), normalizar_header(campania), normalizar_header(tipo_vh),
+    ))
+
+
+def clave_cierre_auxiliar_personal(periodo, grupo, campania):
+    return '|'.join((
+        periodo_valor_seguimiento(periodo) or str(periodo or '').strip(),
+        normalizar_header(grupo), normalizar_header(campania),
+    ))
+
+
 def aplicar_proformas_a_seguimiento(contenido):
     proformas = ProformaPersonal.query.order_by(ProformaPersonal.periodo, ProformaPersonal.segmento, ProformaPersonal.tipo_hora).all()
     if not proformas:
@@ -9351,47 +9611,106 @@ def aplicar_proformas_a_seguimiento(contenido):
         return contenido
 
     periodos = {item.periodo for item in proformas}
+    ajustes_auxiliar = contenido.get('ajustes_auxiliar_horas') or {}
+    periodos_definitivos_auxiliar = {f'2026{mes:02d}' for mes in range(1, 7)}
+    cierres_auxiliar = {
+        clave_cierre_auxiliar_personal(item.get('periodo'), item.get('grupo'), item.get('campania'))
+        for item in ajustes_auxiliar.values()
+        if item.get('definitiva') is not None
+    }
+
+    def es_cierre_auxiliar(periodo, grupo, campania):
+        return (
+            periodo in periodos_definitivos_auxiliar
+            or clave_cierre_auxiliar_personal(periodo, grupo, campania) in cierres_auxiliar
+        )
     meses_nombre = ('enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre')
     fecha_periodo = lambda periodo: f'{periodo[:4]}-{periodo[4:]}-01T00:00:00'
 
     hoja_aux = hojas['aux']
     estilos_automaticos_seguimiento(hoja_aux)
+    ajustes_normalizacion = contenido.get('ajustes_aux_normalizacion') or {}
     mapa_aux = {}
+    filas_aux_por_clave = {}
     for fila in hoja_aux.get('filas', [])[1:]:
         campania = valor_fila_seguimiento(fila, 1)
         if campania:
-            mapa_aux.setdefault(normalizar_header(campania), {
+            clave = normalizar_header(campania)
+            tipo_negocio = valor_fila_seguimiento(fila, 4) or ''
+            clasificacion = {
                 'campania': campania,
                 'segmento': valor_fila_seguimiento(fila, 2) or campania,
-                'jefatura': valor_fila_seguimiento(fila, 3) or '',
-                'tipo_negocio': valor_fila_seguimiento(fila, 4) or '',
+                'jefatura': jefatura_personal_por_tipo_negocio(tipo_negocio) or normalizar_jefe_site(valor_fila_seguimiento(fila, 3)) or '',
+                'tipo_negocio': tipo_negocio,
                 'proforma': valor_fila_seguimiento(fila, 5) or 'Personal',
                 'backup': valor_fila_seguimiento(fila, 6) or valor_fila_seguimiento(fila, 2) or campania,
-            })
+            }
+            ajuste = ajustes_normalizacion.get(clave)
+            if ajuste:
+                for campo in ('segmento', 'jefatura', 'tipo_negocio', 'proforma', 'backup'):
+                    if campo in ajuste:
+                        valor_ajuste = str(ajuste.get(campo) or '').strip()
+                        clasificacion[campo] = (
+                            normalizar_jefe_site(valor_ajuste) or ''
+                            if campo == 'jefatura' else valor_ajuste
+                        )
+            mapa_aux.setdefault(clave, clasificacion)
+            filas_aux_por_clave.setdefault(clave, []).append(fila)
     asignaciones = AsignacionComercial.query.filter_by(activa=True).all()
     mapa_asignaciones = {}
     for asignacion in asignaciones:
         for nombre in (asignacion.subcampania, asignacion.campania):
             if nombre:
                 mapa_asignaciones.setdefault(normalizar_header(nombre), asignacion)
-    for item in proformas:
-        clave = normalizar_header(item.segmento)
-        if clave in mapa_aux:
+    candidatos_aux = []
+    for asignacion in asignaciones:
+        if not normalizar_header(asignacion.cliente).startswith('personal'):
             continue
-        asignacion = mapa_asignaciones.get(clave)
+        for nombre in (asignacion.subcampania, asignacion.campania):
+            if nombre:
+                candidatos_aux.append((nombre, None, asignacion))
+    candidatos_aux.extend((item.segmento, item, mapa_asignaciones.get(normalizar_header(item.segmento))) for item in proformas)
+    for nombre_origen, item, asignacion in candidatos_aux:
+        clave = normalizar_header(nombre_origen)
+        if not clave or clave in mapa_aux:
+            continue
+        tipo_negocio = (asignacion.tipo_negocio if asignacion else None) or (item.negocio if item else '')
+        tipo_proforma = item.tipo_proforma if item else None
+        cliente = asignacion.cliente if asignacion else None
+        segmento = (asignacion.subcampania or asignacion.campania) if asignacion else nombre_origen
         clasificacion = {
-            'campania': item.segmento,
-            'segmento': item.segmento,
-            'jefatura': asignacion.jefe_site if asignacion else '',
-            'tipo_negocio': (asignacion.tipo_negocio if asignacion else None) or item.negocio,
-            'proforma': (asignacion.cliente if asignacion and normalizar_header(asignacion.cliente).startswith('personal') else 'Personal'),
-            'backup': item.segmento,
+            'campania': nombre_origen,
+            'segmento': segmento,
+            'tipo_negocio': tipo_negocio,
+            'proforma': grupo_proforma_personal(tipo_negocio, tipo_proforma, cliente),
+            'backup': segmento,
         }
+        clasificacion['jefatura'] = (
+            jefatura_personal_por_tipo_negocio(clasificacion['tipo_negocio'])
+            or normalizar_jefe_site(asignacion.jefe_site if asignacion else '') or ''
+        )
+        ajuste = ajustes_normalizacion.get(clave)
+        if ajuste:
+            for campo in ('segmento', 'jefatura', 'tipo_negocio', 'proforma', 'backup'):
+                if campo in ajuste:
+                    valor_ajuste = str(ajuste.get(campo) or '').strip()
+                    clasificacion[campo] = (
+                        normalizar_jefe_site(valor_ajuste) or ''
+                        if campo == 'jefatura' else valor_ajuste
+                    )
         mapa_aux[clave] = clasificacion
         nueva = [celda_seguimiento_automatica() for _ in range(hoja_aux['cantidad_columnas'])]
         for indice, valor in enumerate((None, clasificacion['campania'], clasificacion['segmento'], clasificacion['jefatura'], clasificacion['tipo_negocio'], clasificacion['proforma'], clasificacion['backup'])):
             nueva[indice] = celda_seguimiento_automatica(valor)
         hoja_aux['filas'].append(nueva)
+        filas_aux_por_clave.setdefault(clave, []).append(nueva)
+
+    # Aux es la fuente visible y persistente de normalizacion. La misma
+    # correspondencia se refleja en todas las variantes repetidas del archivo.
+    for clave, clasificacion in mapa_aux.items():
+        for fila in filas_aux_por_clave.get(clave, []):
+            for indice, campo in ((2, 'segmento'), (3, 'jefatura'), (4, 'tipo_negocio'), (5, 'proforma'), (6, 'backup')):
+                fila[indice] = celda_seguimiento_automatica(clasificacion[campo])
     actualizar_metadata_hoja_seguimiento(hoja_aux)
 
     hoja_precios = hojas['precios']
@@ -9428,46 +9747,137 @@ def aplicar_proformas_a_seguimiento(contenido):
     hoja_2026 = hojas['2026']
     estilos_automaticos_seguimiento(hoja_2026)
     cabecera_2026 = hoja_2026.get('filas', [])[:1]
-    historicas_2026 = [
-        fila for fila in hoja_2026.get('filas', [])[1:]
-        if not (periodo_valor_seguimiento(valor_fila_seguimiento(fila, 2)) in periodos and normalizar_header(valor_fila_seguimiento(fila, 3)) == 'proyectada')
-    ]
+    filas_2026 = hoja_2026.get('filas', [])[1:]
+    for fila in filas_2026:
+        nombre_origen = valor_fila_seguimiento(fila, 5)
+        clasificacion = mapa_aux.get(normalizar_header(nombre_origen))
+        if not clasificacion:
+            continue
+        for indice, campo in ((0, 'tipo_negocio'), (1, 'proforma'), (16, 'segmento'), (18, 'jefatura')):
+            fila[indice] = celda_seguimiento_automatica(clasificacion[campo])
+    estados_por_periodo = defaultdict(set)
+    for fila in filas_2026:
+        periodo_fila = periodo_valor_seguimiento(valor_fila_seguimiento(fila, 2))
+        if periodo_fila:
+            estados_por_periodo[periodo_fila].add(normalizar_header(valor_fila_seguimiento(fila, 3)))
+
+    historicas_2026 = []
+    for fila in filas_2026:
+        periodo_fila = periodo_valor_seguimiento(valor_fila_seguimiento(fila, 2))
+        if not periodo_fila:
+            historicas_2026.append(fila)
+            continue
+        estado_correcto = 'Definitiva' if es_cierre_auxiliar(
+            periodo_fila, valor_fila_seguimiento(fila, 0), valor_fila_seguimiento(fila, 5)
+        ) else 'Proyectada'
+        estado_actual = normalizar_header(valor_fila_seguimiento(fila, 3))
+        clave_correcta = normalizar_header(estado_correcto)
+        if clave_correcta in estados_por_periodo[periodo_fila] and estado_actual != clave_correcta:
+            continue
+        if estado_actual != clave_correcta:
+            fila[3] = celda_seguimiento_automatica(estado_correcto, estilo='auto_text')
+        if periodo_fila in periodos:
+            continue
+        historicas_2026.append(fila)
     nuevas_2026 = []
     for item in proformas:
         clasificacion = mapa_aux[normalizar_header(item.segmento)]
         numero = len(cabecera_2026) + len(historicas_2026) + len(nuevas_2026) + 1
         horas = float(item.total_horas or 0)
         precio = float(item.precio or 0)
-        monto_horas = float(item.monto_fijo or horas * precio)
+        monto_horas = float(item.monto_fijo or 0)
         bono = float(item.monto_variable or 0)
         porcentaje = float(item.bono_porcentaje_total or 0) / 100
-        total = float(item.total_proyeccion or monto_horas + bono)
+        total = float(item.total_proyeccion or 0)
         tipo_hora = tipo_hora_seguimiento(item.tipo_hora)
+        estado_periodo = 'Definitiva' if es_cierre_auxiliar(item.periodo, item.negocio, item.segmento) else 'Proyectada'
         valores = [
-            clasificacion['tipo_negocio'], clasificacion['proforma'], fecha_periodo(item.periodo), 'Proyectada',
+            clasificacion['tipo_negocio'], clasificacion['proforma'], fecha_periodo(item.periodo), estado_periodo,
             fecha_periodo(item.periodo), item.segmento, horas, precio, monto_horas, porcentaje, bono,
             monto_horas + bono, 0, total, None, meses_nombre[int(item.periodo[4:]) - 1],
             clasificacion['segmento'], tipo_hora, clasificacion['jefatura'], None,
         ]
         estilos = ['auto_text', 'auto_text', 'auto_date', 'auto_text', 'auto_date', 'auto_text', 'auto_number', 'auto_money', 'auto_money', 'auto_percent', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_text']
-        formulas = {8: f'=G{numero}*H{numero}', 10: f'=I{numero}*J{numero}', 11: f'=I{numero}+K{numero}', 13: f'=SUM(L{numero}:M{numero})', 15: f'=TEXT(E{numero},"MMMM")'}
+        fila_anterior = max(1, numero - 1)
+        formulas = {
+            0: f'=VLOOKUP($Q{numero},aux!$C$2:$E$1660,3,0)',
+            1: f'=VLOOKUP($Q{numero},aux!$C$2:$EF$1660,4,0)',
+            8: f'=G{numero}*H{numero}',
+            10: f'=I{numero}*J{numero}',
+            11: f'=I{numero}+K{numero}',
+            13: f'=SUM(L{numero}:M{numero})',
+            15: f'=TEXT(E{numero},"MMMM")',
+            16: f'=IF(F{numero}="Penalización por adhesión",Q{fila_anterior},VLOOKUP($F{numero},aux!$B$2:$C$1066,2,0))',
+            17: f'=IFERROR(IF(G{numero}<0,"x",VLOOKUP($H{numero},Precios!$C$13:$D$740,2,0)),"-")',
+            18: f'=IFERROR(VLOOKUP(Q{numero},aux!$C$2:$D$1430,2,0),"-")',
+        }
         fila = [celda_seguimiento_automatica(valor, formulas.get(indice), estilos[indice]) for indice, valor in enumerate(valores)]
         while len(fila) < hoja_2026['cantidad_columnas']:
             fila.append(celda_seguimiento_automatica())
         nuevas_2026.append(fila)
     hoja_2026['filas'] = cabecera_2026 + historicas_2026 + nuevas_2026
+    # El libro base trae referencias antiguas eliminadas en algunas fórmulas
+    # de Segmento y en dos controles laterales. Se reparan en la vista viva:
+    # las penalizaciones heredan el segmento anterior y los controles sin
+    # fuente se neutralizan en cero para que ninguna cadena conserve #REF!.
+    for numero_fila, fila in enumerate(hoja_2026['filas'][1:], start=2):
+        if len(fila) > 16 and '#REF!' in str(fila[16].get('f') or ''):
+            fila[16]['f'] = fila[16]['f'].replace('#REF!', f'Q{max(1, numero_fila - 1)}')
+    if cabecera_2026 and len(cabecera_2026[0]) > 32:
+        resumen = cabecera_2026[0]
+        valor_x = float(valor_fila_seguimiento(resumen, 23) or 0)
+        valor_y = float(valor_fila_seguimiento(resumen, 24) or 0)
+        resumen[27] = celda_seguimiento_automatica(0, '=0', 'auto_number')
+        resumen[28] = celda_seguimiento_automatica(0, '=0', 'auto_number')
+        resumen[29] = celda_seguimiento_automatica(0, '=IFERROR(AC1/AB1,0)', 'auto_percent')
+        resumen[30] = celda_seguimiento_automatica(valor_x, '=X1+AB1', 'auto_money')
+        resumen[31] = celda_seguimiento_automatica(valor_y, '=Y1+AC1', 'auto_money')
+        resumen[32] = celda_seguimiento_automatica(valor_y / valor_x if valor_x else 0, '=IFERROR(AF1/AE1,0)', 'auto_percent')
+    hoja_2026['referencias_rotas'] = [
+        f'{chr(64 + indice_columna)}{indice_fila}'
+        for indice_fila, fila in enumerate(hoja_2026['filas'], start=1)
+        for indice_columna, celda in enumerate(fila, start=1)
+        if indice_columna <= 26 and '#REF!' in str(celda.get('f') or '')
+    ]
     actualizar_metadata_hoja_seguimiento(hoja_2026)
 
     hoja_auxiliar = hojas['auxiliar_horas_plp_masivo']
     estilos_automaticos_seguimiento(hoja_auxiliar)
     cabecera_auxiliar = hoja_auxiliar.get('filas', [])[:1]
+    for fila in hoja_auxiliar.get('filas', [])[1:]:
+        periodo_fila = periodo_valor_seguimiento(valor_fila_seguimiento(fila, 3))
+        if not periodo_fila:
+            continue
+        clave_fila = clave_horas_auxiliar_personal(
+            periodo_fila, valor_fila_seguimiento(fila, 0),
+            valor_fila_seguimiento(fila, 1), valor_fila_seguimiento(fila, 2),
+        )
+        ajuste = ajustes_auxiliar.get(clave_fila)
+        if ajuste is not None:
+            fila[5] = celda_seguimiento_automatica(ajuste.get('proyectada'), estilo='auto_number')
+            fila[7] = celda_seguimiento_automatica(ajuste.get('definitiva'), estilo='auto_number')
+            if 'brutas' in ajuste:
+                fila[9] = celda_seguimiento_automatica(ajuste.get('brutas'), estilo='auto_number')
+            if 'adh' in ajuste:
+                fila[11] = celda_seguimiento_automatica(ajuste.get('adh'), estilo='auto_percent')
+        elif int(periodo_fila[4:]) >= 7:
+            fila[7] = celda_seguimiento_automatica(None, estilo='auto_number')
+    # Cada período presente en las Proformas se reconstruye completo. Esto
+    # evita conservar una versión anterior junto con la nueva cuando el cierre
+    # definitivo de M-2 reemplaza a la proyección.
     historicas_auxiliar = [
         fila for fila in hoja_auxiliar.get('filas', [])[1:]
-        if not (periodo_valor_seguimiento(valor_fila_seguimiento(fila, 3)) in periodos and normalizar_header(valor_fila_seguimiento(fila, 4)) == 'proyectada')
+        if periodo_valor_seguimiento(valor_fila_seguimiento(fila, 3)) not in periodos
     ]
     total_por_campania = defaultdict(float)
+    totales_cierre_brutas = defaultdict(lambda: {'definitiva': 0.0, 'brutas': 0.0})
     for item in proformas:
         total_por_campania[(item.periodo, normalizar_header(item.segmento))] += float(item.total_horas or 0)
+        tipo_hora = tipo_hora_seguimiento(item.tipo_hora)
+        ajuste = ajustes_auxiliar.get(clave_horas_auxiliar_personal(item.periodo, item.negocio, item.segmento, tipo_hora)) or {}
+        clave_campania = (item.periodo, normalizar_header(item.segmento))
+        totales_cierre_brutas[clave_campania]['definitiva'] += float(ajuste.get('definitiva') or 0)
+        totales_cierre_brutas[clave_campania]['brutas'] += float(ajuste.get('brutas') or 0)
     nuevas_auxiliar = []
     for item in proformas:
         numero = len(cabecera_auxiliar) + len(historicas_auxiliar) + len(nuevas_auxiliar) + 1
@@ -9476,47 +9886,131 @@ def aplicar_proformas_a_seguimiento(contenido):
         total_campania = total_por_campania[(item.periodo, normalizar_header(item.segmento))]
         participacion = horas / total_campania if total_campania else 0
         tipo_hora = tipo_hora_seguimiento(item.tipo_hora)
-        valores = [item.negocio, item.segmento, tipo_hora, fecha_periodo(item.periodo), 'Proyectada', horas, 'Definitiva', 0, horas, horas, horas, 0, None, horas, participacion, 0, precio, float(item.monto_fijo or horas * precio), 0]
+        clave_fila = clave_horas_auxiliar_personal(item.periodo, item.negocio, item.segmento, tipo_hora)
+        ajuste = ajustes_auxiliar.get(clave_fila) or {}
+        horas_proyectadas = ajuste.get('proyectada')
+        es_definitiva = es_cierre_auxiliar(item.periodo, item.negocio, item.segmento)
+        horas_definitivas = ajuste.get('definitiva') if es_definitiva else None
+        horas_brutas = ajuste.get('brutas')
+        adhesion = ajuste.get('adh') or 0
+        totales_campania = totales_cierre_brutas[(item.periodo, normalizar_header(item.segmento))]
+        if horas_brutas is None:
+            horas_con_tope = None
+        elif totales_campania['definitiva'] and totales_campania['brutas'] > totales_campania['definitiva'] * 1.03:
+            horas_con_tope = totales_campania['definitiva'] * 1.03 * float(horas_brutas) / totales_campania['brutas']
+        else:
+            horas_con_tope = float(horas_brutas)
+        horas_netas = horas_con_tope * (1 + float(adhesion)) if horas_con_tope is not None else None
+        horas_facturadas_proyectadas = 0 if es_definitiva else horas
+        horas_facturadas_definitivas = horas if es_definitiva else 0
+        valores = [
+            item.negocio, item.segmento, tipo_hora, fecha_periodo(item.periodo), 'Proyectada', horas_proyectadas,
+            'Definitiva', horas_definitivas, horas_netas, horas_brutas, horas_con_tope, adhesion, None,
+            horas_facturadas_proyectadas, participacion, horas_facturadas_definitivas,
+            precio,
+            precio * float(horas_con_tope or 0),
+            -precio * (float(horas_con_tope or 0) - float(horas_netas or 0)),
+        ]
         estilos = ['auto_text', 'auto_text', 'auto_text', 'auto_date', 'auto_text', 'auto_number', 'auto_text', 'auto_number', 'auto_number', 'auto_number', 'auto_number', 'auto_percent', 'auto_text', 'auto_number', 'auto_percent', 'auto_number', 'auto_money', 'auto_money', 'auto_money']
-        formulas = {8: f'=K{numero}*L{numero}+K{numero}', 10: f'=MIN(J{numero},SUMIFS(H:H,D:D,D{numero},B:B,B{numero})*1.03)', 14: f'=N{numero}/SUMIFS(N:N,B:B,B{numero},D:D,D{numero})', 17: f'=Q{numero}*K{numero}', 18: f'=-Q{numero}*(K{numero}-I{numero})'}
+        formulas = {
+            8: f'=K{numero}*L{numero}+K{numero}',
+            10: (
+                f'=IFERROR(IF(SUMIFS(J:J,D:D,D{numero},B:B,B{numero})/'
+                f'SUMIFS(H:H,D:D,D{numero},B:B,B{numero})>103%,'
+                f'(SUMIFS(H:H,D:D,D{numero},B:B,B{numero})*1.03*J{numero}/'
+                f'SUMIFS(J:J,D:D,D{numero},B:B,B{numero})),J{numero}),"-")'
+            ),
+            14: f'=N{numero}/SUMIFS(N:N,B:B,B{numero},D:D,D{numero})',
+            17: f'=Q{numero}*K{numero}',
+            18: f'=-Q{numero}*(K{numero}-I{numero})',
+        }
         fila = [celda_seguimiento_automatica(valor, formulas.get(indice), estilos[indice]) for indice, valor in enumerate(valores)]
         while len(fila) < hoja_auxiliar['cantidad_columnas']:
             fila.append(celda_seguimiento_automatica())
         nuevas_auxiliar.append(fila)
     hoja_auxiliar['filas'] = cabecera_auxiliar + historicas_auxiliar + nuevas_auxiliar
     actualizar_metadata_hoja_seguimiento(hoja_auxiliar)
+    contenido['periodos_definitivos_auxiliar'] = sorted(periodos_definitivos_auxiliar)
+    contenido['cierres_auxiliar'] = sorted(cierres_auxiliar)
 
     hoja_base = hojas['base_objetivo_masivo']
     estilos_automaticos_seguimiento(hoja_base)
     factores_objetivo = {}
+    factores_objetivo_por_tipo = defaultdict(list)
     for fila in hoja_base.get('filas', [])[2:]:
         campania = valor_fila_seguimiento(fila, 3)
         tipo = valor_fila_seguimiento(fila, 4)
         vh_real = valor_fila_seguimiento(fila, 8)
         vh_objetivo = valor_fila_seguimiento(fila, 16)
         if campania and tipo and isinstance(vh_real, (int, float)) and isinstance(vh_objetivo, (int, float)) and vh_real:
-            factores_objetivo[(normalizar_header(campania), normalizar_header(tipo))] = float(vh_objetivo) / float(vh_real)
+            factor = float(vh_objetivo) / float(vh_real)
+            factores_objetivo[(normalizar_header(campania), normalizar_header(tipo))] = factor
+            factores_objetivo_por_tipo[normalizar_header(tipo)].append(round(factor, 6))
+    factor_frecuente_por_tipo = {
+        tipo: max(set(valores), key=valores.count)
+        for tipo, valores in factores_objetivo_por_tipo.items() if valores
+    }
     prefijo_base = hoja_base.get('filas', [])[:2]
     historicas_base = [
         fila for fila in hoja_base.get('filas', [])[2:]
-        if not (periodo_valor_seguimiento(valor_fila_seguimiento(fila, 5)) in periodos and normalizar_header(valor_fila_seguimiento(fila, 15)) == 'proyectada')
+        if periodo_valor_seguimiento(valor_fila_seguimiento(fila, 5)) not in periodos
     ]
+    horas_facturadas_por_tipo = defaultdict(float)
+    for item in proformas:
+        horas_facturadas_por_tipo[(
+            item.periodo,
+            normalizar_header(item.segmento),
+            normalizar_header(tipo_hora_seguimiento(item.tipo_hora)),
+        )] += float(item.total_horas or 0)
+
+    def horas_companeras_no_diurnas(item, tipo_hora):
+        sufijo = ' ii' if normalizar_header(tipo_hora).endswith(' ii') else ''
+        total = 0.0
+        for tipo_companero in ('nocturnas', 'feriados'):
+            total += horas_facturadas_por_tipo.get((
+                item.periodo,
+                normalizar_header(item.segmento),
+                normalizar_header(f'{tipo_companero}{sufijo}'),
+            ), 0)
+        return total
+
     nuevas_base = []
     for item in proformas:
         clasificacion = mapa_aux[normalizar_header(item.segmento)]
         numero = len(prefijo_base) + len(historicas_base) + len(nuevas_base) + 1
-        horas = float(item.total_horas or 0)
+        horas_facturadas = float(item.total_horas or 0)
         precio = float(item.precio or 0)
-        monto_horas = float(item.monto_fijo or horas * precio)
         bono = float(item.monto_variable or 0)
-        total = float(item.total_proyeccion or monto_horas + bono)
-        vh_alcanzado = total / horas if horas else 0
         tipo_hora = tipo_hora_seguimiento(item.tipo_hora)
-        factor_objetivo = factores_objetivo.get((normalizar_header(item.segmento), normalizar_header(tipo_hora)), 1)
+        es_definitiva = es_cierre_auxiliar(item.periodo, item.negocio, item.segmento)
+        ajuste_auxiliar = ajustes_auxiliar.get(clave_horas_auxiliar_personal(
+            item.periodo, item.negocio, item.segmento, tipo_hora,
+        )) or {}
+        clave_tipo = normalizar_header(tipo_hora)
+        if clave_tipo.startswith('capacitaciones'):
+            horas_objetivo = horas_facturadas
+        elif clave_tipo.startswith('diurnas'):
+            fuente_planificada = ajuste_auxiliar.get('definitiva' if es_definitiva else 'proyectada')
+            horas_objetivo = float(fuente_planificada or 0) - horas_companeras_no_diurnas(item, tipo_hora)
+        elif es_definitiva:
+            horas_objetivo = float(ajuste_auxiliar.get('definitiva') or 0)
+        else:
+            # En la proyección, nocturnas y feriados conservan las horas de la
+            # Proforma; F representa el total planificado de la campaña.
+            horas_objetivo = horas_facturadas
+
+        monto_horas = horas_facturadas * precio
+        total = monto_horas + bono
+        vh_alcanzado = total / horas_facturadas if horas_facturadas else 0
+        factor_objetivo = factores_objetivo.get(
+            (normalizar_header(clasificacion['segmento']), normalizar_header(tipo_hora)),
+            factor_frecuente_por_tipo.get(normalizar_header(tipo_hora), 1),
+        )
         valor_hora_objetivo = precio * factor_objetivo
-        facturacion_objetivo_horas = horas * precio
-        objetivo_bono = (valor_hora_objetivo * horas) - facturacion_objetivo_horas
-        valores = [clasificacion['tipo_negocio'], 'Personal Masivo', clasificacion['proforma'], item.segmento, tipo_hora, fecha_periodo(item.periodo), horas, horas, precio, monto_horas, None, bono, 0, 0, total, 'Proyectada', valor_hora_objetivo, vh_alcanzado, facturacion_objetivo_horas, objetivo_bono, facturacion_objetivo_horas + objetivo_bono, monto_horas, bono, 0, total]
+        facturacion_objetivo_horas = horas_objetivo * precio
+        objetivo_bono = (valor_hora_objetivo * horas_objetivo) - facturacion_objetivo_horas
+        estado_periodo = 'Definitiva' if es_definitiva else 'Proyectada'
+        valores = [clasificacion['tipo_negocio'], 'Personal Masivo', clasificacion['proforma'], clasificacion['segmento'], tipo_hora, fecha_periodo(item.periodo), horas_objetivo, horas_facturadas, precio, monto_horas, None, bono, 0, 0, total, estado_periodo, valor_hora_objetivo, vh_alcanzado, facturacion_objetivo_horas, objetivo_bono, facturacion_objetivo_horas + objetivo_bono, monto_horas, bono, 0, total]
         estilos = ['auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_date', 'auto_number', 'auto_number', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_text', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money']
         formulas = {9: f'=H{numero}*I{numero}', 14: f'=SUM(J{numero}:N{numero})', 17: f'=IFERROR(O{numero}/H{numero},0)', 18: f'=G{numero}*I{numero}', 19: f'=Q{numero}*G{numero}-S{numero}', 20: f'=S{numero}+T{numero}', 21: f'=J{numero}', 22: f'=L{numero}', 23: f'=M{numero}', 24: f'=V{numero}+W{numero}+X{numero}'}
         nuevas_base.append([celda_seguimiento_automatica(valor, formulas.get(indice), estilos[indice]) for indice, valor in enumerate(valores)])
@@ -9525,6 +10019,209 @@ def aplicar_proformas_a_seguimiento(contenido):
     contenido['automatico_desde_proforma'] = True
     contenido['periodos_proforma'] = sorted(periodos)
     return contenido
+
+
+def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
+    """Convierte Base objetivo Masivo en filas válidas del dashboard."""
+    periodo_compacto = periodo_valor_seguimiento(periodo)
+    if not periodo_compacto:
+        return [], ['El período no es válido']
+    mes = f'{periodo_compacto[:4]}-{periodo_compacto[4:]}'
+    hojas = contenido.get('hojas') or {}
+    hoja_base = hojas.get('base_objetivo_masivo') or {}
+    hoja_aux = hojas.get('aux') or {}
+
+    aux_por_segmento = {}
+    for fila in hoja_aux.get('filas', [])[1:]:
+        segmento = str(valor_fila_seguimiento(fila, 2) or '').strip()
+        if segmento:
+            aux_por_segmento.setdefault(normalizar_header(segmento), {
+                'jefatura': normalizar_jefe_site(valor_fila_seguimiento(fila, 3)) or '',
+                'tipo_negocio': str(valor_fila_seguimiento(fila, 4) or '').strip(),
+                'cliente': str(valor_fila_seguimiento(fila, 5) or '').strip(),
+            })
+
+    asignaciones = AsignacionComercial.query.filter_by(activa=True).all()
+    asignaciones_personal = [
+        item for item in asignaciones
+        if normalizar_header(item.cliente).startswith('personal')
+    ]
+
+    def asignacion_para(cliente, campania):
+        clave_cliente = normalizar_header(cliente)
+        clave_campania = normalizar_header(campania)
+        candidatas = [
+            item for item in asignaciones_personal
+            if clave_campania in {
+                normalizar_header(item.campania), normalizar_header(item.subcampania),
+            }
+        ]
+        exactas = [item for item in candidatas if normalizar_header(item.cliente) == clave_cliente]
+        return (exactas or candidatas or asignaciones_personal or [None])[0]
+
+    errores = []
+    ajustes_auxiliar = contenido.get('ajustes_auxiliar_horas') or {}
+    proformas_periodo = ProformaPersonal.query.filter_by(periodo=periodo_compacto).all()
+    por_campania = defaultdict(list)
+    for item in proformas_periodo:
+        por_campania[(item.negocio, item.segmento)].append(item)
+    for (grupo, campania), items in por_campania.items():
+        ajustes_items = [
+            ajustes_auxiliar.get(clave_horas_auxiliar_personal(
+                item.periodo, item.negocio, item.segmento, tipo_hora_seguimiento(item.tipo_hora),
+            )) or {}
+            for item in items
+        ]
+        es_definitiva = periodo_compacto in set(contenido.get('periodos_definitivos_auxiliar') or []) or any(
+            ajuste.get('definitiva') is not None for ajuste in ajustes_items
+        )
+        if es_definitiva:
+            incompletas = [
+                tipo_hora_seguimiento(item.tipo_hora)
+                for item, ajuste in zip(items, ajustes_items)
+                if ajuste.get('definitiva') is None
+                or ajuste.get('brutas') is None
+                or ajuste.get('adh') is None
+            ]
+            if incompletas:
+                errores.append(
+                    f'{campania}: complete H, Brutas y % ADH para {", ".join(incompletas)} antes de publicar la definitiva'
+                )
+        elif not any(ajuste.get('proyectada') is not None for ajuste in ajustes_items):
+            errores.append(f'{campania}: complete las horas planificadas PLP (F) antes de publicar la proyección')
+
+    filas_dashboard = []
+    for fila in hoja_base.get('filas', [])[2:]:
+        if periodo_valor_seguimiento(valor_fila_seguimiento(fila, 5)) != periodo_compacto:
+            continue
+        tipo_negocio = str(valor_fila_seguimiento(fila, 0) or '').strip()
+        cliente = str(valor_fila_seguimiento(fila, 2) or '').strip()
+        campania = str(valor_fila_seguimiento(fila, 3) or '').strip()
+        tipo_jornada = str(valor_fila_seguimiento(fila, 4) or '').strip()
+        normalizacion = aux_por_segmento.get(normalizar_header(campania), {})
+        tipo_negocio = tipo_negocio or normalizacion.get('tipo_negocio') or ''
+        cliente = cliente or normalizacion.get('cliente') or ''
+        asignacion = asignacion_para(cliente, campania)
+        jefatura = (
+            jefatura_personal_por_tipo_negocio(tipo_negocio)
+            or normalizacion.get('jefatura')
+            or normalizar_jefe_site(asignacion.jefe_site if asignacion else '')
+            or ''
+        )
+        gerente = str(asignacion.gerente if asignacion else '').strip()
+        faltantes = []
+        if not cliente:
+            faltantes.append('empresa/proforma')
+        if not tipo_negocio:
+            faltantes.append('tipo de negocio')
+        if not jefatura:
+            faltantes.append('jefatura')
+        if not gerente:
+            faltantes.append('gerente')
+        if faltantes:
+            errores.append(f'{campania or "Campaña sin nombre"}: falta {", ".join(faltantes)} en Aux/Datos Maestros')
+            continue
+
+        numero = lambda indice: float(valor_fila_seguimiento(fila, indice) or 0)
+        ajuste_neto = numero(12)
+        filas_dashboard.append({
+            '_importacion_directa_personal': True,
+            'fecha': f'{mes}-01',
+            'mes': mes,
+            'cliente': cliente,
+            'gerente': gerente,
+            'jefe_site': jefatura,
+            'campania': campania,
+            'subcampania': campania,
+            'tipo_negocio': tipo_negocio,
+            'es_next_gen': False,
+            'objetivo_separar_ajuste_vh': False,
+            'tipo_jornada': tipo_jornada,
+            'horas_objetivo': numero(6),
+            'horas_facturadas': numero(7),
+            'horas_penalizadas': 0,
+            'valor_hora_objetivo': numero(16) or numero(8),
+            'valor_hora': numero(8),
+            'facturado_horas_manual': numero(9),
+            'total_facturado_manual': numero(14),
+            'control_facturado_horas': numero(21),
+            'control_variable_productivo': numero(22),
+            'control_penalizaciones_bonos': ajuste_neto,
+            'control_total_facturado': numero(14),
+            'control_objetivo_total': numero(20),
+            'tarifacion': numero(10),
+            'importe_fijo': None,
+            'variable_objetivo': numero(19),
+            'variable_productivo': numero(11),
+            'bonos': max(ajuste_neto, 0),
+            'penalizaciones': min(ajuste_neto, 0),
+            'netx_gen': 0,
+            'otros': numero(13),
+            'estado_personal': str(valor_fila_seguimiento(fila, 15) or 'Proyectada'),
+        })
+    if not filas_dashboard and not errores:
+        errores.append(f'No hay filas calculadas para {mes}')
+    return filas_dashboard, sorted(set(errores))
+
+
+@main_bp.route('/api/seguimiento-personal/dashboard', methods=['POST'])
+@carga_requerida
+def api_publicar_seguimiento_personal_dashboard():
+    data = request.get_json(silent=True) or {}
+    importacion_id = data.get('importacion_id')
+    importacion = db.session.get(SeguimientoPersonalImportacion, importacion_id) if str(importacion_id or '').isdigit() else None
+    if not importacion:
+        return jsonify({'success': False, 'errores': ['La configuración de seguimiento ya no existe']}), 404
+    periodo_compacto = periodo_valor_seguimiento(data.get('periodo'))
+    if not periodo_compacto:
+        return jsonify({'success': False, 'errores': ['Seleccione un período antes de pasar los datos al dashboard']}), 400
+    mes = f'{periodo_compacto[:4]}-{periodo_compacto[4:]}'
+    if not ProformaPersonal.query.filter_by(periodo=periodo_compacto).first():
+        return jsonify({'success': False, 'errores': [f'No hay una Proforma activa para {mes}']}), 400
+
+    contenido = aplicar_proformas_a_seguimiento(contenido_seguimiento_personal(importacion))
+    filas, errores = filas_dashboard_desde_seguimiento_personal(contenido, periodo_compacto)
+    if errores:
+        return jsonify({'success': False, 'errores': errores[:30]}), 400
+
+    existentes = query_reemplazo_personal_mes({'mes': mes}).all()
+    antes = [snapshot_modelo(registro) for registro in existentes]
+    for registro in existentes:
+        db.session.delete(registro)
+    db.session.flush()
+
+    nuevos = []
+    for fila in filas:
+        fila_sin_estado = {clave: valor for clave, valor in fila.items() if clave != 'estado_personal'}
+        nuevos.append(crear_registro_facturacion(
+            fila_sin_estado,
+            exigir_configuracion_valor_hora=False,
+            preservar_facturado_manual=True,
+        ))
+    db.session.flush()
+    estados = sorted({fila['estado_personal'] for fila in filas})
+    registrar_historial(
+        'edicion' if existentes else 'importacion', 'seguimiento_personal_dashboard', mes,
+        f'Personal {mes}: {len(filas)} fila(s) pasadas al dashboard ({" / ".join(estados)})',
+        antes={'filas': antes},
+        despues={'filas': [snapshot_modelo(registro) for registro in nuevos]},
+        detalle=(
+            f'El mes completo de Personal fue reemplazado: {len(existentes)} fila(s) anteriores '
+            f'por {len(nuevos)} fila(s) vigentes. La definitiva M-2 sustituye a la proyectada.'
+        ),
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': (
+            f'{mes} actualizado en el dashboard: {len(nuevos)} fila(s) vigentes; '
+            f'{len(existentes)} anterior(es) reemplazada(s).'
+        ),
+        'periodo': mes,
+        'estados': estados,
+        'creadas': len(nuevos),
+        'reemplazadas': len(existentes),
+    })
 
 
 @main_bp.route('/api/seguimiento-personal', methods=['GET'])
@@ -9553,7 +10250,205 @@ def api_hoja_seguimiento_personal():
     if not importacion:
         return jsonify({'success': True, 'importacion': None, 'hoja': None})
     contenido = aplicar_proformas_a_seguimiento(contenido_seguimiento_personal(importacion))
-    return jsonify({'success': True, 'importacion': importacion.to_dict(), 'hoja': contenido['hojas'][clave_hoja]})
+    proformas = ProformaPersonal.query.order_by(ProformaPersonal.periodo.desc()).all()
+    periodos_disponibles = sorted({item.periodo for item in proformas}, reverse=True)
+    validaciones_dashboard = {}
+    for periodo in periodos_disponibles:
+        _, errores_periodo = filas_dashboard_desde_seguimiento_personal(contenido, periodo)
+        validaciones_dashboard[periodo] = errores_periodo
+    return jsonify({
+        'success': True,
+        'importacion': importacion.to_dict(),
+        'hoja': contenido['hojas'][clave_hoja],
+        'periodos_proforma': periodos_disponibles,
+        'tipos_proforma': sorted({item.tipo_proforma for item in proformas}),
+        'periodos_definitivos_auxiliar': contenido.get('periodos_definitivos_auxiliar') or [],
+        'cierres_auxiliar': contenido.get('cierres_auxiliar') or [],
+        'validaciones_dashboard': validaciones_dashboard,
+    })
+
+
+@main_bp.route('/api/seguimiento-personal/auxiliar-horas', methods=['POST'])
+@carga_requerida
+def api_guardar_horas_auxiliar_personal():
+    data = request.get_json(silent=True) or {}
+    importacion_id = data.get('importacion_id')
+    importacion = db.session.get(SeguimientoPersonalImportacion, importacion_id) if str(importacion_id or '').isdigit() else None
+    if not importacion:
+        return jsonify({'success': False, 'errores': ['La configuración de seguimiento ya no existe']}), 404
+
+    periodo = periodo_valor_seguimiento(data.get('periodo'))
+    grupo = str(data.get('grupo') or '').strip()
+    campania = str(data.get('campania') or '').strip()
+    tipo_vh = str(data.get('tipo_vh') or '').strip()
+    if not periodo or not grupo or not campania or not tipo_vh:
+        return jsonify({'success': False, 'errores': ['No se pudo identificar la fila a guardar']}), 400
+
+    def valor_numero(nombre, permite_negativo=False):
+        valor = data.get(nombre)
+        if valor is None or str(valor).strip() == '':
+            return None
+        texto = str(valor).strip().replace(' ', '')
+        if ',' in texto and '.' in texto:
+            texto = texto.replace('.', '').replace(',', '.')
+        elif ',' in texto:
+            texto = texto.replace(',', '.')
+        elif '.' in texto:
+            partes = texto.split('.')
+            if len(partes) > 1 and 1 <= len(partes[0]) <= 3 and all(len(parte) == 3 for parte in partes[1:]):
+                texto = ''.join(partes)
+        try:
+            numero = float(texto)
+        except ValueError:
+            raise ValueError(f'El valor de horas {nombre} no es válido')
+        if numero < 0 and not permite_negativo:
+            raise ValueError('Las horas no pueden ser negativas')
+        return numero
+
+    try:
+        proyectada = valor_numero('proyectada')
+        definitiva = valor_numero('definitiva')
+        brutas = valor_numero('brutas')
+        porcentaje_adh = valor_numero('adh', permite_negativo=True)
+        adhesion = porcentaje_adh / 100 if porcentaje_adh is not None else None
+    except ValueError as error:
+        return jsonify({'success': False, 'errores': [str(error)]}), 400
+
+    contenido = contenido_seguimiento_personal(importacion)
+    ajustes = contenido.setdefault('ajustes_auxiliar_horas', {})
+    clave = clave_horas_auxiliar_personal(periodo, grupo, campania, tipo_vh)
+    ajustes[clave] = {
+        'periodo': periodo, 'grupo': grupo, 'campania': campania, 'tipo_vh': tipo_vh,
+        'proyectada': proyectada, 'definitiva': definitiva, 'brutas': brutas, 'adh': adhesion,
+    }
+    cierre_campania = any(
+        item.get('periodo') == periodo
+        and normalizar_header(item.get('grupo')) == normalizar_header(grupo)
+        and normalizar_header(item.get('campania')) == normalizar_header(campania)
+        and item.get('definitiva') is not None
+        for item in ajustes.values()
+    )
+    contenido.pop('periodos_definitivos_auxiliar', None)
+    importacion.contenido_hojas = zlib.compress(
+        json.dumps(contenido, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': 'Horas guardadas',
+        'estado': 'Definitiva' if cierre_campania or periodo in {f'2026{mes:02d}' for mes in range(1, 7)} else 'Proyectada',
+    })
+
+
+@main_bp.route('/api/seguimiento-personal/auxiliar-horas/lote', methods=['POST'])
+@carga_requerida
+def api_guardar_lote_horas_auxiliar_personal():
+    data = request.get_json(silent=True) or {}
+    importacion_id = data.get('importacion_id')
+    importacion = db.session.get(SeguimientoPersonalImportacion, importacion_id) if str(importacion_id or '').isdigit() else None
+    if not importacion:
+        return jsonify({'success': False, 'errores': ['La configuración de seguimiento ya no existe']}), 404
+    entradas = data.get('filas')
+    if not isinstance(entradas, list) or not entradas:
+        return jsonify({'success': False, 'errores': ['No hay cambios para guardar']}), 400
+
+    def numero_entrada(valor, nombre, permite_negativo=False):
+        if valor is None or str(valor).strip() == '':
+            return None
+        texto = str(valor).strip().replace(' ', '')
+        if ',' in texto and '.' in texto:
+            texto = texto.replace('.', '').replace(',', '.')
+        elif ',' in texto:
+            texto = texto.replace(',', '.')
+        elif '.' in texto:
+            partes = texto.split('.')
+            if len(partes) > 1 and 1 <= len(partes[0]) <= 3 and all(len(parte) == 3 for parte in partes[1:]):
+                texto = ''.join(partes)
+        try:
+            numero = float(texto)
+        except ValueError:
+            raise ValueError(f'El valor de {nombre} no es válido')
+        if numero < 0 and not permite_negativo:
+            raise ValueError(f'{nombre} no puede ser negativo')
+        return numero
+
+    contenido = contenido_seguimiento_personal(importacion)
+    ajustes = contenido.setdefault('ajustes_auxiliar_horas', {})
+    try:
+        for entrada in entradas:
+            periodo = periodo_valor_seguimiento(entrada.get('periodo'))
+            grupo = str(entrada.get('grupo') or '').strip()
+            campania = str(entrada.get('campania') or '').strip()
+            tipo_vh = str(entrada.get('tipo_vh') or '').strip()
+            if not periodo or not grupo or not campania or not tipo_vh:
+                raise ValueError('No se pudo identificar una de las filas modificadas')
+            porcentaje_adh = numero_entrada(entrada.get('adh'), '% ADH', permite_negativo=True)
+            ajustes[clave_horas_auxiliar_personal(periodo, grupo, campania, tipo_vh)] = {
+                'periodo': periodo, 'grupo': grupo, 'campania': campania, 'tipo_vh': tipo_vh,
+                'proyectada': numero_entrada(entrada.get('proyectada'), 'Horas proyectadas'),
+                'definitiva': numero_entrada(entrada.get('definitiva'), 'Horas definitivas'),
+                'brutas': numero_entrada(entrada.get('brutas'), 'Horas brutas'),
+                'adh': porcentaje_adh / 100 if porcentaje_adh is not None else None,
+            }
+    except ValueError as error:
+        return jsonify({'success': False, 'errores': [str(error)]}), 400
+
+    contenido.pop('periodos_definitivos_auxiliar', None)
+    importacion.contenido_hojas = zlib.compress(
+        json.dumps(contenido, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'{len(entradas)} fila(s) actualizada(s) en una sola carga',
+        'cantidad': len(entradas),
+    })
+
+
+@main_bp.route('/api/seguimiento-personal/aux-normalizacion/lote', methods=['POST'])
+@carga_requerida
+def api_guardar_lote_aux_normalizacion_personal():
+    data = request.get_json(silent=True) or {}
+    importacion_id = data.get('importacion_id')
+    importacion = db.session.get(SeguimientoPersonalImportacion, importacion_id) if str(importacion_id or '').isdigit() else None
+    if not importacion:
+        return jsonify({'success': False, 'errores': ['La configuración de seguimiento ya no existe']}), 404
+    entradas = data.get('filas')
+    if not isinstance(entradas, list) or not entradas:
+        return jsonify({'success': False, 'errores': ['No hay correspondencias para guardar']}), 400
+
+    contenido = contenido_seguimiento_personal(importacion)
+    ajustes = contenido.setdefault('ajustes_aux_normalizacion', {})
+    antes = {}
+    guardadas = 0
+    for entrada in entradas:
+        origen = str(entrada.get('origen') or '').strip()
+        if not origen:
+            return jsonify({'success': False, 'errores': ['No se pudo identificar una de las campañas de origen']}), 400
+        clave = normalizar_header(origen)
+        antes[clave] = ajustes.get(clave)
+        ajuste = {'origen': origen}
+        for campo in ('segmento', 'jefatura', 'tipo_negocio', 'proforma', 'backup'):
+            valor = str(entrada.get(campo) or '').strip()
+            ajuste[campo] = normalizar_jefe_site(valor) or '' if campo == 'jefatura' else valor
+        ajustes[clave] = ajuste
+        guardadas += 1
+
+    importacion.contenido_hojas = zlib.compress(
+        json.dumps(contenido, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
+    )
+    registrar_historial(
+        'edicion', 'seguimiento_personal_aux', str(importacion.id),
+        f'Aux Personal: {guardadas} correspondencia(s) actualizada(s)',
+        antes=antes,
+        despues={clave: ajustes.get(clave) for clave in antes},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'{guardadas} correspondencia(s) guardada(s). Base objetivo Masivo y 2026 fueron recalculadas.',
+        'cantidad': guardadas,
+    })
 
 
 @main_bp.route('/api/seguimiento-personal/<int:importacion_id>/descargar', methods=['GET'])
@@ -10656,7 +11551,7 @@ def api_crear_excepcion_calculo():
         return jsonify({'success': False, 'errores': ['Los porcentajes de ajuste no son válidos']}), 400
     if not cliente or not campania:
         return jsonify({'success': False, 'errores': ['Cliente y campaña son obligatorios']}), 400
-    if tipo not in ('facturado_horas_manual', 'facturado_manual_ajustes_vh'):
+    if tipo not in ('facturado_horas_manual', 'facturado_manual_ajustes_vh', 'separar_ajuste_vh'):
         return jsonify({'success': False, 'errores': ['El tipo de cálculo no es válido']}), 400
     excepcion = ExcepcionCalculo.query.filter(
         func.lower(ExcepcionCalculo.cliente) == cliente.lower(),
@@ -10805,6 +11700,8 @@ def crear_asignacion_desde_request():
         if es_next_gen:
             campos.update(cliente=nombre_next_gen, gerente='NextGen', jefe_site='NextGen',
                           campania=nombre_next_gen, subcampania=nombre_next_gen, tipo_negocio='NextGen')
+        else:
+            normalizar_identidad_campania(campos)
         errores = [f'{campo} es obligatorio' for campo, valor in campos.items() if campo not in ('tipo_negocio', 'es_next_gen') and not valor]
         if errores:
             return jsonify({'success': False, 'errores': errores}), 400
@@ -10880,6 +11777,8 @@ def api_actualizar_asignacion(asignacion_id):
 
     if nuevos_valores:
         valores_finales = {**valores_anteriores, **nuevos_valores}
+        if not valores_finales.get('es_next_gen'):
+            normalizar_identidad_campania(valores_finales)
         if vigencia_desde_raw and not vigencia_desde:
             return jsonify({'success': False, 'errores': ['El mes de vigencia debe tener formato YYYY-MM']}), 400
         if vigencia_desde:
