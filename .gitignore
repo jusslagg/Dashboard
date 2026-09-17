@@ -1,4 +1,5 @@
 __pycache__/
+.cache/
 *.py[cod]
 node_modules/
 .next/

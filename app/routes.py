@@ -1,11 +1,12 @@
 ﻿# filepath: app/routes.py
 from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
 from app import db, get_csrf_token
-from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProformaPersonal, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, SeguimientoPersonalImportacion, normalizar_jefe_site, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
+from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProformaPersonal, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, SeguimientoPersonalImportacion, normalizar_jefe_site, normalizar_tipo_negocio_personal, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
 import calendar
 from collections import defaultdict
 from sqlalchemy import func, or_
+from sqlalchemy.exc import SQLAlchemyError
 from html import escape
 from html.parser import HTMLParser
 from functools import wraps
@@ -2506,14 +2507,80 @@ def buscar_proforma_personal_snapshot(snapshot):
 
 def restaurar_proforma_personal_snapshot(registro, snapshot):
     campos = (
-        'tipo_proforma', 'fdv', 'periodo', 'negocio', 'sitio_proveedor', 'segmento', 'subsitio', 'tipo_hora',
+        'tipo_proforma', 'estado_proforma', 'fdv', 'periodo', 'negocio', 'sitio_proveedor', 'segmento', 'subsitio', 'tipo_hora',
         'total_horas', 'precio', 'monto_fijo', 'porcentaje_bono_kpi_vs',
         'monto_variable_kpi_vs', 'porcentaje_bono_ac', 'monto_variable_ac',
         'monto_variable', 'total_proyeccion', 'bono_porcentaje_total', 'archivo_origen',
     )
     for campo in campos:
-        valor = snapshot.get(campo) or ('Masivo' if campo == 'tipo_proforma' else None)
+        valor = snapshot.get(campo) or (
+            'Masivo' if campo == 'tipo_proforma' else 'Proyectada' if campo == 'estado_proforma' else None
+        )
         setattr(registro, campo, (valor or None) if campo == 'subsitio' else valor)
+
+
+def limpiar_seguimiento_al_deshacer_proforma(snapshots):
+    """Elimina datos auxiliares que ya no tienen una Proforma activa."""
+    snapshots = [snapshot for snapshot in snapshots if snapshot and snapshot.get('periodo')]
+    if not snapshots:
+        return
+    proformas_activas = ProformaPersonal.query.all()
+    claves_activas = {
+        clave_horas_auxiliar_personal(
+            item.periodo, item.negocio, item.segmento, tipo_hora_seguimiento(item.tipo_hora),
+        )
+        for item in proformas_activas
+    }
+    campanias_activas = {normalizar_header(item.segmento) for item in proformas_activas}
+    claves_proyectadas = {
+        clave_horas_auxiliar_personal(
+            item.periodo, item.negocio, item.segmento, tipo_hora_seguimiento(item.tipo_hora),
+        )
+        for item in proformas_activas
+        if (item.estado_proforma or 'Proyectada') != 'Definitiva'
+    }
+    alcances_activos = {
+        (item.periodo, item.tipo_proforma or 'Masivo') for item in proformas_activas
+        if (item.estado_proforma or 'Proyectada') == 'Definitiva'
+    }
+    claves_afectadas = {
+        clave_horas_auxiliar_personal(
+            snapshot.get('periodo'), snapshot.get('negocio'), snapshot.get('segmento'),
+            tipo_hora_seguimiento(snapshot.get('tipo_hora')),
+        )
+        for snapshot in snapshots
+    }
+    campanias_afectadas = {
+        normalizar_header(snapshot.get('segmento')) for snapshot in snapshots if snapshot.get('segmento')
+    }
+    periodos_afectados = {snapshot.get('periodo') for snapshot in snapshots}
+    for importacion in SeguimientoPersonalImportacion.query.all():
+        contenido = contenido_seguimiento_personal(importacion)
+        ajustes = contenido.get('ajustes_auxiliar_horas') or {}
+        contenido['ajustes_auxiliar_horas'] = {
+            clave: valor for clave, valor in ajustes.items()
+            if clave not in claves_afectadas or clave in claves_activas
+        }
+        for clave in claves_afectadas & claves_proyectadas & set(contenido['ajustes_auxiliar_horas']):
+            contenido['ajustes_auxiliar_horas'][clave].update({
+                'definitiva': None, 'brutas': None, 'adh': None,
+            })
+        normalizaciones = contenido.get('ajustes_aux_normalizacion') or {}
+        contenido['ajustes_aux_normalizacion'] = {
+            clave: valor for clave, valor in normalizaciones.items()
+            if clave not in campanias_afectadas or clave in campanias_activas
+        }
+        cierres = contenido.get('cierres_trafico_importados') or []
+        for cierre in cierres:
+            alcance = (str(cierre.get('periodo') or ''), cierre.get('tipo_proforma') or 'Masivo')
+            if str(cierre.get('periodo') or '') in periodos_afectados and alcance not in alcances_activos:
+                cierre['estado'] = 'Pendiente de Proforma definitiva'
+        contenido['cierres_trafico_importados'] = cierres
+        contenido.pop('periodos_definitivos_auxiliar', None)
+        contenido.pop('cierres_auxiliar', None)
+        importacion.contenido_hojas = zlib.compress(
+            json.dumps(contenido, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
+        )
 
 
 def lista_snapshots_historial(value):
@@ -3740,11 +3807,13 @@ def api_deshacer_historial(historial_id):
 
 
 def deshacer_item_historial(item):
+    if item.accion == 'sincronizacion' and item.entidad == 'seguimiento_personal_dashboard':
+        return {'success': False, 'errores': ['Este movimiento acompaña el deshacer de una Proforma y no se puede deshacer por separado']}, 400
     if item.accion == 'deshacer':
         return {'success': False, 'errores': ['Este movimiento ya es un deshacer']}, 400
     if historial_movimiento_deshace(item.id):
         return {'success': False, 'errores': ['Este movimiento ya fue deshecho']}, 400
-    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion', 'proforma_personal', 'seguimiento_personal', 'seguimiento_personal_aux', 'seguimiento_personal_dashboard', 'dotaciones_clientes_mensuales', 'graficos_dotaciones_mensuales', 'dashboard_operativo', 'historico_cliente', 'ratio_eli_mensual', 'ratio_eli_ii_mensual')
+    entidades_permitidas = ('proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion', 'proforma_personal', 'seguimiento_personal', 'seguimiento_personal_aux', 'seguimiento_personal_cierre', 'seguimiento_personal_dashboard', 'dotaciones_clientes_mensuales', 'graficos_dotaciones_mensuales', 'dashboard_operativo', 'historico_cliente', 'ratio_eli_mensual', 'ratio_eli_ii_mensual')
     if item.entidad not in entidades_permitidas:
         return {'success': False, 'errores': ['Este tipo de movimiento todavía no admite deshacer']}, 400
 
@@ -3802,6 +3871,43 @@ def deshacer_item_historial(item):
         db.session.commit()
         return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho: correspondencias de Aux restauradas'}, 200
 
+    if item.entidad == 'seguimiento_personal_cierre':
+        importacion_id = antes.get('importacion_id') or despues.get('importacion_id') or item.entidad_id
+        importacion = db.session.get(SeguimientoPersonalImportacion, int(importacion_id)) if str(importacion_id or '').isdigit() else None
+        if not importacion:
+            return {'success': False, 'errores': ['La configuración de seguimiento ya no existe']}, 404
+        contenido = contenido_seguimiento_personal(importacion)
+        ajustes = contenido.setdefault('ajustes_auxiliar_horas', {})
+        for clave, valor_anterior in (antes.get('ajustes') or {}).items():
+            if valor_anterior is None:
+                ajustes.pop(clave, None)
+            else:
+                ajustes[clave] = valor_anterior
+        claves_restauradas = set((antes.get('ajustes') or {}).keys())
+        for clave, ajuste in list(ajustes.items()):
+            if clave in claves_restauradas:
+                continue
+            if any(
+                str(ajuste.get('periodo') or '') == str(cierre.get('periodo') or '')
+                and normalizar_header(ajuste.get('campania')) == normalizar_header(detalle.get('campania'))
+                and normalizar_header(ajuste.get('tipo_vh')) == normalizar_header(detalle.get('tipo_vh'))
+                for cierre in (despues.get('cierres_trafico_importados') or [])
+                for detalle in (cierre.get('detalle') or [])
+            ):
+                ajustes.pop(clave, None)
+        if 'cierres_trafico_importados' in antes:
+            contenido['cierres_trafico_importados'] = antes['cierres_trafico_importados']
+        contenido.pop('periodos_definitivos_auxiliar', None)
+        importacion.contenido_hojas = zlib.compress(
+            json.dumps(contenido, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
+        )
+        registrar_historial(
+            'deshacer', item.entidad, str(importacion.id),
+            f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes,
+        )
+        db.session.commit()
+        return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho: cierre de tráfico retirado'}, 200
+
     if item.entidad == 'seguimiento_personal':
         importacion_id = despues.get('id') or item.entidad_id
         importacion = db.session.get(SeguimientoPersonalImportacion, int(importacion_id)) if str(importacion_id or '').isdigit() else None
@@ -3815,6 +3921,10 @@ def deshacer_item_historial(item):
         return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho: importación eliminada'}, 200
 
     if item.entidad == 'proforma_personal':
+        periodos_afectados = {
+            snapshot['periodo'] for snapshot in antes_snapshots + despues_snapshots
+            if snapshot and snapshot.get('periodo')
+        }
         snapshots_con_tipo = [snapshot for snapshot in antes_snapshots + despues_snapshots if snapshot and snapshot.get('tipo_proforma')]
         if snapshots_con_tipo:
             alcances = {
@@ -3832,6 +3942,13 @@ def deshacer_item_historial(item):
                 restaurada = ProformaPersonal()
                 restaurar_proforma_personal_snapshot(restaurada, snapshot)
                 db.session.add(restaurada)
+            db.session.flush()
+            limpiar_seguimiento_al_deshacer_proforma(antes_snapshots + despues_snapshots)
+            try:
+                sincronizar_dashboard_al_deshacer_proforma(periodos_afectados)
+            except ValueError as error:
+                db.session.rollback()
+                return {'success': False, 'errores': [str(error)]}, 400
             registrar_historial(
                 'deshacer', item.entidad, item.entidad_id,
                 f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes,
@@ -3857,6 +3974,13 @@ def deshacer_item_historial(item):
             elif actual:
                 db.session.delete(actual)
                 eliminadas += 1
+        db.session.flush()
+        limpiar_seguimiento_al_deshacer_proforma(antes_snapshots + despues_snapshots)
+        try:
+            sincronizar_dashboard_al_deshacer_proforma(periodos_afectados)
+        except ValueError as error:
+            db.session.rollback()
+            return {'success': False, 'errores': [str(error)]}, 400
         registrar_historial(
             'deshacer', item.entidad, item.entidad_id,
             f'Deshacer movimiento #{item.id}: {item.resumen}', antes=despues, despues=antes,
@@ -4618,27 +4742,40 @@ def api_por_cliente():
     registros = registros_filtrados()
     grupos = {}
     for registro in registros:
-        grupos.setdefault(registro.cliente, []).append(registro)
+        cliente = (
+            'Personal'
+            if normalizar_header(registro.cliente).startswith('personal')
+            else registro.cliente
+        )
+        grupos.setdefault(cliente, []).append(registro)
 
     datos = []
     for cliente, registros_cliente in grupos.items():
         resumen = resumen_dashboard(registros_cliente)
+        gerentes = sorted({registro.gerente for registro in registros_cliente if registro.gerente})
+        jefes_site = sorted({registro.jefe_site for registro in registros_cliente if registro.jefe_site})
         datos.append({
             'cliente': cliente,
-            'gerente': registros_cliente[0].gerente,
-            'jefe_site': registros_cliente[0].jefe_site,
+            'gerente': gerentes[0] if len(gerentes) == 1 else ('Varios' if gerentes else None),
+            'jefe_site': jefes_site[0] if len(jefes_site) == 1 else ('Varios' if jefes_site else None),
             'registros': len(registros_cliente),
             **resumen
         })
 
     # Si la selección existe en Datos Maestros pero aún no fue facturada, se
     # muestra con cero para que el filtro no parezca vacío.
-    clientes_presentes = {item['cliente'] for item in datos}
+    clientes_presentes = {normalizar_header(item['cliente']) for item in datos}
     for asignacion in asignaciones_maestras_filtradas(filtros_request()):
-        if asignacion.cliente in clientes_presentes:
+        cliente = (
+            'Personal'
+            if normalizar_header(asignacion.cliente).startswith('personal')
+            else asignacion.cliente
+        )
+        clave_cliente = normalizar_header(cliente)
+        if clave_cliente in clientes_presentes:
             continue
         datos.append({
-            'cliente': asignacion.cliente,
+            'cliente': cliente,
             'gerente': asignacion.gerente,
             'jefe_site': asignacion.jefe_site,
             'registros': 0,
@@ -4646,7 +4783,7 @@ def api_por_cliente():
             'total_facturado': 0, 'total_real': 0, 'total_teorico': 0,
             'desvio': 0, 'porcentaje_cumplimiento': 0,
         })
-        clientes_presentes.add(asignacion.cliente)
+        clientes_presentes.add(clave_cliente)
 
     datos.sort(key=lambda item: item['total_real'], reverse=True)
     return jsonify({'success': True, 'clientes': datos})
@@ -9091,6 +9228,21 @@ ENCABEZADOS_PROFORMA_PERSONAL = (
     'PORCENTAJE_BONO_AC', 'MONTO_VARIABLE_AC', 'MONTO_VARIABLE', 'TOTAL_PROYECCION',
 )
 TIPOS_PROFORMA_PERSONAL = ('Masivo', 'Personal Pay', 'Soporte')
+ESTADOS_PROFORMA_PERSONAL = ('Proyectada', 'Definitiva')
+
+
+def error_carga_proforma(causa, correccion, detalles=None, status=400):
+    detalles = [str(detalle) for detalle in (detalles or []) if detalle]
+    return jsonify({
+        'success': False,
+        'errores': detalles or [causa],
+        'diagnostico': {
+            'causa': causa,
+            'correccion': correccion,
+            'detalles': detalles[:30],
+            'total_detalles': len(detalles),
+        },
+    }), status
 
 
 def periodo_proforma(valor):
@@ -9177,6 +9329,7 @@ def api_proforma_personal():
             'id': movimiento.id,
             'archivo': archivo_origen,
             'tipo_proforma': lote_referencia.get('tipo_proforma') or 'Masivo',
+            'estado_proforma': lote_referencia.get('estado_proforma') or 'Proyectada',
             'periodos': [valor for valor in str(movimiento.entidad_id or '').split(',') if valor],
             'filas': len(valores_despues),
             'creadas': len(ids_despues - ids_antes) if es_lote_tipificado else sum(1 for fila in valores_antes if not fila),
@@ -9254,24 +9407,48 @@ def api_template_proforma_personal():
 @carga_requerida
 def api_importar_proforma_personal():
     tipo_proforma = str(request.form.get('tipo_proforma') or '').strip()
+    estado_proforma = str(request.form.get('estado_proforma') or '').strip()
     if tipo_proforma not in TIPOS_PROFORMA_PERSONAL:
-        return jsonify({'success': False, 'errores': ['Seleccione si la Proforma es Masivo, Personal Pay o Soporte']}), 400
+        return error_carga_proforma(
+            'No se indicó qué tipo de Proforma se está cargando.',
+            'Seleccione Masivo, Personal Pay o Soporte y vuelva a intentar.',
+        )
+    if estado_proforma not in ESTADOS_PROFORMA_PERSONAL:
+        return error_carga_proforma(
+            'No se indicó si la Proforma es Proyectada o Definitiva.',
+            'Seleccione Proyectada o Definitiva antes de importar el archivo.',
+        )
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename:
-        return jsonify({'success': False, 'errores': ['Seleccione el archivo de proforma']}), 400
+        return error_carga_proforma(
+            'No se recibió ningún archivo.',
+            'Seleccione el Excel de la Proforma y vuelva a presionar Importar.',
+        )
     if not archivo.filename.lower().endswith('.xlsx'):
-        return jsonify({'success': False, 'errores': ['La proforma debe ser un archivo .xlsx']}), 400
+        return error_carga_proforma(
+            f'El archivo “{archivo.filename}” no tiene formato .xlsx.',
+            'Abra el archivo en Excel y guárdelo como Libro de Excel (.xlsx). No use .xls, .csv ni PDF.',
+        )
     contenido = archivo.read()
     if not contenido:
-        return jsonify({'success': False, 'errores': ['El archivo está vacío']}), 400
+        return error_carga_proforma(
+            'El archivo seleccionado está vacío.',
+            'Vuelva a exportar o guardar la Proforma y compruebe que el archivo contenga datos.',
+        )
     if len(contenido) > 20 * 1024 * 1024:
-        return jsonify({'success': False, 'errores': ['El archivo supera el máximo de 20 MB']}), 400
+        return error_carga_proforma(
+            f'El archivo pesa {len(contenido) / (1024 * 1024):.1f} MB y el máximo permitido es 20 MB.',
+            'Quite imágenes, hojas o formatos innecesarios, guarde nuevamente el .xlsx y vuelva a cargarlo.',
+        )
     try:
         from openpyxl import load_workbook
         libro = load_workbook(io.BytesIO(contenido), data_only=True, read_only=False)
         hoja = libro[libro.sheetnames[0]]
     except Exception:
-        return jsonify({'success': False, 'errores': ['No se pudo leer el archivo Excel']}), 400
+        return error_carga_proforma(
+            'El archivo no se pudo abrir como un libro de Excel válido.',
+            'Compruebe que no esté dañado ni protegido con contraseña. Ábralo en Excel, use Guardar como .xlsx y vuelva a cargarlo.',
+        )
 
     fila_encabezado = None
     encabezados_esperados = [
@@ -9286,14 +9463,33 @@ def api_importar_proforma_personal():
             fila_encabezado = numero
             break
     if fila_encabezado is None:
-        return jsonify({
-            'success': False,
-            'errores': ['No se encontraron las 16 columnas esperadas, de FDV a TOTAL_PROYECCION, en el orden original.'],
-        }), 400
+        mejor_fila = None
+        mejor_coincidencias = -1
+        mejor_encontrados = ()
+        for numero in range(1, min(hoja.max_row, 20) + 1):
+            encontrados = tuple(normalizar_encabezado_proforma(hoja.cell(numero, columna).value) for columna in range(1, 17))
+            coincidencias = sum(
+                encontrado in aceptados for encontrado, aceptados in zip(encontrados, encabezados_esperados)
+            )
+            if coincidencias > mejor_coincidencias:
+                mejor_fila, mejor_coincidencias, mejor_encontrados = numero, coincidencias, encontrados
+        diferencias = []
+        if mejor_fila and mejor_coincidencias > 0:
+            for indice, (encontrado, aceptados) in enumerate(zip(mejor_encontrados, encabezados_esperados), start=1):
+                if encontrado not in aceptados:
+                    esperado = ENCABEZADOS_PROFORMA_PERSONAL[indice - 1]
+                    diferencias.append(
+                        f'Fila {mejor_fila}, columna {chr(64 + indice)}: se esperaba “{esperado}” y se encontró “{encontrado or "vacío"}”.'
+                    )
+        return error_carga_proforma(
+            'No se encontró una cabecera válida con las 16 columnas requeridas de A a P.',
+            'Use la plantilla descargable y mantenga los encabezados desde FDV hasta TOTAL_PROYECCION en el mismo orden.',
+            diferencias,
+        )
 
     errores = []
     entradas = []
-    claves_archivo = set()
+    claves_archivo = {}
     for numero in range(fila_encabezado + 1, hoja.max_row + 1):
         celdas = [hoja.cell(numero, columna) for columna in range(1, 17)]
         if not any(celda.value not in (None, '') for celda in celdas):
@@ -9311,32 +9507,55 @@ def api_importar_proforma_personal():
         subsitio = str(celdas[5].value or '').strip() or None
         tipo_hora = str(celdas[6].value or '').strip()
         faltantes = [nombre for nombre, valor in (
-            ('FDV', fdv), ('PERIODO', periodo), ('NEGOCIO', negocio),
+            ('FDV', fdv), ('NEGOCIO', negocio),
             ('SITIO_PROVEEDOR', sitio), ('SEGMENTO', segmento), ('TIPO_HORA', tipo_hora),
         ) if not valor]
+        if not periodo:
+            valor_periodo = celdas[1].value
+            errores.append(
+                f'Fila {numero}, columna B (PERIODO): “{valor_periodo if valor_periodo not in (None, "") else "vacío"}” no es válido. '
+                'Use AAAAMM, por ejemplo 202609, o una fecha válida.'
+            )
         if faltantes:
-            errores.append(f'Fila {numero}: faltan o son inválidos {", ".join(faltantes)}')
+            errores.append(
+                f'Fila {numero}: faltan {", ".join(faltantes)}. Complete esas celdas obligatorias y vuelva a cargar.'
+            )
+        if faltantes or not periodo:
             continue
-        try:
-            total_horas = parse_numero(celdas[7].value)
-            precio = parse_numero(celdas[8].value)
-            monto_fijo = parse_numero(celdas[9].value)
-            porcentaje_kpi = porcentaje_proforma_excel(celdas[10])
-            monto_kpi = parse_numero(celdas[11].value)
-            porcentaje_ac = porcentaje_proforma_excel(celdas[12])
-            monto_ac = parse_numero(celdas[13].value)
-            monto_variable = parse_numero(celdas[14].value)
-            total_proyeccion = parse_numero(celdas[15].value)
-        except (TypeError, ValueError):
-            errores.append(f'Fila {numero}: contiene un valor numérico no válido entre TOTAL_HORAS y TOTAL_PROYECCION')
+        nombres_numericos = ENCABEZADOS_PROFORMA_PERSONAL[7:16]
+        valores_numericos = []
+        invalidos = []
+        for indice, (nombre, celda) in enumerate(zip(nombres_numericos, celdas[7:16]), start=8):
+            try:
+                valor = porcentaje_proforma_excel(celda) if indice in (11, 13) else parse_numero(celda.value)
+                if not math.isfinite(float(valor)):
+                    raise ValueError
+                valores_numericos.append(valor)
+            except (TypeError, ValueError, OverflowError):
+                invalidos.append(
+                    f'{chr(64 + indice)} ({nombre}) = “{celda.value if celda.value not in (None, "") else "vacío"}”'
+                )
+        if invalidos:
+            errores.append(
+                f'Fila {numero}: valores numéricos inválidos en {"; ".join(invalidos)}. '
+                'Ingrese números, sin texto; puede usar coma o punto decimal y porcentajes como 5 o 0,5.'
+            )
             continue
+        (
+            total_horas, precio, monto_fijo, porcentaje_kpi, monto_kpi,
+            porcentaje_ac, monto_ac, monto_variable, total_proyeccion,
+        ) = valores_numericos
         clave = tuple(normalizar_header(valor) for valor in (fdv, periodo, negocio, sitio, segmento, subsitio or '', tipo_hora))
         if clave in claves_archivo:
-            errores.append(f'Fila {numero}: la combinación de período, segmento y tipo de hora está repetida')
+            errores.append(
+                f'Fila {numero}: repite la misma combinación de la fila {claves_archivo[clave]} '
+                f'({periodo} / {segmento} / {tipo_hora}). Elimine la fila duplicada o diferencie FDV, negocio, sitio o subsitio.'
+            )
             continue
-        claves_archivo.add(clave)
+        claves_archivo[clave] = numero
         entradas.append({
             'tipo_proforma': tipo_proforma,
+            'estado_proforma': estado_proforma,
             'fdv': fdv, 'periodo': periodo, 'negocio': negocio, 'sitio_proveedor': sitio,
             'segmento': segmento, 'subsitio': subsitio, 'tipo_hora': tipo_hora,
             'total_horas': total_horas, 'precio': precio, 'monto_fijo': monto_fijo,
@@ -9344,23 +9563,43 @@ def api_importar_proforma_personal():
             'porcentaje_bono_ac': porcentaje_ac, 'monto_variable_ac': monto_ac,
             'monto_variable': monto_variable, 'total_proyeccion': total_proyeccion,
             'bono_porcentaje_total': porcentaje_kpi + porcentaje_ac,
+            '_fila_excel': numero,
         })
     if errores:
-        return jsonify({'success': False, 'errores': errores[:30]}), 400
+        return error_carga_proforma(
+            f'Hay {len(errores)} problema(s) en las filas de la Proforma.',
+            'Corrija las filas indicadas en el Excel y vuelva a importarlo. No se guardó ningún registro.',
+            errores,
+        )
     if not entradas:
-        return jsonify({'success': False, 'errores': ['No se encontraron filas de datos debajo del encabezado']}), 400
+        return error_carga_proforma(
+            'No se encontraron filas de datos debajo del encabezado.',
+            'Complete al menos una fila desde la columna A hasta la P. Las filas con H:P totalmente vacías se ignoran.',
+        )
 
-    tipos_detectados = {tipo_proforma_desde_negocio(entrada['negocio']) for entrada in entradas}
-    tipos_detectados.discard(None)
+    filas_por_tipo = defaultdict(list)
+    for entrada in entradas:
+        detectado = tipo_proforma_desde_negocio(entrada['negocio'])
+        if detectado:
+            filas_por_tipo[detectado].append(entrada['_fila_excel'])
+    tipos_detectados = set(filas_por_tipo)
     if len(tipos_detectados) > 1:
-        return jsonify({'success': False, 'errores': [
-            f'El archivo mezcla tipos de Proforma ({", ".join(sorted(tipos_detectados))}). Sepárelos antes de importar.'
-        ]}), 400
+        detalles = [
+            f'{tipo}: fila(s) {", ".join(map(str, filas))}'
+            for tipo, filas in sorted(filas_por_tipo.items())
+        ]
+        return error_carga_proforma(
+            f'El archivo mezcla tipos de Proforma: {", ".join(sorted(tipos_detectados))}.',
+            'Separe cada tipo en un archivo distinto y cárguelo seleccionando el tipo correspondiente.',
+            detalles,
+        )
     if tipos_detectados and tipo_proforma not in tipos_detectados:
         detectado = next(iter(tipos_detectados))
-        return jsonify({'success': False, 'errores': [
-            f'Seleccionó {tipo_proforma}, pero la columna NEGOCIO corresponde a {detectado}. Cambie el tipo seleccionado o el archivo.'
-        ]}), 400
+        return error_carga_proforma(
+            f'Se seleccionó “{tipo_proforma}”, pero la columna NEGOCIO identifica el archivo como “{detectado}”.',
+            f'Cambie el selector a “{detectado}” o cargue el archivo que corresponde a “{tipo_proforma}”.',
+            [f'Filas detectadas como {detectado}: {", ".join(map(str, filas_por_tipo[detectado]))}'],
+        )
 
     periodos = sorted({entrada['periodo'] for entrada in entradas})
     existentes_lote = ProformaPersonal.query.filter(
@@ -9388,29 +9627,68 @@ def api_importar_proforma_personal():
             db.session.add(existente)
             creadas += 1
         for campo, valor in entrada.items():
+            if campo.startswith('_'):
+                continue
             setattr(existente, campo, valor)
         existente.archivo_origen = archivo.filename[:255]
         guardadas.append(existente)
     eliminadas = len(existentes_por_clave)
     for existente in existentes_por_clave.values():
         db.session.delete(existente)
-    db.session.flush()
-    registrar_historial(
-        'importacion', 'proforma_personal', ','.join(periodos),
-        f'Proforma {tipo_proforma} “{archivo.filename[:120]}”: {creadas} nueva(s), {actualizadas} actualizada(s), {eliminadas} reemplazada(s)',
-        antes={'proformas': antes},
-        despues={'proformas': [registro.to_dict() for registro in guardadas]},
-    )
-    db.session.commit()
+    try:
+        db.session.flush()
+        limpiar_seguimiento_al_deshacer_proforma(antes + [registro.to_dict() for registro in guardadas])
+        if estado_proforma == 'Definitiva':
+            for periodo_actual in periodos:
+                proformas_definitivas = ProformaPersonal.query.filter_by(
+                    periodo=periodo_actual, estado_proforma='Definitiva',
+                ).all()
+                for importacion_seguimiento in SeguimientoPersonalImportacion.query.all():
+                    contenido_seguimiento = contenido_seguimiento_personal(importacion_seguimiento)
+                    cierre_guardado = next((
+                        item for item in reversed(contenido_seguimiento.get('cierres_trafico_importados') or [])
+                        if str(item.get('periodo') or '') == periodo_actual
+                    ), None)
+                    if not cierre_guardado:
+                        continue
+                    _, posteriores_cierre, _, errores_cierre = aplicar_cierre_guardado_personal(
+                        contenido_seguimiento, cierre_guardado, proformas_definitivas,
+                    )
+                    if errores_cierre:
+                        db.session.rollback()
+                        return error_carga_proforma(
+                            f'La Proforma Definitiva de {periodo_actual[4:]}/{periodo_actual[:4]} no coincide con el cierre de tráfico ya cargado.',
+                            'Corrija los nombres indicados en la Proforma o reemplace el cierre de tráfico y vuelva a importar.',
+                            errores_cierre,
+                        )
+                    if posteriores_cierre:
+                        importacion_seguimiento.contenido_hojas = zlib.compress(
+                            json.dumps(contenido_seguimiento, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
+                        )
+        registrar_historial(
+            'importacion', 'proforma_personal', ','.join(periodos),
+            f'Proforma {tipo_proforma} {estado_proforma} “{archivo.filename[:120]}”: {creadas} nueva(s), {actualizadas} actualizada(s), {eliminadas} reemplazada(s)',
+            antes={'proformas': antes},
+            despues={'proformas': [registro.to_dict() for registro in guardadas]},
+        )
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('No se pudo guardar la Proforma %s', archivo.filename)
+        return error_carga_proforma(
+            'El Excel pasó las validaciones, pero la base no pudo guardar la importación.',
+            'No se modificó ningún dato. Vuelva a intentar; si el error continúa, informe el nombre del archivo al administrador.',
+        )
     seguimiento_configurado = SeguimientoPersonalImportacion.query.first() is not None
     return jsonify({
         'success': True,
         'mensaje': (
-            f'Proforma {tipo_proforma} importada para {", ".join(periodos)}: '
+            f'Proforma {tipo_proforma} {estado_proforma} importada para {", ".join(periodos)}: '
             f'{creadas} nueva(s), {actualizadas} actualizada(s) y {eliminadas} anterior(es) eliminada(s). '
             + ('Las hojas de seguimiento se recalcularon automáticamente.' if seguimiento_configurado else 'Cargue una vez la configuración inicial del seguimiento para habilitar los cálculos encadenados.')
         ),
         'tipo_proforma': tipo_proforma,
+        'estado_proforma': estado_proforma,
         'creadas': creadas,
         'actualizadas': actualizadas,
         'eliminadas': eliminadas,
@@ -9579,12 +9857,12 @@ def grupo_proforma_personal(tipo_negocio, tipo_proforma=None, cliente=None):
     if clave_tipo == 'smb' or clave_proforma == 'masivo' and 'smb' in clave_cliente:
         return 'Personal SMB'
     if clave_tipo.startswith('soporte') or clave_proforma == 'soporte':
-        return 'Personal SOPORTE'
+        return 'Personal Soporte'
     if clave_tipo == 'personal pay' or clave_proforma == 'personal pay':
         return 'Personal PPAY'
     if clave_cliente.startswith('personal'):
-        return cliente
-    return 'Personal'
+        return normalizar_tipo_negocio_personal(cliente, tipo_negocio)
+    return 'Personal CX'
 
 
 def clave_horas_auxiliar_personal(periodo, grupo, campania, tipo_vh):
@@ -9603,14 +9881,26 @@ def clave_cierre_auxiliar_personal(periodo, grupo, campania):
 
 def aplicar_proformas_a_seguimiento(contenido):
     proformas = ProformaPersonal.query.order_by(ProformaPersonal.periodo, ProformaPersonal.segmento, ProformaPersonal.tipo_hora).all()
-    if not proformas:
+    # Un mes administrado por Proformas no debe volver a los datos del Excel
+    # inicial cuando se deshace su última importación.
+    periodos_administrados = {item.periodo for item in proformas}
+    campanias_activas = {normalizar_header(item.segmento) for item in proformas}
+    campanias_administradas = set(campanias_activas)
+    for movimiento in HistorialCambio.query.filter_by(entidad='proforma_personal', accion='importacion').all():
+        for estado in (movimiento.antes, movimiento.despues):
+            for fila in lista_snapshots_historial(movimiento._json(estado) or {}):
+                if fila and fila.get('periodo'):
+                    periodos_administrados.add(fila['periodo'])
+                if fila and fila.get('segmento'):
+                    campanias_administradas.add(normalizar_header(fila['segmento']))
+    if not periodos_administrados:
         return contenido
     hojas = contenido.get('hojas') or {}
     requeridas = {'base_objetivo_masivo', 'auxiliar_horas_plp_masivo', 'precios', '2026', 'aux'}
     if not requeridas.issubset(hojas):
         return contenido
 
-    periodos = {item.periodo for item in proformas}
+    periodos = periodos_administrados
     ajustes_auxiliar = contenido.get('ajustes_auxiliar_horas') or {}
     periodos_definitivos_auxiliar = {f'2026{mes:02d}' for mes in range(1, 7)}
     cierres_auxiliar = {
@@ -9618,17 +9908,33 @@ def aplicar_proformas_a_seguimiento(contenido):
         for item in ajustes_auxiliar.values()
         if item.get('definitiva') is not None
     }
+    cierres_por_proforma_definitiva = {
+        clave_cierre_auxiliar_personal(item.periodo, item.negocio, item.segmento)
+        for item in proformas
+        if (item.estado_proforma or 'Proyectada') == 'Definitiva'
+    }
 
     def es_cierre_auxiliar(periodo, grupo, campania):
+        clave = clave_cierre_auxiliar_personal(periodo, grupo, campania)
+        if periodo in periodos:
+            return clave in cierres_por_proforma_definitiva
         return (
             periodo in periodos_definitivos_auxiliar
-            or clave_cierre_auxiliar_personal(periodo, grupo, campania) in cierres_auxiliar
+            or clave in cierres_auxiliar
         )
     meses_nombre = ('enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre')
     fecha_periodo = lambda periodo: f'{periodo[:4]}-{periodo[4:]}-01T00:00:00'
 
     hoja_aux = hojas['aux']
     estilos_automaticos_seguimiento(hoja_aux)
+    filas_aux_originales = hoja_aux.get('filas', [])
+    hoja_aux['filas'] = filas_aux_originales[:1] + [
+        fila for fila in filas_aux_originales[1:]
+        if (
+            normalizar_header(valor_fila_seguimiento(fila, 1)) not in campanias_administradas
+            or normalizar_header(valor_fila_seguimiento(fila, 1)) in campanias_activas
+        )
+    ]
     ajustes_normalizacion = contenido.get('ajustes_aux_normalizacion') or {}
     mapa_aux = {}
     filas_aux_por_clave = {}
@@ -9636,13 +9942,17 @@ def aplicar_proformas_a_seguimiento(contenido):
         campania = valor_fila_seguimiento(fila, 1)
         if campania:
             clave = normalizar_header(campania)
+            if clave in campanias_administradas and clave not in campanias_activas:
+                continue
             tipo_negocio = valor_fila_seguimiento(fila, 4) or ''
             clasificacion = {
                 'campania': campania,
                 'segmento': valor_fila_seguimiento(fila, 2) or campania,
                 'jefatura': jefatura_personal_por_tipo_negocio(tipo_negocio) or normalizar_jefe_site(valor_fila_seguimiento(fila, 3)) or '',
                 'tipo_negocio': tipo_negocio,
-                'proforma': valor_fila_seguimiento(fila, 5) or 'Personal',
+                'proforma': normalizar_tipo_negocio_personal(
+                    valor_fila_seguimiento(fila, 5) or 'Personal', tipo_negocio, campania,
+                ),
                 'backup': valor_fila_seguimiento(fila, 6) or valor_fila_seguimiento(fila, 2) or campania,
             }
             ajuste = ajustes_normalizacion.get(clave)
@@ -9672,6 +9982,8 @@ def aplicar_proformas_a_seguimiento(contenido):
     candidatos_aux.extend((item.segmento, item, mapa_asignaciones.get(normalizar_header(item.segmento))) for item in proformas)
     for nombre_origen, item, asignacion in candidatos_aux:
         clave = normalizar_header(nombre_origen)
+        if clave in campanias_administradas and clave not in campanias_activas:
+            continue
         if not clave or clave in mapa_aux:
             continue
         tipo_negocio = (asignacion.tipo_negocio if asignacion else None) or (item.negocio if item else '')
@@ -9725,6 +10037,28 @@ def aplicar_proformas_a_seguimiento(contenido):
         tipo = valor_fila_seguimiento(fila, 1)
         if tipo:
             filas_tipo[normalizar_header(tipo)] = indice
+    claves_precios_activas = {
+        (item.periodo, normalizar_header(tipo_hora_seguimiento(item.tipo_hora)))
+        for item in proformas
+    }
+    for periodo in periodos:
+        columna = int(periodo[4:]) + 1
+        for fila in hoja_precios.get('filas', [])[:13]:
+            if normalizar_header(valor_fila_seguimiento(fila, 1)) in {
+                'diurnas', 'nocturnas', 'feriados', 'diurnas ii', 'nocturnas ii',
+                'feriados ii', 'capacitaciones', 'capacitaciones ii',
+            } and columna < len(fila):
+                fila[columna] = celda_seguimiento_automatica()
+    hoja_precios['filas'] = hoja_precios.get('filas', [])[:13] + [
+        fila for fila in hoja_precios.get('filas', [])[13:]
+        if (
+            periodo_valor_seguimiento(valor_fila_seguimiento(fila, 1)) not in periodos
+            or (
+                periodo_valor_seguimiento(valor_fila_seguimiento(fila, 1)),
+                normalizar_header(tipo_hora_seguimiento(valor_fila_seguimiento(fila, 3))),
+            ) in claves_precios_activas
+        )
+    ]
     for (periodo, tipo), valores in precios_por_periodo_tipo.items():
         indice_columna = int(periodo[4:]) + 1
         tipos_destino = [tipo]
@@ -9742,6 +10076,8 @@ def aplicar_proformas_a_seguimiento(contenido):
             candidatos = precios_por_periodo_tipo.get((periodo, tipo_fila), [])
             if candidatos:
                 fila[2] = celda_seguimiento_automatica(candidatos[0], estilo='auto_money')
+            else:
+                fila[2] = celda_seguimiento_automatica()
     actualizar_metadata_hoja_seguimiento(hoja_precios)
 
     hoja_2026 = hojas['2026']
@@ -9888,11 +10224,16 @@ def aplicar_proformas_a_seguimiento(contenido):
         tipo_hora = tipo_hora_seguimiento(item.tipo_hora)
         clave_fila = clave_horas_auxiliar_personal(item.periodo, item.negocio, item.segmento, tipo_hora)
         ajuste = ajustes_auxiliar.get(clave_fila) or {}
-        horas_proyectadas = ajuste.get('proyectada')
+        # La proyección es siempre la informada por la Proforma. El Auxiliar
+        # queda como vista de control y no como una segunda carga manual.
+        horas_proyectadas = horas
         es_definitiva = es_cierre_auxiliar(item.periodo, item.negocio, item.segmento)
-        horas_definitivas = ajuste.get('definitiva') if es_definitiva else None
-        horas_brutas = ajuste.get('brutas')
-        adhesion = ajuste.get('adh') or 0
+        cierre_cargado = es_definitiva and all(
+            ajuste.get(campo) is not None for campo in ('definitiva', 'brutas', 'adh')
+        )
+        horas_definitivas = ajuste.get('definitiva') if cierre_cargado else None
+        horas_brutas = ajuste.get('brutas') if cierre_cargado else None
+        adhesion = ajuste.get('adh') if cierre_cargado else None
         totales_campania = totales_cierre_brutas[(item.periodo, normalizar_header(item.segmento))]
         if horas_brutas is None:
             horas_con_tope = None
@@ -9900,12 +10241,13 @@ def aplicar_proformas_a_seguimiento(contenido):
             horas_con_tope = totales_campania['definitiva'] * 1.03 * float(horas_brutas) / totales_campania['brutas']
         else:
             horas_con_tope = float(horas_brutas)
-        horas_netas = horas_con_tope * (1 + float(adhesion)) if horas_con_tope is not None else None
+        horas_netas = horas_con_tope * (1 + float(adhesion or 0)) if horas_con_tope is not None else None
         horas_facturadas_proyectadas = 0 if es_definitiva else horas
-        horas_facturadas_definitivas = horas if es_definitiva else 0
+        horas_facturadas_definitivas = horas if cierre_cargado else 0
         valores = [
-            item.negocio, item.segmento, tipo_hora, fecha_periodo(item.periodo), 'Proyectada', horas_proyectadas,
-            'Definitiva', horas_definitivas, horas_netas, horas_brutas, horas_con_tope, adhesion, None,
+            item.negocio, item.segmento, tipo_hora, fecha_periodo(item.periodo), item.estado_proforma or 'Proyectada', horas_proyectadas,
+            ('Cargado' if cierre_cargado else 'Pendiente' if es_definitiva else 'No aplica'),
+            horas_definitivas, horas_netas, horas_brutas, horas_con_tope, adhesion, None,
             horas_facturadas_proyectadas, participacion, horas_facturadas_definitivas,
             precio,
             precio * float(horas_con_tope or 0),
@@ -9990,8 +10332,10 @@ def aplicar_proformas_a_seguimiento(contenido):
         if clave_tipo.startswith('capacitaciones'):
             horas_objetivo = horas_facturadas
         elif clave_tipo.startswith('diurnas'):
-            fuente_planificada = ajuste_auxiliar.get('definitiva' if es_definitiva else 'proyectada')
-            horas_objetivo = float(fuente_planificada or 0) - horas_companeras_no_diurnas(item, tipo_hora)
+            if es_definitiva:
+                horas_objetivo = float(ajuste_auxiliar.get('definitiva') or 0) - horas_companeras_no_diurnas(item, tipo_hora)
+            else:
+                horas_objetivo = horas_facturadas
         elif es_definitiva:
             horas_objetivo = float(ajuste_auxiliar.get('definitiva') or 0)
         else:
@@ -10017,7 +10361,7 @@ def aplicar_proformas_a_seguimiento(contenido):
     hoja_base['filas'] = prefijo_base + historicas_base + nuevas_base
     actualizar_metadata_hoja_seguimiento(hoja_base)
     contenido['automatico_desde_proforma'] = True
-    contenido['periodos_proforma'] = sorted(periodos)
+    contenido['periodos_proforma'] = sorted({item.periodo for item in proformas})
     return contenido
 
 
@@ -10072,8 +10416,8 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
             )) or {}
             for item in items
         ]
-        es_definitiva = periodo_compacto in set(contenido.get('periodos_definitivos_auxiliar') or []) or any(
-            ajuste.get('definitiva') is not None for ajuste in ajustes_items
+        es_definitiva = any(
+            (item.estado_proforma or 'Proyectada') == 'Definitiva' for item in items
         )
         if es_definitiva:
             incompletas = [
@@ -10087,8 +10431,6 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
                 errores.append(
                     f'{campania}: complete H, Brutas y % ADH para {", ".join(incompletas)} antes de publicar la definitiva'
                 )
-        elif not any(ajuste.get('proyectada') is not None for ajuste in ajustes_items):
-            errores.append(f'{campania}: complete las horas planificadas PLP (F) antes de publicar la proyección')
 
     filas_dashboard = []
     for fila in hoja_base.get('filas', [])[2:]:
@@ -10100,7 +10442,9 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
         tipo_jornada = str(valor_fila_seguimiento(fila, 4) or '').strip()
         normalizacion = aux_por_segmento.get(normalizar_header(campania), {})
         tipo_negocio = tipo_negocio or normalizacion.get('tipo_negocio') or ''
-        cliente = cliente or normalizacion.get('cliente') or ''
+        cliente = cliente or normalizacion.get('cliente') or 'Personal'
+        tipo_negocio = normalizar_tipo_negocio_personal(cliente, tipo_negocio, campania)
+        cliente = 'Personal'
         asignacion = asignacion_para(cliente, campania)
         jefatura = (
             jefatura_personal_por_tipo_negocio(tipo_negocio)
@@ -10184,6 +10528,13 @@ def api_publicar_seguimiento_personal_dashboard():
     if errores:
         return jsonify({'success': False, 'errores': errores[:30]}), 400
 
+    resultado = reemplazar_dashboard_personal(mes, filas, importacion_id=importacion.id)
+    db.session.commit()
+    return jsonify(resultado)
+
+
+def reemplazar_dashboard_personal(mes, filas, sincronizacion=False, importacion_id=None):
+    """Publica el mes calculado dentro de la transacción del llamador."""
     existentes = query_reemplazo_personal_mes({'mes': mes}).all()
     antes = [snapshot_modelo(registro) for registro in existentes]
     for registro in existentes:
@@ -10201,17 +10552,16 @@ def api_publicar_seguimiento_personal_dashboard():
     db.session.flush()
     estados = sorted({fila['estado_personal'] for fila in filas})
     registrar_historial(
-        'edicion' if existentes else 'importacion', 'seguimiento_personal_dashboard', mes,
+        'sincronizacion' if sincronizacion else ('edicion' if existentes else 'importacion'), 'seguimiento_personal_dashboard', mes,
         f'Personal {mes}: {len(filas)} fila(s) pasadas al dashboard ({" / ".join(estados)})',
         antes={'filas': antes},
-        despues={'filas': [snapshot_modelo(registro) for registro in nuevos]},
+        despues={'filas': [snapshot_modelo(registro) for registro in nuevos], 'importacion_id': importacion_id},
         detalle=(
             f'El mes completo de Personal fue reemplazado: {len(existentes)} fila(s) anteriores '
             f'por {len(nuevos)} fila(s) vigentes. La definitiva M-2 sustituye a la proyectada.'
         ),
     )
-    db.session.commit()
-    return jsonify({
+    return {
         'success': True,
         'mensaje': (
             f'{mes} actualizado en el dashboard: {len(nuevos)} fila(s) vigentes; '
@@ -10221,7 +10571,33 @@ def api_publicar_seguimiento_personal_dashboard():
         'estados': estados,
         'creadas': len(nuevos),
         'reemplazadas': len(existentes),
-    })
+    }
+
+
+def sincronizar_dashboard_al_deshacer_proforma(periodos):
+    """Reconstruye sólo meses que ya se habían publicado desde Personal."""
+    db.session.flush()
+    ultima_importacion = SeguimientoPersonalImportacion.query.order_by(
+        SeguimientoPersonalImportacion.creado_en.desc(), SeguimientoPersonalImportacion.id.desc(),
+    ).first()
+    for periodo in sorted(periodos):
+        mes = f'{periodo[:4]}-{periodo[4:]}'
+        publicacion = HistorialCambio.query.filter_by(
+            entidad='seguimiento_personal_dashboard', entidad_id=mes,
+        ).order_by(HistorialCambio.id.desc()).first()
+        if not publicacion or publicacion.accion == 'deshacer':
+            continue
+        importacion_id = (publicacion._json(publicacion.despues) or {}).get('importacion_id')
+        importacion = db.session.get(SeguimientoPersonalImportacion, importacion_id) if importacion_id else ultima_importacion
+        filas = []
+        if ProformaPersonal.query.filter_by(periodo=periodo).first():
+            if importacion is None:
+                raise ValueError('Restaure la configuración de seguimiento para recalcular el dashboard al deshacer.')
+            contenido = aplicar_proformas_a_seguimiento(contenido_seguimiento_personal(importacion))
+            filas, errores = filas_dashboard_desde_seguimiento_personal(contenido, periodo)
+            if errores:
+                raise ValueError('No se pudo recalcular el dashboard al deshacer: ' + ' | '.join(errores[:10]))
+        reemplazar_dashboard_personal(mes, filas, sincronizacion=True, importacion_id=importacion.id if importacion else None)
 
 
 @main_bp.route('/api/seguimiento-personal', methods=['GET'])
@@ -10265,6 +10641,299 @@ def api_hoja_seguimiento_personal():
         'periodos_definitivos_auxiliar': contenido.get('periodos_definitivos_auxiliar') or [],
         'cierres_auxiliar': contenido.get('cierres_auxiliar') or [],
         'validaciones_dashboard': validaciones_dashboard,
+    })
+
+
+def extraer_cierre_trafico_personal(contenido_archivo):
+    """Lee hojas detalladas del cierre y devuelve horas por campaña/tipo."""
+    from openpyxl import load_workbook
+
+    libro = load_workbook(io.BytesIO(contenido_archivo), data_only=True, read_only=False)
+    acumulados = defaultdict(lambda: {'definitiva': 0.0, 'brutas': 0.0})
+    adhesiones = {}
+    periodos = set()
+    hojas_leidas = []
+
+    for hoja in libro.worksheets:
+        encabezados = {
+            columna: normalizar_encabezado_proforma(hoja.cell(3, columna).value)
+            for columna in range(1, min(hoja.max_column, 40) + 1)
+        }
+
+        def columna_que(predicado):
+            return next((columna for columna, nombre in encabezados.items() if predicado(nombre)), None)
+
+        columna_segmento = columna_que(lambda nombre: nombre == 'segmento')
+        columna_fecha = columna_que(lambda nombre: nombre == 'fecha')
+        columna_planificada = columna_que(lambda nombre: nombre == 'planificacion')
+        columna_tipo = columna_que(lambda nombre: nombre == 'tipo de horas')
+        columna_brutas = columna_que(lambda nombre: nombre.startswith('agentes productivos logueados'))
+        if not all((columna_segmento, columna_fecha, columna_planificada, columna_tipo, columna_brutas)):
+            continue
+
+        filas_hoja = []
+        segmentos_hoja = set()
+        ultima_fila_datos = 3
+        vacias_consecutivas = 0
+        limite = min(hoja.max_row, 100000)
+        for numero in range(4, limite + 1):
+            fecha = hoja.cell(numero, columna_fecha).value
+            if not isinstance(fecha, (datetime, date)):
+                vacias_consecutivas += 1
+                if ultima_fila_datos > 3 and vacias_consecutivas >= 100:
+                    break
+                continue
+            vacias_consecutivas = 0
+            ultima_fila_datos = numero
+            periodo = fecha.strftime('%Y%m')
+            periodos.add(periodo)
+            segmento = str(hoja.cell(numero, columna_segmento).value or '').strip()
+            tipo_origen = str(hoja.cell(numero, columna_tipo).value or '').strip()
+            if not segmento or not tipo_origen:
+                continue
+            try:
+                brutas = parse_numero(hoja.cell(numero, columna_brutas).value)
+                planificadas = parse_numero(hoja.cell(numero, columna_planificada).value)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f'Hoja “{hoja.title}”, fila {numero}: las horas brutas o planificadas no son numéricas.'
+                )
+            tipo_vh = tipo_hora_seguimiento(tipo_origen)
+            clave = (normalizar_header(segmento), normalizar_header(tipo_vh))
+            acumulados[clave]['campania'] = segmento
+            acumulados[clave]['tipo_vh'] = tipo_vh
+            acumulados[clave].setdefault('hojas', [])
+            if hoja.title not in acumulados[clave]['hojas']:
+                acumulados[clave]['hojas'].append(hoja.title)
+            acumulados[clave]['definitiva'] += float(planificadas or 0) / 2
+            acumulados[clave]['brutas'] += float(brutas or 0) / 2
+            segmentos_hoja.add(normalizar_header(segmento))
+            filas_hoja.append(numero)
+
+        if not filas_hoja:
+            continue
+        hojas_leidas.append(hoja.title)
+        adhesion = None
+        for numero in range(ultima_fila_datos + 1, min(hoja.max_row, ultima_fila_datos + 30) + 1):
+            for columna in range(1, min(hoja.max_column, 30) + 1):
+                if normalizar_encabezado_proforma(hoja.cell(numero, columna).value) == 'indice de adhesion':
+                    candidato = hoja.cell(numero, columna + 2).value
+                    if isinstance(candidato, (int, float)) and math.isfinite(float(candidato)):
+                        adhesion = float(candidato)
+                    break
+            if adhesion is not None:
+                break
+        if adhesion is None:
+            total_brutas = sum(
+                item['brutas'] for clave, item in acumulados.items()
+                if clave[0] in segmentos_hoja
+            )
+            total_planificadas = sum(
+                item['definitiva'] for clave, item in acumulados.items()
+                if clave[0] in segmentos_hoja
+            )
+            adhesion = total_brutas / total_planificadas if total_planificadas else 0
+        for segmento in segmentos_hoja:
+            adhesiones[segmento] = adhesion
+
+    if not hojas_leidas:
+        raise ValueError(
+            'No se encontraron hojas detalladas con Segmento, FECHA, Planificación, '
+            'Agentes productivos logueados y Tipo de Horas.'
+        )
+    if len(periodos) != 1:
+        encontrados = ', '.join(sorted(periodos)) or 'ninguno'
+        raise ValueError(f'El cierre debe contener un solo período; se detectaron: {encontrados}.')
+    for (segmento, _), item in acumulados.items():
+        item['adh'] = adhesiones.get(segmento)
+    return next(iter(periodos)), dict(acumulados), hojas_leidas
+
+
+def detalle_cierre_trafico(cierre):
+    return [
+        {
+            'hoja': ', '.join(origen.get('hojas') or []),
+            'campania': origen.get('campania'), 'tipo_vh': origen.get('tipo_vh'),
+            'planificadas': round(float(origen.get('definitiva') or 0), 6),
+            'brutas': round(float(origen.get('brutas') or 0), 6),
+            'adh': round(float(origen.get('adh') or 0), 8),
+        }
+        for _, origen in sorted(cierre.items())
+    ]
+
+
+def aplicar_cierre_guardado_personal(contenido, cierre_guardado, proformas):
+    """Cruza un cierre ya leído con una Proforma definitiva y completa el Auxiliar."""
+    cierre = {
+        (normalizar_header(item.get('campania')), normalizar_header(item.get('tipo_vh'))): {
+            'campania': item.get('campania'), 'tipo_vh': item.get('tipo_vh'),
+            'definitiva': item.get('planificadas'), 'brutas': item.get('brutas'),
+            'adh': item.get('adh'),
+        }
+        for item in cierre_guardado.get('detalle') or []
+        if item.get('campania') and item.get('tipo_vh')
+    }
+    proformas_por_clave = defaultdict(list)
+    for item in proformas:
+        clave = (normalizar_header(item.segmento), normalizar_header(tipo_hora_seguimiento(item.tipo_hora)))
+        proformas_por_clave[clave].append(item)
+    coincidencias = set(cierre) & set(proformas_por_clave)
+    tipos_coincidentes = {
+        item.tipo_proforma for clave in coincidencias for item in proformas_por_clave[clave]
+    }
+    tipos_periodo = {item.tipo_proforma for item in proformas}
+    if len(tipos_coincidentes) == 1:
+        tipo_proforma = next(iter(tipos_coincidentes))
+    elif not tipos_coincidentes and len(tipos_periodo) == 1:
+        tipo_proforma = next(iter(tipos_periodo))
+    else:
+        return {}, {}, None, [
+            'No se pudo identificar un único tipo de Proforma con los nombres del cierre.',
+            'Verifique que campaña y tipo de hora pertenezcan a una sola Proforma.',
+        ]
+    objetivo = {
+        clave for clave, items in proformas_por_clave.items()
+        if any(item.tipo_proforma == tipo_proforma for item in items)
+    }
+    sobrantes = sorted(set(cierre) - objetivo)
+    faltantes = sorted(objetivo - set(cierre))
+    errores = []
+    for segmento, tipo in sobrantes[:15]:
+        errores.append(
+            f'El cierre contiene “{cierre[(segmento, tipo)]["campania"]} / {cierre[(segmento, tipo)]["tipo_vh"]}”, '
+            'pero no existe con ese nombre y tipo de hora en la Proforma definitiva.'
+        )
+    for segmento, tipo in faltantes[:15]:
+        item = next(item for item in proformas_por_clave[(segmento, tipo)] if item.tipo_proforma == tipo_proforma)
+        errores.append(
+            f'La Proforma contiene “{item.segmento} / {tipo_hora_seguimiento(item.tipo_hora)}”, '
+            'pero no aparece en el cierre.'
+        )
+    if errores:
+        errores.append('Corrija los nombres para que campaña y tipo de hora coincidan exactamente.')
+        return {}, {}, tipo_proforma, errores
+    ajustes = contenido.setdefault('ajustes_auxiliar_horas', {})
+    anteriores, posteriores = {}, {}
+    periodo = str(cierre_guardado.get('periodo') or '')
+    for clave in sorted(objetivo):
+        origen = cierre[clave]
+        item = next(item for item in proformas_por_clave[clave] if item.tipo_proforma == tipo_proforma)
+        clave_ajuste = clave_horas_auxiliar_personal(
+            periodo, item.negocio, item.segmento, tipo_hora_seguimiento(item.tipo_hora),
+        )
+        anteriores[clave_ajuste] = ajustes.get(clave_ajuste)
+        nuevo = {
+            'periodo': periodo, 'grupo': item.negocio, 'campania': item.segmento,
+            'tipo_vh': tipo_hora_seguimiento(item.tipo_hora),
+            'proyectada': float(item.total_horas or 0),
+            'definitiva': round(float(origen.get('definitiva') or 0), 6),
+            'brutas': round(float(origen.get('brutas') or 0), 6),
+            'adh': round(float(origen.get('adh') or 0), 8),
+        }
+        ajustes[clave_ajuste] = nuevo
+        posteriores[clave_ajuste] = nuevo
+    cierre_guardado['tipo_proforma'] = tipo_proforma
+    cierre_guardado['estado'] = 'Aplicado'
+    contenido.pop('periodos_definitivos_auxiliar', None)
+    contenido.pop('cierres_auxiliar', None)
+    return anteriores, posteriores, tipo_proforma, []
+
+
+@main_bp.route('/api/seguimiento-personal/cierres-trafico', methods=['GET'])
+@login_requerido
+def api_cierres_trafico_personal():
+    importacion_id = request.args.get('importacion_id', type=int)
+    importacion = db.session.get(SeguimientoPersonalImportacion, importacion_id) if importacion_id else SeguimientoPersonalImportacion.query.order_by(
+        SeguimientoPersonalImportacion.creado_en.desc(), SeguimientoPersonalImportacion.id.desc(),
+    ).first()
+    if not importacion:
+        return jsonify({'success': True, 'importacion': None, 'cierres': []})
+    contenido = contenido_seguimiento_personal(importacion)
+    cierres = sorted(
+        contenido.get('cierres_trafico_importados') or [],
+        key=lambda item: (str(item.get('periodo') or ''), str(item.get('fecha') or '')),
+        reverse=True,
+    )
+    return jsonify({'success': True, 'importacion': importacion.to_dict(), 'cierres': cierres})
+
+
+@main_bp.route('/api/seguimiento-personal/cierre-trafico/importar', methods=['POST'])
+@carga_requerida
+def api_importar_cierre_trafico_personal():
+    importacion_id = request.form.get('importacion_id')
+    importacion = db.session.get(SeguimientoPersonalImportacion, int(importacion_id)) if str(importacion_id or '').isdigit() else None
+    if not importacion:
+        return jsonify({'success': False, 'errores': ['Seleccione primero la configuración de seguimiento Personal.']}), 400
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        return jsonify({'success': False, 'errores': ['Seleccione el archivo de cierre de tráfico.']}), 400
+    if not archivo.filename.lower().endswith('.xlsx'):
+        return jsonify({'success': False, 'errores': ['El cierre de tráfico debe ser un archivo .xlsx.']}), 400
+    contenido_archivo = archivo.read()
+    if not contenido_archivo:
+        return jsonify({'success': False, 'errores': ['El archivo de cierre de tráfico está vacío.']}), 400
+    if len(contenido_archivo) > 20 * 1024 * 1024:
+        return jsonify({'success': False, 'errores': ['El cierre de tráfico supera el máximo de 20 MB.']}), 400
+    try:
+        periodo, cierre, hojas = extraer_cierre_trafico_personal(contenido_archivo)
+    except Exception as error:
+        current_app.logger.warning('Cierre de tráfico rechazado: %s', error)
+        return jsonify({'success': False, 'errores': [
+            f'No se pudo interpretar el cierre: {error}',
+            'Use el archivo original de cierre, sin cambiar los encabezados ni protegerlo con contraseña.',
+        ]}), 400
+
+    contenido = contenido_seguimiento_personal(importacion)
+    cierres = contenido.setdefault('cierres_trafico_importados', [])
+    cierres_anteriores = list(cierres)
+    cierres[:] = [item for item in cierres if str(item.get('periodo') or '') != periodo]
+    cierre_guardado = {
+        'archivo': archivo.filename[:255], 'periodo': periodo,
+        'tipo_proforma': None, 'filas': len(cierre),
+        'hojas': hojas, 'fecha': datetime.utcnow().isoformat(),
+        'detalle': detalle_cierre_trafico(cierre),
+        'estado': 'Pendiente de Proforma definitiva',
+    }
+    cierres.append(cierre_guardado)
+    proformas = ProformaPersonal.query.filter_by(periodo=periodo, estado_proforma='Definitiva').order_by(
+        ProformaPersonal.tipo_proforma, ProformaPersonal.segmento, ProformaPersonal.tipo_hora,
+    ).all()
+    anteriores, posteriores, tipo_proforma, errores_match = {}, {}, None, []
+    if proformas:
+        anteriores, posteriores, tipo_proforma, errores_match = aplicar_cierre_guardado_personal(
+            contenido, cierre_guardado, proformas,
+        )
+    importacion.contenido_hojas = zlib.compress(
+        json.dumps(contenido, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
+    )
+    aplicado = bool(posteriores) and not errores_match
+    registrar_historial(
+        'importacion', 'seguimiento_personal_cierre', str(importacion.id),
+        f'Cierre de tráfico {periodo}: {len(cierre_guardado["detalle"])} fila(s) de control ({"aplicado" if aplicado else "pendiente"})',
+        antes={
+            'importacion_id': importacion.id, 'ajustes': anteriores,
+            'cierres_trafico_importados': cierres_anteriores,
+        },
+        despues={
+            'importacion_id': importacion.id, 'ajustes': posteriores,
+            'cierres_trafico_importados': list(cierres),
+        },
+        detalle=f'Archivo “{archivo.filename[:120]}”. Queda disponible para cruzar con la Proforma definitiva del mismo período.',
+    )
+    db.session.commit()
+    mes = f'{periodo[4:]}/{periodo[:4]}'
+    return jsonify({
+        'success': True,
+        'mensaje': (
+            f'Cierre cargado para {mes} y aplicado a la Proforma definitiva.' if aplicado else
+            f'Cierre cargado para {mes}. Quedó pendiente y se aplicará automáticamente cuando importe la Proforma como Definitiva.'
+        ),
+        'periodo': periodo,
+        'tipo_proforma': tipo_proforma,
+        'filas': len(cierre_guardado['detalle']),
+        'aplicado': aplicado,
+        'advertencias': errores_match,
+        'cierre': cierres[-1],
     })
 
 

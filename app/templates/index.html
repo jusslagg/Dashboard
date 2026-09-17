@@ -226,8 +226,10 @@
     </div>
     <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-xl font-bold text-gray-800 mb-4">Facturacion por Cliente</h2>
-        <div class="h-80">
-            <canvas id="graficoClientes"></canvas>
+        <div class="h-80 overflow-x-auto">
+            <div id="contenedorGraficoClientes" class="h-full min-w-full">
+                <canvas id="graficoClientes"></canvas>
+            </div>
         </div>
     </div>
 </div>
@@ -596,20 +598,36 @@ function actualizarGraficoClientes(clientes) {
     }
     const ctx = document.getElementById('graficoClientes').getContext('2d');
     if (chartClientes) chartClientes.destroy();
+    const ordenados = [...clientes].sort((a, b) => Number(b.total_real || 0) - Number(a.total_real || 0));
+    const contenedor = document.getElementById('contenedorGraficoClientes');
+    const anchoDisponible = contenedor.parentElement.clientWidth || 0;
+    contenedor.style.width = `${Math.max(anchoDisponible, ordenados.length * 72)}px`;
 
     chartClientes = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: clientes.map(c => c.cliente),
+            labels: ordenados.map(c => c.cliente),
             datasets: [{
                 label: 'Total Real',
-                data: clientes.map(c => c.total_real),
+                data: ordenados.map(c => c.total_real),
                 backgroundColor: 'rgba(16, 185, 129, 0.8)',
                 borderColor: 'rgb(5, 150, 105)',
                 borderWidth: 1
             }]
         },
-        options: chartOptions()
+        options: {
+            ...chartOptions(),
+            scales: {
+                ...chartOptions().scales,
+                x: {
+                    ticks: {
+                        autoSkip: false,
+                        minRotation: 50,
+                        maxRotation: 50
+                    }
+                }
+            }
+        }
     });
 }
 

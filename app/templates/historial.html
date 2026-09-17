@@ -192,11 +192,11 @@ function parseDetalle(detalle) {
 }
 
 function labelAccion(accion) {
-    return { creacion: 'Creación', edicion: 'Edición', eliminacion: 'Eliminación', importacion: 'Importación', deshacer: 'Deshacer' }[accion] || accion;
+    return { creacion: 'Creación', edicion: 'Edición', eliminacion: 'Eliminación', importacion: 'Importación', deshacer: 'Deshacer', sincronizacion: 'Sincronización' }[accion] || accion;
 }
 
 function labelEntidad(entidad) {
-    return { facturacion: 'Facturación real', asignacion: 'Datos maestros', proforma_personal: 'Facturación / Proforma Personal', seguimiento_personal: 'Facturación / Seguimiento Personal', seguimiento_personal_dashboard: 'Facturación / Personal al dashboard', proyeccion_matriz: 'Proyecciones / Matriz', matriz_precios: 'Proyecciones / Precios', variables: 'Variable / % Variable', tarifaciones: 'Variable / Tarifación', next_gen: 'Variable / Next Gen', sites_proyeccion: 'Facturación horas / Sites', dashboard_operativo: 'Directorio / Dashboard operativo', historico_cliente: 'Directorio / Histórico por cliente', ratio_eli_mensual: 'Directorio / Ratio Eli', ratio_eli_ii_mensual: 'Directorio / Ratio Eli II', usuario: 'Usuarios' }[entidad] || entidad;
+    return { facturacion: 'Facturación real', asignacion: 'Datos maestros', proforma_personal: 'Facturación / Proforma Personal', seguimiento_personal: 'Facturación / Seguimiento Personal', seguimiento_personal_cierre: 'Facturación / Cierre de tráfico Personal', seguimiento_personal_dashboard: 'Facturación / Personal al dashboard', proyeccion_matriz: 'Proyecciones / Matriz', matriz_precios: 'Proyecciones / Precios', variables: 'Variable / % Variable', tarifaciones: 'Variable / Tarifación', next_gen: 'Variable / Next Gen', sites_proyeccion: 'Facturación horas / Sites', dashboard_operativo: 'Directorio / Dashboard operativo', historico_cliente: 'Directorio / Histórico por cliente', ratio_eli_mensual: 'Directorio / Ratio Eli', ratio_eli_ii_mensual: 'Directorio / Ratio Eli II', usuario: 'Usuarios' }[entidad] || entidad;
 }
 
 function badgeAccion(accion) {
@@ -207,7 +207,7 @@ function badgeAccion(accion) {
 }
 
 function puedeDeshacer(item) {
-    return item && ['proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion', 'proforma_personal', 'seguimiento_personal', 'seguimiento_personal_dashboard', 'dotaciones_clientes_mensuales', 'graficos_dotaciones_mensuales', 'dashboard_operativo', 'historico_cliente', 'ratio_eli_mensual', 'ratio_eli_ii_mensual'].includes(item.entidad) && item.accion !== 'deshacer';
+    return item && ['proyeccion_matriz', 'matriz_precios', 'variables', 'tarifaciones', 'next_gen', 'sites_proyeccion', 'proforma_personal', 'seguimiento_personal', 'seguimiento_personal_cierre', 'seguimiento_personal_dashboard', 'dotaciones_clientes_mensuales', 'graficos_dotaciones_mensuales', 'dashboard_operativo', 'historico_cliente', 'ratio_eli_mensual', 'ratio_eli_ii_mensual'].includes(item.entidad) && !['deshacer', 'sincronizacion'].includes(item.accion);
 }
 
 async function deshacerMovimiento(id) {

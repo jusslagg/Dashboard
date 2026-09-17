@@ -74,6 +74,22 @@ def _canonizar_cliente(valor):
     return _CLIENTES_CANONICOS.get(_clave_nombre(limpio), limpio) if limpio else limpio
 
 
+def normalizar_tipo_negocio_personal(cliente, tipo_negocio=None, campania=None):
+    """Separa la empresa Personal de su apertura comercial."""
+    clave_cliente = _clave_nombre(str(cliente or ''))
+    clave_tipo = _clave_nombre(str(tipo_negocio or ''))
+    clave_campania = _clave_nombre(str(campania or ''))
+    if not clave_cliente.startswith('personal'):
+        return tipo_negocio
+    if 'soporte' in clave_cliente or 'soporte' in clave_tipo:
+        return 'Personal Soporte'
+    if 'smb' in clave_cliente or 'smb' in clave_tipo or 'smb' in clave_campania:
+        return 'Personal SMB'
+    if 'ppay' in clave_tipo or 'personalpay' in clave_tipo or 'personalpay' in clave_campania:
+        return 'Personal PPAY'
+    return 'Personal CX'
+
+
 def _canonizar_campania(cliente, valor):
     limpio = re.sub(r'\s+', ' ', str(valor or '').strip())
     if not limpio:
@@ -702,6 +718,7 @@ class ProformaPersonal(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     tipo_proforma = db.Column(db.String(30), default='Masivo', nullable=False, index=True)
+    estado_proforma = db.Column(db.String(20), default='Proyectada', nullable=False, index=True)
     fdv = db.Column(db.String(150), nullable=False)
     periodo = db.Column(db.String(6), nullable=False, index=True)
     negocio = db.Column(db.String(100), nullable=False)
@@ -734,6 +751,7 @@ class ProformaPersonal(db.Model):
         return {
             'id': self.id,
             'tipo_proforma': self.tipo_proforma or 'Masivo',
+            'estado_proforma': self.estado_proforma or 'Proyectada',
             'fdv': self.fdv,
             'periodo': self.periodo,
             'negocio': self.negocio,
@@ -1417,8 +1435,19 @@ def canonizar_identidad_comercial_antes_de_guardar(session, _flush_context, _ins
         return
     candidatos = list(session.new) + list(session.dirty)
     for registro in candidatos:
+        if isinstance(registro, (FacturacionAnio, AsignacionComercial)):
+            registro.tipo_negocio = normalizar_tipo_negocio_personal(
+                registro.cliente, registro.tipo_negocio, getattr(registro, 'campania', None),
+            )
+            if _clave_nombre(str(registro.cliente or '')).startswith('personal'):
+                registro.cliente = 'Personal'
+    for registro in candidatos:
         if isinstance(registro, Campania):
-            cliente = _canonizar_cliente(registro.cliente)
+            cliente = (
+                'Personal'
+                if _clave_nombre(str(registro.cliente or '')).startswith('personal')
+                else _canonizar_cliente(registro.cliente)
+            )
             nombre = _canonizar_campania(cliente, registro.nombre)
             registro.cliente = cliente
             registro.nombre = nombre

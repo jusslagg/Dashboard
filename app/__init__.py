@@ -609,6 +609,11 @@ def asegurar_tipos_proforma_personal():
             "ALTER TABLE proforma_personal ADD COLUMN tipo_proforma VARCHAR(30) DEFAULT 'Masivo' NOT NULL"
         ))
         db.session.commit()
+    if 'estado_proforma' not in columnas:
+        db.session.execute(text(
+            "ALTER TABLE proforma_personal ADD COLUMN estado_proforma VARCHAR(20) DEFAULT 'Proyectada' NOT NULL"
+        ))
+        db.session.commit()
     inspector = inspect(db.engine)
     unicos = inspector.get_unique_constraints('proforma_personal')
     columnas_nuevas = {
@@ -634,6 +639,10 @@ def asegurar_tipos_proforma_personal():
             "UPDATE proforma_personal SET tipo_proforma = 'Masivo' "
             "WHERE tipo_proforma IS NULL OR trim(tipo_proforma) = ''"
         ))
+        db.session.execute(text(
+            "UPDATE proforma_personal SET estado_proforma = 'Proyectada' "
+            "WHERE estado_proforma IS NULL OR trim(estado_proforma) = ''"
+        ))
         db.session.commit()
         return
 
@@ -642,6 +651,7 @@ def asegurar_tipos_proforma_personal():
             CREATE TABLE proforma_personal_nueva (
                 id INTEGER NOT NULL PRIMARY KEY,
                 tipo_proforma VARCHAR(30) DEFAULT 'Masivo' NOT NULL,
+                estado_proforma VARCHAR(20) DEFAULT 'Proyectada' NOT NULL,
                 fdv VARCHAR(150) NOT NULL,
                 periodo VARCHAR(6) NOT NULL,
                 negocio VARCHAR(100) NOT NULL,
@@ -670,13 +680,14 @@ def asegurar_tipos_proforma_personal():
         """))
         db.session.execute(text("""
             INSERT INTO proforma_personal_nueva (
-                id, tipo_proforma, fdv, periodo, negocio, sitio_proveedor, segmento,
+                id, tipo_proforma, estado_proforma, fdv, periodo, negocio, sitio_proveedor, segmento,
                 subsitio, tipo_hora, total_horas, precio, monto_fijo,
                 porcentaje_bono_kpi_vs, monto_variable_kpi_vs, porcentaje_bono_ac,
                 monto_variable_ac, monto_variable, total_proyeccion,
                 bono_porcentaje_total, archivo_origen, creado_en, actualizado_en
             )
-            SELECT id, COALESCE(NULLIF(trim(tipo_proforma), ''), 'Masivo'), fdv, periodo,
+            SELECT id, COALESCE(NULLIF(trim(tipo_proforma), ''), 'Masivo'),
+                COALESCE(NULLIF(trim(estado_proforma), ''), 'Proyectada'), fdv, periodo,
                 negocio, sitio_proveedor, segmento, subsitio, tipo_hora, total_horas,
                 precio, monto_fijo, porcentaje_bono_kpi_vs, monto_variable_kpi_vs,
                 porcentaje_bono_ac, monto_variable_ac, monto_variable, total_proyeccion,
@@ -687,6 +698,7 @@ def asegurar_tipos_proforma_personal():
         db.session.execute(text('ALTER TABLE proforma_personal_nueva RENAME TO proforma_personal'))
         db.session.execute(text('CREATE INDEX ix_proforma_personal_periodo ON proforma_personal (periodo)'))
         db.session.execute(text('CREATE INDEX ix_proforma_personal_tipo_proforma ON proforma_personal (tipo_proforma)'))
+        db.session.execute(text('CREATE INDEX ix_proforma_personal_estado_proforma ON proforma_personal (estado_proforma)'))
     else:
         for restriccion in unicos:
             columnas_restriccion = set(restriccion.get('column_names') or ())

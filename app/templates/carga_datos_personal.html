@@ -15,6 +15,7 @@
     <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
         <div class="flex min-w-max gap-2" id="tabsCargaPersonal">
             <button id="tabCargaProforma" type="button" onclick="seleccionarPestanaCargaPersonal('proforma')" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white">Proforma</button>
+            <button id="tabCargaCierreTrafico" type="button" onclick="seleccionarPestanaCargaPersonal('cierre_trafico')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Cierre de tráfico</button>
             <button id="tabCargaBaseObjetivoMasivo" type="button" onclick="seleccionarPestanaCargaPersonal('base_objetivo_masivo')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Base objetivo Masivo</button>
             <button id="tabCargaAuxiliar" type="button" onclick="seleccionarPestanaCargaPersonal('auxiliar_horas_plp_masivo')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Auxiliar Horas PLP Masivo</button>
             <button id="tabCargaPrecios" type="button" onclick="seleccionarPestanaCargaPersonal('precios')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Precios</button>
@@ -33,7 +34,7 @@
             <div class="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <h2 class="text-lg font-bold text-indigo-950">Importar archivo de Proforma</h2>
-                    <p class="mt-1 text-sm text-indigo-700">Elegí el tipo antes de importar. Cada tipo conserva su información aunque corresponda al mismo mes.</p>
+                    <p class="mt-1 text-sm text-indigo-700">Elegí el tipo y definí si el archivo es Proyectado o Definitivo. El cierre de tráfico sólo se habilita para Proformas definitivas.</p>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row">
                     <a href="/api/proforma-personal/template" class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700"><i class="fas fa-file-excel mr-2"></i>Descargar template</a>
@@ -42,6 +43,11 @@
                         <option value="Masivo">Masivo</option>
                         <option value="Personal Pay">Personal Pay</option>
                         <option value="Soporte">Soporte</option>
+                    </select>
+                    <select id="estadoProformaPersonal" onchange="actualizarAvisoTipoProforma()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm font-semibold">
+                        <option value="">Seleccionar estado...</option>
+                        <option value="Proyectada">Proyectada</option>
+                        <option value="Definitiva">Definitiva</option>
                     </select>
                     <input id="archivoProformaPersonal" type="file" accept=".xlsx" class="block max-w-sm rounded border border-slate-300 bg-white text-sm file:mr-3 file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-semibold">
                     <button id="importarProformaBtn" type="button" onclick="importarProformaPersonal()" class="h-10 whitespace-nowrap rounded bg-indigo-600 px-5 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"><i class="fas fa-upload mr-2"></i>Importar Proforma</button>
@@ -77,15 +83,56 @@
                 <div class="flex flex-col gap-2 sm:flex-row">
                     <select id="filtroPeriodoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los períodos</option></select>
                     <select id="filtroTipoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos</option><option value="Masivo">Masivo</option><option value="Personal Pay">Personal Pay</option><option value="Soporte">Soporte</option></select>
+                    <select id="filtroEstadoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los estados</option><option value="Proyectada">Proyectadas</option><option value="Definitiva">Definitivas</option></select>
                     <input id="buscarProformaPersonal" type="search" oninput="renderProformaPersonal()" class="h-10 rounded border border-slate-300 px-3 text-sm" placeholder="Buscar segmento...">
                 </div>
             </div>
             <div class="max-h-[650px] overflow-auto p-4">
                 <table id="tablaProformaPersonal" class="w-full min-w-[1450px] border-collapse text-sm">
                     <thead class="sticky top-0 bg-slate-900 text-white"><tr>
-                        <th class="border border-slate-700 px-3 py-2 text-left">Tipo</th><th class="border border-slate-700 px-3 py-2">Período</th><th class="border border-slate-700 px-3 py-2 text-left">Negocio</th><th class="border border-slate-700 px-3 py-2 text-left">Campaña</th><th class="border border-slate-700 px-3 py-2 text-left">Tipo de hora</th><th class="border border-slate-700 px-3 py-2 text-right">Horas</th><th class="border border-slate-700 px-3 py-2 text-right">Precio</th><th class="border border-slate-700 px-3 py-2 text-right">Monto fijo</th><th class="border border-slate-700 px-3 py-2 text-right">Bono KPI</th><th class="border border-slate-700 px-3 py-2 text-right">Bono AC</th><th class="border border-slate-700 px-3 py-2 text-right">Variable</th><th class="border border-slate-700 px-3 py-2 text-right">Total</th>
+                        <th class="border border-slate-700 px-3 py-2 text-left">Tipo</th><th class="border border-slate-700 px-3 py-2">Estado</th><th class="border border-slate-700 px-3 py-2">Período</th><th class="border border-slate-700 px-3 py-2 text-left">Negocio</th><th class="border border-slate-700 px-3 py-2 text-left">Campaña</th><th class="border border-slate-700 px-3 py-2 text-left">Tipo de hora</th><th class="border border-slate-700 px-3 py-2 text-right">Horas</th><th class="border border-slate-700 px-3 py-2 text-right">Precio</th><th class="border border-slate-700 px-3 py-2 text-right">Monto fijo</th><th class="border border-slate-700 px-3 py-2 text-right">Bono KPI</th><th class="border border-slate-700 px-3 py-2 text-right">Bono AC</th><th class="border border-slate-700 px-3 py-2 text-right">Variable</th><th class="border border-slate-700 px-3 py-2 text-right">Total</th>
                     </tr></thead>
-                    <tbody id="tbodyProformaPersonal"><tr><td colspan="12" class="p-8 text-center text-slate-500">Todavía no hay proformas importadas.</td></tr></tbody>
+                    <tbody id="tbodyProformaPersonal"><tr><td colspan="13" class="p-8 text-center text-slate-500">Todavía no hay proformas importadas.</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div id="contenidoCierreTraficoPersonal" class="hidden space-y-5">
+        <section class="rounded-xl border border-emerald-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-4 p-5 xl:flex-row xl:items-end xl:justify-between">
+                <div class="max-w-3xl">
+                    <p class="text-xs font-bold uppercase tracking-wide text-emerald-700">Proforma definitiva</p>
+                    <h2 class="mt-1 text-xl font-bold text-emerald-950">Importar cierre de tráfico</h2>
+                    <p class="mt-1 text-sm text-emerald-800">Puede cargar el cierre antes o después de la Proforma. Queda guardado por período y, cuando importe la Proforma como Definitiva, se cruzan automáticamente campaña y tipo de hora. Una nueva carga del mismo período reemplaza la anterior.</p>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <select id="versionCierreTraficoPersonal" onchange="cargarCierresTraficoPersonal()" class="h-10 min-w-[220px] rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Sin configuración</option></select>
+                    <input id="archivoCierreTraficoPersonal" type="file" accept=".xlsx" class="block max-w-sm rounded border border-slate-300 bg-white text-sm file:mr-3 file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:font-semibold file:text-emerald-800">
+                    <button id="importarCierreTraficoBtn" type="button" onclick="importarCierreTraficoPersonal()" class="h-10 whitespace-nowrap rounded bg-emerald-600 px-5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"><i class="fas fa-file-circle-check mr-2"></i>Cargar cierre</button>
+                </div>
+            </div>
+            <div id="mensajeCierreTraficoPersonal" class="mx-5 mb-5 hidden rounded-lg p-3 text-sm"></div>
+        </section>
+
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-xs font-bold uppercase text-slate-500">Archivo vigente</div><div id="cierreControlArchivo" class="mt-2 truncate text-lg font-black text-slate-900">Sin carga</div></div>
+            <div class="rounded-xl border border-blue-200 bg-white p-4 shadow-sm"><div class="text-xs font-bold uppercase text-slate-500">Período</div><div id="cierreControlPeriodo" class="mt-2 text-2xl font-black text-blue-950">-</div></div>
+            <div class="rounded-xl border border-emerald-200 bg-white p-4 shadow-sm"><div class="text-xs font-bold uppercase text-slate-500">Planificadas</div><div id="cierreControlPlanificadas" class="mt-2 text-2xl font-black text-emerald-800">0</div></div>
+            <div class="rounded-xl border border-violet-200 bg-white p-4 shadow-sm"><div class="text-xs font-bold uppercase text-slate-500">Brutas</div><div id="cierreControlBrutas" class="mt-2 text-2xl font-black text-violet-900">0</div></div>
+        </div>
+
+        <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                <div><h2 class="text-lg font-bold text-slate-950">Control del cierre importado</h2><p id="detalleCierreTraficoControl" class="mt-1 text-xs text-slate-500">Todavía no hay un cierre cargado.</p></div>
+                <select id="selectorCierreTraficoControl" onchange="renderCierreTraficoControl()" class="h-10 min-w-[300px] rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Sin cierres</option></select>
+            </div>
+            <div class="max-h-[650px] overflow-auto p-4">
+                <table class="w-full min-w-[1000px] border-collapse text-sm">
+                    <thead class="sticky top-0 bg-slate-900 text-white"><tr>
+                        <th class="border border-slate-700 px-3 py-2 text-left">Hoja</th><th class="border border-slate-700 px-3 py-2 text-left">Campaña / Segmento</th><th class="border border-slate-700 px-3 py-2 text-left">Tipo de Horas</th><th class="border border-slate-700 px-3 py-2 text-right">Horas PLANIFICADAS CIERRE DE TRÁFICO</th><th class="border border-slate-700 px-3 py-2 text-right">Brutas</th><th class="border border-slate-700 px-3 py-2 text-right">% ADH</th>
+                    </tr></thead>
+                    <tbody id="tbodyCierreTraficoControl"><tr><td colspan="6" class="p-8 text-center text-slate-500">Cargue un cierre para visualizarlo.</td></tr></tbody>
                 </table>
             </div>
         </section>
@@ -248,6 +295,7 @@
 let proformasPersonal = [];
 let importacionesProforma = [];
 let importacionesSeguimiento = [];
+let cierresTraficoPersonal = [];
 let hojaSeguimientoActiva = 'base_objetivo_masivo';
 let datosHojaSeguimiento = null;
 let periodosProformaSeguimiento = [];
@@ -315,8 +363,8 @@ const configuracionHojasSeguimiento = {
     },
     auxiliar_horas_plp_masivo: {
         tab: 'tabCargaAuxiliar', nombre: 'Auxiliar Horas PLP Masivo', siguiente: 'precios', especial: 'auxiliar_horas', periodo: 3, estado: 17,
-        logica: 'Replica la estructura del archivo. Complete F para la proyección y H cuando llegue el cierre definitivo; la definitiva pasa a ser la versión vigente del período.',
-        columnas: [[0,'GRUPO','texto'],[1,'Campaña','texto'],[2,'Tipo VH','texto'],[3,'Mes','fecha'],[4,'Proforma','estado'],[5,'Horas PLANIFICADAS PLP','horas_editables'],[6,'Proforma','estado'],[7,'Horas PLANIFICADAS CIERRE DE TRÁFICO','horas_editables'],[8,'HORAS CÁLCULO NETAS CIERRE DE TRÁFICO','horas'],[9,'Brutas','horas_editables'],[10,'Brutas c/Tope','horas'],[11,'% ADH','porcentaje_editable'],[12,'x','texto'],[13,'HORAS FACTURADAS PROYECTADAS','horas'],[14,'% tipo hs','porcentaje'],[15,'HORAS FACTURADAS DEFINITIVAS','horas'],[16,'PRECIO','moneda'],[17,'Estado vigente','estado']]
+        logica: 'Vista automática. Las horas planificadas proyectadas provienen de la Proforma y los datos definitivos se muestran únicamente después de importar el cierre de tráfico del mes.',
+        columnas: [[0,'GRUPO','texto'],[1,'Campaña','texto'],[2,'Tipo VH','texto'],[3,'Mes','fecha'],[4,'Proforma','estado'],[5,'Horas PLANIFICADAS PLP','horas'],[6,'Cierre de tráfico','estado'],[7,'Horas PLANIFICADAS CIERRE DE TRÁFICO','horas'],[8,'HORAS CÁLCULO NETAS CIERRE DE TRÁFICO','horas'],[9,'Brutas','horas'],[10,'Brutas c/Tope','horas'],[11,'% ADH','porcentaje'],[12,'x','texto'],[13,'HORAS FACTURADAS PROYECTADAS','horas'],[14,'% tipo hs','porcentaje'],[15,'HORAS FACTURADAS DEFINITIVAS','horas'],[16,'PRECIO','moneda'],[17,'Estado vigente','estado']]
     },
     precios: {
         tab: 'tabCargaPrecios', nombre: 'Precios', siguiente: '2026', especial: 'precios', periodo: 0, estado: null,
@@ -337,15 +385,18 @@ const configuracionHojasSeguimiento = {
 
 function seleccionarPestanaCargaPersonal(clave) {
     const esProforma = clave === 'proforma';
+    const esCierre = clave === 'cierre_trafico';
     document.getElementById('contenidoProformaPersonal').classList.toggle('hidden', !esProforma);
-    document.getElementById('contenidoSeguimientoPersonal').classList.toggle('hidden', esProforma);
-    const tabs = ['tabCargaProforma', ...Object.values(configuracionHojasSeguimiento).map(item => item.tab)];
+    document.getElementById('contenidoCierreTraficoPersonal').classList.toggle('hidden', !esCierre);
+    document.getElementById('contenidoSeguimientoPersonal').classList.toggle('hidden', esProforma || esCierre);
+    const tabs = ['tabCargaProforma', 'tabCargaCierreTrafico', ...Object.values(configuracionHojasSeguimiento).map(item => item.tab)];
     tabs.forEach(id => {
-        const activo = esProforma ? id === 'tabCargaProforma' : id === configuracionHojasSeguimiento[clave]?.tab;
+        const activo = esProforma ? id === 'tabCargaProforma' : esCierre ? id === 'tabCargaCierreTrafico' : id === configuracionHojasSeguimiento[clave]?.tab;
         document.getElementById(id).className = activo
             ? 'rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white'
             : 'rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100';
     });
+    if (esCierre) cargarCierresTraficoPersonal();
     if (!esProforma && configuracionHojasSeguimiento[clave]) {
         hojaSeguimientoActiva = clave;
         paginaHojaSeguimiento = 1;
@@ -380,6 +431,96 @@ function mostrarMensajeSeguimiento(texto, tipo = 'error') {
     mensaje.textContent = texto;
 }
 
+function mostrarMensajeCierreTrafico(texto, tipo = 'error') {
+    const mensaje = document.getElementById('mensajeCierreTraficoPersonal');
+    const clase = tipo === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : tipo === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-rose-200 bg-rose-50 text-rose-800';
+    mensaje.className = `mx-5 mb-5 rounded-lg border p-3 text-sm whitespace-pre-line ${clase}`;
+    mensaje.textContent = texto;
+}
+
+async function importarCierreTraficoPersonal() {
+    const input = document.getElementById('archivoCierreTraficoPersonal');
+    const importacionId = document.getElementById('versionCierreTraficoPersonal').value;
+    if (!importacionId) return mostrarMensajeCierreTrafico('Primero cargue o seleccione la configuración de seguimiento Personal.');
+    if (!input.files.length) return mostrarMensajeCierreTrafico('Seleccione el archivo Excel de cierre de tráfico.');
+    const boton = document.getElementById('importarCierreTraficoBtn');
+    const contenidoAnterior = boton.innerHTML;
+    boton.disabled = true;
+    boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Validando cierre...';
+    try {
+        const formulario = new FormData();
+        formulario.append('importacion_id', importacionId);
+        formulario.append('archivo', input.files[0]);
+        const response = await fetch('/api/seguimiento-personal/cierre-trafico/importar', {
+            method: 'POST', credentials: 'same-origin', body: formulario,
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudo cargar el cierre de tráfico.']).join('\n'));
+        const advertencias = (data.advertencias || []).length ? `\n${data.advertencias.join('\n')}` : '';
+        mostrarMensajeCierreTrafico(`${data.mensaje}${advertencias}`, data.aplicado ? 'success' : 'warning');
+        input.value = '';
+        await cargarCierresTraficoPersonal(data.periodo, data.tipo_proforma);
+    } catch (error) {
+        mostrarMensajeCierreTrafico(error.message || 'No se pudo cargar el cierre de tráfico.');
+    } finally {
+        boton.innerHTML = contenidoAnterior;
+        boton.disabled = false;
+    }
+}
+
+async function cargarCierresTraficoPersonal(periodoSeleccionar = null, tipoSeleccionar = null) {
+    const importacionId = document.getElementById('versionCierreTraficoPersonal').value;
+    const tbody = document.getElementById('tbodyCierreTraficoControl');
+    if (!importacionId) {
+        cierresTraficoPersonal = [];
+        renderCierreTraficoControl();
+        return;
+    }
+    tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i>Cargando cierre...</td></tr>';
+    try {
+        const response = await fetch(`/api/seguimiento-personal/cierres-trafico?importacion_id=${encodeURIComponent(importacionId)}&_=${Date.now()}`, {cache: 'no-store'});
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudieron cargar los cierres.']).join(' | '));
+        cierresTraficoPersonal = data.cierres || [];
+        const selector = document.getElementById('selectorCierreTraficoControl');
+        selector.innerHTML = cierresTraficoPersonal.length ? cierresTraficoPersonal.map((item, indice) => {
+            const periodo = item.periodo ? `${item.periodo.slice(4)}/${item.periodo.slice(0, 4)}` : '-';
+            return `<option value="${indice}">${escaparPersonal(periodo)} · ${escaparPersonal(item.tipo_proforma || '')} · ${escaparPersonal(item.archivo || '')}</option>`;
+        }).join('') : '<option value="">Sin cierres</option>';
+        if (periodoSeleccionar) {
+            const indice = cierresTraficoPersonal.findIndex(item => item.periodo === periodoSeleccionar && item.tipo_proforma === tipoSeleccionar);
+            if (indice >= 0) selector.value = String(indice);
+        }
+        renderCierreTraficoControl();
+    } catch (error) {
+        cierresTraficoPersonal = [];
+        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-rose-700">${escaparPersonal(error.message)}</td></tr>`;
+    }
+}
+
+function renderCierreTraficoControl() {
+    const selector = document.getElementById('selectorCierreTraficoControl');
+    const indice = Number(selector.value || 0);
+    const cierre = cierresTraficoPersonal[indice];
+    const detalle = cierre?.detalle || [];
+    document.getElementById('cierreControlArchivo').textContent = cierre?.archivo || 'Sin carga';
+    document.getElementById('cierreControlPeriodo').textContent = cierre?.periodo ? `${cierre.periodo.slice(4)}/${cierre.periodo.slice(0, 4)}` : '-';
+    document.getElementById('cierreControlPlanificadas').textContent = formatoHorasPersonal(detalle.reduce((suma, item) => suma + Number(item.planificadas || 0), 0));
+    document.getElementById('cierreControlBrutas').textContent = formatoHorasPersonal(detalle.reduce((suma, item) => suma + Number(item.brutas || 0), 0));
+    document.getElementById('detalleCierreTraficoControl').textContent = cierre
+        ? `${cierre.estado || 'Pendiente'} · ${cierre.tipo_proforma || 'Sin Proforma asociada'} · ${detalle.length} combinaciones · Hojas: ${(cierre.hojas || []).join(', ')}`
+        : 'Todavía no hay un cierre cargado.';
+    document.getElementById('tbodyCierreTraficoControl').innerHTML = detalle.length ? detalle.map(item => `
+        <tr class="hover:bg-emerald-50/50">
+            <td class="border border-slate-200 px-3 py-2 font-semibold text-slate-700">${escaparPersonal(item.hoja || '')}</td>
+            <td class="border border-slate-200 px-3 py-2 font-semibold">${escaparPersonal(item.campania || '')}</td>
+            <td class="border border-slate-200 px-3 py-2">${escaparPersonal(item.tipo_vh || '')}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right font-bold tabular-nums">${formatoHorasPersonal(item.planificadas)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right font-bold tabular-nums">${formatoHorasPersonal(item.brutas)}</td>
+            <td class="border border-slate-200 px-3 py-2 text-right font-bold tabular-nums">${(Number(item.adh || 0) * 100).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}%</td>
+        </tr>`).join('') : '<tr><td colspan="6" class="p-8 text-center text-slate-500">El cierre seleccionado no tiene detalle guardado. Vuelva a cargarlo para generar la vista de control.</td></tr>';
+}
+
 async function cargarVersionesSeguimiento(seleccionarId = null) {
     try {
         const response = await fetch(`/api/seguimiento-personal?_=${Date.now()}`, {cache: 'no-store'});
@@ -388,12 +529,16 @@ async function cargarVersionesSeguimiento(seleccionarId = null) {
         importacionesSeguimiento = data.importaciones || [];
         document.getElementById('configuracionInicialSeguimiento').classList.toggle('hidden', importacionesSeguimiento.length > 0);
         const selector = document.getElementById('versionSeguimientoPersonal');
+        const selectorCierre = document.getElementById('versionCierreTraficoPersonal');
         const anterior = seleccionarId ? String(seleccionarId) : selector.value;
-        selector.innerHTML = importacionesSeguimiento.length ? importacionesSeguimiento.map(item => {
+        const opciones = importacionesSeguimiento.length ? importacionesSeguimiento.map(item => {
             const fecha = item.creado_en ? new Date(item.creado_en).toLocaleString('es-AR', {dateStyle: 'short', timeStyle: 'short'}) : '';
             return `<option value="${item.id}">${escaparPersonal(fecha)} · ${escaparPersonal(item.archivo)} · ${escaparPersonal(item.periodo_referencia)}</option>`;
         }).join('') : '<option value="">Sin configuración</option>';
+        selector.innerHTML = opciones;
+        selectorCierre.innerHTML = opciones;
         if ([...selector.options].some(option => option.value === anterior)) selector.value = anterior;
+        if ([...selectorCierre.options].some(option => option.value === anterior)) selectorCierre.value = anterior;
         actualizarDescargaSeguimiento();
     } catch (error) {
         mostrarMensajeSeguimiento(error.message);
@@ -589,7 +734,8 @@ function construirVistaSeguimiento() {
             const horasFacturadas = (Number(fila.valores[13]) || 0) + (Number(fila.valores[15]) || 0);
             fila.valores[13] = definitiva ? 0 : horasFacturadas;
             fila.valores[15] = definitiva ? horasFacturadas : 0;
-            fila.valores.push(definitiva ? 'Definitiva' : 'Proyectada');
+            const estadoCierre = normalizarPersonal(fila.valores[6]);
+            fila.valores.push(definitiva ? 'Definitiva' : estadoCierre === 'pendiente' ? 'Pendiente de cierre' : 'Proyectada');
         });
         return {columnas: config.columnas, filas};
     }
@@ -758,10 +904,7 @@ function cambiarPeriodoHojaSeguimiento() {
 function actualizarBotonCambiosHorasAuxiliar() {
     const boton = document.getElementById('guardarCambiosHorasAuxiliar');
     if (!boton) return;
-    const cantidad = cambiosHorasAuxiliarSeguimiento.size;
-    boton.classList.toggle('hidden', hojaSeguimientoActiva !== 'auxiliar_horas_plp_masivo');
-    boton.disabled = cantidad === 0;
-    boton.innerHTML = `<i class="fas fa-save mr-1"></i> Guardar cambios${cantidad ? ` (${cantidad})` : ''}`;
+    boton.classList.add('hidden');
 }
 
 function marcarHorasAuxiliarPersonal(input) {
@@ -1038,12 +1181,32 @@ function mostrarMensajeProforma(texto, tipo = 'error') {
     mensaje.textContent = texto;
 }
 
+function mostrarDiagnosticoProforma(data, status = 400) {
+    const mensaje = document.getElementById('mensajeProformaPersonal');
+    const diagnostico = data?.diagnostico || {};
+    const causa = diagnostico.causa || `No se pudo importar la Proforma (error ${status}).`;
+    const correccion = diagnostico.correccion || 'Revise el archivo y vuelva a intentar. Si el problema continúa, informe el nombre del archivo al administrador.';
+    const detalles = diagnostico.detalles || data?.errores || [];
+    const total = Number(diagnostico.total_detalles || detalles.length);
+    mensaje.className = 'mx-5 mb-5 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900';
+    mensaje.innerHTML = `
+        <p class="font-bold"><i class="fas fa-circle-exclamation mr-2"></i>No se pudo cargar la Proforma</p>
+        <p class="mt-2"><strong>Por qué:</strong> ${escaparPersonal(causa)}</p>
+        <p class="mt-1"><strong>Qué corregir:</strong> ${escaparPersonal(correccion)}</p>
+        ${detalles.length ? `<div class="mt-3 rounded border border-rose-200 bg-white/70 p-3">
+            <p class="font-semibold">Detalle:</p>
+            <ul class="mt-1 list-disc space-y-1 pl-5">${detalles.map(detalle => `<li>${escaparPersonal(detalle)}</li>`).join('')}</ul>
+            ${total > detalles.length ? `<p class="mt-2 font-semibold">Se muestran ${detalles.length} de ${total} problemas. Corrija estos puntos y vuelva a cargar para continuar la revisión.</p>` : ''}
+        </div>` : ''}`;
+}
+
 function actualizarAvisoTipoProforma() {
     const tipo = document.getElementById('tipoProformaPersonal').value;
+    const estado = document.getElementById('estadoProformaPersonal').value;
     const aviso = document.getElementById('avisoTipoProforma');
-    aviso.innerHTML = tipo
-        ? `<strong>${escaparPersonal(tipo)}:</strong> si alguno de los meses del archivo ya fue cargado para este tipo, se reemplazar&aacute; solamente ese lote. Los otros tipos del mismo mes se conservar&aacute;n.`
-        : 'Seleccione el tipo de Proforma para identificar el lote que se cargar&aacute;.';
+    aviso.innerHTML = tipo && estado
+        ? `<strong>${escaparPersonal(tipo)} · ${escaparPersonal(estado)}:</strong> el mismo tipo y período se reemplazará completo. ${estado === 'Definitiva' ? 'Después podrá cargar el cierre de tráfico; si ya existía uno del mismo período, podrá reemplazarlo.' : 'Esta versión no utilizará datos del cierre de tráfico.'}`
+        : 'Seleccione el tipo y el estado de la Proforma para identificar el lote que se cargará.';
 }
 
 async function cargarProformaPersonal() {
@@ -1060,7 +1223,7 @@ async function cargarProformaPersonal() {
         renderProformaPersonal();
         renderImportacionesProforma();
     } catch (error) {
-        document.getElementById('tbodyProformaPersonal').innerHTML = `<tr><td colspan="12" class="p-8 text-center text-rose-700">${escaparPersonal(error.message)}</td></tr>`;
+        document.getElementById('tbodyProformaPersonal').innerHTML = `<tr><td colspan="13" class="p-8 text-center text-rose-700">${escaparPersonal(error.message)}</td></tr>`;
     }
 }
 
@@ -1075,7 +1238,7 @@ function renderImportacionesProforma() {
         const periodos = (item.periodos || []).map(periodo => `${periodo.slice(4, 6)}/${periodo.slice(0, 4)}`).join(', ');
         return `<tr class="hover:bg-slate-50">
             <td class="border-b border-slate-100 px-4 py-2 whitespace-nowrap">${escaparPersonal(fecha)}</td>
-            <td class="border-b border-slate-100 px-4 py-2 font-semibold"><span class="mr-2 rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-800">${escaparPersonal(item.tipo_proforma || 'Masivo')}</span>${escaparPersonal(item.archivo || 'Sin nombre')}</td>
+            <td class="border-b border-slate-100 px-4 py-2 font-semibold"><span class="mr-2 rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-800">${escaparPersonal(item.tipo_proforma || 'Masivo')}</span><span class="mr-2 rounded px-2 py-1 text-xs ${item.estado_proforma === 'Definitiva' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${escaparPersonal(item.estado_proforma || 'Proyectada')}</span>${escaparPersonal(item.archivo || 'Sin nombre')}</td>
             <td class="border-b border-slate-100 px-4 py-2">${escaparPersonal(periodos || '-')}</td>
             <td class="border-b border-slate-100 px-4 py-2 text-right font-bold">${Number(item.filas || 0)}</td>
             <td class="border-b border-slate-100 px-4 py-2 text-right text-emerald-700">${Number(item.creadas || 0)}</td>
@@ -1089,8 +1252,9 @@ function renderImportacionesProforma() {
 function renderProformaPersonal() {
     const periodo = document.getElementById('filtroPeriodoProforma').value;
     const tipo = document.getElementById('filtroTipoProforma').value;
+    const estado = document.getElementById('filtroEstadoProforma').value;
     const busqueda = normalizarPersonal(document.getElementById('buscarProformaPersonal').value);
-    const filas = proformasPersonal.filter(item => (!periodo || item.periodo === periodo) && (!tipo || item.tipo_proforma === tipo) && (!busqueda || normalizarPersonal(`${item.tipo_proforma} ${item.fdv} ${item.negocio} ${item.sitio_proveedor} ${item.segmento} ${item.subsitio} ${item.tipo_hora}`).includes(busqueda)));
+    const filas = proformasPersonal.filter(item => (!periodo || item.periodo === periodo) && (!tipo || item.tipo_proforma === tipo) && (!estado || item.estado_proforma === estado) && (!busqueda || normalizarPersonal(`${item.tipo_proforma} ${item.estado_proforma} ${item.fdv} ${item.negocio} ${item.sitio_proveedor} ${item.segmento} ${item.subsitio} ${item.tipo_hora}`).includes(busqueda)));
     document.getElementById('contadorProformaPersonal').textContent = `${filas.length} de ${proformasPersonal.length} fila(s)`;
     document.getElementById('kpiProformaHoras').textContent = formatoHorasPersonal(filas.reduce((suma, item) => suma + Number(item.total_horas || 0), 0));
     document.getElementById('kpiProformaFijo').textContent = formatoMonedaProforma(filas.reduce((suma, item) => suma + Number(item.monto_fijo || 0), 0));
@@ -1099,6 +1263,7 @@ function renderProformaPersonal() {
     document.getElementById('tbodyProformaPersonal').innerHTML = filas.length ? filas.map(item => `
         <tr class="hover:bg-indigo-50/40">
             <td class="border border-slate-200 px-2 py-2 font-bold text-indigo-800">${escaparPersonal(item.tipo_proforma || 'Masivo')}</td>
+            <td class="border border-slate-200 px-2 py-2 text-center"><span class="rounded-full px-2 py-1 text-xs font-bold ${item.estado_proforma === 'Definitiva' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${escaparPersonal(item.estado_proforma || 'Proyectada')}</span></td>
             <td class="border border-slate-200 px-2 py-2 text-center tabular-nums">${escaparPersonal(formatoVistaSeguimiento(item.periodo, 'fecha'))}</td>
             <td class="border border-slate-200 px-2 py-2">${escaparPersonal(item.negocio)}</td>
             <td class="border border-slate-200 px-2 py-2 font-semibold">${escaparPersonal(item.segmento)}</td>
@@ -1110,25 +1275,40 @@ function renderProformaPersonal() {
             <td class="border border-slate-200 px-2 py-2 text-right tabular-nums">${formatoHorasPersonal(item.porcentaje_bono_ac)}%</td>
             <td class="border border-slate-200 px-2 py-2 text-right font-semibold tabular-nums">${formatoMonedaProforma(item.monto_variable)}</td>
             <td class="border border-slate-200 px-2 py-2 text-right font-bold tabular-nums">${formatoMonedaProforma(item.total_proyeccion)}</td>
-        </tr>`).join('') : '<tr><td colspan="12" class="p-8 text-center text-slate-500">Todavía no hay proformas importadas para el filtro seleccionado.</td></tr>';
+        </tr>`).join('') : '<tr><td colspan="13" class="p-8 text-center text-slate-500">Todavía no hay proformas importadas para el filtro seleccionado.</td></tr>';
 }
 
 async function importarProformaPersonal() {
     const input = document.getElementById('archivoProformaPersonal');
     const tipo = document.getElementById('tipoProformaPersonal').value;
-    if (!tipo) return mostrarMensajeProforma('Seleccione si la Proforma es Masivo, Personal Pay o Soporte.');
-    if (!input.files.length) return mostrarMensajeProforma('Seleccione el archivo Excel de Proforma.');
+    const estado = document.getElementById('estadoProformaPersonal').value;
+    if (!tipo) return mostrarDiagnosticoProforma({diagnostico: {
+        causa: 'No se indicó el tipo de Proforma.',
+        correccion: 'Seleccione Masivo, Personal Pay o Soporte y vuelva a intentar.',
+    }});
+    if (!estado) return mostrarDiagnosticoProforma({diagnostico: {
+        causa: 'No se indicó si la Proforma es Proyectada o Definitiva.',
+        correccion: 'Seleccione Proyectada o Definitiva y vuelva a intentar.',
+    }});
+    if (!input.files.length) return mostrarDiagnosticoProforma({diagnostico: {
+        causa: 'No se seleccionó ningún archivo.',
+        correccion: 'Seleccione el archivo Excel de la Proforma y vuelva a presionar Importar.',
+    }});
     const boton = document.getElementById('importarProformaBtn');
     const contenido = boton.innerHTML;
     boton.disabled = true;
     boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Importando...';
     const formulario = new FormData();
     formulario.append('tipo_proforma', tipo);
+    formulario.append('estado_proforma', estado);
     formulario.append('archivo', input.files[0]);
     try {
         const response = await fetch('/api/proforma-personal/importar', {method: 'POST', credentials: 'same-origin', body: formulario});
         const data = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : null;
-        if (!response.ok || !data?.success) throw new Error((data?.errores || [`No se pudo importar (error ${response.status})`]).join(' | '));
+        if (!response.ok || !data?.success) {
+            mostrarDiagnosticoProforma(data, response.status);
+            return;
+        }
         mostrarMensajeProforma(data.mensaje, 'success');
         input.value = '';
         await cargarProformaPersonal();
@@ -1137,7 +1317,10 @@ async function importarProformaPersonal() {
             renderProformaPersonal();
         }
     } catch (error) {
-        mostrarMensajeProforma(error.message || 'No se pudo importar la Proforma.');
+        mostrarDiagnosticoProforma({diagnostico: {
+            causa: error.message || 'No se pudo conectar con el servidor.',
+            correccion: 'Compruebe la conexión, espere unos segundos y vuelva a intentar. El archivo no fue guardado.',
+        }}, 0);
     } finally {
         boton.disabled = false;
         boton.innerHTML = contenido;
