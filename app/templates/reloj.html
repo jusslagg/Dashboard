@@ -8,9 +8,12 @@
     </div>
     <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <div class="rounded-2xl bg-slate-950 p-6 text-white">
+            <div id="gaugePanel" class="relative rounded-2xl p-6 text-white" style="background-color: #020617">
+                <label for="gaugeBackground" class="absolute right-4 top-4 flex items-center gap-2 rounded-lg bg-white px-2 py-1 text-xs font-semibold text-slate-900 shadow-sm">Fondo
+                    <input id="gaugeBackground" type="color" value="#020617" class="h-8 w-9 cursor-pointer rounded border border-slate-300 bg-white p-0.5" aria-label="Color de fondo del reloj">
+                </label>
                 <canvas id="gauge" class="mx-auto w-full max-w-2xl" height="290"></canvas>
-                <div class="-mt-6 text-center"><span id="cumplimiento" class="text-4xl font-black tabular-nums">0%</span><p class="mt-1 text-xs uppercase tracking-[0.22em] text-slate-400">Cumplimiento</p></div>
+                <div class="-mt-6 text-center"><span id="cumplimiento" class="text-4xl font-black tabular-nums">0%</span><p id="cumplimientoLabel" class="mt-1 text-xs uppercase tracking-[0.22em] text-slate-400">Cumplimiento</p></div>
             </div>
             <div class="grid content-center gap-3">
                 <article class="rounded-xl border border-slate-200 p-5"><p class="text-xs font-semibold uppercase text-slate-500">Requerido</p><p id="requerido" class="mt-1 text-3xl font-bold tabular-nums text-slate-950">0</p></article>
@@ -25,8 +28,45 @@
 {% block scripts %}
 <script>
 const formato = value => new Intl.NumberFormat('es-AR', {maximumFractionDigits:2}).format(Number(value||0)); let reloj;
-function dibujar(valor){const canvas=gauge,dpr=devicePixelRatio||1,w=canvas.clientWidth||650,h=290;canvas.width=w*dpr;canvas.height=h*dpr;const c=canvas.getContext('2d');c.scale(dpr,dpr);const x=w/2,y=235,r=Math.min(w*.4,195),colors=['#dc2626','#f97316','#f59e0b','#84cc16','#22c55e','#14b8a6'];c.lineWidth=30;colors.forEach((color,i)=>{c.beginPath();c.strokeStyle=color;c.arc(x,y,r,Math.PI+i*Math.PI/colors.length,Math.PI+(i+1)*Math.PI/colors.length);c.stroke()});const recorrido=Math.min(Math.max(valor*.75,0),1),a=Math.PI+recorrido*Math.PI;c.beginPath();c.strokeStyle='#f8fafc';c.lineWidth=6;c.lineCap='round';c.moveTo(x,y);c.lineTo(x+Math.cos(a)*(r-18),y+Math.sin(a)*(r-18));c.stroke();c.beginPath();c.fillStyle='#f8fafc';c.arc(x,y,11,0,Math.PI*2);c.fill();c.font='12px Inter, sans-serif';c.fillStyle='#94a3b8';c.textAlign='center';c.fillText('0%',x-r,y+28);c.fillText('100%',x+Math.cos(Math.PI*1.75)*r,y+Math.sin(Math.PI*1.75)*r-10);c.fillText('133,33%',x+r,y+28)}
+let gaugeTextColor = '#f8fafc';
+function cambiarFondo(color){
+    gaugePanel.style.backgroundColor=color;
+    const rgb=[1,3,5].map(i=>parseInt(color.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+    gaugeTextColor=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.35?'#0f172a':'#f8fafc';
+    gaugePanel.style.color=gaugeTextColor;
+    cumplimientoLabel.style.color=gaugeTextColor;
+    if(reloj)dibujar(reloj.cumplimiento);
+}
+function dibujar(valor){
+    const canvas=gauge,dpr=devicePixelRatio||1,w=canvas.clientWidth||650,h=290;
+    canvas.width=w*dpr;canvas.height=h*dpr;
+    const c=canvas.getContext('2d');c.scale(dpr,dpr);
+    const x=w/2,y=235,r=Math.min(w*.4,195);
+    const colors=['#ef4444','#f97316','#f59e0b','#84cc16'],sector=Math.PI/colors.length,gap=.018;
+    c.lineWidth=58;
+    colors.forEach((color,i)=>{
+        c.beginPath();c.strokeStyle=color;
+        c.arc(x,y,r,Math.PI+i*sector+(i?gap:0),Math.PI+(i+1)*sector-(i<colors.length-1?gap:0));
+        c.stroke();
+    });
+    const recorrido=Math.min(Math.max(valor*.75,0),1),a=Math.PI+recorrido*Math.PI;
+    const dx=Math.cos(a),dy=Math.sin(a),px=-dy,py=dx;
+    c.beginPath();c.fillStyle=gaugeTextColor;
+    c.moveTo(x+px*9,y+py*9);
+    c.lineTo(x+dx*(r-7),y+dy*(r-7));
+    c.lineTo(x-px*9,y-py*9);
+    c.closePath();c.fill();
+    c.beginPath();c.arc(x,y,12,0,Math.PI*2);c.fill();
+    c.font='12px Inter, sans-serif';c.textAlign='center';
+    c.fillText('0%',x-r,y+35);
+    c.fillText('100%',x+Math.cos(Math.PI*1.75)*r,y+Math.sin(Math.PI*1.75)*r-13);
+    c.fillText('133,33%',x+r,y+35);
+}
 async function cargar(){const response=await fetch(`/api/indicadores?year=${relojYear.value}`),data=await response.json(),r=data.reloj;reloj=r;requerido.textContent=formato(r.requerido);realizado.textContent=formato(r.realizado);diferencia.textContent=`${r.diferencia>0?'+':''}${formato(r.diferencia)}`;diferencia.className=`mt-1 text-3xl font-bold tabular-nums ${r.diferencia>=0?'text-emerald-600':'text-red-600'}`;cumplimiento.textContent=`${formato(r.cumplimiento*100)}%`;dibujar(r.cumplimiento)}
+const savedGaugeBackground=localStorage.getItem('gaugeBackground');
+if(savedGaugeBackground&&/^#[0-9a-f]{6}$/i.test(savedGaugeBackground))gaugeBackground.value=savedGaugeBackground;
+cambiarFondo(gaugeBackground.value);
+gaugeBackground.addEventListener('input',()=>{cambiarFondo(gaugeBackground.value);localStorage.setItem('gaugeBackground',gaugeBackground.value)});
 cargar();addEventListener('resize',()=>reloj&&dibujar(reloj.cumplimiento));
 </script>
 {% endblock %}
