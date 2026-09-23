@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Guía de usuario - Dashboard de Facturación</title>
   <style>
+    @font-face { font-family:Montserrat; src:url("/static/fonts/Montserrat-VariableFont_wght.ttf") format("truetype"); font-weight:100 900; font-style:normal; }
     :root { --navy:#0f2747; --blue:#2563eb; --green:#059669; --ink:#172033; --muted:#5f6b7a; --line:#dbe4ef; --soft:#f4f7fb; --warn:#fff7df; }
     * { box-sizing:border-box; }
     html { scroll-behavior:smooth; }
-    body { margin:0; color:var(--ink); background:var(--soft); font:16px/1.6 Arial, sans-serif; overflow-wrap:anywhere; }
+    body { margin:0; color:var(--ink); background:var(--soft); font:16px/1.6 Montserrat, Arial, sans-serif; overflow-wrap:anywhere; }
     a { color:#1859ba; }
     .top { position:sticky; top:0; z-index:5; display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px max(18px, calc((100% - 1120px)/2)); color:white; background:var(--navy); }
     .top a { color:white; text-decoration:none; }
@@ -69,7 +70,7 @@
       <h1>Dashboard de Facturación</h1>
       <p>Guía sencilla para cargar información, preparar proyecciones y controlar los resultados.</p>
       <p><strong>Incluye:</strong> facturación real, Facturación horas, PLP, precios, variables, Directorio, dotaciones, ratios, historial e importaciones.</p>
-      <small>Guía funcional para usuarios · Actualizada en agosto de 2026</small>
+      <small>Guía funcional para usuarios · Actualizada en septiembre de 2026</small>
     </header>
 
     <nav class="toc" id="indice">
@@ -117,12 +118,12 @@
         <tr><th>Opción</th><th>Uso principal</th></tr>
         <tr><td>Dashboard</td><td>Indicadores y evolución de la facturación real.</td></tr>
         <tr><td>Cargar datos</td><td>Alta manual o masiva de información real.</td></tr>
-        <tr><td>Datos maestros</td><td>Clientes, campañas, responsables, sites y clasificaciones.</td></tr>
+        <tr><td>Datos maestros</td><td>Clientes, campañas, responsables, sites, clasificaciones y normalización de nombres proyectados.</td></tr>
         <tr><td>Control / Comparativo / Matriz</td><td>Revisión detallada y análisis de los datos reales.</td></tr>
         <tr><td>Proyectados</td><td>Horas, PLP, calendario, precios y control operativo.</td></tr>
         <tr><td>Facturación horas</td><td>Resultado monetario proyectado consolidado.</td></tr>
         <tr><td>Variable</td><td>Porcentajes variables, tarifación, Next Gen y suma fija.</td></tr>
-        <tr><td>Directorio</td><td>Reloj, indicadores, dotaciones, evolutivos, variaciones, ratios, históricos y tableros operativos.</td></tr>
+        <tr><td>Directorio</td><td>Reloj, Indicadores, Proyectado vs Facturado, dotaciones, evolutivos, variaciones, ratios, históricos y tableros operativos.</td></tr>
         <tr><td>Historial</td><td>Auditoría y deshacer cambios admitidos.</td></tr>
         <tr><td>Ayuda</td><td>Esta guía de usuario.</td></tr>
       </table>
@@ -154,6 +155,16 @@
         <li>Guardá y verificá que la asociación quede activa.</li>
       </ol>
       <div class="warning">Un espacio, una abreviatura o una palabra adicional puede impedir que una campaña coincida con sus precios o adicionales.</div>
+      <h3>Normalizar nombres proyectados</h3>
+      <p>Usá la subpestaña <strong>Normalizar nombres proyectados</strong> cuando el nombre de Proyectados no coincida con el nombre de la matriz de Facturación.</p>
+      <ol class="steps">
+        <li>Elegí el año que querés revisar.</li>
+        <li>Seleccioná a la izquierda el cliente y servicio de Proyectados.</li>
+        <li>Buscá a la derecha la campaña equivalente de Facturación.</li>
+        <li>Presioná <strong>Vincular</strong>. Podés vincular varias campañas al mismo nombre proyectado.</li>
+        <li>Revisá el resultado en <strong>Directorio &gt; Proyectado vs Facturado</strong>.</li>
+      </ol>
+      <div class="note">La vinculación ajusta el cruce y la exportación; no cambia los nombres ni los importes originales. Usá <strong>Quitar</strong> para deshacer una correspondencia.</div>
       <h3>Cambio de responsable desde un mes</h3>
       <p>Usá <strong>Aplicar desde mes</strong> cuando el cambio tenga vigencia desde una fecha. Así se conserva el responsable histórico de los meses anteriores.</p>
       <a class="back" href="#indice">Volver al índice ↑</a>
@@ -175,6 +186,14 @@
       <div class="note"><strong>Penalizaciones:</strong> se cargan como valor positivo cuando la plantilla así lo pide, pero el sistema las descuenta del total.</div>
       <h3>Justificaciones</h3>
       <p>Usá esta pantalla para explicar ajustes, bonos, penalizaciones o diferencias. La justificación queda asociada al registro real.</p>
+      <h3>Carga de datos Personal</h3>
+      <p>Esta pantalla reúne el circuito mensual de <strong>Proforma</strong> y <strong>Seguimiento</strong> de Personal.</p>
+      <ul>
+        <li>En Proforma, seleccioná el tipo y el estado correcto antes de importar. Una proforma definitiva puede alimentar el cierre y la publicación del período.</li>
+        <li>En Seguimiento, importá el libro fuente, revisá hojas, fórmulas y advertencias, y completá las correspondencias pendientes.</li>
+        <li>Antes de publicar al Dashboard, verificá el período, el cierre de tráfico y que no queden campañas sin clasificar.</li>
+        <li>Las importaciones y publicaciones compatibles quedan registradas en Historial y pueden deshacerse desde allí.</li>
+      </ul>
       <a class="back" href="#indice">Volver al índice ↑</a>
     </section>
 
@@ -326,9 +345,19 @@
         <li>En Cumplimiento de horas, las variantes de nombre del mismo cliente se consolidan para evitar filas duplicadas.</li>
         <li>Las tablas se muestran completas dentro de la página; en pantallas pequeñas la página se adapta al ancho disponible.</li>
       </ul>
+      <h3>Proyectado vs Facturado</h3>
+      <p>Compara <strong>Teórico</strong>, <strong>Proyectado</strong> y <strong>Facturado</strong> por mes. Podés filtrar por año, período, site o gerencia, cliente, servicio y texto. La leyenda identifica cada métrica y cada servicio; las etiquetas verticales resumen los valores dentro del gráfico y el cursor muestra el detalle.</p>
+      <p>Si un servicio no cruza correctamente, corregí su correspondencia en <strong>Datos maestros &gt; Normalizar nombres proyectados</strong>.</p>
+      <h3>Reloj, Indicadores y descargas</h3>
+      <ul>
+        <li>El Reloj permite personalizar sus colores, incluido el fondo, y descargar su imagen.</li>
+        <li>En Indicadores, los valores se muestran dentro de las barras, en vertical, blanco y negrita.</li>
+        <li>La descarga completa de Directorio crea un Excel con una pestaña por cada solapa o vista y conserva los valores como datos editables.</li>
+        <li>Los números se muestran con punto para miles y coma para decimales.</li>
+      </ul>
       <h3>Colores de los gráficos</h3>
       <p>Los selectores de paleta modifican el gráfico de la aplicación. El botón <strong>Restaurar original</strong> devuelve ese gráfico a sus colores predeterminados. La preferencia queda guardada en el navegador para las vistas que admiten personalización.</p>
-      <div class="note"><strong>Actualización:</strong> al importar o editar la base correspondiente, recargá la vista para que indicadores, tablas y gráficos lean los valores vigentes. La guía no incluye funciones de descarga de presentaciones.</div>
+      <div class="note"><strong>Actualización:</strong> al importar, editar o normalizar la base correspondiente, recargá la vista para que indicadores, tablas y gráficos lean los valores vigentes.</div>
       <a class="back" href="#indice">Volver al índice ↑</a>
     </section>
 

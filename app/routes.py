@@ -2852,7 +2852,10 @@ def validar_payload_facturacion(data, exigir_configuracion_valor_hora=True, pres
         errores.append('El valor hora objetivo debe ser mayor a 0')
     if importe_fijo is not None and importe_fijo < 0:
         errores.append('El importe fijo facturado no puede ser negativo')
-    if variable_objetivo < 0:
+    # El archivo operativo de Personal puede traer objetivo de bono negativo
+    # para campañas con ajuste objetivo. Se conserva el valor fuente durante
+    # la importación mensual, igual que ocurre con las horas negativas válidas.
+    if variable_objetivo < 0 and not es_personal_directo:
         errores.append('Variable Objetivo no puede ser negativo')
     if tipo_jornada and tipo_jornada not in TIPOS_VH and not es_next_gen and not es_personal_directo:
         errores.append(f'El tipo de VH "{data.get("tipo_jornada", "")}" no es válido')
@@ -5965,9 +5968,12 @@ def construir_resumen_proyeccion_data(year):
             site = site_original_next_gen(proyeccion.cliente, proyeccion.campania)
         for nombre_campania, horas, _ in aperturas_nocturnidad(proyeccion):
             site_apertura = normalizar_site(site_regularizado(proyeccion.cliente, nombre_campania) or site)
-            precio_apertura = precios_por_nombre_variable.get(
-                (normalizar_nombre_variable(nombre_campania), proyeccion.mes),
-                precio,
+            precio_apertura = (
+                precios_por_clave.get((proyeccion.cliente, nombre_campania, proyeccion.mes))
+                or precios_por_nombre_variable.get(
+                    (normalizar_nombre_variable(nombre_campania), proyeccion.mes)
+                )
+                or precio
             )
             valor = horas * (precio_apertura.precio_final or 0)
             fila_clave = (site_apertura, proyeccion.cliente, nombre_campania, 'Horas')

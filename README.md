@@ -222,6 +222,8 @@ Al iniciar, Flask crea las tablas que falten y aplica algunos ajustes simples de
 | `asignaciones_comerciales` | `AsignacionComercial` | Catálogo maestro de cliente, gerente, jefe de site, campaña, subcampaña y tipo de negocio. |
 | `matriz_proyecciones` | `ProyeccionMatriz` | Guarda la planificación mensual por cliente/campaña: dotación, carga horaria, días objetivo, horas requeridas y cumplimiento. |
 | `matriz_proyecciones_jornadas` | `ProyeccionMatrizJornada` | Guarda aperturas de jornadas dentro de una proyección cuando una campaña necesita más de una configuración horaria. |
+| `proforma_personal` | `ProformaPersonal` | Guarda proformas mensuales de Personal por tipo, estado, segmento, tipo de hora, precio y componentes variables. |
+| `seguimiento_personal_importaciones` | `SeguimientoPersonalImportacion` | Conserva los libros importados de seguimiento de Personal, sus hojas, fórmulas, advertencias y usuario responsable. |
 | `personal_distribucion_horas` | `PersonalDistribucionHoras` | Guarda por año, mes y clasificación PLP el porcentaje de horas diurnas; la nocturnidad es la diferencia hasta 100%. |
 | `matriz_precios` | `ProyeccionPrecio` | Guarda precios mensuales por cliente/campaña, alcance, precio final e importe fijo mensual. |
 | `variables_campanias` | `VariableCampania` | Guarda el porcentaje variable mensual por cliente/campaña. |
@@ -238,6 +240,7 @@ Al iniciar, Flask crea las tablas que falten y aplica algunos ajustes simples de
 | `dotaciones_clientes_mensuales` | `DotacionClienteMensual` | Dotación requerida mensual abierta por cliente. |
 | `graficos_dotaciones_mensuales` | `GraficoDotacionMensual` | Serie mensual para gráficos de dotación requerida y activa por sede. |
 | `excepciones_calculo` | `ExcepcionCalculo` | Reglas excepcionales y ajustes porcentuales por cliente/campaña. |
+| `normalizacion_nombres_proyectados` | `NormalizacionNombreProyectado` | Vincula cada nombre canónico de Facturación con el cliente y servicio equivalente de Proyectados. |
 
 ### Mapa de carga y destino
 
@@ -251,6 +254,8 @@ Al iniciar, Flask crea las tablas que falten y aplica algunos ajustes simples de
 | `feriados_operativos` | Calendario operativo | Días objetivo, horas y dotaciones de `matriz_proyecciones`. |
 | `matriz_proyecciones` | Matriz de proyecciones, importación general o importación PLP | Control proyecciones y base de horas de Facturación horas. |
 | `matriz_proyecciones_jornadas` | Aperturas de jornada dentro de una proyección | Suma de horas y dotaciones de su registro padre en `matriz_proyecciones`. |
+| `proforma_personal` | Facturación > Carga de datos Personal > Proforma | Alimenta el seguimiento de Personal y permite publicar períodos definitivos en el Dashboard. |
+| `seguimiento_personal_importaciones` | Facturación > Carga de datos Personal > Seguimiento | Conserva el archivo fuente y permite revisar, completar, cerrar y descargar el seguimiento procesado. |
 | `personal_distribucion_horas` | Matriz de proyecciones > PLP > porcentajes | Apertura diurna/nocturna de las proyecciones Personal y sus cálculos posteriores. |
 | `matriz_precios` | Matriz de precios o importación anual | Valoriza horas proyectadas, nocturnidad e importes fijos en Facturación horas. |
 | `variables_campanias` | Variable > % Variable o importación anual | Estimación variable y total consolidado de Facturación horas. |
@@ -267,6 +272,7 @@ Al iniciar, Flask crea las tablas que falten y aplica algunos ajustes simples de
 | `dotaciones_clientes_mensuales` | Importación de dotaciones por cliente | Cuadros, evolutivos y comparaciones de dotación requerida. |
 | `graficos_dotaciones_mensuales` | Importación de gráficos de dotaciones | Series de requerida, activa SL, activa BA, diferencia y sobre-staff. |
 | `excepciones_calculo` | Configuración técnica | Ajustes puntuales del cálculo sin alterar la fórmula general. |
+| `normalizacion_nombres_proyectados` | Datos maestros > Normalizar nombres proyectados | Unifica las denominaciones usadas por Proyectados y Facturación en el análisis ejecutivo y sus exportaciones. |
 
 ### Ficha de colecciones para la base de datos
 
@@ -1478,7 +1484,17 @@ Las importaciones validan encabezados, meses y campos obligatorios antes de guar
 
 La aplicación permite exportar información a Excel desde módulos de control y análisis.
 
-Las exportaciones respetan filtros activos cuando el endpoint lo contempla.
+Las exportaciones respetan filtros activos cuando el endpoint lo contempla. La descarga completa de **Directorio** genera un libro de Excel con una hoja por solapa o vista disponible. Los valores se exportan como datos editables, con títulos y estructura legible. El reloj también puede descargarse como imagen desde su propia pantalla.
+
+Los números visibles siguen la convención argentina: punto para miles y coma para decimales. Los archivos tabulares usan valores numéricos o representaciones compatibles con Excel según el formato de descarga.
+
+## Proyectado vs Facturado y normalización de nombres
+
+La vista **Directorio > Proyectado vs Facturado** compara por año y mes tres métricas: teórico, proyectado y facturado. Permite filtrar por site o gerencia, cliente, servicio y texto libre. El gráfico incluye leyendas de métricas y servicios, etiquetas resumidas dentro del gráfico y detalle completo al pasar el cursor.
+
+La comparación aplica las correspondencias configuradas en **Datos maestros > Normalizar nombres proyectados**. El usuario selecciona primero el nombre proveniente de Proyectados y luego vincula una o varias campañas canónicas de Facturación. La relación se guarda en `normalizacion_nombres_proyectados`, se refleja inmediatamente en la vista y también en la exportación de Directorio. Los importes y nombres de origen permanecen sin modificación.
+
+Cada `campania_id` de Facturación puede tener una sola correspondencia activa. Cambiar una asociación mueve esa campaña al nombre proyectado elegido; quitarla vuelve a dejarla pendiente de normalización.
 
 ## Cálculos principales
 
@@ -1536,6 +1552,7 @@ Rutas HTML:
 /login
 /
 /cargar
+/carga-datos-personal
 /catalogos
 /control
 /justificaciones
@@ -1550,6 +1567,7 @@ Rutas HTML:
 /calendario-operativo
 /historial
 /usuarios
+/proyectado-vs-facturado
 ```
 
 APIs destacadas:
@@ -1567,6 +1585,10 @@ APIs destacadas:
 /api/comparativo
 /api/matriz
 /api/matriz-proyecciones
+/api/proforma-personal
+/api/proforma-personal/template
+/api/proforma-personal/importar
+/api/seguimiento-personal
 /api/proyecciones-plp/template
 /api/proyecciones-plp/importar
 /api/personal-distribucion
@@ -1595,6 +1617,10 @@ APIs destacadas:
 /api/clientes
 /api/gerentes
 /api/meses
+/api/proyectado-vs-facturado
+/api/catalogos/normalizaciones-proyectados
+/api/catalogos/normalizaciones-proyectados/<id>
+/api/directorio/exportar
 ```
 
 ## Seguridad

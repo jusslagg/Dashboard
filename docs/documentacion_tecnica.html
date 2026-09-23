@@ -7,7 +7,8 @@
   <style>
     :root{--navy:#0f2747;--blue:#2563eb;--cyan:#0891b2;--ink:#172033;--muted:#5f6b7a;--line:#dbe4ef;--soft:#f4f7fb;}
     *{box-sizing:border-box} html{scroll-behavior:smooth}
-    body{margin:0;color:var(--ink);background:var(--soft);font:15px/1.62 Arial,sans-serif;overflow-wrap:anywhere}
+    @font-face{font-family:Montserrat;src:url("/static/fonts/Montserrat-VariableFont_wght.ttf") format("truetype");font-weight:100 900;font-style:normal}
+    body{margin:0;color:var(--ink);background:var(--soft);font:15px/1.62 Montserrat,Arial,sans-serif;overflow-wrap:anywhere}
     a{color:#1859ba} .top{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px max(18px,calc((100% - 1180px)/2));color:#fff;background:var(--navy)}
     .top a{color:#fff;text-decoration:none} .buttons{display:flex;gap:8px;flex-wrap:wrap}
     .button{display:inline-block;padding:8px 13px;border:1px solid #7fa1ce;border-radius:7px;background:#173b69;font-weight:bold}
@@ -33,7 +34,7 @@
 <body>
   <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/esquema/pdf">Esquema BD en PDF</a><a class="button" href="/documentacion-tecnica/esquema/sqlite">SQL SQLite</a><a class="button" href="/documentacion-tecnica/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/documentacion-tecnica/descargar">Documentación completa PDF</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Agosto de 2026</small></header>
+    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Septiembre de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice técnico</h2><ol><li class=""><a href="#documentacion-disponible">Documentación disponible</a></li>
 <li class=""><a href="#estado-del-proyecto">Estado del proyecto</a></li>
 <li class=""><a href="#estructura">Estructura</a></li>
@@ -83,6 +84,7 @@
 <li class=""><a href="#historial-y-deshacer">Historial y deshacer</a></li>
 <li class=""><a href="#importaciones-y-plantillas">Importaciones y plantillas</a></li>
 <li class=""><a href="#exportaciones">Exportaciones</a></li>
+<li class=""><a href="#proyectado-vs-facturado-y-normalizacion-de-nombres">Proyectado vs Facturado y normalización de nombres</a></li>
 <li class=""><a href="#calculos-principales">Cálculos principales</a></li>
 <li class="sub"><a href="#facturacion-real">Facturación real</a></li>
 <li class="sub"><a href="#penalizaciones">Penalizaciones</a></li>
@@ -307,6 +309,16 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <td>Guarda aperturas de jornadas dentro de una proyección cuando una campaña necesita más de una configuración horaria.</td>
 </tr>
 <tr>
+<td><code>proforma_personal</code></td>
+<td><code>ProformaPersonal</code></td>
+<td>Guarda proformas mensuales de Personal por tipo, estado, segmento, tipo de hora, precio y componentes variables.</td>
+</tr>
+<tr>
+<td><code>seguimiento_personal_importaciones</code></td>
+<td><code>SeguimientoPersonalImportacion</code></td>
+<td>Conserva los libros importados de seguimiento de Personal, sus hojas, fórmulas, advertencias y usuario responsable.</td>
+</tr>
+<tr>
 <td><code>personal_distribucion_horas</code></td>
 <td><code>PersonalDistribucionHoras</code></td>
 <td>Guarda por año, mes y clasificación PLP el porcentaje de horas diurnas; la nocturnidad es la diferencia hasta 100%.</td>
@@ -386,6 +398,11 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <td><code>ExcepcionCalculo</code></td>
 <td>Reglas excepcionales y ajustes porcentuales por cliente/campaña.</td>
 </tr>
+<tr>
+<td><code>normalizacion_nombres_proyectados</code></td>
+<td><code>NormalizacionNombreProyectado</code></td>
+<td>Vincula cada nombre canónico de Facturación con el cliente y servicio equivalente de Proyectados.</td>
+</tr>
 </tbody></table></div>
 <h3 id="mapa-de-carga-y-destino">Mapa de carga y destino<a class="anchor" href="#mapa-de-carga-y-destino" aria-label="Enlace a esta sección">#</a></h3>
 <div class="table-wrap"><table><thead><tr>
@@ -432,6 +449,16 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <td><code>matriz_proyecciones_jornadas</code></td>
 <td>Aperturas de jornada dentro de una proyección</td>
 <td>Suma de horas y dotaciones de su registro padre en <code>matriz_proyecciones</code>.</td>
+</tr>
+<tr>
+<td><code>proforma_personal</code></td>
+<td>Facturación &gt; Carga de datos Personal &gt; Proforma</td>
+<td>Alimenta el seguimiento de Personal y permite publicar períodos definitivos en el Dashboard.</td>
+</tr>
+<tr>
+<td><code>seguimiento_personal_importaciones</code></td>
+<td>Facturación &gt; Carga de datos Personal &gt; Seguimiento</td>
+<td>Conserva el archivo fuente y permite revisar, completar, cerrar y descargar el seguimiento procesado.</td>
 </tr>
 <tr>
 <td><code>personal_distribucion_horas</code></td>
@@ -512,6 +539,11 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <td><code>excepciones_calculo</code></td>
 <td>Configuración técnica</td>
 <td>Ajustes puntuales del cálculo sin alterar la fórmula general.</td>
+</tr>
+<tr>
+<td><code>normalizacion_nombres_proyectados</code></td>
+<td>Datos maestros &gt; Normalizar nombres proyectados</td>
+<td>Unifica las denominaciones usadas por Proyectados y Facturación en el análisis ejecutivo y sus exportaciones.</td>
 </tr>
 </tbody></table></div>
 <h3 id="ficha-de-colecciones-para-la-base-de-datos">Ficha de colecciones para la base de datos<a class="anchor" href="#ficha-de-colecciones-para-la-base-de-datos" aria-label="Enlace a esta sección">#</a></h3>
@@ -1864,7 +1896,12 @@ python scripts\generar_documentacion_tecnica.py</code></pre>
 <p class="">Las importaciones validan encabezados, meses y campos obligatorios antes de guardar.</p>
 <h2 id="exportaciones">Exportaciones<a class="anchor" href="#exportaciones" aria-label="Enlace a esta sección">#</a></h2>
 <p class="">La aplicación permite exportar información a Excel desde módulos de control y análisis.</p>
-<p class="">Las exportaciones respetan filtros activos cuando el endpoint lo contempla.</p>
+<p class="">Las exportaciones respetan filtros activos cuando el endpoint lo contempla. La descarga completa de <strong>Directorio</strong> genera un libro de Excel con una hoja por solapa o vista disponible. Los valores se exportan como datos editables, con títulos y estructura legible. El reloj también puede descargarse como imagen desde su propia pantalla.</p>
+<p class="">Los números visibles siguen la convención argentina: punto para miles y coma para decimales. Los archivos tabulares usan valores numéricos o representaciones compatibles con Excel según el formato de descarga.</p>
+<h2 id="proyectado-vs-facturado-y-normalizacion-de-nombres">Proyectado vs Facturado y normalización de nombres<a class="anchor" href="#proyectado-vs-facturado-y-normalizacion-de-nombres" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">La vista <strong>Directorio &gt; Proyectado vs Facturado</strong> compara por año y mes tres métricas: teórico, proyectado y facturado. Permite filtrar por site o gerencia, cliente, servicio y texto libre. El gráfico incluye leyendas de métricas y servicios, etiquetas resumidas dentro del gráfico y detalle completo al pasar el cursor.</p>
+<p class="">La comparación aplica las correspondencias configuradas en <strong>Datos maestros &gt; Normalizar nombres proyectados</strong>. El usuario selecciona primero el nombre proveniente de Proyectados y luego vincula una o varias campañas canónicas de Facturación. La relación se guarda en <code>normalizacion_nombres_proyectados</code>, se refleja inmediatamente en la vista y también en la exportación de Directorio. Los importes y nombres de origen permanecen sin modificación.</p>
+<p class="">Cada <code>campania_id</code> de Facturación puede tener una sola correspondencia activa. Cambiar una asociación mueve esa campaña al nombre proyectado elegido; quitarla vuelve a dejarla pendiente de normalización.</p>
 <h2 id="calculos-principales">Cálculos principales<a class="anchor" href="#calculos-principales" aria-label="Enlace a esta sección">#</a></h2>
 <h3 id="facturacion-real">Facturación real<a class="anchor" href="#facturacion-real" aria-label="Enlace a esta sección">#</a></h3>
 <p class="">El modelo de facturación calcula, entre otros:</p>
@@ -1902,6 +1939,7 @@ total campaña = importe horas + estimación variable + Next Gen + tarifaciones<
 <pre><code class="language-text">/login
 /
 /cargar
+/carga-datos-personal
 /catalogos
 /control
 /justificaciones
@@ -1915,7 +1953,8 @@ total campaña = importe horas + estimación variable + Next Gen + tarifaciones<
 /control-proyecciones
 /calendario-operativo
 /historial
-/usuarios</code></pre>
+/usuarios
+/proyectado-vs-facturado</code></pre>
 <p class="">APIs destacadas:</p>
 <pre><code class="language-text">/api/auth/login
 /api/auth/logout
@@ -1929,6 +1968,10 @@ total campaña = importe horas + estimación variable + Next Gen + tarifaciones<
 /api/comparativo
 /api/matriz
 /api/matriz-proyecciones
+/api/proforma-personal
+/api/proforma-personal/template
+/api/proforma-personal/importar
+/api/seguimiento-personal
 /api/proyecciones-plp/template
 /api/proyecciones-plp/importar
 /api/personal-distribucion
@@ -1956,7 +1999,11 @@ total campaña = importe horas + estimación variable + Next Gen + tarifaciones<
 /api/asignaciones
 /api/clientes
 /api/gerentes
-/api/meses</code></pre>
+/api/meses
+/api/proyectado-vs-facturado
+/api/catalogos/normalizaciones-proyectados
+/api/catalogos/normalizaciones-proyectados/&lt;id&gt;
+/api/directorio/exportar</code></pre>
 <h2 id="seguridad">Seguridad<a class="anchor" href="#seguridad" aria-label="Enlace a esta sección">#</a></h2>
 <p class="">Medidas incluidas:</p>
 <ul>
@@ -3134,6 +3181,43 @@ CREATE INDEX ix_personal_distribucion_horas_servicio ON personal_distribucion_ho
 CREATE INDEX ix_personal_distribucion_horas_year ON personal_distribucion_horas (year);
 
 -- ============================================================
+-- TABLA: proforma_personal
+-- ============================================================
+CREATE TABLE proforma_personal (
+	id INTEGER NOT NULL,
+	tipo_proforma VARCHAR(30) NOT NULL,
+	estado_proforma VARCHAR(20) NOT NULL,
+	fdv VARCHAR(150) NOT NULL,
+	periodo VARCHAR(6) NOT NULL,
+	negocio VARCHAR(100) NOT NULL,
+	sitio_proveedor VARCHAR(100) NOT NULL,
+	segmento VARCHAR(150) NOT NULL,
+	subsitio VARCHAR(150),
+	tipo_hora VARCHAR(50) NOT NULL,
+	total_horas NUMERIC(20, 10) NOT NULL,
+	precio NUMERIC(20, 10) NOT NULL,
+	monto_fijo NUMERIC(20, 10) NOT NULL,
+	porcentaje_bono_kpi_vs NUMERIC(15, 10) NOT NULL,
+	monto_variable_kpi_vs NUMERIC(20, 10) NOT NULL,
+	porcentaje_bono_ac NUMERIC(15, 10) NOT NULL,
+	monto_variable_ac NUMERIC(20, 10) NOT NULL,
+	monto_variable NUMERIC(20, 10) NOT NULL,
+	total_proyeccion NUMERIC(20, 10) NOT NULL,
+	bono_porcentaje_total NUMERIC(15, 10) NOT NULL,
+	archivo_origen VARCHAR(255),
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_proforma_personal_fila_tipo UNIQUE (tipo_proforma, fdv, periodo, negocio, sitio_proveedor, segmento, subsitio, tipo_hora)
+);
+
+CREATE INDEX ix_proforma_personal_estado_proforma ON proforma_personal (estado_proforma);
+
+CREATE INDEX ix_proforma_personal_periodo ON proforma_personal (periodo);
+
+CREATE INDEX ix_proforma_personal_tipo_proforma ON proforma_personal (tipo_proforma);
+
+-- ============================================================
 -- TABLA: ratio_eli_ii_mensual
 -- ============================================================
 CREATE TABLE ratio_eli_ii_mensual (
@@ -3258,6 +3342,7 @@ CREATE TABLE asignaciones_comerciales (
 	campania VARCHAR(100) NOT NULL,
 	subcampania VARCHAR(100) NOT NULL,
 	tipo_negocio VARCHAR(100),
+	grupo_facturacion VARCHAR(100),
 	es_next_gen BOOLEAN NOT NULL,
 	activa BOOLEAN NOT NULL,
 	vigencia_desde VARCHAR(7),
@@ -3268,6 +3353,8 @@ CREATE TABLE asignaciones_comerciales (
 );
 
 CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
+
+CREATE INDEX ix_asignaciones_comerciales_grupo_facturacion ON asignaciones_comerciales (grupo_facturacion);
 
 CREATE INDEX ix_asignaciones_comerciales_vigencia_desde ON asignaciones_comerciales (vigencia_desde);
 
@@ -3327,6 +3414,42 @@ CREATE TABLE matriz_proyecciones_jornadas (
 );
 
 CREATE INDEX ix_matriz_proyecciones_jornadas_proyeccion_id ON matriz_proyecciones_jornadas (proyeccion_id);
+
+-- ============================================================
+-- TABLA: normalizacion_nombres_proyectados
+-- ============================================================
+CREATE TABLE normalizacion_nombres_proyectados (
+	id INTEGER NOT NULL,
+	campania_id INTEGER NOT NULL,
+	cliente_proyectado VARCHAR(160) NOT NULL,
+	servicio_proyectado VARCHAR(160) NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(campania_id) REFERENCES campanias (id)
+);
+
+CREATE UNIQUE INDEX ix_normalizacion_nombres_proyectados_campania_id ON normalizacion_nombres_proyectados (campania_id);
+
+-- ============================================================
+-- TABLA: seguimiento_personal_importaciones
+-- ============================================================
+CREATE TABLE seguimiento_personal_importaciones (
+	id INTEGER NOT NULL,
+	archivo VARCHAR(255) NOT NULL,
+	periodo_referencia VARCHAR(100),
+	contenido_hojas BLOB NOT NULL,
+	contenido_xlsx BLOB NOT NULL,
+	cantidad_hojas INTEGER NOT NULL,
+	cantidad_filas INTEGER NOT NULL,
+	cantidad_formulas INTEGER NOT NULL,
+	advertencias INTEGER NOT NULL,
+	usuario_id INTEGER,
+	creado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(usuario_id) REFERENCES usuarios (id)
+);
+
+CREATE INDEX ix_seguimiento_personal_importaciones_creado_en ON seguimiento_personal_importaciones (creado_en);
 </code></pre>
 <h2 id="anexo-ddl-postgresql">Anexo DDL completo - PostgreSQL<a class="anchor" href="#anexo-ddl-postgresql" aria-label="Enlace a esta sección">#</a></h2><p>Definición física generada desde <code>app/models.py</code>.</p><pre><code class="language-sql">-- Dashboard de Facturación
 -- Esquema físico completo para POSTGRESQL
@@ -3633,6 +3756,43 @@ CREATE INDEX ix_personal_distribucion_horas_servicio ON personal_distribucion_ho
 CREATE INDEX ix_personal_distribucion_horas_year ON personal_distribucion_horas (year);
 
 -- ============================================================
+-- TABLA: proforma_personal
+-- ============================================================
+CREATE TABLE proforma_personal (
+	id SERIAL NOT NULL,
+	tipo_proforma VARCHAR(30) NOT NULL,
+	estado_proforma VARCHAR(20) NOT NULL,
+	fdv VARCHAR(150) NOT NULL,
+	periodo VARCHAR(6) NOT NULL,
+	negocio VARCHAR(100) NOT NULL,
+	sitio_proveedor VARCHAR(100) NOT NULL,
+	segmento VARCHAR(150) NOT NULL,
+	subsitio VARCHAR(150),
+	tipo_hora VARCHAR(50) NOT NULL,
+	total_horas NUMERIC(20, 10) NOT NULL,
+	precio NUMERIC(20, 10) NOT NULL,
+	monto_fijo NUMERIC(20, 10) NOT NULL,
+	porcentaje_bono_kpi_vs NUMERIC(15, 10) NOT NULL,
+	monto_variable_kpi_vs NUMERIC(20, 10) NOT NULL,
+	porcentaje_bono_ac NUMERIC(15, 10) NOT NULL,
+	monto_variable_ac NUMERIC(20, 10) NOT NULL,
+	monto_variable NUMERIC(20, 10) NOT NULL,
+	total_proyeccion NUMERIC(20, 10) NOT NULL,
+	bono_porcentaje_total NUMERIC(15, 10) NOT NULL,
+	archivo_origen VARCHAR(255),
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_proforma_personal_fila_tipo UNIQUE (tipo_proforma, fdv, periodo, negocio, sitio_proveedor, segmento, subsitio, tipo_hora)
+);
+
+CREATE INDEX ix_proforma_personal_estado_proforma ON proforma_personal (estado_proforma);
+
+CREATE INDEX ix_proforma_personal_periodo ON proforma_personal (periodo);
+
+CREATE INDEX ix_proforma_personal_tipo_proforma ON proforma_personal (tipo_proforma);
+
+-- ============================================================
 -- TABLA: ratio_eli_ii_mensual
 -- ============================================================
 CREATE TABLE ratio_eli_ii_mensual (
@@ -3757,6 +3917,7 @@ CREATE TABLE asignaciones_comerciales (
 	campania VARCHAR(100) NOT NULL,
 	subcampania VARCHAR(100) NOT NULL,
 	tipo_negocio VARCHAR(100),
+	grupo_facturacion VARCHAR(100),
 	es_next_gen BOOLEAN NOT NULL,
 	activa BOOLEAN NOT NULL,
 	vigencia_desde VARCHAR(7),
@@ -3767,6 +3928,8 @@ CREATE TABLE asignaciones_comerciales (
 );
 
 CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
+
+CREATE INDEX ix_asignaciones_comerciales_grupo_facturacion ON asignaciones_comerciales (grupo_facturacion);
 
 CREATE INDEX ix_asignaciones_comerciales_vigencia_desde ON asignaciones_comerciales (vigencia_desde);
 
@@ -3826,6 +3989,42 @@ CREATE TABLE matriz_proyecciones_jornadas (
 );
 
 CREATE INDEX ix_matriz_proyecciones_jornadas_proyeccion_id ON matriz_proyecciones_jornadas (proyeccion_id);
+
+-- ============================================================
+-- TABLA: normalizacion_nombres_proyectados
+-- ============================================================
+CREATE TABLE normalizacion_nombres_proyectados (
+	id SERIAL NOT NULL,
+	campania_id INTEGER NOT NULL,
+	cliente_proyectado VARCHAR(160) NOT NULL,
+	servicio_proyectado VARCHAR(160) NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(campania_id) REFERENCES campanias (id)
+);
+
+CREATE UNIQUE INDEX ix_normalizacion_nombres_proyectados_campania_id ON normalizacion_nombres_proyectados (campania_id);
+
+-- ============================================================
+-- TABLA: seguimiento_personal_importaciones
+-- ============================================================
+CREATE TABLE seguimiento_personal_importaciones (
+	id SERIAL NOT NULL,
+	archivo VARCHAR(255) NOT NULL,
+	periodo_referencia VARCHAR(100),
+	contenido_hojas BYTEA NOT NULL,
+	contenido_xlsx BYTEA NOT NULL,
+	cantidad_hojas INTEGER NOT NULL,
+	cantidad_filas INTEGER NOT NULL,
+	cantidad_formulas INTEGER NOT NULL,
+	advertencias INTEGER NOT NULL,
+	usuario_id INTEGER,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(usuario_id) REFERENCES usuarios (id)
+);
+
+CREATE INDEX ix_seguimiento_personal_importaciones_creado_en ON seguimiento_personal_importaciones (creado_en);
 </code></pre></article>
     <footer>Dashboard de Facturación · Documentación técnica</footer>
   </main>

@@ -21,11 +21,20 @@ from app.models import (
     SiteProyeccion,
     TarifacionCampania,
     VariableCampania,
+    _canonizar_campania,
+    _canonizar_cliente,
 )
 from app.routes import normalizar_header, registrar_historial, site_original_next_gen, snapshot_proyeccion
 
 
 YEAR = 2026
+
+# El libro publica estas aperturas con precio, pero su hoja Facturacion Horas
+# las deja expresamente en cero antes del primer mes con dotacion propia.
+SALIDAS_SIN_HERENCIA = {
+    ("piano referidos", "2026-01"),
+    ("santander getnet supervisor exclusivo", "2026-06"),
+}
 
 
 def mes(valor):
@@ -44,6 +53,11 @@ def numero(valor, default=0):
 
 def texto(valor):
     return str(valor or "").strip()
+
+
+def identidad_canonica(cliente, campania):
+    cliente = _canonizar_cliente(texto(cliente))
+    return cliente, _canonizar_campania(cliente, texto(campania))
 
 
 def snapshot_simple(registro, tipo=None):
@@ -71,32 +85,46 @@ def guardar_historial(entidad, clave, resumen, antes, despues):
 def sincronizar_matriz(workbook):
     sheet = workbook["Matriz"]
     grupos = defaultdict(list)
+    nombres = {}
     for row in sheet.iter_rows(min_row=3, values_only=True):
-        cliente, campania, year, fecha = texto(row[2]), texto(row[3]), row[4], row[5]
+        cliente, campania = identidad_canonica(row[2], row[3])
+        year, fecha = row[4], row[5]
         clave_mes = mes(fecha)
         # El período de la fila manda sobre la columna Año. El libro incluye,
         # por ejemplo, una jornada de mayo-2026 rotulada accidentalmente 2027
         # y sus propias fórmulas la incorporan al total de mayo.
         if not cliente or not campania or not clave_mes or not clave_mes.startswith(str(YEAR)):
             continue
-        grupos[(cliente, campania, clave_mes)].append(row)
+        clave = (normalizar_header(cliente), normalizar_header(campania), clave_mes)
+        grupos[clave].append(row)
+        nombres.setdefault(clave, (cliente, campania, clave_mes))
 
-    existentes = {(r.cliente, r.campania, r.mes): r for r in ProyeccionMatriz.query.filter_by(year=YEAR).all()}
+    existentes = {
+        (normalizar_header(r.cliente), normalizar_header(r.campania), r.mes): r
+        for r in ProyeccionMatriz.query.filter_by(year=YEAR).all()
+    }
     # La hoja Matriz no reemplaza las aperturas PLP mantenidas por la app.
     # Se actualizan las claves presentes en el libro y se preservan las demás.
     claves = sorted(set(grupos))
     antes, despues = [], []
     for clave in claves:
         registro = existentes.get(clave)
-        antes.append(snapshot_proyeccion(registro))
         filas = grupos.get(clave)
+        cliente, campania, clave_mes = nombres[clave]
         if not registro:
-            registro = ProyeccionMatriz(cliente=clave[0], campania=clave[1], year=YEAR, mes=clave[2])
-            db.session.add(registro)
+            registro = ProyeccionMatriz.query.filter(
+                db.func.lower(ProyeccionMatriz.cliente) == cliente.lower(),
+                db.func.lower(ProyeccionMatriz.campania) == campania.lower(),
+                ProyeccionMatriz.mes == clave_mes,
+            ).first()
+            if not registro:
+                registro = ProyeccionMatriz(cliente=cliente, campania=campania, year=YEAR, mes=clave_mes)
+                db.session.add(registro)
+        antes.append(snapshot_proyeccion(registro))
         total_dotacion = sum(numero(f[9]) for f in filas)
         total_requeridas = sum(numero(f[10]) for f in filas)
         total_proyectadas = sum(numero(f[11]) for f in filas)
-        registro.cliente, registro.campania, registro.year, registro.mes = clave[0], clave[1], YEAR, clave[2]
+        registro.cliente, registro.campania, registro.year, registro.mes = cliente, campania, YEAR, clave_mes
         registro.dotacion_requerida = total_dotacion
         registro.carga_semanal = texto(filas[0][6]) or "L a V"
         registro.carga_horaria = sum(numero(f[8]) * numero(f[9]) for f in filas) / total_dotacion if total_dotacion else 0
@@ -126,7 +154,8 @@ def datos_tabla_mensual(sheet, fila_inicio=5):
     headers = list(next(sheet.iter_rows(min_row=4, max_row=4, values_only=True)))
     columnas = [(i, mes(v)) for i, v in enumerate(headers) if mes(v)]
     for row in sheet.iter_rows(min_row=fila_inicio, values_only=True):
-        cuenta, site, campania = texto(row[2]), texto(row[3]), texto(row[4])
+        cuenta, campania = identidad_canonica(row[2], row[4])
+        site = texto(row[3])
         if not cuenta or not campania:
             continue
         yield cuenta, site, campania, row, columnas
@@ -188,7 +217,10 @@ def sincronizar_precios_y_fijos(workbook):
             registro = ProyeccionPrecio(cliente=clave[0], campania=clave[1], year=YEAR, mes=clave[2])
             db.session.add(registro)
         registro.site, registro.precio_base = data["site"], Decimal(str(data["precio"]))
-        registro.alcance_porcentaje, registro.importe_fijo_mensual = 100, Decimal(str(data["fijo"]))
+        registro.alcance_porcentaje = (
+            0 if (normalizar_header(clave[1]), clave[2]) in SALIDAS_SIN_HERENCIA else 100
+        )
+        registro.importe_fijo_mensual = Decimal(str(data["fijo"]))
         registro.recalcular(); db.session.flush(); despues.append(snapshot_simple(registro))
     guardar_historial("matriz_precios", str(YEAR), f"Actualización integral Precios y suma fija {YEAR}: {len(deseados)} registros", antes, despues)
     return len(deseados)

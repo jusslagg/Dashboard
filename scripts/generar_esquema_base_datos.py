@@ -65,7 +65,8 @@ def generar_html_pdf() -> None:
     documento = f"""<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>Esquema de base de datos</title>
 <style>
-body{{font:12px/1.45 Arial,sans-serif;color:#172033;margin:35px}}
+@font-face{{font-family:Montserrat;src:url("/static/fonts/Montserrat-VariableFont_wght.ttf") format("truetype");font-weight:100 900;font-style:normal}}
+body{{font:12px/1.45 Montserrat,Arial,sans-serif;color:#172033;margin:35px}}
 h1{{color:#0f2747;font-size:28px}} h2{{color:#174b83;border-bottom:2px solid #0891b2;padding-bottom:8px;break-before:page}}
 .portada{{break-after:page}} pre{{white-space:pre-wrap;font:9px/1.35 Consolas,monospace;background:#f4f7fb;border:1px solid #dbe4ef;padding:14px}}
 @page{{size:A4;margin:15mm}}

@@ -303,6 +303,43 @@ CREATE INDEX ix_personal_distribucion_horas_servicio ON personal_distribucion_ho
 CREATE INDEX ix_personal_distribucion_horas_year ON personal_distribucion_horas (year);
 
 -- ============================================================
+-- TABLA: proforma_personal
+-- ============================================================
+CREATE TABLE proforma_personal (
+	id INTEGER NOT NULL,
+	tipo_proforma VARCHAR(30) NOT NULL,
+	estado_proforma VARCHAR(20) NOT NULL,
+	fdv VARCHAR(150) NOT NULL,
+	periodo VARCHAR(6) NOT NULL,
+	negocio VARCHAR(100) NOT NULL,
+	sitio_proveedor VARCHAR(100) NOT NULL,
+	segmento VARCHAR(150) NOT NULL,
+	subsitio VARCHAR(150),
+	tipo_hora VARCHAR(50) NOT NULL,
+	total_horas NUMERIC(20, 10) NOT NULL,
+	precio NUMERIC(20, 10) NOT NULL,
+	monto_fijo NUMERIC(20, 10) NOT NULL,
+	porcentaje_bono_kpi_vs NUMERIC(15, 10) NOT NULL,
+	monto_variable_kpi_vs NUMERIC(20, 10) NOT NULL,
+	porcentaje_bono_ac NUMERIC(15, 10) NOT NULL,
+	monto_variable_ac NUMERIC(20, 10) NOT NULL,
+	monto_variable NUMERIC(20, 10) NOT NULL,
+	total_proyeccion NUMERIC(20, 10) NOT NULL,
+	bono_porcentaje_total NUMERIC(15, 10) NOT NULL,
+	archivo_origen VARCHAR(255),
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_proforma_personal_fila_tipo UNIQUE (tipo_proforma, fdv, periodo, negocio, sitio_proveedor, segmento, subsitio, tipo_hora)
+);
+
+CREATE INDEX ix_proforma_personal_estado_proforma ON proforma_personal (estado_proforma);
+
+CREATE INDEX ix_proforma_personal_periodo ON proforma_personal (periodo);
+
+CREATE INDEX ix_proforma_personal_tipo_proforma ON proforma_personal (tipo_proforma);
+
+-- ============================================================
 -- TABLA: ratio_eli_ii_mensual
 -- ============================================================
 CREATE TABLE ratio_eli_ii_mensual (
@@ -427,6 +464,7 @@ CREATE TABLE asignaciones_comerciales (
 	campania VARCHAR(100) NOT NULL,
 	subcampania VARCHAR(100) NOT NULL,
 	tipo_negocio VARCHAR(100),
+	grupo_facturacion VARCHAR(100),
 	es_next_gen BOOLEAN NOT NULL,
 	activa BOOLEAN NOT NULL,
 	vigencia_desde VARCHAR(7),
@@ -437,6 +475,8 @@ CREATE TABLE asignaciones_comerciales (
 );
 
 CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
+
+CREATE INDEX ix_asignaciones_comerciales_grupo_facturacion ON asignaciones_comerciales (grupo_facturacion);
 
 CREATE INDEX ix_asignaciones_comerciales_vigencia_desde ON asignaciones_comerciales (vigencia_desde);
 
@@ -496,3 +536,39 @@ CREATE TABLE matriz_proyecciones_jornadas (
 );
 
 CREATE INDEX ix_matriz_proyecciones_jornadas_proyeccion_id ON matriz_proyecciones_jornadas (proyeccion_id);
+
+-- ============================================================
+-- TABLA: normalizacion_nombres_proyectados
+-- ============================================================
+CREATE TABLE normalizacion_nombres_proyectados (
+	id INTEGER NOT NULL,
+	campania_id INTEGER NOT NULL,
+	cliente_proyectado VARCHAR(160) NOT NULL,
+	servicio_proyectado VARCHAR(160) NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(campania_id) REFERENCES campanias (id)
+);
+
+CREATE UNIQUE INDEX ix_normalizacion_nombres_proyectados_campania_id ON normalizacion_nombres_proyectados (campania_id);
+
+-- ============================================================
+-- TABLA: seguimiento_personal_importaciones
+-- ============================================================
+CREATE TABLE seguimiento_personal_importaciones (
+	id INTEGER NOT NULL,
+	archivo VARCHAR(255) NOT NULL,
+	periodo_referencia VARCHAR(100),
+	contenido_hojas BLOB NOT NULL,
+	contenido_xlsx BLOB NOT NULL,
+	cantidad_hojas INTEGER NOT NULL,
+	cantidad_filas INTEGER NOT NULL,
+	cantidad_formulas INTEGER NOT NULL,
+	advertencias INTEGER NOT NULL,
+	usuario_id INTEGER,
+	creado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(usuario_id) REFERENCES usuarios (id)
+);
+
+CREATE INDEX ix_seguimiento_personal_importaciones_creado_en ON seguimiento_personal_importaciones (creado_en);

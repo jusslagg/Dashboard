@@ -178,7 +178,8 @@ def main():
   <style>
     :root{{--navy:#0f2747;--blue:#2563eb;--cyan:#0891b2;--ink:#172033;--muted:#5f6b7a;--line:#dbe4ef;--soft:#f4f7fb;}}
     *{{box-sizing:border-box}} html{{scroll-behavior:smooth}}
-    body{{margin:0;color:var(--ink);background:var(--soft);font:15px/1.62 Arial,sans-serif;overflow-wrap:anywhere}}
+    @font-face{{font-family:Montserrat;src:url("/static/fonts/Montserrat-VariableFont_wght.ttf") format("truetype");font-weight:100 900;font-style:normal}}
+    body{{margin:0;color:var(--ink);background:var(--soft);font:15px/1.62 Montserrat,Arial,sans-serif;overflow-wrap:anywhere}}
     a{{color:#1859ba}} .top{{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px max(18px,calc((100% - 1180px)/2));color:#fff;background:var(--navy)}}
     .top a{{color:#fff;text-decoration:none}} .buttons{{display:flex;gap:8px;flex-wrap:wrap}}
     .button{{display:inline-block;padding:8px 13px;border:1px solid #7fa1ce;border-radius:7px;background:#173b69;font-weight:bold}}
@@ -204,7 +205,7 @@ def main():
 <body>
   <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/esquema/pdf">Esquema BD en PDF</a><a class="button" href="/documentacion-tecnica/esquema/sqlite">SQL SQLite</a><a class="button" href="/documentacion-tecnica/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/documentacion-tecnica/descargar">Documentación completa PDF</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Agosto de 2026</small></header>
+    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Septiembre de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice técnico</h2><ol>{construir_indice(indice)}</ol></nav>
     <article class="content">{cuerpo}</article>
     <footer>Dashboard de Facturación · Documentación técnica</footer>

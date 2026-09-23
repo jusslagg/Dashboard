@@ -28,9 +28,10 @@ def verificar() -> None:
         app = create_app()
         app.config.update(TESTING=True)
         with app.app_context():
-            assert len(db.metadata.tables) == 24, "La cantidad de tablas cambio sin actualizar el contrato."
+            assert len(db.metadata.tables) == 27, "La cantidad de tablas cambio sin actualizar el contrato."
             assert "facturacion_anio" in db.metadata.tables
             assert "facturacion_2026" not in db.metadata.tables
+            assert "normalizacion_nombres_proyectados" in db.metadata.tables
             usuario = Usuario(
                 nombre="Verificacion",
                 email="verificacion@example.invalid",
@@ -53,7 +54,9 @@ def verificar() -> None:
         routes = (
             "/", "/control", "/matriz", "/matriz-precios",
             "/matriz-proyecciones", "/resumen", "/variable", "/resumen-horas",
-            "/suma-fija", "/calendario-operativo", "/api/matriz?year=2026",
+            "/suma-fija", "/calendario-operativo", "/proyectado-vs-facturado",
+            "/api/matriz?year=2026", "/api/proyectado-vs-facturado?year=2026",
+            "/api/catalogos/normalizaciones-proyectados?year=2026",
         )
         for route in routes:
             response = client.get(route)
@@ -111,7 +114,7 @@ def verificar() -> None:
             tables = connection.execute(
                 "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
             ).fetchall()
-            assert len(tables) == 24, "El DDL SQLite no crea las 24 tablas documentadas."
+            assert len(tables) == 27, "El DDL SQLite no crea las 27 tablas documentadas."
 
         local_database = RAIZ / "instance" / "facturacion.db"
         if local_database.exists():

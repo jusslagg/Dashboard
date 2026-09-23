@@ -1,14 +1,15 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>Esquema de base de datos</title>
 <style>
-body{font:12px/1.45 Arial,sans-serif;color:#172033;margin:35px}
+@font-face{font-family:Montserrat;src:url("/static/fonts/Montserrat-VariableFont_wght.ttf") format("truetype");font-weight:100 900;font-style:normal}
+body{font:12px/1.45 Montserrat,Arial,sans-serif;color:#172033;margin:35px}
 h1{color:#0f2747;font-size:28px} h2{color:#174b83;border-bottom:2px solid #0891b2;padding-bottom:8px;break-before:page}
 .portada{break-after:page} pre{white-space:pre-wrap;font:9px/1.35 Consolas,monospace;background:#f4f7fb;border:1px solid #dbe4ef;padding:14px}
 @page{size:A4;margin:15mm}
 </style></head><body>
 <section class="portada"><h1>Dashboard de Facturación</h1><h3>Esquema físico completo de base de datos</h3>
 <p>Documento técnico para creación y revisión por el responsable de base de datos.</p>
-<p>Incluye las 24 tablas vigentes, columnas, tipos, claves primarias, claves foráneas, restricciones únicas e índices para SQLite y PostgreSQL.</p></section>
+<p>Incluye las 27 tablas vigentes, columnas, tipos, claves primarias, claves foráneas, restricciones únicas e índices para SQLite y PostgreSQL.</p></section>
 <h2>DDL completo — SQLite</h2><pre>-- Dashboard de Facturación
 -- Esquema físico completo para SQLITE
 -- Generado desde app/models.py. No editar manualmente.
@@ -314,6 +315,43 @@ CREATE INDEX ix_personal_distribucion_horas_servicio ON personal_distribucion_ho
 CREATE INDEX ix_personal_distribucion_horas_year ON personal_distribucion_horas (year);
 
 -- ============================================================
+-- TABLA: proforma_personal
+-- ============================================================
+CREATE TABLE proforma_personal (
+	id INTEGER NOT NULL,
+	tipo_proforma VARCHAR(30) NOT NULL,
+	estado_proforma VARCHAR(20) NOT NULL,
+	fdv VARCHAR(150) NOT NULL,
+	periodo VARCHAR(6) NOT NULL,
+	negocio VARCHAR(100) NOT NULL,
+	sitio_proveedor VARCHAR(100) NOT NULL,
+	segmento VARCHAR(150) NOT NULL,
+	subsitio VARCHAR(150),
+	tipo_hora VARCHAR(50) NOT NULL,
+	total_horas NUMERIC(20, 10) NOT NULL,
+	precio NUMERIC(20, 10) NOT NULL,
+	monto_fijo NUMERIC(20, 10) NOT NULL,
+	porcentaje_bono_kpi_vs NUMERIC(15, 10) NOT NULL,
+	monto_variable_kpi_vs NUMERIC(20, 10) NOT NULL,
+	porcentaje_bono_ac NUMERIC(15, 10) NOT NULL,
+	monto_variable_ac NUMERIC(20, 10) NOT NULL,
+	monto_variable NUMERIC(20, 10) NOT NULL,
+	total_proyeccion NUMERIC(20, 10) NOT NULL,
+	bono_porcentaje_total NUMERIC(15, 10) NOT NULL,
+	archivo_origen VARCHAR(255),
+	creado_en DATETIME NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_proforma_personal_fila_tipo UNIQUE (tipo_proforma, fdv, periodo, negocio, sitio_proveedor, segmento, subsitio, tipo_hora)
+);
+
+CREATE INDEX ix_proforma_personal_estado_proforma ON proforma_personal (estado_proforma);
+
+CREATE INDEX ix_proforma_personal_periodo ON proforma_personal (periodo);
+
+CREATE INDEX ix_proforma_personal_tipo_proforma ON proforma_personal (tipo_proforma);
+
+-- ============================================================
 -- TABLA: ratio_eli_ii_mensual
 -- ============================================================
 CREATE TABLE ratio_eli_ii_mensual (
@@ -438,6 +476,7 @@ CREATE TABLE asignaciones_comerciales (
 	campania VARCHAR(100) NOT NULL,
 	subcampania VARCHAR(100) NOT NULL,
 	tipo_negocio VARCHAR(100),
+	grupo_facturacion VARCHAR(100),
 	es_next_gen BOOLEAN NOT NULL,
 	activa BOOLEAN NOT NULL,
 	vigencia_desde VARCHAR(7),
@@ -448,6 +487,8 @@ CREATE TABLE asignaciones_comerciales (
 );
 
 CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
+
+CREATE INDEX ix_asignaciones_comerciales_grupo_facturacion ON asignaciones_comerciales (grupo_facturacion);
 
 CREATE INDEX ix_asignaciones_comerciales_vigencia_desde ON asignaciones_comerciales (vigencia_desde);
 
@@ -507,6 +548,42 @@ CREATE TABLE matriz_proyecciones_jornadas (
 );
 
 CREATE INDEX ix_matriz_proyecciones_jornadas_proyeccion_id ON matriz_proyecciones_jornadas (proyeccion_id);
+
+-- ============================================================
+-- TABLA: normalizacion_nombres_proyectados
+-- ============================================================
+CREATE TABLE normalizacion_nombres_proyectados (
+	id INTEGER NOT NULL,
+	campania_id INTEGER NOT NULL,
+	cliente_proyectado VARCHAR(160) NOT NULL,
+	servicio_proyectado VARCHAR(160) NOT NULL,
+	actualizado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(campania_id) REFERENCES campanias (id)
+);
+
+CREATE UNIQUE INDEX ix_normalizacion_nombres_proyectados_campania_id ON normalizacion_nombres_proyectados (campania_id);
+
+-- ============================================================
+-- TABLA: seguimiento_personal_importaciones
+-- ============================================================
+CREATE TABLE seguimiento_personal_importaciones (
+	id INTEGER NOT NULL,
+	archivo VARCHAR(255) NOT NULL,
+	periodo_referencia VARCHAR(100),
+	contenido_hojas BLOB NOT NULL,
+	contenido_xlsx BLOB NOT NULL,
+	cantidad_hojas INTEGER NOT NULL,
+	cantidad_filas INTEGER NOT NULL,
+	cantidad_formulas INTEGER NOT NULL,
+	advertencias INTEGER NOT NULL,
+	usuario_id INTEGER,
+	creado_en DATETIME NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(usuario_id) REFERENCES usuarios (id)
+);
+
+CREATE INDEX ix_seguimiento_personal_importaciones_creado_en ON seguimiento_personal_importaciones (creado_en);
 </pre>
 <h2>DDL completo — PostgreSQL</h2><pre>-- Dashboard de Facturación
 -- Esquema físico completo para POSTGRESQL
@@ -813,6 +890,43 @@ CREATE INDEX ix_personal_distribucion_horas_servicio ON personal_distribucion_ho
 CREATE INDEX ix_personal_distribucion_horas_year ON personal_distribucion_horas (year);
 
 -- ============================================================
+-- TABLA: proforma_personal
+-- ============================================================
+CREATE TABLE proforma_personal (
+	id SERIAL NOT NULL,
+	tipo_proforma VARCHAR(30) NOT NULL,
+	estado_proforma VARCHAR(20) NOT NULL,
+	fdv VARCHAR(150) NOT NULL,
+	periodo VARCHAR(6) NOT NULL,
+	negocio VARCHAR(100) NOT NULL,
+	sitio_proveedor VARCHAR(100) NOT NULL,
+	segmento VARCHAR(150) NOT NULL,
+	subsitio VARCHAR(150),
+	tipo_hora VARCHAR(50) NOT NULL,
+	total_horas NUMERIC(20, 10) NOT NULL,
+	precio NUMERIC(20, 10) NOT NULL,
+	monto_fijo NUMERIC(20, 10) NOT NULL,
+	porcentaje_bono_kpi_vs NUMERIC(15, 10) NOT NULL,
+	monto_variable_kpi_vs NUMERIC(20, 10) NOT NULL,
+	porcentaje_bono_ac NUMERIC(15, 10) NOT NULL,
+	monto_variable_ac NUMERIC(20, 10) NOT NULL,
+	monto_variable NUMERIC(20, 10) NOT NULL,
+	total_proyeccion NUMERIC(20, 10) NOT NULL,
+	bono_porcentaje_total NUMERIC(15, 10) NOT NULL,
+	archivo_origen VARCHAR(255),
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT uq_proforma_personal_fila_tipo UNIQUE (tipo_proforma, fdv, periodo, negocio, sitio_proveedor, segmento, subsitio, tipo_hora)
+);
+
+CREATE INDEX ix_proforma_personal_estado_proforma ON proforma_personal (estado_proforma);
+
+CREATE INDEX ix_proforma_personal_periodo ON proforma_personal (periodo);
+
+CREATE INDEX ix_proforma_personal_tipo_proforma ON proforma_personal (tipo_proforma);
+
+-- ============================================================
 -- TABLA: ratio_eli_ii_mensual
 -- ============================================================
 CREATE TABLE ratio_eli_ii_mensual (
@@ -937,6 +1051,7 @@ CREATE TABLE asignaciones_comerciales (
 	campania VARCHAR(100) NOT NULL,
 	subcampania VARCHAR(100) NOT NULL,
 	tipo_negocio VARCHAR(100),
+	grupo_facturacion VARCHAR(100),
 	es_next_gen BOOLEAN NOT NULL,
 	activa BOOLEAN NOT NULL,
 	vigencia_desde VARCHAR(7),
@@ -947,6 +1062,8 @@ CREATE TABLE asignaciones_comerciales (
 );
 
 CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
+
+CREATE INDEX ix_asignaciones_comerciales_grupo_facturacion ON asignaciones_comerciales (grupo_facturacion);
 
 CREATE INDEX ix_asignaciones_comerciales_vigencia_desde ON asignaciones_comerciales (vigencia_desde);
 
@@ -1006,5 +1123,41 @@ CREATE TABLE matriz_proyecciones_jornadas (
 );
 
 CREATE INDEX ix_matriz_proyecciones_jornadas_proyeccion_id ON matriz_proyecciones_jornadas (proyeccion_id);
+
+-- ============================================================
+-- TABLA: normalizacion_nombres_proyectados
+-- ============================================================
+CREATE TABLE normalizacion_nombres_proyectados (
+	id SERIAL NOT NULL,
+	campania_id INTEGER NOT NULL,
+	cliente_proyectado VARCHAR(160) NOT NULL,
+	servicio_proyectado VARCHAR(160) NOT NULL,
+	actualizado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(campania_id) REFERENCES campanias (id)
+);
+
+CREATE UNIQUE INDEX ix_normalizacion_nombres_proyectados_campania_id ON normalizacion_nombres_proyectados (campania_id);
+
+-- ============================================================
+-- TABLA: seguimiento_personal_importaciones
+-- ============================================================
+CREATE TABLE seguimiento_personal_importaciones (
+	id SERIAL NOT NULL,
+	archivo VARCHAR(255) NOT NULL,
+	periodo_referencia VARCHAR(100),
+	contenido_hojas BYTEA NOT NULL,
+	contenido_xlsx BYTEA NOT NULL,
+	cantidad_hojas INTEGER NOT NULL,
+	cantidad_filas INTEGER NOT NULL,
+	cantidad_formulas INTEGER NOT NULL,
+	advertencias INTEGER NOT NULL,
+	usuario_id INTEGER,
+	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY(usuario_id) REFERENCES usuarios (id)
+);
+
+CREATE INDEX ix_seguimiento_personal_importaciones_creado_en ON seguimiento_personal_importaciones (creado_en);
 </pre>
 </body></html>
