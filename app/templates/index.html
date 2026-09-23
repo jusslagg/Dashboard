@@ -520,9 +520,9 @@ function actualizarKPIs(kpis) {
     document.getElementById('kpiTotalTeorico').textContent = formatCurrency(kpis.total_teorico || 0);
     document.getElementById('kpiDesvio').textContent = formatCurrency(kpis.desvio || 0);
     document.getElementById('kpiDesvio').className = `text-2xl font-bold ${(kpis.desvio || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`;
-    document.getElementById('kpiCumplimiento').textContent = cumplimientoFacturacion.toFixed(1) + '%';
+    document.getElementById('kpiCumplimiento').textContent = formatDecimal(cumplimientoFacturacion) + '%';
     document.getElementById('kpiCumplimiento').className = `text-2xl font-bold ${cumplimientoFacturacion >= 100 ? 'text-green-600' : 'text-red-600'}`;
-    document.getElementById('kpiCumplimientoHoras').textContent = cumplimientoHoras.toFixed(1) + '%';
+    document.getElementById('kpiCumplimientoHoras').textContent = formatDecimal(cumplimientoHoras) + '%';
     document.getElementById('kpiCumplimientoHoras').className = `text-2xl font-bold ${cumplimientoHoras >= 100 ? 'text-green-600' : 'text-red-600'}`;
     document.getElementById('kpiHorasObjetivo').textContent = formatNumber(kpis.horas_objetivo || 0);
     document.getElementById('kpiHorasFacturadas').textContent = formatNumber(kpis.horas_facturadas || 0);
@@ -658,12 +658,12 @@ function actualizarTablaClientes(clientes) {
             <td class="px-4 py-3">${c.gerente || '-'}</td>
             <td class="px-4 py-3">${c.jefe_site || '-'}</td>
             <td class="px-4 py-3 text-right">${c.registros}</td>
-            <td class="px-4 py-3 text-right">${c.horas_objetivo.toFixed(1)}</td>
-            <td class="px-4 py-3 text-right">${c.horas_facturadas.toFixed(1)}</td>
+            <td class="px-4 py-3 text-right">${formatDecimal(c.horas_objetivo)}</td>
+            <td class="px-4 py-3 text-right">${formatDecimal(c.horas_facturadas)}</td>
             <td class="px-4 py-3 text-right font-semibold">${formatCurrency(c.total_real || 0)}</td>
             <td class="px-4 py-3 text-right">${formatCurrency(c.total_teorico || 0)}</td>
             <td class="px-4 py-3 text-right font-semibold ${(c.desvio || 0) >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(c.desvio || 0)}</td>
-            <td class="px-4 py-3 text-right font-semibold ${(c.porcentaje_cumplimiento || 0) >= 100 ? 'text-green-600' : 'text-red-600'}">${(c.porcentaje_cumplimiento || 0).toFixed(1)}%</td>
+            <td class="px-4 py-3 text-right font-semibold ${(c.porcentaje_cumplimiento || 0) >= 100 ? 'text-green-600' : 'text-red-600'}">${formatDecimal(c.porcentaje_cumplimiento)}%</td>
         </tr>
     `).join('');
 }
@@ -678,15 +678,15 @@ function actualizarTablaResumen(resumen) {
     tbody.innerHTML = resumen.map(r => `
         <tr class="border-b hover:bg-gray-50">
             <td class="px-4 py-3 font-medium">${formatMes(r.mes)}</td>
-            <td class="px-4 py-3 text-right">${r.horas_objetivo.toFixed(1)}</td>
-            <td class="px-4 py-3 text-right">${r.horas_facturadas.toFixed(1)}</td>
+            <td class="px-4 py-3 text-right">${formatDecimal(r.horas_objetivo)}</td>
+            <td class="px-4 py-3 text-right">${formatDecimal(r.horas_facturadas)}</td>
             <td class="px-4 py-3 text-right ${Number(r.bonos || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(r.bonos || 0)}</td>
             <td class="px-4 py-3 text-right ${Number(r.variable_productivo || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(r.variable_productivo || 0)}</td>
             <td class="px-4 py-3 text-right ${Number(r.penalizaciones || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(r.penalizaciones || 0)}</td>
             <td class="px-4 py-3 text-right font-semibold">${formatCurrency(r.total_real)}</td>
             <td class="px-4 py-3 text-right">${formatCurrency(r.total_teorico)}</td>
             <td class="px-4 py-3 text-right font-semibold ${r.desvio >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(r.desvio)}</td>
-            <td class="px-4 py-3 text-right font-semibold ${r.porcentaje_cumplimiento >= 100 ? 'text-green-600' : 'text-red-600'}">${r.porcentaje_cumplimiento.toFixed(1)}%</td>
+            <td class="px-4 py-3 text-right font-semibold ${r.porcentaje_cumplimiento >= 100 ? 'text-green-600' : 'text-red-600'}">${formatDecimal(r.porcentaje_cumplimiento)}%</td>
         </tr>
     `).join('');
 }
@@ -715,6 +715,10 @@ function formatCurrency(value) {
 
 function formatNumber(value) {
     return Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+}
+
+function formatDecimal(value, digits = 1) {
+    return Number(value || 0).toLocaleString('es-AR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 function formatMes(mes) {

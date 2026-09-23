@@ -587,12 +587,12 @@ function actualizarTabla(datos) {
                 <td class="px-4 py-3">${d.subcampania || '-'}</td>
                 <td class="px-4 py-3">${d.tipo_negocio || '-'}</td>
                 <td class="px-4 py-3">${d.tipo_jornada}</td>
-                <td class="px-4 py-3 text-right">${d.horas_objetivo.toFixed(1)}</td>
+                <td class="px-4 py-3 text-right">${formatDecimal(d.horas_objetivo)}</td>
                 <td class="px-4 py-3 text-right ${alertaHoras ? 'font-bold text-yellow-700' : ''}">
                     ${alertaHoras ? '<i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>' : ''}
-                    ${d.horas_facturadas.toFixed(1)}
+                    ${formatDecimal(d.horas_facturadas)}
                 </td>
-                <td class="px-4 py-3 text-right font-semibold ${(d.porcentaje_cumplimiento_horas || 0) >= 100 ? 'text-green-600' : 'text-red-600'}">${(d.porcentaje_cumplimiento_horas || 0).toFixed(1)}%</td>
+                <td class="px-4 py-3 text-right font-semibold ${(d.porcentaje_cumplimiento_horas || 0) >= 100 ? 'text-green-600' : 'text-red-600'}">${formatDecimal(d.porcentaje_cumplimiento_horas)}%</td>
                 <td class="px-4 py-3 text-right">${formatCurrency(d.valor_hora_objetivo || d.valor_hora)}</td>
                 <td class="px-4 py-3 text-right">${formatCurrency(d.valor_hora_alcanzado || d.valor_hora)}</td>
                 <td class="px-4 py-3 text-right">${formatCurrency(d.objetivo_facturacion_horas || 0)}</td>
@@ -602,8 +602,8 @@ function actualizarTabla(datos) {
                 <td class="px-4 py-3 text-right ${Number(d.facturado_bono || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(d.facturado_bono || 0)}</td>
                 <td class="px-4 py-3 text-right ${Number(d.variable_productivo_calculo || d.variable_productivo || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(d.variable_productivo_calculo || d.variable_productivo || 0)}</td>
                 <td class="px-4 py-3 text-right ${Number(d.penalizaciones_incumplimientos || 0) < 0 ? 'text-red-600' : 'text-green-600'}">${formatCurrency(d.penalizaciones_incumplimientos || 0)}</td>
-                <td class="px-4 py-3 text-right">${d.netx_gen.toFixed(0)}</td>
-                <td class="px-4 py-3 text-right">${d.otros.toFixed(0)}</td>
+                <td class="px-4 py-3 text-right">${formatDecimal(d.netx_gen, 0)}</td>
+                <td class="px-4 py-3 text-right">${formatDecimal(d.otros, 0)}</td>
                 <td class="px-4 py-3 text-right font-semibold ${errorNegativo ? 'text-red-600' : ''}">
                     ${errorNegativo ? '<i class="fas fa-times-circle text-red-500 mr-1"></i>' : ''}
                     ${formatCurrency(d.total_real)}
@@ -613,7 +613,7 @@ function actualizarTabla(datos) {
                 </td>
                 <td class="px-4 py-3 text-center">
                     <span class="px-2 py-1 rounded text-xs font-semibold ${d.porcentaje_cumplimiento >= 100 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                        ${d.porcentaje_cumplimiento.toFixed(1)}%
+                        ${formatDecimal(d.porcentaje_cumplimiento)}%
                     </span>
                 </td>
                 <td class="sticky right-0 z-10 whitespace-nowrap bg-white px-4 py-3 text-center shadow-[-10px_0_18px_-14px_rgba(15,23,42,0.85)]">${accionesRegistro(d)}</td>
@@ -638,6 +638,10 @@ function formatCurrency(value) {
     const numero = Number(value || 0);
     const signo = numero < 0 ? '-$' : '$';
     return signo + Math.abs(numero).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatDecimal(value, digits = 1) {
+    return Number(value || 0).toLocaleString('es-AR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 function exportarExcel() {

@@ -7,9 +7,16 @@
     <title>{% block title %}Dashboard Facturación{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/app-tailwind.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='montserrat.css') }}">
+    <link rel="preload" href="{{ url_for('static', filename='fonts/Montserrat-VariableFont_wght.ttf') }}" as="font" type="font/ttf" crossorigin>
     <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+    <script>
+        Chart.defaults.font.family = 'Montserrat';
+        Chart.defaults.font.weight = 'normal';
+        Chart.defaults.scale.grid.display = false;
+        document.fonts.ready.then(() => Object.values(Chart.instances).forEach(chart => chart.update('none')));
+    </script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
         .sidebar-link:hover { background-color: rgba(255,255,255,0.1); }
         .sidebar-link.active { background-color: rgba(255,255,255,0.2); }
         .sidebar-group-toggle:hover { background-color: rgba(255,255,255,0.08); }
@@ -161,6 +168,9 @@
                         <i class="fas fa-chevron-down text-[10px]"></i>
                     </button>
                     <div id="sidebarGroupDirectorio" class="sidebar-group-content" hidden>
+                        <a href="/proyectado-vs-facturado" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/proyectado-vs-facturado' %}active{% endif %}">
+                            <i class="fas fa-chart-column w-6"></i><span class="sidebar-text">Proyectado vs Facturado</span>
+                        </a>
                         <a href="/reloj" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/reloj' %}active{% endif %}">
                             <i class="fas fa-gauge-high w-6"></i><span class="sidebar-text">Reloj</span>
                         </a>
@@ -208,6 +218,9 @@
                         </a>
                         <a href="/share" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/share' %}active{% endif %}">
                             <i class="fas fa-chart-simple w-6"></i><span class="sidebar-text">Share</span>
+                        </a>
+                        <a href="/directorio/exportar.xlsx?year={{ anio_actual }}" onclick="this.href='/directorio/exportar.xlsx?year='+encodeURIComponent(document.getElementById('relojYear')?.value||document.getElementById('year')?.value||document.getElementById('actualYear')?.value||document.getElementById('anio')?.value||'{{ anio_actual }}')" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2">
+                            <i class="fas fa-file-excel w-6"></i><span class="sidebar-text">Descargar Directorio (Excel)</span>
                         </a>
                     </div>
                 </section>

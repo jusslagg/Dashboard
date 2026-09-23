@@ -1102,7 +1102,7 @@ function renderLineasPendientes() {
     document.getElementById('totalHorasPenalizadasLote').textContent = formatNumber(totales.horasPenalizadas);
     const cumplimientoHoras = totales.horasObjetivo > 0
         ? (totales.horasFacturadas / totales.horasObjetivo) * 100 : 0;
-    document.getElementById('cumplimientoHorasLote').textContent = cumplimientoHoras.toFixed(1) + '%';
+    document.getElementById('cumplimientoHorasLote').textContent = formatDecimal(cumplimientoHoras) + '%';
     if (!lineasVisibles.length) {
         tbody.innerHTML = '<tr><td colspan="9" class="px-3 py-6 text-center text-gray-500">Todavia no hay lineas agregadas</td></tr>';
         return;
@@ -1202,7 +1202,7 @@ function calcularPreview() {
     document.getElementById('previewObjetivoBono').textContent = formatCurrency(objetivoBono);
     document.getElementById('previewFacturacionObjetivo').textContent = formatCurrency(facturacionObjetivo);
     document.getElementById('previewFacturadoHoras').textContent = formatCurrency(facturadoHoras);
-    document.getElementById('previewCumplimientoHoras').textContent = cumplimientoHoras.toFixed(1) + '%';
+    document.getElementById('previewCumplimientoHoras').textContent = formatDecimal(cumplimientoHoras) + '%';
     document.getElementById('previewCumplimientoHoras').className = `font-semibold ml-2 ${cumplimientoHoras >= 100 ? 'text-green-600' : 'text-red-600'}`;
     document.getElementById('previewHorasPenalizadas').textContent = horasPenalizadas.toLocaleString('es-AR', { maximumFractionDigits: 1 });
     document.getElementById('previewFacturadoBono').textContent = formatCurrency(facturadoBono);
@@ -1217,7 +1217,7 @@ function calcularPreview() {
     document.getElementById('previewDesvioHoras').className = `font-semibold ml-2 ${desvioHoras >= 0 ? 'text-green-600' : 'text-red-600'}`;
     document.getElementById('previewDesvio').textContent = formatCurrency(desvio);
     document.getElementById('previewDesvio').className = `font-semibold ml-2 ${desvio >= 0 ? 'text-green-600' : 'text-red-600'}`;
-    document.getElementById('previewCumplimiento').textContent = cumplimiento.toFixed(1) + '%';
+    document.getElementById('previewCumplimiento').textContent = formatDecimal(cumplimiento) + '%';
     document.getElementById('previewCumplimiento').className = `font-semibold ml-2 ${cumplimiento >= 100 ? 'text-green-600' : 'text-red-600'}`;
     renderLineasPendientes();
 }
@@ -1499,6 +1499,10 @@ function formatCurrency(value) {
 
 function formatNumber(value) {
     return Number(value || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatDecimal(value, digits = 1) {
+    return Number(value || 0).toLocaleString('es-AR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 function escapeHtml(value) {

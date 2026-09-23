@@ -1,7 +1,7 @@
 ﻿# filepath: app/routes.py
 from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
 from app import db, get_csrf_token
-from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, PersonalDistribucionHoras, ProformaPersonal, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, SeguimientoPersonalImportacion, normalizar_jefe_site, normalizar_tipo_negocio_personal, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
+from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, NormalizacionNombreProyectado, PersonalDistribucionHoras, ProformaPersonal, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, SeguimientoPersonalImportacion, normalizar_jefe_site, normalizar_tipo_negocio_personal, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
 import calendar
 from collections import defaultdict
@@ -3024,6 +3024,254 @@ def indicadores():
 def reloj():
     """Reloj de cumplimiento de horas."""
     return render_template('reloj.html')
+
+
+def construir_proyectado_vs_facturado_data(year):
+    """Concilia el presupuesto proyectado con los objetivos y cierres mensuales."""
+    proyeccion = consolidar_resumen_proyeccion(construir_resumen_proyeccion_data(year))
+    detalles = [fila for fila in proyeccion['filas'] if fila.get('tipo') == 'detalle']
+    servicios_proyectados = {}
+    for fila in detalles:
+        clave = (normalizar_header(fila['cliente']), normalizar_nombre_variable(fila['campania']))
+        servicios_proyectados[clave] = fila
+    normalizaciones = {}
+    for relacion in NormalizacionNombreProyectado.query.join(Campania).all():
+        destino = relacion.campania_facturacion
+        normalizaciones[(normalizar_header(destino.cliente), normalizar_nombre_variable(destino.nombre))] = (
+            normalizar_header(relacion.cliente_proyectado),
+            normalizar_nombre_variable(relacion.servicio_proyectado),
+        )
+
+    filas = {}
+
+    def acumular(mes, cliente, servicio, site, campo, importe):
+        clave = (mes, normalizar_header(cliente), normalizar_nombre_variable(servicio), normalizar_header(site))
+        fila = filas.setdefault(clave, {
+            'mes': mes, 'site': site or 'Sin site', 'cliente': cliente,
+            'servicio': servicio, 'teorico': 0, 'proyectado': 0, 'facturado': 0,
+        })
+        fila[campo] += numero_seguro(importe)
+
+    for detalle in detalles:
+        for mes, importe in detalle.get('meses', {}).items():
+            if importe:
+                acumular(mes, detalle['cliente'], detalle['campania'], detalle['site'], 'proyectado', importe)
+
+    registros = facturacion_por_anio(Facturacion2026.query, year).all()
+    for registro in registros:
+        cliente = str(registro.cliente or 'Sin cliente').strip()
+        servicio_original = nombre_campania_canonico(registro.campania or registro.subcampania or cliente,
+                                                       registro.subcampania)
+        clave_cliente = normalizar_header(cliente)
+        destino_normalizado = (
+            normalizaciones.get((clave_cliente, normalizar_nombre_variable(servicio_original)))
+            or normalizaciones.get((clave_cliente, normalizar_nombre_variable(registro.subcampania)))
+        )
+        detalle = servicios_proyectados.get(destino_normalizado) if destino_normalizado else None
+        if detalle is None:
+            detalle = servicios_proyectados.get((clave_cliente, normalizar_nombre_variable(servicio_original)))
+        if detalle is None:
+            # Una campaña proyectada solo a nivel cuenta incluye sus aperturas reales.
+            detalle = servicios_proyectados.get((clave_cliente, normalizar_nombre_variable(cliente)))
+        servicio = detalle['campania'] if detalle else servicio_original
+        site = detalle['site'] if detalle else normalizar_site(registro.gerente or 'Sin site')
+        cliente_destino = detalle['cliente'] if detalle else cliente
+        acumular(registro.mes, cliente_destino, servicio, site, 'teorico', registro.total_teorico)
+        acumular(registro.mes, cliente_destino, servicio, site, 'facturado', registro.total_dashboard)
+
+    resultado = sorted(filas.values(), key=lambda fila: (fila['mes'], normalizar_header(fila['cliente']),
+                                                          normalizar_header(fila['servicio'])))
+    for fila in resultado:
+        for campo in ('teorico', 'proyectado', 'facturado'):
+            fila[campo] = round(fila[campo], 6)
+    return {'success': True, 'year': year, 'filas': resultado,
+            'meses': [f'{year}-{mes:02d}' for mes in range(1, 13)]}
+
+
+@main_bp.route('/proyectado-vs-facturado')
+@login_requerido
+def proyectado_vs_facturado():
+    if not usuario_actual().puede_ver_directorio:
+        return respuesta_no_autorizado()
+    years = anios_facturacion_disponibles()
+    for model in (ProyeccionMatriz, ProyeccionPrecio, NextGenProducto):
+        for (mes,) in db.session.query(model.mes).distinct().all():
+            if mes and str(mes)[:4].isdigit():
+                years.add(int(str(mes)[:4]))
+    years.add(current_app.config['DEFAULT_YEAR'])
+    return render_template('proyectado_vs_facturado.html', anios_disponibles=sorted(years, reverse=True))
+
+
+@main_bp.route('/api/proyectado-vs-facturado', methods=['GET'])
+@login_requerido
+def api_proyectado_vs_facturado():
+    if not usuario_actual().puede_ver_directorio:
+        return respuesta_no_autorizado()
+    try:
+        year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+        if not 2020 <= year <= 2100:
+            raise ValueError
+    except ValueError:
+        return jsonify({'success': False, 'errores': ['Año no válido']}), 400
+    return jsonify(construir_proyectado_vs_facturado_data(year))
+
+
+@main_bp.route('/api/catalogos/normalizaciones-proyectados', methods=['GET', 'POST'])
+@edicion_requerida
+def api_normalizaciones_proyectados():
+    try:
+        year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+        if not 2020 <= year <= 2100:
+            raise ValueError
+    except ValueError:
+        return jsonify({'success': False, 'errores': ['Año no válido']}), 400
+
+    resumen = consolidar_resumen_proyeccion(construir_resumen_proyeccion_data(year))
+    fuentes = {}
+    for fila in resumen['filas']:
+        if fila.get('tipo') != 'detalle':
+            continue
+        clave = (normalizar_header(fila['cliente']), normalizar_nombre_variable(fila['campania']))
+        fuente = fuentes.setdefault(clave, {
+            'cliente': fila['cliente'], 'servicio': fila['campania'], 'proyectado': 0,
+            'vigente': True, 'origenes': [],
+        })
+        fuente['proyectado'] += numero_seguro(fila.get('total'))
+        for origen in fila.get('origenes', []):
+            if origen not in fuente['origenes']:
+                fuente['origenes'].append(origen)
+
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        origen = (normalizar_header(data.get('cliente_proyectado')),
+                  normalizar_nombre_variable(data.get('servicio_proyectado')))
+        try:
+            campania_id = int(data.get('campania_id'))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'errores': ['Elegí una campaña de Facturación']}), 400
+        if origen not in fuentes:
+            return jsonify({'success': False, 'errores': ['El nombre proyectado no existe en el año seleccionado']}), 400
+        campania = db.session.get(Campania, campania_id)
+        if not campania:
+            return jsonify({'success': False, 'errores': ['La campaña de Facturación no existe']}), 404
+        relacion = NormalizacionNombreProyectado.query.filter_by(campania_id=campania_id).first()
+        if relacion is None:
+            relacion = NormalizacionNombreProyectado(campania_id=campania_id)
+            db.session.add(relacion)
+        relacion.cliente_proyectado = fuentes[origen]['cliente']
+        relacion.servicio_proyectado = fuentes[origen]['servicio']
+        db.session.commit()
+        return jsonify({'success': True, 'mensaje': 'Correspondencia guardada. Los comparativos ya usan este nombre.',
+                        'normalizacion': relacion.to_dict()})
+
+    relaciones = NormalizacionNombreProyectado.query.order_by(NormalizacionNombreProyectado.id).all()
+    for relacion in relaciones:
+        clave = (normalizar_header(relacion.cliente_proyectado),
+                 normalizar_nombre_variable(relacion.servicio_proyectado))
+        fuentes.setdefault(clave, {'cliente': relacion.cliente_proyectado,
+                                   'servicio': relacion.servicio_proyectado,
+                                   'proyectado': 0, 'vigente': False, 'origenes': []})
+    usos = defaultdict(int)
+    for registro in facturacion_por_anio(Facturacion2026.query, year).all():
+        cliente = normalizar_header(registro.cliente)
+        campania = normalizar_nombre_variable(registro.campania)
+        subcampania = normalizar_nombre_variable(registro.subcampania)
+        usos[(cliente, campania)] += 1
+        if subcampania != campania:
+            usos[(cliente, subcampania)] += 1
+    campanias = Campania.query.order_by(Campania.cliente, Campania.nombre).all()
+    return jsonify({
+        'success': True, 'year': year,
+        'proyectados': sorted(fuentes.values(), key=lambda item: (
+            not item['vigente'], -abs(item['proyectado']),
+            normalizar_header(item['cliente']), normalizar_nombre_variable(item['servicio']))),
+        'facturacion': [{'id': item.id, 'cliente': item.cliente, 'servicio': item.nombre,
+                         'activa': bool(item.activa),
+                         'registros': usos[(normalizar_header(item.cliente),
+                                            normalizar_nombre_variable(item.nombre))]}
+                        for item in campanias],
+        'normalizaciones': [relacion.to_dict() for relacion in relaciones],
+    })
+
+
+@main_bp.route('/api/catalogos/normalizaciones-proyectados/<int:normalizacion_id>', methods=['DELETE'])
+@edicion_requerida
+def api_eliminar_normalizacion_proyectados(normalizacion_id):
+    relacion = db.session.get(NormalizacionNombreProyectado, normalizacion_id)
+    if not relacion:
+        return jsonify({'success': False, 'errores': ['La correspondencia no existe']}), 404
+    db.session.delete(relacion)
+    db.session.commit()
+    return jsonify({'success': True, 'mensaje': 'Correspondencia quitada'})
+
+
+@main_bp.route('/directorio/exportar.xlsx')
+@login_requerido
+def exportar_directorio():
+    """Exporta datos y resúmenes legibles de todas las pantallas de Directorio."""
+    from inspect import unwrap
+    from app.directorio_export import (
+        comparativo_clientes_desde_fuentes, crear_libro_directorio,
+        indicadores_desde_historico,
+    )
+
+    if not usuario_actual().puede_ver_directorio:
+        return respuesta_no_autorizado()
+    try:
+        year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+        if not 2020 <= year <= 2100:
+            raise ValueError
+    except ValueError:
+        return jsonify({'success': False, 'errores': ['Año no válido']}), 400
+
+    app = current_app._get_current_object()
+    cache = {}
+
+    def datos(funcion, **params):
+        key = (funcion.__name__, tuple(sorted(params.items())))
+        if key not in cache:
+            with app.test_request_context('/api/' + funcion.__name__, query_string=params):
+                response = unwrap(funcion)()
+                payload = response.get_json()
+                if not isinstance(payload, dict) or payload.get('success') is False:
+                    raise ValueError(f'No se pudieron obtener los datos de {funcion.__name__}')
+                cache[key] = payload
+        return cache[key]
+
+    historico_actual = datos(api_historico_clientes, year=year)
+    historico_anterior = datos(api_historico_clientes, year=year - 1)
+    dotaciones_actual = datos(api_dotaciones_clientes, year=year)
+    dotaciones_anterior = datos(api_dotaciones_clientes, year=year - 1)
+    mes_base = dotaciones_actual.get('diciembre_base')
+    dotaciones_actual['base_por_cliente'] = {
+        item['cliente']: item.get('meses', {}).get(mes_base)
+        for item in dotaciones_anterior.get('clientes', [])
+    }
+    indicador = datos(api_indicadores, year=year)
+    screens = [
+        ('Proyectado vs Facturado', construir_proyectado_vs_facturado_data(year)),
+        ('Reloj', {'reloj': indicador['reloj']}),
+        ('Indicadores', indicadores_desde_historico(historico_anterior, historico_actual, year)),
+        ('Dotaciones', dotaciones_actual),
+        ('Gráficos dotaciones', datos(api_graficos_dotaciones)),
+        ('Evolutivo dotaciones', datos(api_graficos_evolutivo_dotaciones)),
+        ('Variación interanual', datos(api_variacion_anual, year=year)),
+        ('Variación horas clientes', datos(api_variacion_horas_clientes, year=year)),
+        ('Dashboard operativo', datos(api_dashboard_operativo, year=year)),
+        ('Histórico clientes', historico_actual),
+        ('Cumplimiento horas', datos(api_cumplimiento_horas_clientes, year=year)),
+        ('Cumplimiento facturación', datos(api_cumplimiento_facturacion_clientes, year=year)),
+        ('Comparativo interanual', datos(api_comparativo_interanual, year=year)),
+        ('Comparativo anual clientes', comparativo_clientes_desde_fuentes(
+            historico_anterior, historico_actual, dotaciones_anterior, dotaciones_actual, year)),
+        ('Ratio Eli', datos(api_ratio_eli)),
+        ('Ratio Eli II', datos(api_ratio_eli_ii)),
+        ('Share', datos(api_share)),
+    ]
+    contenido = crear_libro_directorio(screens, year)
+    return send_file(contenido, as_attachment=True,
+                     download_name=f'Directorio_{year}.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 @main_bp.route('/dotaciones')

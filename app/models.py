@@ -1247,6 +1247,27 @@ class ExcepcionCalculo(db.Model):
         }
 
 
+class NormalizacionNombreProyectado(db.Model):
+    __tablename__ = 'normalizacion_nombres_proyectados'
+
+    id = db.Column(db.Integer, primary_key=True)
+    campania_id = db.Column(db.Integer, db.ForeignKey('campanias.id'), nullable=False, unique=True, index=True)
+    cliente_proyectado = db.Column(db.String(160), nullable=False)
+    servicio_proyectado = db.Column(db.String(160), nullable=False)
+    actualizado_en = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    campania_facturacion = db.relationship('Campania', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'campania_id': self.campania_id,
+            'cliente_proyectado': self.cliente_proyectado,
+            'servicio_proyectado': self.servicio_proyectado,
+            'cliente_facturacion': self.campania_facturacion.cliente if self.campania_facturacion else '',
+            'servicio_facturacion': self.campania_facturacion.nombre if self.campania_facturacion else '',
+        }
+
+
 class AsignacionComercial(db.Model):
     __tablename__ = 'asignaciones_comerciales'
 

@@ -402,7 +402,7 @@ function actualizarKPIs(kpis) {
     document.getElementById('kpiHorasFacturadas').textContent = formatNumber(kpis.horas_facturadas || 0);
     document.getElementById('kpiDiferencia').textContent = formatNumber(kpis.diferencia_horas || 0);
     document.getElementById('kpiDiferencia').className = `text-2xl font-bold mt-2 ${(kpis.diferencia_horas || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`;
-    document.getElementById('kpiCumplimiento').textContent = (kpis.cumplimiento_horas || 0).toFixed(1) + '%';
+    document.getElementById('kpiCumplimiento').textContent = formatNumber(kpis.cumplimiento_horas) + '%';
     document.getElementById('kpiCumplimiento').className = `text-2xl font-bold mt-2 ${(kpis.cumplimiento_horas || 0) >= 100 ? 'text-green-600' : 'text-red-600'}`;
 }
 
@@ -413,7 +413,7 @@ function actualizarAlertas(kpis, cantidadRegistros) {
         return;
     }
     if ((kpis.cumplimiento_horas || 0) < 95) {
-        container.innerHTML = alertaHtml('danger', 'Brecha critica de horas', `El cumplimiento de horas esta en ${(kpis.cumplimiento_horas || 0).toFixed(1)}%.`);
+        container.innerHTML = alertaHtml('danger', 'Brecha critica de horas', `El cumplimiento de horas esta en ${formatNumber(kpis.cumplimiento_horas)}%.`);
         return;
     }
     if ((kpis.diferencia_horas || 0) < 0) {
@@ -528,11 +528,11 @@ function actualizarTablaComparativo(clientes) {
             <td class="px-4 py-3">${item.jefe_site || '-'}</td>
             <td class="px-4 py-3">${item.campania || '-'}</td>
             <td class="px-4 py-3">${item.subcampania || '-'}</td>
-            <td class="px-4 py-3 text-right">${item.registros}</td>
+            <td class="px-4 py-3 text-right">${Number(item.registros || 0).toLocaleString('es-AR')}</td>
             <td class="px-4 py-3 text-right">${formatNumber(item.horas_objetivo)}</td>
             <td class="px-4 py-3 text-right">${formatNumber(item.horas_facturadas)}</td>
             <td class="px-4 py-3 text-right font-semibold ${item.diferencia_horas >= 0 ? 'text-green-600' : 'text-red-600'}">${formatNumber(item.diferencia_horas)}</td>
-            <td class="px-4 py-3 text-right font-semibold ${item.cumplimiento_horas >= 100 ? 'text-green-600' : 'text-red-600'}">${item.cumplimiento_horas.toFixed(1)}%</td>
+            <td class="px-4 py-3 text-right font-semibold ${item.cumplimiento_horas >= 100 ? 'text-green-600' : 'text-red-600'}">${formatNumber(item.cumplimiento_horas)}%</td>
         </tr>
     `).join('');
 }
