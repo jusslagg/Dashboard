@@ -31,8 +31,8 @@
             <option value="graficos_dotaciones_mensuales">Directorio - Gráficos dotaciones</option>
             <option value="dashboard_operativo">Directorio - Dashboard operativo</option>
             <option value="historico_cliente">Directorio - Histórico por cliente</option>
-            <option value="ratio_eli_mensual">Directorio - Ratio Eli</option>
-            <option value="ratio_eli_ii_mensual">Directorio - Ratio Eli II</option>
+            <option value="ratio_eli_mensual">Directorio - Ratio Staff / Operaciones 1</option>
+            <option value="ratio_eli_ii_mensual">Directorio - Ratio Staff / Operaciones 2</option>
             <option value="sites_proyeccion">Facturación horas - Sites</option>
             <option value="usuario">Usuarios</option>
         </select>
@@ -196,7 +196,7 @@ function labelAccion(accion) {
 }
 
 function labelEntidad(entidad) {
-    return { facturacion: 'Facturación real', asignacion: 'Datos maestros', proforma_personal: 'Facturación / Proforma Personal', seguimiento_personal: 'Facturación / Seguimiento Personal', seguimiento_personal_cierre: 'Facturación / Cierre de tráfico Personal', seguimiento_personal_dashboard: 'Facturación / Personal al dashboard', proyeccion_matriz: 'Proyecciones / Matriz', matriz_precios: 'Proyecciones / Precios', variables: 'Variable / % Variable', tarifaciones: 'Variable / Tarifación', next_gen: 'Variable / Next Gen', sites_proyeccion: 'Facturación horas / Sites', dashboard_operativo: 'Directorio / Dashboard operativo', historico_cliente: 'Directorio / Histórico por cliente', ratio_eli_mensual: 'Directorio / Ratio Eli', ratio_eli_ii_mensual: 'Directorio / Ratio Eli II', usuario: 'Usuarios' }[entidad] || entidad;
+    return { facturacion: 'Facturación real', asignacion: 'Datos maestros', proforma_personal: 'Facturación / Proforma Personal', seguimiento_personal: 'Facturación / Seguimiento Personal', seguimiento_personal_cierre: 'Facturación / Cierre de tráfico Personal', seguimiento_personal_dashboard: 'Facturación / Personal al dashboard', proyeccion_matriz: 'Proyecciones / Matriz', matriz_precios: 'Proyecciones / Precios', variables: 'Variable / % Variable', tarifaciones: 'Variable / Tarifación', next_gen: 'Variable / Next Gen', sites_proyeccion: 'Facturación horas / Sites', dashboard_operativo: 'Directorio / Dashboard operativo', historico_cliente: 'Directorio / Histórico por cliente', ratio_eli_mensual: 'Directorio / Ratio Staff / Operaciones 1', ratio_eli_ii_mensual: 'Directorio / Ratio Staff / Operaciones 2', usuario: 'Usuarios' }[entidad] || entidad;
 }
 
 function badgeAccion(accion) {

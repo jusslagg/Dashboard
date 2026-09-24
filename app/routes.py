@@ -3267,8 +3267,8 @@ def exportar_directorio():
         ('Comparativo interanual', datos(api_comparativo_interanual, year=year)),
         ('Comparativo anual clientes', comparativo_clientes_desde_fuentes(
             historico_anterior, historico_actual, dotaciones_anterior, dotaciones_actual, year)),
-        ('Ratio Eli', datos(api_ratio_eli)),
-        ('Ratio Eli II', datos(api_ratio_eli_ii)),
+        ('Ratio Staff Operaciones 1', datos(api_ratio_eli)),
+        ('Ratio Staff Operaciones 2', datos(api_ratio_eli_ii)),
         ('Share', datos(api_share)),
     ]
     contenido = crear_libro_directorio(screens, year)
@@ -3339,7 +3339,7 @@ def api_guardar_ratio_eli():
     r=RatioEliMensual.query.filter_by(fecha=fecha).first(); antes=r.to_dict() if r else None
     if not r: r=RatioEliMensual(fecha=fecha,requerido=requerido,staff=staff);db.session.add(r)
     else: r.requerido,r.staff=requerido,staff
-    db.session.flush(); registrar_historial('edicion' if antes else 'creacion','ratio_eli_mensual',fecha.isoformat(),f'Ratio Eli: {fecha:%m/%Y}',antes=antes,despues=r.to_dict());db.session.commit()
+    db.session.flush(); registrar_historial('edicion' if antes else 'creacion','ratio_eli_mensual',fecha.isoformat(),f'Ratio Staff / Operaciones 1: {fecha:%m/%Y}',antes=antes,despues=r.to_dict());db.session.commit()
     return jsonify({'success':True,'mensaje':'Mes guardado'})
 
 
@@ -3393,7 +3393,7 @@ def api_guardar_ratio_eli_ii():
         registro.operaciones_importe, registro.staff_importe = operaciones_importe, staff_importe
     db.session.flush()
     registrar_historial('edicion' if antes else 'creacion', 'ratio_eli_ii_mensual', fecha.isoformat(),
-                        f'Ratio Eli II: {fecha:%m/%Y}', antes=antes, despues=registro.to_dict())
+                        f'Ratio Staff / Operaciones 2: {fecha:%m/%Y}', antes=antes, despues=registro.to_dict())
     db.session.commit()
     return jsonify({'success': True, 'mensaje': 'Mes guardado'})
 
@@ -3428,16 +3428,7 @@ def api_share():
             base = registro.base_dict()
             por_clave[(registro.mes, registro.cliente)] = {
                 'real': float(base.get('horas_realizadas') or 0),
-                'snapshot': float(base.get('_fact_snapshot_real') or 0),
             }
-        facturado = facturacion_por_anio(db.session.query(
-            Facturacion2026.mes, Facturacion2026.cliente,
-            func.sum(Facturacion2026.horas_facturadas),
-        ), year).group_by(Facturacion2026.mes, Facturacion2026.cliente).all()
-        for mes, cliente, real_actual in facturado:
-            clave = (mes, cliente)
-            item = por_clave.setdefault(clave, {'real': 0, 'snapshot': 0})
-            item['real'] += float(real_actual or 0) - item['snapshot']
         clientes = {}
         for (_, cliente), item in por_clave.items():
             clientes[cliente] = clientes.get(cliente, 0) + item['real']

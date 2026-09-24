@@ -297,6 +297,44 @@ let chartEvolucion = null;
 let chartClientes = null;
 let filtrosInicializados = false;
 
+function formatoEtiquetaBarra(valor) {
+    const numero = Number(valor || 0);
+    const absoluto = Math.abs(numero);
+    if (absoluto >= 1000000) {
+        return '$' + (numero / 1000000).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' M';
+    }
+    if (absoluto >= 1000) {
+        return '$' + (numero / 1000).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' mil';
+    }
+    return '$' + numero.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+}
+
+const etiquetasBarrasDashboard = {
+    id: 'etiquetasBarrasDashboard',
+    afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+            const meta = chart.getDatasetMeta(datasetIndex);
+            if (meta.hidden || dataset.type === 'line') return;
+            meta.data.forEach((barra, index) => {
+                const valor = Number(dataset.data[index]);
+                if (!Number.isFinite(valor) || valor === 0) return;
+                const posicion = barra.getProps(['x', 'y', 'base'], true);
+                const centroY = posicion.y + (posicion.base - posicion.y) / 2;
+                ctx.save();
+                ctx.translate(posicion.x, centroY);
+                ctx.rotate(-Math.PI / 2);
+                ctx.font = '700 11px Montserrat';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(formatoEtiquetaBarra(valor), 0, 0);
+                ctx.restore();
+            });
+        });
+    }
+};
+
 document.addEventListener('DOMContentLoaded', async function() {
     await cargarFiltrosDashboard();
     await cargarDashboard();
@@ -586,7 +624,8 @@ function actualizarGrafico(datos) {
                 }
             ]
         },
-        options: chartOptions()
+        options: chartOptions(),
+        plugins: [etiquetasBarrasDashboard]
     });
 }
 
@@ -627,7 +666,8 @@ function actualizarGraficoClientes(clientes) {
                     }
                 }
             }
-        }
+        },
+        plugins: [etiquetasBarrasDashboard]
     });
 }
 

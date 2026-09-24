@@ -472,13 +472,11 @@ class FacturacionAnio(db.Model):
 
     @property
     def total_dashboard(self):
-        # Una carga identificada como NextGen se informa exclusivamente en su
-        # concepto, aunque el archivo o formulario haya enviado un total manual
-        # vacío o en cero. No debe transformarse en horas ni perder el importe.
-        if self.es_next_gen:
-            return self.netx_gen or 0
+        # Total Facturado informado en la columna V del archivo operativo.
         if self.total_facturado_manual is not None:
             return self.total_facturado_manual
+        if self.es_next_gen:
+            return self.netx_gen or 0
         if self.usa_importe_fijo:
             return (
                 self.importe_fijo
