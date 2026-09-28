@@ -339,22 +339,41 @@ async function guardarCambiosNextGen() {
     const boton = document.getElementById('guardarCambiosNextGen');
     boton.disabled = true;
     boton.querySelector('span').textContent = 'Guardando...';
-    const response = await fetch('/api/next-gen/edicion-masiva', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
-        },
-        body: JSON.stringify({year: document.getElementById('yearFiltro').value, cambios}),
-    });
-    const data = await response.json();
-    mostrarMensaje(data.mensaje || (data.errores || ['No se pudieron guardar los cambios']).join(' | '), response.ok && data.success);
-    if (response.ok && data.success) {
+    let guardado = false;
+    try {
+        const response = await fetch('/api/next-gen/edicion-masiva', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({year: document.getElementById('yearFiltro').value, cambios}),
+        });
+        const data = await response.json();
+        mostrarMensaje(data.mensaje || (data.errores || ['No se pudieron guardar los cambios']).join(' | '), response.ok && data.success);
+        if (!response.ok || !data.success) return;
         cambiosDolarNextGen.clear();
         cambiosProductoNextGen.clear();
-        await cargarVariable();
-    } else {
+        guardado = true;
+        // El servidor ya devuelve la grilla recalculada. Usarla directamente
+        // evita dejar el botón esperando una segunda carga de toda la página.
+        if (data.next_gen?.success) {
+            dataNextGen = data.next_gen;
+            renderDolaresNextGen();
+            renderNextGen();
+        }
+    } catch (error) {
+        mostrarMensaje('Los cambios no pudieron confirmarse. Volvé a intentar.', false);
+    } finally {
         actualizarEstadoCambiosNextGen();
+        if (guardado) {
+            const estado = document.getElementById('estadoCambiosNextGen');
+            estado.textContent = 'Cambios guardados y aplicados';
+            estado.className = 'text-xs font-semibold text-emerald-700';
+            window.setTimeout(() => {
+                if (!cambiosDolarNextGen.size && !cambiosProductoNextGen.size) actualizarEstadoCambiosNextGen();
+            }, 3000);
+        }
     }
 }
 
