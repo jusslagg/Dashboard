@@ -9471,6 +9471,17 @@ def api_edicion_masiva_proyecciones_plp():
     if len(entradas) > 500:
         return jsonify({'success': False, 'errores': ['La edición masiva admite hasta 500 filas por operación']}), 400
 
+    reemplazar_entrada = data.get('reemplazar_meses', [])
+    if not isinstance(reemplazar_entrada, list):
+        return jsonify({'success': False, 'errores': ['Los meses a reemplazar no son válidos']}), 400
+    meses_reemplazo = []
+    for valor in reemplazar_entrada:
+        mes_reemplazo = mes_valido(valor)
+        if not mes_reemplazo or int(mes_reemplazo[:4]) != year:
+            return jsonify({'success': False, 'errores': [f'El mes a reemplazar “{valor}” no corresponde a {year}']}), 400
+        if mes_reemplazo not in meses_reemplazo:
+            meses_reemplazo.append(mes_reemplazo)
+
     errores = []
     normalizadas = []
     ids_recibidos = set()
@@ -9527,6 +9538,11 @@ def api_edicion_masiva_proyecciones_plp():
             normalizadas.append((registro_id, False, tipo, mes, campania, horas, carga_semanal, carga_horaria, cumplimiento))
     if errores:
         return jsonify({'success': False, 'errores': errores[:30]}), 400
+    for mes_reemplazo in meses_reemplazo:
+        if not any(not eliminar and mes == mes_reemplazo for _, eliminar, _, mes, *_ in normalizadas):
+            return jsonify({'success': False, 'errores': [
+                f'El reemplazo de {mes_reemplazo} debe contener al menos una campaña con horas'
+            ]}), 400
 
     registros_por_id = {}
     if ids_recibidos:
@@ -9539,6 +9555,24 @@ def api_edicion_masiva_proyecciones_plp():
             return jsonify({'success': False, 'errores': [f'No existen las proyecciones: {faltantes}']}), 404
         if any(not registro.tipo_plp or registro.year != year for registro in registros_por_id.values()):
             return jsonify({'success': False, 'errores': ['Una fila no pertenece al año o al módulo PLP seleccionado']}), 400
+
+    if meses_reemplazo:
+        claves_conservadas = {
+            (tipo, mes, normalizar_header(campania))
+            for _, eliminar, tipo, mes, campania, *_ in normalizadas
+            if not eliminar and mes in meses_reemplazo
+        }
+        existentes_reemplazo = ProyeccionMatriz.query.filter(
+            ProyeccionMatriz.year == year,
+            ProyeccionMatriz.mes.in_(meses_reemplazo),
+            ProyeccionMatriz.tipo_plp.isnot(None),
+            ProyeccionMatriz.tipo_plp != '',
+        ).all()
+        for registro in existentes_reemplazo:
+            clave = (registro.tipo_plp, registro.mes, normalizar_header(registro.campania))
+            if clave not in claves_conservadas:
+                ids_a_eliminar.add(registro.id)
+                registros_por_id[registro.id] = registro
 
     antes = []
     guardadas = []
@@ -9587,16 +9621,19 @@ def api_edicion_masiva_proyecciones_plp():
     db.session.flush()
     registrar_historial(
         'edicion', 'proyeccion_matriz', str(year),
-        f'Edición rápida PLP {year}: {len(guardadas)} guardada(s), {len(eliminadas)} eliminada(s)',
+        (f'Reemplazo PLP {", ".join(meses_reemplazo)}: ' if meses_reemplazo else f'Edición rápida PLP {year}: ')
+        + f'{len(guardadas)} guardada(s), {len(eliminadas)} eliminada(s)',
         antes={'proyecciones': antes},
         despues={'proyecciones': [snapshot_proyeccion(item) for item in guardadas], 'ids_eliminados': eliminadas},
     )
     db.session.commit()
     return jsonify({
         'success': True,
-        'mensaje': f'PLP actualizado: {len(guardadas)} guardada(s) y {len(eliminadas)} eliminada(s)',
+        'mensaje': (f'PLP reemplazado para {", ".join(meses_reemplazo)}: ' if meses_reemplazo else 'PLP actualizado: ')
+        + f'{len(guardadas)} guardada(s) y {len(eliminadas)} anterior(es) eliminada(s)',
         'proyecciones': [item.to_dict() for item in guardadas],
         'eliminadas': eliminadas,
+        'meses_reemplazados': meses_reemplazo,
     })
 
 

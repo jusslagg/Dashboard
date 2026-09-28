@@ -344,6 +344,7 @@ let pestaniaActual = 'todas';
 let serviciosPersonal = [];
 let distribucionesPersonal = [];
 let actualizandoCalendarioProyecciones = false;
+let mesesReemplazoPLP = [];
 
 window.addEventListener('storage', event => {
     if (event.key === 'calendarioOperativoActualizado') actualizarCalendarioProyecciones();
@@ -616,6 +617,7 @@ function filaEditorPLP(item = {}) {
 }
 
 function renderEditorPLP() {
+    mesesReemplazoPLP = [];
     const tbody = document.getElementById('tbodyEditorPLP');
     if (!tbody) return;
     const filtro = document.getElementById('filtroMesEditorPLP');
@@ -784,6 +786,7 @@ function prepararTablaPegadaPLP() {
     tbody.innerHTML = preparadas.map(filaEditorPLP).join('');
     tbody.querySelectorAll('tr').forEach(fila => { fila.dataset.plpDirty = '1'; });
     const mesesUnicos = [...new Set(preparadas.map(fila => fila.mes))];
+    mesesReemplazoPLP = mesesUnicos;
     if (mesesUnicos.length === 1) document.getElementById('filtroMesEditorPLP').value = mesesUnicos[0];
     const totales = preparadas.reduce((acumulado, fila) => {
         acumulado[fila.tipo_plp] = (acumulado[fila.tipo_plp] || 0) + fila.horas;
@@ -791,8 +794,10 @@ function prepararTablaPegadaPLP() {
     }, {});
     const totalGeneral = preparadas.reduce((total, fila) => total + fila.horas, 0);
     resumen.className = 'mt-3 rounded border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900';
+    const nombresMeses = mesesUnicos.map(valor => meses.find(item => item.value === valor)?.label || valor).join(', ');
     resumen.innerHTML = `<div class="font-bold">${preparadas.length} filas preparadas · ${formatNumber(totalGeneral)} horas en total${omitidasSinHoras ? ` · ${omitidasSinHoras} sin horas omitida(s)` : ''}</div>
         <div class="mt-2 flex flex-wrap gap-2">${Object.entries(totales).map(([tipo, total]) => `<span class="rounded bg-white px-2 py-1 ring-1 ring-emerald-200"><strong>${escapeHtml(tipo)}:</strong> ${formatNumber(total)} h</span>`).join('')}</div>
+        <div class="mt-2 rounded bg-amber-50 px-2 py-1.5 font-semibold text-amber-900 ring-1 ring-amber-200">Al guardar se reemplazará todo ${escapeHtml(nombresMeses)}. Las campañas anteriores que no estén en esta tabla se eliminarán.</div>
         <div class="mt-2 text-emerald-800">Revisá las filas y presioná <strong>Guardar cambios</strong> para contabilizarlas.</div>`;
     tbody.closest('.overflow-x-auto').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -820,7 +825,11 @@ async function guardarEditorPLP() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ year: document.getElementById('yearFiltro').value, filas }),
+        body: JSON.stringify({
+            year: document.getElementById('yearFiltro').value,
+            filas,
+            reemplazar_meses: mesesReemplazoPLP,
+        }),
     });
     const data = await response.json();
     if (!response.ok || !data.success) {
@@ -830,6 +839,7 @@ async function guardarEditorPLP() {
     }
     mostrarMensaje(data.mensaje, 'success');
     alert(`Guardado confirmado\n\n${data.mensaje}`);
+    mesesReemplazoPLP = [];
     await cargarProyecciones();
 }
 
