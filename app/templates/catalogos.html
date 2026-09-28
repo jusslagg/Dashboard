@@ -232,9 +232,19 @@
     </div>
     <div class="nm-grid">
         <section class="nm-panel"><h3 style="font-size:16px">1. Nombre en Proyectados</h3><p class="text-xs text-slate-500">Seleccioná el nombre que querés unificar.</p><input id="normalizacionBuscarProy" class="nm-field" type="search" placeholder="Buscar cliente o servicio proyectado"><label class="text-xs text-slate-600"><input id="normalizacionPendientes" type="checkbox"> Mostrar solo pendientes</label><div id="normalizacionListaProy" class="nm-list" style="margin-top:10px"></div></section>
-        <section class="nm-panel"><h3 style="font-size:16px">2. Nombre en Facturación</h3><p id="normalizacionSeleccion" class="text-xs text-slate-500">Elegí primero un nombre proyectado a la izquierda.</p><div id="normalizacionVinculados" style="margin:10px 0"></div><input id="normalizacionBuscarFact" class="nm-field" type="search" placeholder="Buscar cliente o campaña de Facturación"><div id="normalizacionListaFact" class="nm-list"></div></section>
+        <section class="nm-panel"><h3 style="font-size:16px">2. Nombre en Facturación</h3><p id="normalizacionSeleccion" class="text-xs text-slate-500">Elegí primero un nombre proyectado a la izquierda.</p><div id="normalizacionVinculados" style="margin:10px 0"></div><input id="normalizacionBuscarFact" class="nm-field" type="search" placeholder="Buscar cliente o campaña de Facturación"><div style="display:flex;align-items:center;gap:12px;margin:12px 0;flex-wrap:wrap"><button id="normalizacionGuardar" type="button" class="nm-action" disabled>Vincular seleccionadas (0)</button><span id="normalizacionResultado" role="status" aria-live="polite" class="text-sm"></span></div><div id="normalizacionListaFact" class="nm-list"></div></section>
     </div>
 </div>
+<section id="normalizacionHistorialPanel" class="nm-panel" style="margin-top:16px" hidden>
+    <h2>Vinculaciones e historial</h2>
+    <p class="text-sm">Consultá todas las vinculaciones guardadas. Usá «Editar» para agregar campañas al mismo nombre o «Quitar» para desvincular una campaña.</p>
+    <input id="normalizacionBuscarHistorial" class="nm-field" type="search" placeholder="Buscar en vinculaciones e historial" aria-label="Buscar en vinculaciones e historial">
+    <h3>Vinculaciones actuales (todos los años)</h3>
+    <div id="normalizacionActuales" class="nm-list"></div>
+    <h3 style="margin-top:18px">Últimos 100 cambios</h3>
+    <p class="text-xs">Se registran los cambios desde la incorporación de este historial. Las vinculaciones anteriores se muestran arriba; no se reconstruyen movimientos pasados.</p>
+    <div id="normalizacionMovimientos" class="nm-list" role="status" aria-live="polite"></div>
+</section>
 <div id="catalogosConfig"
      data-puede-eliminar="{% if usuario_actual and usuario_actual.puede_eliminar %}true{% else %}false{% endif %}"
      hidden></div>
@@ -701,20 +711,104 @@ function restaurarBotonGuardar() {
 }
 </script>
 <script>
-const nm = {data:null,selected:null,message:''};
+const nm = {data:null,selected:null,message:'',saving:false,checked:new Set(),history:[]};
 const nmEl=id=>document.getElementById(id);
 const nmKey=(cliente,servicio)=>[cliente,servicio].map(value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ')).join('|');
 const nmMoney=value=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:2,maximumFractionDigits:2}).format(value||0);
-function nmTab(name){const normal=name==='normalizacion';nmEl('catalogosPrincipal').hidden=normal;nmEl('catalogosNormalizacion').hidden=!normal;nmEl('catalogosDescripcion').textContent=normal?'Correspondencias entre nombres proyectados y campañas de Facturación':'Alta de asociaciones para cargar registros sin tipear datos repetidos';for(const [id,active] of [['tabAsociaciones',!normal],['tabNormalizacion',normal]]){nmEl(id).classList.toggle('active',active);nmEl(id).setAttribute('aria-selected',String(active))}const url=new URL(location.href);if(normal)url.searchParams.set('tab','normalizacion');else url.searchParams.delete('tab');history.replaceState(null,'',url);if(normal&&!nm.data)nmCargar()}
+function nmTab(name){const normal=name==='normalizacion';nmEl('catalogosPrincipal').hidden=normal;nmEl('catalogosNormalizacion').hidden=!normal;nmEl('normalizacionHistorialPanel').hidden=!normal;nmEl('catalogosDescripcion').textContent=normal?'Correspondencias entre nombres proyectados y campañas de Facturación':'Alta de asociaciones para cargar registros sin tipear datos repetidos';for(const [id,active] of [['tabAsociaciones',!normal],['tabNormalizacion',normal]]){nmEl(id).classList.toggle('active',active);nmEl(id).setAttribute('aria-selected',String(active))}const url=new URL(location.href);if(normal)url.searchParams.set('tab','normalizacion');else url.searchParams.delete('tab');history.replaceState(null,'',url);if(normal&&!nm.data)nmCargar()}
 function nmFuente(){return nm.data?.proyectados.find(item=>nmKey(item.cliente,item.servicio)===nm.selected)}
 function nmRelaciones(fuente){return (nm.data?.normalizaciones||[]).filter(item=>nmKey(item.cliente_proyectado,item.servicio_proyectado)===nmKey(fuente.cliente,fuente.servicio))}
 function nmCoincideSolo(fuente){const key=nmKey(fuente.cliente,fuente.servicio),cliente=nmKey(fuente.cliente,'').split('|')[0];return nm.data.facturacion.some(item=>nmKey(item.cliente,item.servicio)===key)||nmKey(fuente.cliente,fuente.servicio).split('|')[1]===cliente&&nm.data.facturacion.some(item=>nmKey(item.cliente,'').split('|')[0]===cliente)}
 function nmEstadoFuente(fuente){const count=nmRelaciones(fuente).length;if(count)return {label:count+' vinculada'+(count===1?'':'s'),className:'ok'};if(nmKey(fuente.servicio,'').split('|')[0].endsWith(' nocturnidad'))return {label:'Ajuste proyectado',className:'ok'};if(nmCoincideSolo(fuente))return {label:'Coincide sola',className:'ok'};return {label:fuente.vigente?'Pendiente':'Fuera del año',className:'wait'}}
-async function nmCargar(){const year=nmEl('normalizacionYear').value;nmEl('normalizacionResumen').textContent='Cargando nombres…';try{const response=await fetch('/api/catalogos/normalizaciones-proyectados?year='+encodeURIComponent(year)),data=await response.json();if(!response.ok||!data.success)throw Error((data.errores||['No se pudieron cargar los nombres']).join('. '));nm.data=data;if(!nmFuente())nm.selected=data.proyectados.length?nmKey(data.proyectados[0].cliente,data.proyectados[0].servicio):null;nmRender()}catch(error){nmEl('normalizacionResumen').textContent=error.message}}
-function nmRender(){if(!nm.data)return;const pending=nm.data.proyectados.filter(item=>nmEstadoFuente(item).label==='Pendiente').length;nmEl('normalizacionResumen').textContent=`${nm.data.proyectados.length} nombres proyectados · ${pending} pendientes · ${nm.data.normalizaciones.length} correspondencias guardadas`+(nm.message?' · '+nm.message:'');nmRenderFuentes();nmRenderFacturacion()}
+async function nmCargar(){nm.checked.clear();nmCargarHistorial();const year=nmEl('normalizacionYear').value;nmEl('normalizacionResumen').textContent='Cargando nombres…';try{const response=await fetch('/api/catalogos/normalizaciones-proyectados?year='+encodeURIComponent(year)),data=await response.json();if(!response.ok||!data.success)throw Error((data.errores||['No se pudieron cargar los nombres']).join('. '));nm.data=data;if(!nmFuente())nm.selected=data.proyectados.length?nmKey(data.proyectados[0].cliente,data.proyectados[0].servicio):null;nmRender()}catch(error){nmEl('normalizacionResumen').textContent=error.message}}
+function nmRender(){if(!nm.data)return;const pending=nm.data.proyectados.filter(item=>nmEstadoFuente(item).label==='Pendiente').length;nmEl('normalizacionResumen').textContent=`${nm.data.proyectados.length} nombres proyectados · ${pending} pendientes · ${nm.data.normalizaciones.length} correspondencias guardadas`+(nm.message?' · '+nm.message:'');nmRenderFuentes();nmRenderFacturacion();nmActualizarSeleccion();nmEl('normalizacionResultado').textContent=nm.message;nmRenderHistorial()}
 function nmRenderFuentes(){const search=nmKey(nmEl('normalizacionBuscarProy').value,''),only=nmEl('normalizacionPendientes').checked;const sources=nm.data.proyectados.filter(item=>(!search||nmKey(item.cliente+' '+item.servicio,'').includes(search.split('|')[0]))&&(!only||nmEstadoFuente(item).label==='Pendiente'));nmEl('normalizacionListaProy').innerHTML=sources.map(item=>{const status=nmEstadoFuente(item),selected=nmKey(item.cliente,item.servicio)===nm.selected;return '<button type="button" class="nm-row'+(selected?' selected':'')+'" data-cliente="'+escapeHtml(item.cliente)+'" data-servicio="'+escapeHtml(item.servicio)+'"><span><strong>'+escapeHtml(item.servicio)+'</strong><small>'+escapeHtml(item.cliente)+' · '+(item.vigente?nmMoney(item.proyectado):'sin proyección en este año')+'</small></span><span class="nm-badge '+status.className+'">'+status.label+'</span></button>'}).join('')||'<p class="pvf-empty" style="padding:18px">No hay nombres para este filtro.</p>'}
-function nmRenderFacturacion(){const source=nmFuente();if(!source){nmEl('normalizacionSeleccion').textContent='Elegí primero un nombre proyectado a la izquierda.';nmEl('normalizacionVinculados').innerHTML='';nmEl('normalizacionListaFact').innerHTML='';return}nmEl('normalizacionSeleccion').textContent='Proyectado: '+source.cliente+' / '+source.servicio+'. Elegí abajo la campaña que representa ese importe en Facturación.';const assigned=nmRelaciones(source),origins=(source.origenes||[]).map(item=>item.cliente+' / '+item.campania);nmEl('normalizacionVinculados').innerHTML=(origins.length?'<p class="text-xs text-slate-500">Nombres de origen en las matrices: '+escapeHtml(origins.join(' · '))+'</p>':'')+'<p class="text-xs text-slate-600" style="margin-top:8px">Correspondencias guardadas para este nombre:</p>'+(assigned.length?assigned.map(item=>'<div class="nm-pair"><span>'+escapeHtml(item.cliente_facturacion)+' / '+escapeHtml(item.servicio_facturacion)+'</span><button type="button" class="nm-action remove" data-quitar="'+item.id+'">Quitar</button></div>').join(''):'<p class="text-xs text-slate-500" style="margin-top:5px">Todavía no hay nombres vinculados.</p>');const query=nmKey(nmEl('normalizacionBuscarFact').value,'').split('|')[0],sourceClient=nmKey(source.cliente,'').split('|')[0],sourceService=nmKey(source.servicio,'').split('|')[0];const targets=nm.data.facturacion.filter(item=>!query||nmKey(item.cliente+' '+item.servicio,'').includes(query)).sort((a,b)=>{const score=item=>{const client=nmKey(item.cliente,'').split('|')[0],service=nmKey(item.servicio,'').split('|')[0];return (client===sourceClient?100:0)+(service===sourceService?40:0)+Math.min(item.registros,20)};return score(b)-score(a)||a.cliente.localeCompare(b.cliente,'es')||a.servicio.localeCompare(b.servicio,'es')});nmEl('normalizacionListaFact').innerHTML=targets.map(item=>{const relation=nm.data.normalizaciones.find(row=>row.campania_id===item.id),current=relation&&nmKey(relation.cliente_proyectado,relation.servicio_proyectado)===nm.selected;return '<div class="nm-row"><span><strong>'+escapeHtml(item.cliente)+' / '+escapeHtml(item.servicio)+'</strong><small>'+Number(item.registros||0).toLocaleString('es-AR')+' registros en '+nm.data.year+(relation&&!current?' · Vinculada a '+escapeHtml(relation.servicio_proyectado):'')+(item.activa?'':' · Inactiva')+'</small></span><button type="button" class="nm-action'+(current?' remove':'')+'" data-vincular="'+item.id+'"'+(current?' disabled':'')+'>'+(current?'Vinculada':relation?'Mover aquí':'Vincular')+'</button></div>'}).join('')||'<p style="padding:18px;color:#64748b">No hay campañas para esta búsqueda.</p>'}
-async function nmMutar(url,method,body){try{const response=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}),data=await response.json();if(!response.ok||!data.success)throw Error((data.errores||['No se pudo guardar']).join('. '));nm.message=data.mensaje;localStorage.setItem('normalizacionProyectadosVersion',String(Date.now()));await nmCargar()}catch(error){nm.message=error.message;nmEl('normalizacionResumen').textContent=error.message}}
-document.addEventListener('DOMContentLoaded',()=>{const years={{ anios_disponibles|list|tojson }};nmEl('normalizacionYear').innerHTML=years.map(year=>'<option value="'+year+'">'+year+'</option>').join('');nmEl('normalizacionYear').value='{{ anio_actual }}';nmEl('tabAsociaciones').addEventListener('click',()=>nmTab('asociaciones'));nmEl('tabNormalizacion').addEventListener('click',()=>nmTab('normalizacion'));nmEl('normalizacionYear').addEventListener('change',nmCargar);nmEl('normalizacionBuscarProy').addEventListener('input',nmRenderFuentes);nmEl('normalizacionPendientes').addEventListener('change',nmRenderFuentes);nmEl('normalizacionBuscarFact').addEventListener('input',nmRenderFacturacion);nmEl('normalizacionListaProy').addEventListener('click',event=>{const button=event.target.closest('[data-cliente][data-servicio]');if(!button)return;nm.selected=nmKey(button.dataset.cliente,button.dataset.servicio);nmRender()});nmEl('normalizacionListaFact').addEventListener('click',event=>{const button=event.target.closest('[data-vincular]'),source=nmFuente();if(!button||!source)return;nmMutar('/api/catalogos/normalizaciones-proyectados?year='+nmEl('normalizacionYear').value,'POST',{cliente_proyectado:source.cliente,servicio_proyectado:source.servicio,campania_id:Number(button.dataset.vincular)})});nmEl('normalizacionVinculados').addEventListener('click',event=>{const button=event.target.closest('[data-quitar]');if(button)nmMutar('/api/catalogos/normalizaciones-proyectados/'+button.dataset.quitar,'DELETE')});if(new URLSearchParams(location.search).get('tab')==='normalizacion')nmTab('normalizacion')});
+function nmRenderFacturacion(){const source=nmFuente();if(!source){nmEl('normalizacionSeleccion').textContent='Elegí primero un nombre proyectado a la izquierda.';nmEl('normalizacionVinculados').innerHTML='';nmEl('normalizacionListaFact').innerHTML='';return}nmEl('normalizacionSeleccion').textContent='Proyectado: '+source.cliente+' / '+source.servicio+'. Marcá las campañas y pulsá Vincular seleccionadas para guardarlas juntas.';const assigned=nmRelaciones(source),origins=(source.origenes||[]).map(item=>item.cliente+' / '+item.campania);nmEl('normalizacionVinculados').innerHTML=(origins.length?'<p class="text-xs text-slate-500">Nombres de origen en las matrices: '+escapeHtml(origins.join(' · '))+'</p>':'')+'<p class="text-xs text-slate-600" style="margin-top:8px">Correspondencias guardadas para este nombre:</p>'+(assigned.length?assigned.map(item=>'<div class="nm-pair"><span>'+escapeHtml(item.cliente_facturacion)+' / '+escapeHtml(item.servicio_facturacion)+'</span><button type="button" class="nm-action remove" data-quitar="'+item.id+'">Quitar</button></div>').join(''):'<p class="text-xs text-slate-500" style="margin-top:5px">Todavía no hay nombres vinculados.</p>');const query=nmKey(nmEl('normalizacionBuscarFact').value,'').split('|')[0],sourceClient=nmKey(source.cliente,'').split('|')[0],sourceService=nmKey(source.servicio,'').split('|')[0];const targets=nm.data.facturacion.filter(item=>!query||nmKey(item.cliente+' '+item.servicio,'').includes(query)).sort((a,b)=>{const score=item=>{const client=nmKey(item.cliente,'').split('|')[0],service=nmKey(item.servicio,'').split('|')[0];return (client===sourceClient?100:0)+(service===sourceService?40:0)+Math.min(item.registros,20)};return score(b)-score(a)||a.cliente.localeCompare(b.cliente,'es')||a.servicio.localeCompare(b.servicio,'es')});nmEl('normalizacionListaFact').innerHTML=targets.map(item=>{const relation=nm.data.normalizaciones.find(row=>row.campania_id===item.id),current=relation&&nmKey(relation.cliente_proyectado,relation.servicio_proyectado)===nm.selected;return '<label class="nm-row" style="cursor:pointer;justify-content:flex-start;gap:12px"><input type="checkbox" data-vincular="'+item.id+'"'+(current?' checked disabled':nm.checked.has(item.id)?' checked':'')+'><span><strong>'+escapeHtml(item.cliente)+' / '+escapeHtml(item.servicio)+'</strong><small>'+Number(item.registros||0).toLocaleString('es-AR')+' registros en '+nm.data.year+(current?' · Vinculada':relation?' · Se moverá desde '+escapeHtml(relation.cliente_proyectado)+' / '+escapeHtml(relation.servicio_proyectado):'')+(item.activa?'':' · Inactiva')+'</small></span></label>' }).join('')||'<p style="padding:18px;color:#64748b">No hay campañas para esta búsqueda.</p>'}
+function nmActualizarSeleccion(){
+    const button=nmEl('normalizacionGuardar');
+    button.textContent='Vincular seleccionadas ('+nm.checked.size+')';
+    button.disabled=nm.saving||!nmFuente()||!nm.checked.size;
+}
+async function nmCargarHistorial(){
+    try{
+        const response=await fetch('/api/catalogos/normalizaciones-proyectados/historial');
+        const data=await leerRespuestaJson(response);
+        if(!response.ok||!data.success)throw Error('No se pudo cargar el historial');
+        nm.history=data.historial;
+        nmRenderHistorial();
+    }catch(error){nmEl('normalizacionMovimientos').textContent=error.message}
+}
+function nmRenderHistorial(){
+    const query=nmKey(nmEl('normalizacionBuscarHistorial').value,'').split('|')[0];
+    const matches=text=>!query||nmKey(text,'').includes(query);
+    const name=item=>item?item.cliente_proyectado+' / '+item.servicio_proyectado:'—';
+    const campaign=item=>item.cliente_facturacion+' / '+item.servicio_facturacion;
+    nmEl('normalizacionActuales').innerHTML=(nm.data?.normalizaciones||[]).filter(item=>matches(name(item)+' '+campaign(item))).map(item=>
+        '<div class="nm-row"><span><strong>'+escapeHtml(campaign(item))+'</strong><small>Proyectado: '+escapeHtml(name(item))+'</small></span><span><button class="nm-action" type="button" data-editar-normalizacion="'+item.id+'">Editar</button> <button class="nm-action remove" type="button" data-quitar="'+item.id+'">Quitar</button></span></div>'
+    ).join('')||'<p>No hay vinculaciones para esta búsqueda.</p>';
+    nmEl('normalizacionMovimientos').innerHTML=nm.history.filter(item=>matches(name(item.antes)+' '+name(item.despues)+' '+campaign(item.despues||item.antes)+' '+item.usuario_nombre)).map(item=>{
+        const data=item.despues||item.antes;
+        const action=item.accion==='eliminacion'?'Quitada':item.accion==='creacion'?'Agregada':'Movida';
+        const date=new Date(item.creado_en+'Z').toLocaleString('es-AR');
+        return '<div class="nm-row"><span><strong>'+action+' · '+escapeHtml(campaign(data))+'</strong><small>'+escapeHtml(name(item.antes))+' → '+escapeHtml(name(item.despues))+'</small><small>'+escapeHtml(date)+' · '+escapeHtml(item.usuario_nombre||'Sistema')+'</small></span></div>';
+    }).join('')||'<p>No hay movimientos registrados para esta búsqueda.</p>';
+}
+document.addEventListener('DOMContentLoaded',()=>{
+    nmEl('normalizacionBuscarHistorial').addEventListener('input',nmRenderHistorial);
+    nmEl('normalizacionActuales').addEventListener('click',event=>{
+        if(nm.saving)return;
+        const remove=event.target.closest('[data-quitar]');
+        if(remove){nmMutar('/api/catalogos/normalizaciones-proyectados/'+remove.dataset.quitar,'DELETE');return}
+        const edit=event.target.closest('[data-editar-normalizacion]');
+        if(!edit)return;
+        const relation=nm.data.normalizaciones.find(item=>item.id===Number(edit.dataset.editarNormalizacion));
+        if(!relation)return;
+        nm.selected=nmKey(relation.cliente_proyectado,relation.servicio_proyectado);
+        nm.checked.clear();nm.message='';
+        nmEl('normalizacionBuscarProy').value='';nmEl('normalizacionPendientes').checked=false;
+        nmEl('normalizacionBuscarFact').value='';
+        nmRender();nmEl('normalizacionSeleccion').scrollIntoView({behavior:'smooth',block:'center'});
+    });
+});
+async function nmMutar(url,method,body){
+    if(nm.saving)return;
+    nm.saving=true;
+    const panel=nmEl('catalogosNormalizacion');
+    const controls=[...panel.querySelectorAll('button,input,select'),...nmEl('normalizacionHistorialPanel').querySelectorAll('button,input')].map(element=>[element,element.disabled]);
+    controls.forEach(([element])=>element.disabled=true);
+    panel.setAttribute('aria-busy','true');
+    nmEl('normalizacionResumen').textContent=method==='DELETE'?'Quitando correspondencia…':'Guardando correspondencia…';
+    nmEl('normalizacionResultado').textContent=nmEl('normalizacionResumen').textContent;
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),30000);
+    try{
+        const response=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,signal:controller.signal});
+        if(response.status===403)throw Error('La sesión no autorizó el guardado. Recargá Datos Maestros y volvé a intentar.');
+        const data=await leerRespuestaJson(response);
+        if(!response.ok||!data.success)throw Error((data.errores||['No se pudo guardar']).join('. '));
+        if(method==='DELETE'){
+            const id=Number(url.split('/').pop());
+            nm.data.normalizaciones=nm.data.normalizaciones.filter(item=>item.id!==id);
+        }else{
+            const relations=data.normalizaciones||[data.normalizacion];
+            const ids=new Set(relations.map(item=>item.campania_id));
+            nm.data.normalizaciones=nm.data.normalizaciones.filter(item=>!ids.has(item.campania_id));
+            nm.data.normalizaciones.push(...relations);
+            nm.checked.clear();
+        }
+        nm.message=data.mensaje;await nmCargarHistorial();
+        // La confirmación del servidor no depende del almacenamiento del navegador.
+        try{localStorage.setItem('normalizacionProyectadosVersion',String(Date.now()))}catch(error){console.warn('No se pudo notificar la actualización de correspondencias',error)}
+    }catch(error){
+        nm.message=error.name==='AbortError'?'El servidor demoró demasiado. Recargá para comprobar si la correspondencia se guardó antes de reintentar.':error.message;
+    }finally{
+        clearTimeout(timeout);
+        nm.saving=false;
+        panel.removeAttribute('aria-busy');
+        controls.forEach(([element,disabled])=>element.disabled=disabled);
+        nmRender();
+    }
+}
+document.addEventListener('DOMContentLoaded',()=>{const years={{ anios_disponibles|list|tojson }};nmEl('normalizacionYear').innerHTML=years.map(year=>'<option value="'+year+'">'+year+'</option>').join('');nmEl('normalizacionYear').value='{{ anio_actual }}';nmEl('tabAsociaciones').addEventListener('click',()=>nmTab('asociaciones'));nmEl('tabNormalizacion').addEventListener('click',()=>nmTab('normalizacion'));nmEl('normalizacionYear').addEventListener('change',nmCargar);nmEl('normalizacionBuscarProy').addEventListener('input',nmRenderFuentes);nmEl('normalizacionPendientes').addEventListener('change',nmRenderFuentes);nmEl('normalizacionBuscarFact').addEventListener('input',nmRenderFacturacion);nmEl('normalizacionListaProy').addEventListener('click',event=>{const button=event.target.closest('[data-cliente][data-servicio]');if(!button||nm.saving)return;const key=nmKey(button.dataset.cliente,button.dataset.servicio);if(key!==nm.selected){nm.checked.clear();nm.message=''}nm.selected=key;nmRender()});nmEl('normalizacionListaFact').addEventListener('change',event=>{const checkbox=event.target.closest('[data-vincular]');if(!checkbox||nm.saving)return;const id=Number(checkbox.dataset.vincular);if(checkbox.checked)nm.checked.add(id);else nm.checked.delete(id);nmActualizarSeleccion()});nmEl('normalizacionGuardar').addEventListener('click',()=>{const source=nmFuente();if(!source||!nm.checked.size)return;nmMutar('/api/catalogos/normalizaciones-proyectados?year='+nmEl('normalizacionYear').value,'POST',{cliente_proyectado:source.cliente,servicio_proyectado:source.servicio,campania_ids:[...nm.checked]})});nmEl('normalizacionVinculados').addEventListener('click',event=>{const button=event.target.closest('[data-quitar]');if(button)nmMutar('/api/catalogos/normalizaciones-proyectados/'+button.dataset.quitar,'DELETE')});if(new URLSearchParams(location.search).get('tab')==='normalizacion')nmTab('normalizacion')});
 </script>
 {% endblock %}

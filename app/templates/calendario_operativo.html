@@ -93,6 +93,14 @@
 <script>
 let feriados = [];
 
+function notificarCambioCalendario() {
+    try {
+        localStorage.setItem('calendarioOperativoActualizado', String(Date.now()));
+    } catch (_) {
+        // Proyectados también verifica el calendario al recuperar el foco.
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('formFeriado').addEventListener('submit', guardarFeriado);
     cargarFeriados();
@@ -148,6 +156,7 @@ async function guardarFeriado(event) {
         return;
     }
     mostrarMensaje(data.mensaje || 'Feriado guardado', 'success');
+    notificarCambioCalendario();
     const year = payload.fecha.slice(0, 4);
     document.getElementById('yearFiltro').value = year;
     limpiarFormulario(false);
@@ -175,6 +184,7 @@ async function eliminarFeriado(id) {
         return;
     }
     mostrarMensaje(data.mensaje || 'Feriado eliminado', 'success');
+    notificarCambioCalendario();
     await cargarFeriados();
 }
 

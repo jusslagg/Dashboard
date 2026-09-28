@@ -136,6 +136,9 @@
                         <i class="fas fa-chevron-down text-[10px]"></i>
                     </button>
                     <div id="sidebarGroupProyectados" class="sidebar-group-content" hidden>
+                        <a href="/proyectados/exportar.xlsx?year={{ anio_actual }}" data-exportar-proyectados class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2">
+                            <i class="fas fa-file-excel w-6"></i><span class="sidebar-text">Descargar todo Proyectados</span>
+                        </a>
                         <a href="/matriz-proyecciones" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/matriz-proyecciones' %}active{% endif %}">
                             <i class="fas fa-calendar-days w-6"></i><span class="sidebar-text">Proyecciones</span>
                         </a>
@@ -304,6 +307,30 @@
 
     <script>
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        document.addEventListener('click', async event => {
+            const link = event.target.closest('[data-exportar-proyectados]');
+            if (!link) return;
+            event.preventDefault();
+            if (link.dataset.loading === 'true') return;
+            const label = link.querySelector('.sidebar-text, .export-label') || link;
+            const original = label.textContent;
+            const year = document.getElementById('yearFiltro')?.value || document.getElementById('year')?.value || '{{ anio_actual }}';
+            link.dataset.loading = 'true';
+            link.setAttribute('aria-busy', 'true');
+            label.textContent = 'Generando Excel ' + year + '…';
+            try {
+                const response = await fetch('/proyectados/exportar.xlsx?year=' + encodeURIComponent(year));
+                if (!response.ok || !(response.headers.get('Content-Type') || '').includes('spreadsheetml')) {
+                    throw Error('No se pudo generar el Excel. Revisá tu sesión y volvé a intentar.');
+                }
+                const url = URL.createObjectURL(await response.blob());
+                const download = document.createElement('a');
+                download.href = url; download.download = 'Proyectados_' + year + '.xlsx';
+                document.body.appendChild(download); download.click(); download.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 60000);
+            } catch (error) { alert(error.message); }
+            finally { label.textContent = original; delete link.dataset.loading; link.removeAttribute('aria-busy'); }
+        });
         const originalFetch = window.fetch.bind(window);
         window.fetch = (input, init = {}) => {
             const requestUrl = typeof input === 'string' ? input : input?.url || '';

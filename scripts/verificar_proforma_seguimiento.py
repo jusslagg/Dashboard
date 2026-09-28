@@ -165,7 +165,7 @@ with app.app_context(), app.test_client() as client:
         f'/api/seguimiento-personal/hoja?importacion_id={config.id}&hoja=auxiliar_horas_plp_masivo'
     ).get_json()['hoja']['filas']
     fila_agosto = next(fila for fila in auxiliar[1:] if str(fila[3]['v']).startswith('2026-08'))
-    assert float(fila_agosto[5]['v']) == 12, 'La planificación proyectada debe salir de la Proforma'
+    assert fila_agosto[5]['v'] is None, 'La planificacion manual empieza vacia'
     publish()
     assert dashboard_hours() == [12]
     upload('Masivo', 'MASIVO', 'Campaña M', 12, 'Definitiva')

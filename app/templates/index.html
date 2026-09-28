@@ -390,6 +390,12 @@ async function cargarFiltrosDashboard(mantenerSeleccion = false) {
     const response = await fetch('/api/filtros' + (mantenerSeleccion ? buildQuery() : ''));
     const data = await response.json();
     if (!data.success) return;
+    if (!filtrosInicializados) {
+        const parametros = new URLSearchParams(window.location.search);
+        for (const [campo, disponibles] of [['year', data.filtros.years], ['mes', data.filtros.meses], ['cliente', data.filtros.clientes]]) {
+            if (parametros.has(campo)) seleccion[campo] = disponibles.filter(valor => parametros.getAll(campo).includes(String(valor)));
+        }
+    }
 
     popularSelect('filtroYear', data.filtros.years, 'Todos', value => value, seleccion.year);
     popularSelect('filtroMes', data.filtros.meses, 'Todos', formatMes, seleccion.mes);

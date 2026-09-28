@@ -24,7 +24,8 @@ from app.models import (
     _canonizar_campania,
     _canonizar_cliente,
 )
-from app.routes import normalizar_header, registrar_historial, site_original_next_gen, snapshot_proyeccion
+from app.routes import (aplicar_calculo_proyeccion, calcular_dias_objetivo, fechas_feriadas_activas,
+                        normalizar_header, registrar_historial, site_original_next_gen, snapshot_proyeccion)
 
 
 YEAR = 2026
@@ -60,6 +61,27 @@ def identidad_canonica(cliente, campania):
     return cliente, _canonizar_campania(cliente, texto(campania))
 
 
+def claves_horas_auxiliares(workbook):
+    """Claves cuya K no es días × carga horaria × dotación."""
+    if workbook is None:
+        return set()
+    claves = set()
+    for row in workbook["Matriz"].iter_rows(min_row=3):
+        cliente, campania = identidad_canonica(row[2].value, row[3].value)
+        clave_mes = mes(row[5].value)
+        if not cliente or not campania or not clave_mes or not clave_mes.startswith(str(YEAR)):
+            continue
+        numero_fila = row[0].row
+        formula = str(row[10].value or '').upper().replace('$', '').replace(' ', '').lstrip('=+')
+        referencias = [parte.lstrip('+') for parte in formula.split('*')]
+        formula_jornada = sorted(referencias) == sorted(
+            [f'H{numero_fila}', f'I{numero_fila}', f'J{numero_fila}']
+        )
+        if not formula_jornada:
+            claves.add((normalizar_header(cliente), normalizar_header(campania), clave_mes))
+    return claves
+
+
 def snapshot_simple(registro, tipo=None):
     if not registro:
         return None
@@ -82,7 +104,7 @@ def guardar_historial(entidad, clave, resumen, antes, despues):
     )
 
 
-def sincronizar_matriz(workbook):
+def sincronizar_matriz(workbook, workbook_formulas=None):
     sheet = workbook["Matriz"]
     grupos = defaultdict(list)
     nombres = {}
@@ -106,6 +128,8 @@ def sincronizar_matriz(workbook):
     # La hoja Matriz no reemplaza las aperturas PLP mantenidas por la app.
     # Se actualizan las claves presentes en el libro y se preservan las demás.
     claves = sorted(set(grupos))
+    horas_auxiliares = claves_horas_auxiliares(workbook_formulas)
+    feriados = fechas_feriadas_activas(YEAR)
     antes, despues = [], []
     for clave in claves:
         registro = existentes.get(clave)
@@ -134,9 +158,11 @@ def sincronizar_matriz(workbook):
         porcentajes_nocturnidad = [numero(f[15]) for f in filas if f[15] not in (None, "")]
         registro.tiene_nocturnidad = bool(porcentajes_nocturnidad and max(porcentajes_nocturnidad) > 0)
         registro.porcentaje_nocturnidad = max(porcentajes_nocturnidad, default=0) * 100
-        registro.horas_carga_manual = True
-        registro.dias_objetivo_manual = registro.dias_objetivo
-        registro.horas_requeridas_manual = total_requeridas
+        # La fórmula del libro define el circuito: la mayoría responde al
+        # calendario; Personal/Naturgy toman horas desde una hoja auxiliar.
+        registro.horas_carga_manual = clave in horas_auxiliares
+        registro.dias_objetivo_manual = None
+        registro.horas_requeridas_manual = total_requeridas if registro.horas_carga_manual else None
         registro.jornadas.clear()
         for fila in filas:
             registro.jornadas.append(ProyeccionMatrizJornada(
@@ -144,6 +170,24 @@ def sincronizar_matriz(workbook):
                 carga_horaria=numero(fila[8]), dias_objetivo=int(numero(fila[7])),
                 horas_requeridas=numero(fila[10]),
             ))
+        if registro.horas_carga_manual:
+            aplicar_calculo_proyeccion(registro, {
+                'cliente': cliente, 'campania': campania,
+                'horas_carga_manual': True,
+                'horas_requeridas_manual': total_requeridas,
+                'carga_semanal_plp': registro.carga_semanal,
+                'carga_horaria_plp': registro.carga_horaria,
+                'porcentaje_cumplimiento': registro.porcentaje_cumplimiento,
+            }, clave_mes, feriados)
+        elif any(
+            calcular_dias_objetivo(YEAR, int(clave_mes[-2:]), jornada.carga_semanal, feriados) != jornada.dias_objetivo
+            for jornada in registro.jornadas
+        ):
+            aplicar_calculo_proyeccion(registro, {
+                'cliente': cliente, 'campania': campania,
+                'jornadas': [jornada.to_dict() for jornada in registro.jornadas],
+                'porcentaje_cumplimiento': registro.porcentaje_cumplimiento,
+            }, clave_mes, feriados)
         db.session.flush()
         despues.append(snapshot_proyeccion(registro))
     guardar_historial("proyeccion_matriz", str(YEAR), f"Actualización integral Matriz {YEAR}: {len(grupos)} registros", antes, despues)
@@ -422,10 +466,11 @@ def main():
     )
     args = parser.parse_args()
     workbook = openpyxl.load_workbook(args.archivo, data_only=True, read_only=True)
+    workbook_formulas = openpyxl.load_workbook(args.archivo, data_only=False, read_only=True)
     app = create_app()
     with app.test_request_context("/sincronizacion-proyectados"):
         tareas = {
-            "matriz": sincronizar_matriz,
+            "matriz": lambda libro: sincronizar_matriz(libro, workbook_formulas),
             "precios": sincronizar_precios_y_fijos,
             "identidades": sincronizar_identidades,
             "variables": sincronizar_variables,

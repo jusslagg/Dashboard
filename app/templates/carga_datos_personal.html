@@ -16,8 +16,8 @@
         <div class="flex min-w-max gap-2" id="tabsCargaPersonal">
             <button id="tabCargaProforma" type="button" onclick="seleccionarPestanaCargaPersonal('proforma')" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white">Proforma</button>
             <button id="tabCargaCierreTrafico" type="button" onclick="seleccionarPestanaCargaPersonal('cierre_trafico')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Cierre de tráfico</button>
-            <button id="tabCargaBaseObjetivoMasivo" type="button" onclick="seleccionarPestanaCargaPersonal('base_objetivo_masivo')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Base objetivo Masivo</button>
             <button id="tabCargaAuxiliar" type="button" onclick="seleccionarPestanaCargaPersonal('auxiliar_horas_plp_masivo')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Auxiliar Horas PLP Masivo</button>
+            <button id="tabCargaBaseObjetivoMasivo" type="button" onclick="seleccionarPestanaCargaPersonal('base_objetivo_masivo')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Base objetivo Masivo</button>
             <button id="tabCargaPrecios" type="button" onclick="seleccionarPestanaCargaPersonal('precios')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Precios</button>
             <button id="tabCarga2026" type="button" onclick="seleccionarPestanaCargaPersonal('2026')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">2026</button>
             <button id="tabCargaAux" type="button" onclick="seleccionarPestanaCargaPersonal('aux')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Aux</button>
@@ -186,8 +186,8 @@
                     <select id="filtroProformaAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los grupos de Proforma</option></select>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="guardarCambiosHorasAuxiliar" type="button" onclick="guardarCambiosHorasAuxiliarPersonal()" class="hidden h-9 rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"><i class="fas fa-save mr-1"></i> Guardar cambios</button>
-                    <button id="guardarCambiosAuxNormalizacion" type="button" onclick="guardarCambiosAuxNormalizacionPersonal()" class="hidden h-9 rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"><i class="fas fa-save mr-1"></i> Guardar correspondencias</button>
+                    <button id="guardarCambiosHorasAuxiliar" type="button" onclick="guardarCambiosHorasAuxiliarPersonal()" class="hidden h-9 shrink-0 whitespace-nowrap rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"><i class="fas fa-save mr-1"></i> Guardar cambios</button>
+                    <button id="guardarCambiosAuxNormalizacion" type="button" onclick="guardarCambiosAuxNormalizacionPersonal()" class="hidden h-9 shrink-0 whitespace-nowrap rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"><i class="fas fa-save mr-1"></i> Guardar correspondencias</button>
                     <button type="button" onclick="cambiarPaginaHoja(-1)" class="h-9 rounded border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50"><i class="fas fa-chevron-left"></i></button>
                     <span id="paginaHojaSeguimiento" class="min-w-[130px] text-center text-sm text-slate-600">Página 1 de 1</span>
                     <button type="button" onclick="cambiarPaginaHoja(1)" class="h-9 rounded border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50"><i class="fas fa-chevron-right"></i></button>
@@ -210,6 +210,9 @@
             </div>
             <div class="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4">
                 <span id="estadoPasoSeguimiento" class="text-sm text-slate-600"></span>
+                <label id="periodoFinalSeguimiento" class="hidden px-3 text-sm">Período a publicar
+                    <select id="periodoPublicacionPersonal" onchange="periodoTrabajoSeguimiento = this.value" class="ml-2 rounded border border-slate-300 bg-white px-3 py-2"></select>
+                </label>
                 <button id="siguientePasoSeguimiento" type="button" onclick="irSiguientePasoSeguimiento()" class="rounded bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-indigo-700">Continuar</button>
             </div>
         </section>
@@ -297,6 +300,10 @@ let importacionesProforma = [];
 let importacionesSeguimiento = [];
 let cierresTraficoPersonal = [];
 let hojaSeguimientoActiva = 'base_objetivo_masivo';
+let planificacionPlpManual = false;
+let guardandoAuxNormalizacion = false;
+let publicandoDashboardPersonal = false;
+let periodoTrabajoSeguimiento = null;
 let datosHojaSeguimiento = null;
 let periodosProformaSeguimiento = [];
 let periodosDefinitivosAuxiliarSeguimiento = [];
@@ -357,14 +364,14 @@ const configuracionHojasSeguimientoExcel = {
 
 const configuracionHojasSeguimiento = {
     base_objetivo_masivo: {
-        tab: 'tabCargaBaseObjetivoMasivo', nombre: 'Base objetivo Masivo', siguiente: 'auxiliar_horas_plp_masivo', inicio: 2, periodo: 5, estado: 15,
+        tab: 'tabCargaBaseObjetivoMasivo', nombre: 'Base objetivo Masivo', siguiente: 'precios', inicio: 2, periodo: 5, estado: 15,
         logica: 'Consolida por campaña, tipo de hora y mes. Permite revisar objetivos, horas facturadas y valorización antes de continuar.',
         columnas: [[5,'Período','fecha'],[1,'Grupo','texto'],[3,'Campaña','texto'],[4,'Tipo de hora','texto'],[15,'Estado','estado'],[6,'Objetivo horas','horas'],[7,'Horas facturadas','horas'],[8,'Valor hora','moneda'],[9,'Facturado horas','moneda'],[11,'Variable','moneda'],[12,'Ajustes','moneda'],[14,'Total facturado','moneda']]
     },
     auxiliar_horas_plp_masivo: {
-        tab: 'tabCargaAuxiliar', nombre: 'Auxiliar Horas PLP Masivo', siguiente: 'precios', especial: 'auxiliar_horas', periodo: 3, estado: 17,
-        logica: 'Vista automática. Las horas planificadas proyectadas provienen de la Proforma y los datos definitivos se muestran únicamente después de importar el cierre de tráfico del mes.',
-        columnas: [[0,'GRUPO','texto'],[1,'Campaña','texto'],[2,'Tipo VH','texto'],[3,'Mes','fecha'],[4,'Proforma','estado'],[5,'Horas PLANIFICADAS PLP','horas'],[6,'Cierre de tráfico','estado'],[7,'Horas PLANIFICADAS CIERRE DE TRÁFICO','horas'],[8,'HORAS CÁLCULO NETAS CIERRE DE TRÁFICO','horas'],[9,'Brutas','horas'],[10,'Brutas c/Tope','horas'],[11,'% ADH','porcentaje'],[12,'x','texto'],[13,'HORAS FACTURADAS PROYECTADAS','horas'],[14,'% tipo hs','porcentaje'],[15,'HORAS FACTURADAS DEFINITIVAS','horas'],[16,'PRECIO','moneda'],[17,'Estado vigente','estado']]
+        tab: 'tabCargaAuxiliar', nombre: 'Auxiliar Horas PLP Masivo', siguiente: 'base_objetivo_masivo', especial: 'auxiliar_horas', periodo: 3, estado: 17,
+        logica: 'Completá las horas planificadas PLP y guardá los cambios. Esta carga es independiente de las horas facturadas por Proforma y del cierre de tráfico.',
+        columnas: [[0,'GRUPO','texto'],[1,'Campaña','texto'],[2,'Tipo VH','texto'],[3,'Mes','fecha'],[4,'Proforma','estado'],[5,'Horas PLANIFICADAS PLP','horas_editables'],[6,'Cierre de tráfico','estado'],[7,'Horas PLANIFICADAS CIERRE DE TRÁFICO','horas'],[8,'HORAS CÁLCULO NETAS CIERRE DE TRÁFICO','horas'],[9,'Brutas','horas'],[10,'Brutas c/Tope','horas'],[11,'% ADH','porcentaje'],[12,'x','texto'],[13,'HORAS FACTURADAS PROYECTADAS','horas'],[14,'% tipo hs','porcentaje'],[15,'HORAS FACTURADAS DEFINITIVAS','horas'],[16,'PRECIO','moneda'],[17,'Estado vigente','estado']]
     },
     precios: {
         tab: 'tabCargaPrecios', nombre: 'Precios', siguiente: '2026', especial: 'precios', periodo: 0, estado: null,
@@ -377,7 +384,7 @@ const configuracionHojasSeguimiento = {
         columnas: [[2,'Período','fecha'],[1,'Empresa','texto'],[0,'Tipo de negocio','texto'],[5,'Campaña','texto'],[17,'Tipo de hora','texto'],[3,'Estado','estado'],[6,'Horas','horas'],[7,'Precio','moneda'],[8,'Facturado horas','moneda'],[9,'Bono','porcentaje'],[10,'Facturado bono','moneda'],[12,'Ajustes','moneda'],[13,'Total','moneda'],[18,'Jefatura','texto']]
     },
     aux: {
-        tab: 'tabCargaAux', nombre: 'Aux', siguiente: null, especial: 'aux_normalizacion', inicio: 1, periodo: null, estado: null,
+        tab: 'tabCargaAux', nombre: 'Aux', siguiente: 'base_objetivo_masivo', especial: 'aux_normalizacion', inicio: 1, periodo: null, estado: null,
         logica: 'Normaliza el nombre original de cada campaña. Sus cinco correspondencias alimentan Base objetivo Masivo y la vista 2026.',
         columnas: [[1,'Campaña original','texto_fijo'],[2,'Segmento normalizado','texto_editable'],[3,'Jefatura','texto_editable'],[4,'Tipo de negocio','texto_editable'],[5,'Proforma','texto_editable'],[6,'Segmento de respaldo','texto_editable']]
     }
@@ -562,6 +569,7 @@ async function cargarHojaSeguimiento() {
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudo cargar la hoja']).join(' | '));
         datosHojaSeguimiento = data.hoja;
+        planificacionPlpManual = data.planificacion_plp_manual === true;
         periodosProformaSeguimiento = data.periodos_proforma || [];
         periodosDefinitivosAuxiliarSeguimiento = data.periodos_definitivos_auxiliar || [];
         cierresAuxiliarSeguimiento = data.cierres_auxiliar || [];
@@ -696,11 +704,7 @@ function construirVistaSeguimiento() {
             const claveEdicion = [periodo, normalizarPersonal(valores[0]), normalizarPersonal(valores[1]), normalizarPersonal(valores[2])].join('|');
             const pendiente = cambiosHorasAuxiliarSeguimiento.get(claveEdicion);
             if (pendiente) {
-                valores[5] = numeroPrevisualizacionAuxiliar(pendiente.proyectada);
-                valores[7] = numeroPrevisualizacionAuxiliar(pendiente.definitiva);
-                valores[9] = numeroPrevisualizacionAuxiliar(pendiente.brutas);
-                const adh = numeroPrevisualizacionAuxiliar(pendiente.adh);
-                valores[11] = adh === null ? null : adh / 100;
+                valores[5] = numeroPrevisualizacionAuxiliar(pendiente.planificadas_plp);
             }
             return {
                 valores,
@@ -795,7 +799,11 @@ function prepararFiltrosHojaSeguimiento() {
     filtroEstado.innerHTML = estados.length ? '<option value="">Todos los estados</option>' + estados.map(estado => `<option value="${escaparPersonal(estado)}">${escaparPersonal(estado)}</option>`).join('') : '<option value="">Sin filtro de estado</option>';
     filtroEstado.disabled = !estados.length;
     const periodoProforma = periodoVistaSeguimiento(periodosProformaSeguimiento[0]);
-    if (periodoProforma && periodos.includes(periodoProforma)) filtroPeriodo.value = periodoProforma;
+    if (periodos.includes(periodoTrabajoSeguimiento)) filtroPeriodo.value = periodoTrabajoSeguimiento;
+    else if (periodoTrabajoSeguimiento === null && periodoProforma && periodos.includes(periodoProforma)) {
+        filtroPeriodo.value = periodoProforma;
+        periodoTrabajoSeguimiento = periodoProforma;
+    }
     const periodoActivo = filtroPeriodo.value;
     const estadosPeriodo = periodoActivo && indiceEstado >= 0
         ? [...new Set(vista.filas.filter(fila => periodoVistaSeguimiento(fila.valores[indicePeriodo]) === periodoActivo).map(fila => normalizarPersonal(fila.valores[indiceEstado])).filter(Boolean))]
@@ -889,6 +897,7 @@ function filasFiltradasSeguimiento(vista) {
 function cambiarPeriodoHojaSeguimiento() {
     paginaHojaSeguimiento = 1;
     const periodo = document.getElementById('filtroPeriodoHojaSeguimiento').value;
+    periodoTrabajoSeguimiento = periodo;
     const selectorEstado = document.getElementById('filtroEstadoHojaSeguimiento');
     const vista = construirVistaSeguimiento();
     const config = configuracionHojasSeguimiento[hojaSeguimientoActiva];
@@ -904,7 +913,10 @@ function cambiarPeriodoHojaSeguimiento() {
 function actualizarBotonCambiosHorasAuxiliar() {
     const boton = document.getElementById('guardarCambiosHorasAuxiliar');
     if (!boton) return;
-    boton.classList.add('hidden');
+    const cantidad = cambiosHorasAuxiliarSeguimiento.size;
+    boton.classList.toggle('hidden', !planificacionPlpManual || hojaSeguimientoActiva !== 'auxiliar_horas_plp_masivo');
+    boton.disabled = cantidad === 0;
+    boton.innerHTML = `<i class="fas fa-save mr-1"></i> Guardar horas planificadas${cantidad ? ` (${cantidad})` : ''}`;
 }
 
 function marcarHorasAuxiliarPersonal(input) {
@@ -913,10 +925,7 @@ function marcarHorasAuxiliarPersonal(input) {
     const clave = [identidad.periodo, normalizarPersonal(identidad.grupo), normalizarPersonal(identidad.campania), normalizarPersonal(identidad.tipo_vh)].join('|');
     cambiosHorasAuxiliarSeguimiento.set(clave, {
         ...identidad,
-        proyectada: fila.querySelector('[data-campo-horas="proyectada"]')?.value ?? '',
-        definitiva: fila.querySelector('[data-campo-horas="definitiva"]')?.value ?? '',
-        brutas: fila.querySelector('[data-campo-horas="brutas"]')?.value ?? '',
-        adh: fila.querySelector('[data-campo-horas="adh"]')?.value ?? '',
+        planificadas_plp: input.value,
     });
     fila.querySelectorAll('[data-campo-horas]').forEach(celda => celda.classList.add('border-amber-400', 'bg-amber-50'));
     actualizarBotonCambiosHorasAuxiliar();
@@ -924,7 +933,7 @@ function marcarHorasAuxiliarPersonal(input) {
 }
 
 async function guardarCambiosHorasAuxiliarPersonal() {
-    if (!cambiosHorasAuxiliarSeguimiento.size) return;
+    if (!cambiosHorasAuxiliarSeguimiento.size) return true;
     const boton = document.getElementById('guardarCambiosHorasAuxiliar');
     boton.disabled = true;
     boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...';
@@ -941,9 +950,11 @@ async function guardarCambiosHorasAuxiliarPersonal() {
         cambiosHorasAuxiliarSeguimiento.clear();
         mostrarMensajeSeguimiento(data.mensaje, 'success');
         await cargarHojaSeguimiento();
+        return true;
     } catch (error) {
         mostrarMensajeSeguimiento(error.message);
         actualizarBotonCambiosHorasAuxiliar();
+        return false;
     }
 }
 
@@ -952,7 +963,8 @@ function actualizarBotonCambiosAuxNormalizacion() {
     if (!boton) return;
     const cantidad = cambiosAuxNormalizacionSeguimiento.size;
     boton.classList.toggle('hidden', hojaSeguimientoActiva !== 'aux');
-    boton.disabled = cantidad === 0;
+    boton.disabled = cantidad === 0 || guardandoAuxNormalizacion;
+    boton.title = cantidad ? 'Guardar los cambios de Aux' : 'No hay cambios pendientes en Aux; podés continuar a la revisión del dashboard.';
     boton.innerHTML = `<i class="fas fa-save mr-1"></i> Guardar correspondencias${cantidad ? ` (${cantidad})` : ''}`;
 }
 
@@ -973,7 +985,9 @@ function marcarAuxNormalizacionPersonal(input) {
 }
 
 async function guardarCambiosAuxNormalizacionPersonal() {
-    if (!cambiosAuxNormalizacionSeguimiento.size) return;
+    if (guardandoAuxNormalizacion) return false;
+    if (!cambiosAuxNormalizacionSeguimiento.size) return true;
+    guardandoAuxNormalizacion = true;
     const boton = document.getElementById('guardarCambiosAuxNormalizacion');
     boton.disabled = true;
     boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...';
@@ -990,8 +1004,13 @@ async function guardarCambiosAuxNormalizacionPersonal() {
         cambiosAuxNormalizacionSeguimiento.clear();
         mostrarMensajeSeguimiento(data.mensaje, 'success');
         await cargarHojaSeguimiento();
+        return true;
     } catch (error) {
         mostrarMensajeSeguimiento(error.message);
+        document.getElementById('mensajeSeguimientoPersonal').scrollIntoView({block: 'nearest'});
+        return false;
+    } finally {
+        guardandoAuxNormalizacion = false;
         actualizarBotonCambiosAuxNormalizacion();
     }
 }
@@ -1057,17 +1076,18 @@ function renderHojaSeguimiento() {
     const visibles = filas.slice(desde, desde + filasPorPaginaSeguimiento);
     thead.innerHTML = `<tr>${vista.columnas.map(([,etiqueta,tipo]) => `<th class="border-b border-slate-200 px-3 py-3 ${['moneda','horas','horas_editables','porcentaje','porcentaje_editable'].includes(tipo) ? 'text-right' : 'text-left'}">${escaparPersonal(etiqueta)}</th>`).join('')}</tr>`;
     tbody.innerHTML = visibles.length ? visibles.map(fila => `<tr class="hover:bg-indigo-50/40">${fila.valores.map((valor, indice) => {
-        const tipo = vista.columnas[indice][2];
+        const tipoOriginal = vista.columnas[indice][2];
+        const tipo = tipoOriginal === 'horas_editables' && !planificacionPlpManual ? 'horas' : tipoOriginal;
         if (tipo === 'estado') return `<td class="border-b border-slate-100 px-3 py-2"><span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-800">${escaparPersonal(valor || '—')}</span></td>`;
         if (tipo === 'texto_editable') {
             const campos = {1: 'segmento', 2: 'jefatura', 3: 'tipo_negocio', 4: 'proforma', 5: 'backup'};
             const campo = campos[indice];
             const identidad = escaparPersonal(JSON.stringify(fila.identidad || {}));
             const pendiente = Boolean(fila.pendiente);
-            return `<td class="min-w-[210px] border-b border-slate-100 px-2 py-1.5"><input type="text" data-campo-aux="${campo}" data-identidad="${identidad}" value="${escaparPersonal(valor ?? '')}" onchange="marcarAuxNormalizacionPersonal(this)" class="w-full rounded border ${pendiente ? 'border-amber-400 bg-amber-50' : 'border-indigo-300 bg-indigo-50'} px-2 py-1.5 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100" placeholder="Pendiente"></td>`;
+            return `<td class="min-w-[210px] border-b border-slate-100 px-2 py-1.5"><input type="text" data-campo-aux="${campo}" data-identidad="${identidad}" value="${escaparPersonal(valor ?? '')}" oninput="marcarAuxNormalizacionPersonal(this)" class="w-full rounded border ${pendiente ? 'border-amber-400 bg-amber-50' : 'border-indigo-300 bg-indigo-50'} px-2 py-1.5 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100" placeholder="Pendiente"></td>`;
         }
         if (tipo === 'horas_editables' || tipo === 'porcentaje_editable') {
-            const campos = {5: 'proyectada', 7: 'definitiva', 9: 'brutas', 11: 'adh'};
+            const campos = {5: 'planificadas_plp', 7: 'definitiva', 9: 'brutas', 11: 'adh'};
             const campo = campos[indice];
             const identidad = escaparPersonal(JSON.stringify(fila.identidad || {}));
             const valorGuardado = tipo === 'porcentaje_editable' && valor !== null && valor !== '' ? Number(valor) * 100 : (valor ?? '');
@@ -1081,8 +1101,19 @@ function renderHojaSeguimiento() {
     document.getElementById('paginaHojaSeguimiento').textContent = `Página ${paginaHojaSeguimiento} de ${paginas} · ${filas.length.toLocaleString('es-AR')} registros`;
     const config = configuracionHojasSeguimiento[hojaSeguimientoActiva];
     const boton = document.getElementById('siguientePasoSeguimiento');
-    document.getElementById('estadoPasoSeguimiento').textContent = config.siguiente ? 'Revisá los totales filtrados antes de continuar.' : 'Último control antes de preparar la carga al dashboard.';
-    boton.textContent = config.siguiente ? `Continuar a ${configuracionHojasSeguimiento[config.siguiente].nombre}` : 'Revisión final completada';
+    const esUltimoPaso = hojaSeguimientoActiva === 'aux';
+    document.getElementById('periodoFinalSeguimiento').classList.toggle('hidden', !esUltimoPaso);
+    if (esUltimoPaso) {
+        const selector = document.getElementById('periodoPublicacionPersonal');
+        const periodos = [...new Set(periodosProformaSeguimiento.map(periodoVistaSeguimiento).filter(Boolean))].sort().reverse();
+        selector.innerHTML = '<option value="">Seleccionar período...</option>' + periodos.map(periodo => `<option value="${periodo}">${formatoVistaSeguimiento(periodo, 'fecha')}</option>`).join('');
+        selector.value = periodos.includes(periodoTrabajoSeguimiento) ? periodoTrabajoSeguimiento : '';
+    }
+    document.getElementById('estadoPasoSeguimiento').textContent = esUltimoPaso
+        ? 'Al finalizar se guardan los cambios y se publica el mes completo de Personal, reemplazando su versión anterior en el dashboard.'
+        : 'Revisá los totales filtrados antes de continuar.';
+    boton.textContent = esUltimoPaso ? 'Finalizar y pasar al dashboard' : `Continuar a ${configuracionHojasSeguimiento[config.siguiente].nombre}`;
+    boton.disabled = publicandoDashboardPersonal;
     boton.classList.toggle('hidden', !config.siguiente);
     actualizarBotonCambiosHorasAuxiliar();
     actualizarBotonCambiosAuxNormalizacion();
@@ -1112,15 +1143,24 @@ function actualizarPanelPublicacionDashboardPersonal(filas = []) {
     detalle.textContent = `${formatoVistaSeguimiento(periodo, 'fecha')}: ${filas.length.toLocaleString('es-AR')} filas ${estados.length ? `(${estados.join(' / ')})` : ''}. Al publicar, este mes completo de Personal reemplaza la versión anterior.`;
 }
 
-async function publicarSeguimientoPersonalDashboard() {
-    const periodo = document.getElementById('filtroPeriodoHojaSeguimiento').value;
+async function publicarSeguimientoPersonalDashboard(periodoElegido) {
+    if (publicandoDashboardPersonal) return;
+    const periodo = periodoElegido ?? document.getElementById('filtroPeriodoHojaSeguimiento').value;
     const importacionId = document.getElementById('versionSeguimientoPersonal').value;
-    if (!periodo) return mostrarMensajeSeguimiento('Seleccione un período antes de pasar los datos al dashboard.');
+    if (!periodo) {
+        mostrarMensajeSeguimiento('Seleccione un período antes de pasar los datos al dashboard.');
+        document.getElementById('mensajeSeguimientoPersonal').scrollIntoView({block: 'nearest'});
+        return;
+    }
     const boton = document.getElementById('publicarDashboardPersonal');
     const contenidoAnterior = boton.innerHTML;
+    publicandoDashboardPersonal = true;
+    document.getElementById('siguientePasoSeguimiento').disabled = true;
     boton.disabled = true;
     boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Actualizando dashboard...';
     try {
+        if (!(await guardarCambiosAuxNormalizacionPersonal())) return;
+        if (!(await guardarCambiosHorasAuxiliarPersonal())) return;
         const response = await fetch('/api/seguimiento-personal/dashboard', {
             method: 'POST',
             credentials: 'same-origin',
@@ -1131,16 +1171,28 @@ async function publicarSeguimientoPersonalDashboard() {
         if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudo actualizar el dashboard']).join(' | '));
         mostrarMensajeSeguimiento(`${data.mensaje} Puede revisarlo ahora en el Dashboard de Facturación.`, 'success');
         document.getElementById('detallePublicarDashboardPersonal').textContent = `${data.periodo}: ${data.creadas} filas vigentes; ${data.reemplazadas} anteriores reemplazadas. La operación quedó registrada en Historial.`;
+        const destino = new URL({{ url_for('main.index')|tojson }}, window.location.origin);
+        destino.searchParams.set('year', data.periodo.slice(0, 4));
+        destino.searchParams.set('mes', data.periodo);
+        destino.searchParams.set('cliente', 'Personal');
+        window.location.assign(destino.toString());
     } catch (error) {
         mostrarMensajeSeguimiento(error.message || 'No se pudo actualizar el dashboard.');
+        document.getElementById('mensajeSeguimientoPersonal').scrollIntoView({block: 'nearest'});
     } finally {
+        publicandoDashboardPersonal = false;
         boton.innerHTML = contenidoAnterior;
         boton.disabled = false;
         renderHojaSeguimiento();
     }
 }
 
-function irSiguientePasoSeguimiento() {
+async function irSiguientePasoSeguimiento() {
+    if (hojaSeguimientoActiva === 'aux') {
+        await publicarSeguimientoPersonalDashboard(document.getElementById('periodoPublicacionPersonal').value);
+        return;
+    }
+    if (hojaSeguimientoActiva === 'auxiliar_horas_plp_masivo' && !(await guardarCambiosHorasAuxiliarPersonal())) return;
     const siguiente = configuracionHojasSeguimiento[hojaSeguimientoActiva]?.siguiente;
     if (siguiente) seleccionarPestanaCargaPersonal(siguiente);
 }

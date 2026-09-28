@@ -306,13 +306,13 @@ def _spec(title, data, year):
                     _col('actual', f'Horas {year}'), _col('variacion', 'Variación', 'percent'),
                     _col('dotacion_anterior', f'Dotación dic {year - 1}'),
                     _col('dotacion_actual', f'Dotación {data.get("corte")}')])])
-    if title == 'Ratio Eli':
+    if title in ('Ratio Staff Operaciones 1', 'Ratio Eli'):
         return ('Relación mensual entre staff y dotación requerida.', [],
                 [_table('Serie mensual', data.get('serie', []), [
                     _col('mes', 'Mes', 'text'), _col('requerido', 'Requerido'),
                     _col('staff', 'Staff'), _col('ratio', 'Ratio', 'percent')],
                     chart=('line', 'mes', ('ratio',)))])
-    if title == 'Ratio Eli II':
+    if title in ('Ratio Staff Operaciones 2', 'Ratio Eli II'):
         return ('Operaciones y staff, en dotación e importe, con sus ratios mensuales.', [],
                 [_table('Serie mensual', data.get('serie', []), [
                     _col('mes', 'Mes', 'text'), _col('operaciones', 'Operaciones'),
