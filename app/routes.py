@@ -10723,21 +10723,6 @@ def aplicar_proformas_a_seguimiento(contenido):
     hoja_base = hojas['base_objetivo_masivo']
     estilos_automaticos_seguimiento(hoja_base)
     reglas_objetivo = reglas_plantilla(hoja_base.get('filas', [])[2:], normalizar_header)
-    factores_objetivo = {}
-    factores_objetivo_por_tipo = defaultdict(list)
-    for fila in hoja_base.get('filas', [])[2:]:
-        campania = valor_fila_seguimiento(fila, 3)
-        tipo = valor_fila_seguimiento(fila, 4)
-        vh_real = valor_fila_seguimiento(fila, 8)
-        vh_objetivo = valor_fila_seguimiento(fila, 16)
-        if campania and tipo and isinstance(vh_real, (int, float)) and isinstance(vh_objetivo, (int, float)) and vh_real:
-            factor = float(vh_objetivo) / float(vh_real)
-            factores_objetivo[(normalizar_header(campania), normalizar_header(tipo))] = factor
-            factores_objetivo_por_tipo[normalizar_header(tipo)].append(round(factor, 6))
-    factor_frecuente_por_tipo = {
-        tipo: max(set(valores), key=valores.count)
-        for tipo, valores in factores_objetivo_por_tipo.items() if valores
-    }
     prefijo_base = hoja_base.get('filas', [])[:2]
     historicas_base = [
         fila for fila in hoja_base.get('filas', [])[2:]
@@ -10758,17 +10743,15 @@ def aplicar_proformas_a_seguimiento(contenido):
         monto_horas = horas_facturadas * precio
         total = monto_horas + bono
         vh_alcanzado = total / horas_facturadas if horas_facturadas else 0
-        factor_objetivo = factores_objetivo.get(
-            (normalizar_header(clasificacion['segmento']), normalizar_header(tipo_hora)),
-            factor_frecuente_por_tipo.get(normalizar_header(tipo_hora), 1),
-        )
-        valor_hora_objetivo = precio * factor_objetivo
+        # El bono informado por la Proforma es un adicional alcanzable. No
+        # forma parte del teórico: el objetivo monetario es horas por tarifa.
+        valor_hora_objetivo = precio
         facturacion_objetivo_horas = horas_objetivo * precio
-        objetivo_bono = (valor_hora_objetivo * horas_objetivo) - facturacion_objetivo_horas
+        objetivo_bono = 0.0
         estado_periodo = 'Definitiva' if es_definitiva else 'Proyectada'
         valores = [clasificacion['tipo_negocio'], 'Personal Masivo', clasificacion['proforma'], clasificacion['segmento'], tipo_hora, fecha_periodo(item.periodo), horas_objetivo, horas_facturadas, precio, monto_horas, None, bono, 0, 0, total, estado_periodo, valor_hora_objetivo, vh_alcanzado, facturacion_objetivo_horas, objetivo_bono, facturacion_objetivo_horas + objetivo_bono, monto_horas, bono, 0, total]
         estilos = ['auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_date', 'auto_number', 'auto_number', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_text', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money']
-        formulas = {9: f'=H{numero}*I{numero}', 14: f'=SUM(J{numero}:N{numero})', 17: f'=IFERROR(O{numero}/H{numero},0)', 18: f'=G{numero}*I{numero}', 19: f'=Q{numero}*G{numero}-S{numero}', 20: f'=S{numero}+T{numero}', 21: f'=J{numero}', 22: f'=L{numero}', 23: f'=M{numero}', 24: f'=V{numero}+W{numero}+X{numero}'}
+        formulas = {9: f'=H{numero}*I{numero}', 14: f'=SUM(J{numero}:N{numero})', 17: f'=IFERROR(O{numero}/H{numero},0)', 18: f'=G{numero}*I{numero}', 19: '=0', 20: f'=S{numero}', 21: f'=J{numero}', 22: f'=L{numero}', 23: f'=M{numero}', 24: f'=V{numero}+W{numero}+X{numero}'}
         valores[6] = None  # Objetivo calculado abajo, distinto de un cero manual del Excel.
         nuevas_base.append([celda_seguimiento_automatica(valor, formulas.get(indice), estilos[indice]) for indice, valor in enumerate(valores)])
     hoja_base['filas'] = prefijo_base + historicas_base + nuevas_base
@@ -10825,6 +10808,10 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
     errores = []
     ajustes_auxiliar = contenido.get('ajustes_auxiliar_horas') or {}
     proformas_periodo = ProformaPersonal.query.filter_by(periodo=periodo_compacto).all()
+    filas_con_bono_adicional = {
+        (normalizar_header(item.segmento), normalizar_header(tipo_hora_seguimiento(item.tipo_hora)))
+        for item in proformas_periodo
+    }
     por_campania = defaultdict(list)
     for item in proformas_periodo:
         por_campania[(item.negocio, item.segmento)].append(item)
@@ -10887,6 +10874,9 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
 
         numero = lambda indice: float(valor_fila_seguimiento(fila, indice) or 0)
         ajuste_neto = numero(12)
+        bono_adicional = (
+            normalizar_header(campania), normalizar_header(tipo_jornada)
+        ) in filas_con_bono_adicional
         filas_dashboard.append({
             '_importacion_directa_personal': True,
             'fecha': f'{mes}-01',
@@ -10903,7 +10893,7 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
             'horas_objetivo': numero(6),
             'horas_facturadas': numero(7),
             'horas_penalizadas': 0,
-            'valor_hora_objetivo': numero(16) or numero(8),
+            'valor_hora_objetivo': numero(8) if bono_adicional else (numero(16) or numero(8)),
             'valor_hora': numero(8),
             'facturado_horas_manual': numero(9),
             'total_facturado_manual': numero(14),
@@ -10911,10 +10901,10 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
             'control_variable_productivo': numero(22),
             'control_penalizaciones_bonos': ajuste_neto,
             'control_total_facturado': numero(14),
-            'control_objetivo_total': numero(20),
+            'control_objetivo_total': numero(18) if bono_adicional else numero(20),
             'tarifacion': numero(10),
             'importe_fijo': None,
-            'variable_objetivo': numero(19),
+            'variable_objetivo': 0 if bono_adicional else numero(19),
             'variable_productivo': numero(11),
             'bonos': max(ajuste_neto, 0),
             'penalizaciones': min(ajuste_neto, 0),

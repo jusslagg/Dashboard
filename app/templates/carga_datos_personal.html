@@ -365,7 +365,7 @@ const configuracionHojasSeguimientoExcel = {
 const configuracionHojasSeguimiento = {
     base_objetivo_masivo: {
         tab: 'tabCargaBaseObjetivoMasivo', nombre: 'Base objetivo Masivo', siguiente: 'precios', inicio: 2, periodo: 5, estado: 15,
-        logica: 'Consolida por campaña, tipo de hora y mes. Permite revisar objetivos, horas facturadas y valorización antes de continuar.',
+        logica: 'Consolida por campaña, tipo de hora y mes. El objetivo teórico se calcula con horas por tarifa; el bono de la Proforma se suma sólo como adicional alcanzado.',
         columnas: [[5,'Período','fecha'],[1,'Grupo','texto'],[3,'Campaña','texto'],[4,'Tipo de hora','texto'],[15,'Estado','estado'],[6,'Objetivo horas','horas'],[7,'Horas facturadas','horas'],[8,'Valor hora','moneda'],[9,'Facturado horas','moneda'],[11,'Variable','moneda'],[12,'Ajustes','moneda'],[14,'Total facturado','moneda']]
     },
     auxiliar_horas_plp_masivo: {

@@ -27,12 +27,13 @@ def row(width, values=None):
     return result
 
 
-def workbook(negocio, campania, horas):
+def workbook(negocio, campania, horas, bono=0):
     book = Workbook()
     sheet = book.active
     sheet.append(list(ENCABEZADOS_PROFORMA_PERSONAL))
+    porcentaje_bono = bono / (horas * 100) * 100 if horas else 0
     sheet.append(['FDV', 202608, negocio, 'CAT', campania, '', 'NORMAL', horas,
-                  100, horas * 100, 0, 0, 0, 0, 0, horas * 100])
+                  100, horas * 100, porcentaje_bono, bono, 0, 0, bono, horas * 100 + bono])
     stream = io.BytesIO()
     book.save(stream)
     stream.seek(0)
@@ -96,10 +97,10 @@ with app.app_context(), app.test_client() as client:
         assert response.status_code == 200, response.get_data(as_text=True)
         return response.get_json()
 
-    def upload(tipo, negocio, campania, horas, estado='Proyectada'):
+    def upload(tipo, negocio, campania, horas, estado='Proyectada', bono=0):
         post('/api/proforma-personal/importar', data={'tipo_proforma': tipo,
              'estado_proforma': estado,
-             'archivo': (workbook(negocio, campania, horas), 'proforma.xlsx')})
+             'archivo': (workbook(negocio, campania, horas, bono), 'proforma.xlsx')})
         return HistorialCambio.query.filter_by(entidad='proforma_personal', accion='importacion').order_by(HistorialCambio.id.desc()).first().id
 
     def publish():
@@ -124,10 +125,16 @@ with app.app_context(), app.test_client() as client:
             assert sum(str(r[period_column]['v']).startswith('2026-08') for r in rows) == count, key
             assert sum(str(r[period_column]['v']).startswith('2026-07') for r in rows) == 1, key
 
-    first = upload('Masivo', 'MASIVO', 'Campaña M', 10)
+    first = upload('Masivo', 'MASIVO', 'Campaña M', 10, bono=250)
     check_sheets(1)
     assert publish()['creadas'] == 1
     assert dashboard_hours() == [10]
+    fila_bono = query_reemplazo_personal_mes({'mes': '2026-08'}).one()
+    assert float(fila_bono.variable_productivo) == 250
+    assert float(fila_bono.variable_objetivo) == 0, 'El bono adicional no puede integrar el teórico'
+    assert float(fila_bono.valor_hora_objetivo) == 100
+    assert float(fila_bono.control_objetivo_total) == float(fila_bono.horas_objetivo) * 100
+    assert float(fila_bono.total_dashboard) == float(fila_bono.facturado_horas) + 250
     publish()
     assert dashboard_hours() == [10], 'La publicación repetida no duplica filas'
     second = upload('Soporte', 'SOPORTE', 'Campaña S', 20)
