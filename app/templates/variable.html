@@ -86,15 +86,16 @@
 
 <section id="panelNextGen" class="mb-4 hidden rounded-lg border border-cyan-200 bg-white p-4 shadow-sm">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div><h2 class="font-semibold text-gray-950">Next Gen</h2><p class="text-xs text-slate-500">Cantidades mensuales en USD multiplicadas por el valor mensual del dólar.</p></div>
-        <div class="flex gap-2">
+        <div><h2 class="font-semibold text-gray-950">Next Gen</h2><p class="text-xs text-slate-500">Editá el dólar o las cantidades USD en los cuadros y después presioná Guardar cambios.</p></div>
+        <div class="flex flex-wrap gap-2">
+            <button id="guardarCambiosNextGen" type="button" onclick="guardarCambiosNextGen()" disabled class="inline-flex h-9 items-center gap-2 rounded-md bg-slate-300 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed"><i class="fas fa-floppy-disk"></i> <span>Guardar cambios</span></button>
             <button type="button" onclick="descargarTemplateNextGen()" class="inline-flex h-9 items-center gap-2 rounded-md border border-cyan-600 px-4 text-sm font-semibold text-cyan-700"><i class="fas fa-download"></i> Descargar template</button>
             <input id="archivoNextGen" type="file" accept=".xlsx,.csv" class="hidden" onchange="importarNextGen()">
             <button type="button" onclick="document.getElementById('archivoNextGen').click()" class="inline-flex h-9 items-center gap-2 rounded-md bg-cyan-700 px-4 text-sm font-semibold text-white"><i class="fas fa-file-import"></i> Importar Next Gen</button>
         </div>
     </div>
     <div class="mt-4 border-t border-cyan-100 pt-4">
-        <h3 class="text-sm font-semibold text-cyan-950">Valor del dólar por mes</h3>
+        <div class="flex flex-wrap items-center justify-between gap-2"><h3 class="text-sm font-semibold text-cyan-950">Valor del dólar por mes</h3><span id="estadoCambiosNextGen" class="text-xs font-medium text-slate-500">Sin cambios pendientes</span></div>
         <div id="dolaresNextGen" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-12"></div>
     </div>
     <form class="mt-4 grid grid-cols-1 gap-3 border-t border-cyan-100 pt-4 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_220px_150px_180px_auto] xl:items-end" onsubmit="guardarNextGenProducto(event)">
@@ -141,6 +142,9 @@ let modoVista = 'porcentajes';
 let filasTarifacion = [];
 const cambiosTarifacion = new Map();
 let dataNextGen = {dolares: {}, filas: [], total_usd: {meses: {}, total: 0}, total_pesos: {meses: {}, total: 0}};
+const cambiosDolarNextGen = new Map();
+const cambiosProductoNextGen = new Map();
+let yearCambiosNextGen = null;
 
 document.addEventListener('DOMContentLoaded', cargarVariable);
 
@@ -228,6 +232,11 @@ async function importarVariables() {
 
 async function cargarVariable() {
     const year = document.getElementById('yearFiltro').value;
+    if (yearCambiosNextGen !== null && yearCambiosNextGen !== year) {
+        cambiosDolarNextGen.clear();
+        cambiosProductoNextGen.clear();
+        yearCambiosNextGen = year;
+    }
     document.getElementById('contadorVariable').textContent = 'Cargando datos...';
     const response = await fetch(`/api/variables?year=${encodeURIComponent(year)}`);
     const data = await response.json();
@@ -268,15 +277,85 @@ function renderDolaresNextGen() {
     document.getElementById('dolaresNextGen').innerHTML = meses.map(mes => `
         <label class="rounded border border-cyan-100 bg-cyan-50 p-2">
             <span class="block text-[10px] font-semibold uppercase text-cyan-800">${escapeHtml(mes.label)}</span>
-            <input type="number" step="0.0001" value="${Number((dataNextGen.dolares || {})[mes.value] || 0)}" onchange="guardarDolarNextGen('${mes.value}', this.value)" class="mt-1 h-8 w-full rounded border border-cyan-200 bg-white px-2 text-right text-xs">
+            <input type="number" step="0.0001" value="${escapeHtml(cambiosDolarNextGen.get(mes.value)?.valor ?? Number((dataNextGen.dolares || {})[mes.value] || 0))}" onclick="this.select()" oninput="registrarCambioDolarNextGen('${mes.value}', this)" class="mt-1 h-8 w-full rounded border px-2 text-right text-xs ${cambiosDolarNextGen.has(mes.value) ? 'border-amber-400 bg-amber-50 ring-2 ring-amber-100' : 'border-cyan-200 bg-white'}">
         </label>`).join('');
+    actualizarEstadoCambiosNextGen();
 }
 
-async function guardarDolarNextGen(mes, valor) {
-    const response = await fetch('/api/next-gen', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({tipo: 'dolar', mes, valor})});
+function marcarCambioNextGen(input, cambiado) {
+    input.classList.toggle('border-amber-400', cambiado);
+    input.classList.toggle('bg-amber-50', cambiado);
+    input.classList.toggle('ring-2', cambiado);
+    input.classList.toggle('ring-amber-100', cambiado);
+    input.classList.toggle('border-cyan-200', !cambiado);
+    input.classList.toggle('bg-white', !cambiado);
+}
+
+function registrarCambioDolarNextGen(mes, input) {
+    yearCambiosNextGen = document.getElementById('yearFiltro').value;
+    const original = Number((dataNextGen.dolares || {})[mes] || 0);
+    const actual = Number(input.value || 0);
+    if (actual === original) cambiosDolarNextGen.delete(mes);
+    else cambiosDolarNextGen.set(mes, {tipo: 'dolar', mes, valor: input.value});
+    marcarCambioNextGen(input, cambiosDolarNextGen.has(mes));
+    actualizarEstadoCambiosNextGen();
+}
+
+function claveCambioProductoNextGen(item, mes) {
+    return [item.site, item.cliente, item.campania, item.producto, mes].join('\u0000');
+}
+
+function registrarCambioProductoNextGen(raw, mes, input) {
+    yearCambiosNextGen = document.getElementById('yearFiltro').value;
+    const item = JSON.parse(decodeURIComponent(raw));
+    const clave = claveCambioProductoNextGen(item, mes);
+    const original = Number(((dataNextGen.filas || []).find(fila =>
+        fila.site === item.site && fila.cliente === item.cliente && fila.campania === item.campania && fila.producto === item.producto
+    )?.usd || {})[mes] || 0);
+    const actual = Number(input.value || 0);
+    if (actual === original) cambiosProductoNextGen.delete(clave);
+    else cambiosProductoNextGen.set(clave, {...item, tipo: 'producto', mes, cantidad_usd: input.value});
+    marcarCambioNextGen(input, cambiosProductoNextGen.has(clave));
+    actualizarEstadoCambiosNextGen();
+}
+
+function actualizarEstadoCambiosNextGen() {
+    const cantidad = cambiosDolarNextGen.size + cambiosProductoNextGen.size;
+    const boton = document.getElementById('guardarCambiosNextGen');
+    if (!boton) return;
+    boton.disabled = cantidad === 0;
+    boton.className = cantidad
+        ? 'inline-flex h-9 items-center gap-2 rounded-md bg-cyan-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-cyan-800'
+        : 'inline-flex h-9 items-center gap-2 rounded-md bg-slate-300 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed';
+    boton.querySelector('span').textContent = cantidad ? `Guardar ${cantidad} cambio${cantidad === 1 ? '' : 's'}` : 'Guardar cambios';
+    const estado = document.getElementById('estadoCambiosNextGen');
+    estado.textContent = cantidad ? `${cantidad} cambio${cantidad === 1 ? '' : 's'} pendiente${cantidad === 1 ? '' : 's'}` : 'Sin cambios pendientes';
+    estado.className = cantidad ? 'text-xs font-semibold text-amber-700' : 'text-xs font-medium text-slate-500';
+}
+
+async function guardarCambiosNextGen() {
+    const cambios = [...cambiosDolarNextGen.values(), ...cambiosProductoNextGen.values()];
+    if (!cambios.length) return;
+    const boton = document.getElementById('guardarCambiosNextGen');
+    boton.disabled = true;
+    boton.querySelector('span').textContent = 'Guardando...';
+    const response = await fetch('/api/next-gen/edicion-masiva', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify({year: document.getElementById('yearFiltro').value, cambios}),
+    });
     const data = await response.json();
-    mostrarMensaje(data.mensaje || (data.errores || []).join(' | '), response.ok && data.success);
-    if (response.ok && data.success) await cargarVariable();
+    mostrarMensaje(data.mensaje || (data.errores || ['No se pudieron guardar los cambios']).join(' | '), response.ok && data.success);
+    if (response.ok && data.success) {
+        cambiosDolarNextGen.clear();
+        cambiosProductoNextGen.clear();
+        await cargarVariable();
+    } else {
+        actualizarEstadoCambiosNextGen();
+    }
 }
 
 async function guardarNextGenProducto(event) {
@@ -288,17 +367,6 @@ async function guardarNextGenProducto(event) {
         tipo: 'producto', site: campania.site, cliente: campania.cliente, campania: campania.campania,
         producto: document.getElementById('nextGenProducto').value,
         mes: document.getElementById('nextGenMes').value, cantidad_usd: document.getElementById('nextGenUsd').value,
-    })});
-    const data = await response.json();
-    mostrarMensaje(data.mensaje || (data.errores || []).join(' | '), response.ok && data.success);
-    if (response.ok && data.success) await cargarVariable();
-}
-
-async function guardarNextGenValorFila(raw, mes, cantidad) {
-    const item = JSON.parse(decodeURIComponent(raw));
-    const response = await fetch('/api/next-gen', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
-        tipo: 'producto', site: item.site, cliente: item.cliente, campania: item.campania,
-        producto: item.producto, mes, cantidad_usd: cantidad,
     })});
     const data = await response.json();
     mostrarMensaje(data.mensaje || (data.errores || []).join(' | '), response.ok && data.success);
@@ -528,12 +596,13 @@ function renderNextGen() {
         <td class="border-b border-r border-slate-200 px-3 py-3 font-semibold">${escapeHtml(item.campania)}</td>
         <td class="border-b border-r border-slate-200 px-3 py-3">${escapeHtml(item.producto)}</td>
         <td class="border-b border-r border-cyan-200 bg-cyan-50 px-3 py-3 text-center font-semibold">${formatoMoneda(item.total_pesos)}</td>
-        ${meses.map(mes => `<td class="border-b border-r border-slate-200 px-2 py-2 text-center"><input type="number" step="0.01" value="${Number((item.usd || {})[mes.value] || 0)}" onchange="guardarNextGenValorFila('${raw}', '${mes.value}', this.value)" class="h-8 w-full rounded border border-cyan-100 px-2 text-right text-xs"><div class="mt-1 text-xs font-semibold text-cyan-800">${formatoMoneda((item.pesos || {})[mes.value] || 0)}</div></td>`).join('')}
+        ${meses.map(mes => { const clave = claveCambioProductoNextGen(item, mes.value); const pendiente = cambiosProductoNextGen.get(clave); return `<td class="border-b border-r border-slate-200 px-2 py-2 text-center"><input type="number" step="0.01" value="${escapeHtml(pendiente?.cantidad_usd ?? Number((item.usd || {})[mes.value] || 0))}" onclick="this.select()" oninput="registrarCambioProductoNextGen('${raw}', '${mes.value}', this)" class="h-8 w-full rounded border px-2 text-right text-xs ${pendiente ? 'border-amber-400 bg-amber-50 ring-2 ring-amber-100' : 'border-cyan-200 bg-white'}"><div class="mt-1 text-xs font-semibold text-cyan-800">${formatoMoneda((item.pesos || {})[mes.value] || 0)}</div></td>`; }).join('')}
     </tr>`;
     }).join('');
     const totalRow = `<tr class="bg-cyan-100 font-bold text-cyan-950"><td colspan="4" class="border-b border-r border-cyan-200 px-3 py-3">TOTAL NEXT GEN</td><td class="border-b border-r border-cyan-200 px-3 py-3 text-center"><div>${formatoMoneda((dataNextGen.total_pesos || {}).total || 0)}</div><div class="text-xs">USD ${Number((dataNextGen.total_usd || {}).total || 0).toLocaleString('es-AR', {maximumFractionDigits: 2})}</div></td>${meses.map(mes => `<td class="border-b border-r border-cyan-200 px-3 py-3 text-center"><div>${formatoMoneda(((dataNextGen.total_pesos || {}).meses || {})[mes.value] || 0)}</div><div class="text-xs">USD ${Number(((dataNextGen.total_usd || {}).meses || {})[mes.value] || 0).toLocaleString('es-AR', {maximumFractionDigits: 2})}</div></td>`).join('')}</tr>`;
     document.getElementById('tbodyVariable').innerHTML = totalRow + (rows || `<tr><td colspan="${meses.length + 5}" class="px-4 py-8 text-center text-slate-500">Sin productos Next Gen para mostrar.</td></tr>`);
     document.getElementById('contadorVariable').textContent = `${visibles.length} producto(s), total ${formatoMoneda((dataNextGen.total_pesos || {}).total || 0)}`;
+    actualizarEstadoCambiosNextGen();
 }
 
 function mostrarMensaje(texto, ok) {

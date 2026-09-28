@@ -7106,6 +7106,114 @@ def api_next_gen():
     return jsonify({'success': True, 'mensaje': 'Next Gen guardado y aplicado en Facturación horas'})
 
 
+@main_bp.route('/api/next-gen/edicion-masiva', methods=['POST'])
+@edicion_requerida
+def api_edicion_masiva_next_gen():
+    """Guarda dólares y cantidades USD editados en la grilla en una transacción."""
+    data = request.get_json(silent=True) or {}
+    entradas = data.get('cambios') if isinstance(data.get('cambios'), list) else []
+    if not entradas:
+        return jsonify({'success': False, 'errores': ['No hay cambios para guardar']}), 400
+    if len(entradas) > 2000:
+        return jsonify({'success': False, 'errores': ['La edición admite hasta 2000 celdas por operación']}), 400
+    try:
+        year = int(data.get('year'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
+
+    errores = []
+    cambios = []
+    claves = set()
+    for numero, entrada in enumerate(entradas, start=1):
+        tipo = str(entrada.get('tipo') or '').strip().lower()
+        mes = mes_valido(entrada.get('mes'))
+        if not mes or int(mes[:4]) != year:
+            errores.append(f'Celda {numero}: el mes no corresponde al año seleccionado')
+            continue
+        if tipo == 'dolar':
+            try:
+                valor = parse_numero(entrada.get('valor'))
+            except (TypeError, ValueError):
+                valor = None
+            clave = ('dolar', mes)
+            if valor is None:
+                errores.append(f'Celda {numero}: el valor del dólar no es válido')
+            elif clave in claves:
+                errores.append(f'Celda {numero}: el dólar del mes está repetido')
+            else:
+                claves.add(clave)
+                cambios.append({'tipo': tipo, 'mes': mes, 'valor': valor})
+            continue
+        if tipo != 'producto':
+            errores.append(f'Celda {numero}: el tipo de cambio no es válido')
+            continue
+        site = str(entrada.get('site') or '').strip()
+        cliente = str(entrada.get('cliente') or '').strip()
+        campania = str(entrada.get('campania') or '').strip()
+        producto = str(entrada.get('producto') or '').strip()
+        try:
+            cantidad = parse_numero(entrada.get('cantidad_usd'))
+        except (TypeError, ValueError):
+            cantidad = None
+        clave = ('producto', cliente, campania, producto, mes)
+        if not cliente or not campania or not producto:
+            errores.append(f'Celda {numero}: cliente, campaña y producto son obligatorios')
+        elif cantidad is None:
+            errores.append(f'Celda {numero}: la cantidad en USD no es válida')
+        elif clave in claves:
+            errores.append(f'Celda {numero}: la cantidad del producto está repetida')
+        else:
+            claves.add(clave)
+            cambios.append({
+                'tipo': tipo, 'site': site, 'cliente': cliente, 'campania': campania,
+                'producto': producto, 'mes': mes, 'cantidad_usd': cantidad,
+            })
+    if errores:
+        return jsonify({'success': False, 'errores': errores[:30]}), 400
+
+    antes = []
+    despues = []
+    for cambio in cambios:
+        if cambio['tipo'] == 'dolar':
+            registro = NextGenDolar.query.filter_by(mes=cambio['mes']).first()
+            previo = {**registro.to_dict(), 'tipo_registro': 'dolar'} if registro else None
+            if not registro:
+                registro = NextGenDolar(year=year, mes=cambio['mes'])
+                db.session.add(registro)
+            registro.valor = cambio['valor']
+            tipo_registro = 'dolar'
+        else:
+            registro = NextGenProducto.query.filter_by(
+                cliente=cambio['cliente'], campania=cambio['campania'],
+                producto=cambio['producto'], mes=cambio['mes'],
+            ).first()
+            previo = {**registro.to_dict(), 'tipo_registro': 'producto'} if registro else None
+            if not registro:
+                registro = NextGenProducto(
+                    cliente=cambio['cliente'], campania=cambio['campania'],
+                    producto=cambio['producto'], year=year, mes=cambio['mes'],
+                )
+                db.session.add(registro)
+            registro.site = cambio['site']
+            registro.cantidad_usd = cambio['cantidad_usd']
+            tipo_registro = 'producto'
+        antes.append(previo)
+        db.session.flush()
+        despues.append({**registro.to_dict(), 'tipo_registro': tipo_registro})
+
+    registrar_historial(
+        'edicion', 'next_gen', str(year),
+        f'Edición en grilla de Next Gen: {len(cambios)} celda(s)',
+        antes={'next_gen': antes}, despues={'next_gen': despues},
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'mensaje': f'{len(cambios)} cambio(s) guardado(s), valorizado(s) y aplicado(s) en Facturación horas',
+        'next_gen': construir_next_gen_data(year),
+    })
+
+
 @main_bp.route('/api/next-gen/template', methods=['GET'])
 @login_requerido
 def api_template_next_gen():
