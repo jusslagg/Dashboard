@@ -76,8 +76,9 @@ with app.app_context(), app.test_client() as client:
             'periodo': '202608', 'grupo': negocio, 'campania': campania,
             'proyectada': 30, 'definitiva': None,
         }
+        jefe_maestro = 'Del Soto, Alejandro' if campania == 'Campaña M' else 'Canalini, Walter'
         db.session.add(AsignacionComercial(campania_id=1, cliente='Personal', gerente='Gerente',
-                       jefe_site='Antelo, Micaela', campania=campania, subcampania=campania,
+                       jefe_site=jefe_maestro, campania=campania, subcampania=campania,
                        tipo_negocio=negocio, activa=True))
     config = SeguimientoPersonalImportacion(archivo='fixture.xlsx', contenido_xlsx=b'',
              contenido_hojas=zlib.compress(json.dumps({'hojas': hojas, 'ajustes_auxiliar_horas': ajustes}).encode()))
@@ -130,6 +131,7 @@ with app.app_context(), app.test_client() as client:
     assert publish()['creadas'] == 1
     assert dashboard_hours() == [10]
     fila_bono = query_reemplazo_personal_mes({'mes': '2026-08'}).one()
+    assert fila_bono.jefe_site == 'Del Soto, Alejandro', 'Datos Maestros debe gobernar la jefatura'
     assert float(fila_bono.variable_productivo) == 250
     assert float(fila_bono.variable_objetivo) == 0, 'El bono adicional no puede integrar el teórico'
     assert float(fila_bono.valor_hora_objetivo) == 100

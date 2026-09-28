@@ -777,6 +777,34 @@ def jefe_personal_por_servicio(*valores):
     return 'Micaela Antelo'
 
 
+def segmento_personal_por_servicio(*valores):
+    """Clasifica altas nuevas; Datos Maestros conserva la decisión posterior."""
+    texto = normalizar_header(' '.join(str(valor or '') for valor in valores))
+    if 'capacitacion' in texto:
+        return None
+    if 'personal pay' in texto:
+        return 'Personal Pay'
+    if 'smb' in texto:
+        return 'SMB'
+    if 'retencion' in texto:
+        return 'Retención'
+    if 'soporte' in texto or 'rrss' in texto or 'provision digital' in texto or 'especializada movil' in texto:
+        return 'Soporte'
+    if 'ventas' in texto or 'cobranzas' in texto:
+        return 'Ventas'
+    if 'whatsapp' in texto or texto.startswith('ws '):
+        return 'Customer Digital'
+    if any(clave in texto for clave in ('customer', 'abonos', 'degradados', 'validacion')):
+        return 'Customer'
+    return None
+
+
+def segmento_inferido_asignacion(cliente, *valores):
+    if not normalizar_header(cliente).startswith('personal'):
+        return None
+    return segmento_personal_por_servicio(*valores)
+
+
 def normalizar_tipo_vh(valor):
     texto = str(valor or '').strip()
     clave = normalizar_header(texto)
@@ -1468,14 +1496,10 @@ def resolver_personal_importacion_directa(item):
         ]
     if exactas:
         asignacion = exactas[0]
-        jefe_correcto = jefe_personal_por_servicio(
-            cliente_archivo,
-            asignacion.campania,
-            subcampania_archivo,
-            asignacion.tipo_negocio,
-        )
-        if asignacion.jefe_site != jefe_correcto:
-            asignacion.jefe_site = jefe_correcto
+        if not asignacion.segmento:
+            asignacion.segmento = segmento_inferido_asignacion(
+                asignacion.cliente, asignacion.campania, subcampania_archivo, asignacion.tipo_negocio,
+            )
     else:
         if not candidatas and 'personal' in cliente_clave:
             candidatas = [
@@ -1505,6 +1529,9 @@ def resolver_personal_importacion_directa(item):
             'tipo_negocio': base.tipo_negocio,
             'es_next_gen': False,
         })
+        asignacion.segmento = segmento_inferido_asignacion(
+            cliente_archivo, subcampania_archivo, base.tipo_negocio,
+        )
     aplicar_asignacion_a_fila(item, asignacion)
     return asignacion, None
 
@@ -1754,6 +1781,10 @@ def obtener_o_crear_asignacion(campos):
     asignacion = AsignacionComercial.query.filter_by(**campos).first()
     if asignacion:
         asignacion.activa = True
+        if not asignacion.segmento:
+            asignacion.segmento = segmento_inferido_asignacion(
+                asignacion.cliente, asignacion.campania, asignacion.subcampania, asignacion.tipo_negocio,
+            )
         if not asignacion.grupo_facturacion:
             asignacion.grupo_facturacion = inferir_grupo_facturacion(asignacion.cliente, asignacion.campania)
         if not asignacion.campania_id:
@@ -1763,6 +1794,9 @@ def obtener_o_crear_asignacion(campos):
     asignacion = AsignacionComercial(
         **campos,
         campania_catalogo=campania,
+        segmento=segmento_inferido_asignacion(
+            campos.get('cliente'), campos.get('campania'), campos.get('subcampania'), campos.get('tipo_negocio'),
+        ),
         grupo_facturacion=inferir_grupo_facturacion(campos.get('cliente'), campos.get('campania')),
     )
     db.session.add(asignacion)
@@ -2781,7 +2815,7 @@ def metricas_matriz(registros):
 def matriz_grupos(registros, campo, meses):
     grupos = {}
     for registro in registros:
-        nombre = getattr(registro, campo) or 'Sin asignar'
+        nombre = (campo(registro) if callable(campo) else getattr(registro, campo)) or 'Sin asignar'
         grupos.setdefault(nombre, []).append(registro)
 
     salida = []
@@ -2884,6 +2918,10 @@ def asegurar_asignacion_desde_registro(registro):
     existente = AsignacionComercial.query.filter_by(**campos).first()
     if existente:
         existente.activa = True
+        if not existente.segmento:
+            existente.segmento = segmento_inferido_asignacion(
+                existente.cliente, existente.campania, existente.subcampania, existente.tipo_negocio,
+            )
         if not existente.grupo_facturacion:
             existente.grupo_facturacion = inferir_grupo_facturacion(existente.cliente, existente.campania)
         if not existente.campania_id:
@@ -2893,6 +2931,9 @@ def asegurar_asignacion_desde_registro(registro):
     asignacion = AsignacionComercial(
         **campos,
         campania_catalogo=campania,
+        segmento=segmento_inferido_asignacion(
+            campos.get('cliente'), campos.get('campania'), campos.get('subcampania'), campos.get('tipo_negocio'),
+        ),
         grupo_facturacion=inferir_grupo_facturacion(campos.get('cliente'), campos.get('campania')),
     )
     db.session.add(asignacion)
@@ -5184,6 +5225,40 @@ def api_matriz():
     jefe_site = filtros.get('jefe_site')
     jefe_site_unico = jefe_site if isinstance(jefe_site, str) else ''
 
+    asignaciones_segmento = defaultdict(list)
+    for asignacion in AsignacionComercial.query.filter_by(activa=True).all():
+        if not asignacion.segmento:
+            continue
+        cliente_clave = normalizar_header(asignacion.cliente)
+        for servicio in (asignacion.campania, asignacion.subcampania):
+            clave = (cliente_clave, normalizar_header(servicio))
+            if asignacion not in asignaciones_segmento[clave]:
+                asignaciones_segmento[clave].append(asignacion)
+
+    def segmento_registro(registro):
+        candidatas = asignaciones_segmento.get((
+            normalizar_header(registro.cliente), normalizar_header(registro.campania),
+        ), []) or asignaciones_segmento.get((
+            normalizar_header(registro.cliente), normalizar_header(registro.subcampania),
+        ), [])
+        vigentes = [
+            item for item in candidatas
+            if (not item.vigencia_desde or item.vigencia_desde <= registro.mes)
+            and (not item.vigencia_hasta or registro.mes <= item.vigencia_hasta)
+        ]
+        candidatas = vigentes or candidatas
+        mismo_jefe = [
+            item for item in candidatas
+            if normalizar_header(item.jefe_site) == normalizar_header(registro.jefe_site)
+        ]
+        elegida = (mismo_jefe or candidatas or [None])[0]
+        segmento = elegida.segmento if elegida else None
+        if segmento:
+            return segmento
+        if normalizar_header(registro.cliente).startswith('personal'):
+            return 'Sin segmento'
+        return registro.tipo_negocio or 'Sin segmento'
+
     return jsonify({
         'success': True,
         'year': year,
@@ -5201,7 +5276,13 @@ def api_matriz():
         'seleccion': filtros,
         'tipo_negocio': filtros.get('tipo_negocio') or '',
         'total_gerencia': matriz_grupos(registros_year, 'gerente', meses),
-        'apertura_jefe_site': matriz_grupos(registros_year, 'jefe_site' if not jefe_site_unico else 'campania', meses),
+        'resumen_segmento': matriz_grupos(registros_year, segmento_registro, meses),
+        'resumen_jefatura': matriz_grupos(registros_year, 'jefe_site', meses),
+        'apertura_jefe_site': matriz_grupos(
+            registros_year,
+            'campania' if jefe_site_unico else lambda registro: f'{registro.jefe_site or "Sin asignar"} · {registro.campania or "Sin campaña"}',
+            meses,
+        ),
         'jefe_site': jefe_site_unico,
     })
 
@@ -10379,6 +10460,12 @@ def aplicar_proformas_a_seguimiento(contenido):
         )
     ]
     ajustes_normalizacion = contenido.get('ajustes_aux_normalizacion') or {}
+    asignaciones = AsignacionComercial.query.filter_by(activa=True).all()
+    mapa_asignaciones = {}
+    for asignacion in asignaciones:
+        for nombre in (asignacion.subcampania, asignacion.campania):
+            if nombre:
+                mapa_asignaciones.setdefault(normalizar_header(nombre), asignacion)
     mapa_aux = {}
     filas_aux_por_clave = {}
     for fila in hoja_aux.get('filas', [])[1:]:
@@ -10388,10 +10475,15 @@ def aplicar_proformas_a_seguimiento(contenido):
             if clave in campanias_administradas and clave not in campanias_activas:
                 continue
             tipo_negocio = valor_fila_seguimiento(fila, 4) or ''
+            asignacion = mapa_asignaciones.get(clave)
             clasificacion = {
                 'campania': campania,
                 'segmento': valor_fila_seguimiento(fila, 2) or campania,
-                'jefatura': jefatura_personal_por_tipo_negocio(tipo_negocio) or normalizar_jefe_site(valor_fila_seguimiento(fila, 3)) or '',
+                'jefatura': (
+                    normalizar_jefe_site(asignacion.jefe_site if asignacion else '')
+                    or normalizar_jefe_site(valor_fila_seguimiento(fila, 3))
+                    or jefatura_personal_por_tipo_negocio(tipo_negocio) or ''
+                ),
                 'tipo_negocio': tipo_negocio,
                 'proforma': normalizar_tipo_negocio_personal(
                     valor_fila_seguimiento(fila, 5) or 'Personal', tipo_negocio, campania,
@@ -10402,6 +10494,8 @@ def aplicar_proformas_a_seguimiento(contenido):
             if ajuste:
                 for campo in ('segmento', 'jefatura', 'tipo_negocio', 'proforma', 'backup'):
                     if campo in ajuste:
+                        if campo == 'jefatura' and asignacion:
+                            continue
                         valor_ajuste = str(ajuste.get(campo) or '').strip()
                         clasificacion[campo] = (
                             normalizar_jefe_site(valor_ajuste) or ''
@@ -10409,12 +10503,6 @@ def aplicar_proformas_a_seguimiento(contenido):
                         )
             mapa_aux.setdefault(clave, clasificacion)
             filas_aux_por_clave.setdefault(clave, []).append(fila)
-    asignaciones = AsignacionComercial.query.filter_by(activa=True).all()
-    mapa_asignaciones = {}
-    for asignacion in asignaciones:
-        for nombre in (asignacion.subcampania, asignacion.campania):
-            if nombre:
-                mapa_asignaciones.setdefault(normalizar_header(nombre), asignacion)
     candidatos_aux = []
     for asignacion in asignaciones:
         if not normalizar_header(asignacion.cliente).startswith('personal'):
@@ -10441,13 +10529,15 @@ def aplicar_proformas_a_seguimiento(contenido):
             'backup': segmento,
         }
         clasificacion['jefatura'] = (
-            jefatura_personal_por_tipo_negocio(clasificacion['tipo_negocio'])
-            or normalizar_jefe_site(asignacion.jefe_site if asignacion else '') or ''
+            normalizar_jefe_site(asignacion.jefe_site if asignacion else '')
+            or jefatura_personal_por_tipo_negocio(clasificacion['tipo_negocio']) or ''
         )
         ajuste = ajustes_normalizacion.get(clave)
         if ajuste:
             for campo in ('segmento', 'jefatura', 'tipo_negocio', 'proforma', 'backup'):
                 if campo in ajuste:
+                    if campo == 'jefatura' and asignacion:
+                        continue
                     valor_ajuste = str(ajuste.get(campo) or '').strip()
                     clasificacion[campo] = (
                         normalizar_jefe_site(valor_ajuste) or ''
@@ -10853,9 +10943,9 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
         cliente = 'Personal'
         asignacion = asignacion_para(cliente, campania)
         jefatura = (
-            jefatura_personal_por_tipo_negocio(tipo_negocio)
+            normalizar_jefe_site(asignacion.jefe_site if asignacion else '')
             or normalizacion.get('jefatura')
-            or normalizar_jefe_site(asignacion.jefe_site if asignacion else '')
+            or jefatura_personal_por_tipo_negocio(tipo_negocio)
             or ''
         )
         gerente = str(asignacion.gerente if asignacion else '').strip()
@@ -12881,6 +12971,9 @@ def crear_asignacion_desde_request():
             'es_next_gen': es_next_gen,
         }
         grupo_facturacion = str(data.get('grupo_facturacion') or '').strip() or inferir_grupo_facturacion(campos['cliente'], campos['campania'])
+        segmento = str(data.get('segmento') or '').strip() or segmento_inferido_asignacion(
+            campos['cliente'], campos['campania'], campos['subcampania'], campos['tipo_negocio'],
+        )
         if es_next_gen:
             campos.update(cliente=nombre_next_gen, gerente='NextGen', jefe_site='NextGen',
                           campania=nombre_next_gen, subcampania=nombre_next_gen, tipo_negocio='NextGen')
@@ -12894,6 +12987,7 @@ def crear_asignacion_desde_request():
         if existente:
             existente.activa = True
             existente.grupo_facturacion = grupo_facturacion
+            existente.segmento = segmento
             if not existente.campania_id:
                 existente.campania_catalogo = obtener_o_crear_campania(campos['cliente'], campos['campania'])
             db.session.commit()
@@ -12904,6 +12998,7 @@ def crear_asignacion_desde_request():
             **campos,
             campania_catalogo=campania,
             grupo_facturacion=grupo_facturacion,
+            segmento=segmento,
         )
         db.session.add(asignacion)
         db.session.flush()
@@ -12940,6 +13035,8 @@ def api_actualizar_asignacion(asignacion_id):
     antes = snapshot_modelo(asignacion)
     if 'grupo_facturacion' in data:
         asignacion.grupo_facturacion = str(data.get('grupo_facturacion') or '').strip() or None
+    if 'segmento' in data:
+        asignacion.segmento = str(data.get('segmento') or '').strip() or None
     valores_anteriores = filtros_asignacion(asignacion)
     nuevos_valores = {}
     campos_asociacion = ['cliente', 'gerente', 'jefe_site', 'campania', 'subcampania', 'tipo_negocio', 'es_next_gen']
@@ -12968,6 +13065,7 @@ def api_actualizar_asignacion(asignacion_id):
         if vigencia_desde:
             asignacion_nueva, creada = obtener_o_crear_asignacion(valores_finales)
             asignacion_nueva.grupo_facturacion = asignacion.grupo_facturacion
+            asignacion_nueva.segmento = asignacion.segmento
             anio_vigencia, mes_vigencia = (int(parte) for parte in vigencia_desde.split('-'))
             if mes_vigencia == 1:
                 vigencia_anterior = f'{anio_vigencia - 1:04d}-12'

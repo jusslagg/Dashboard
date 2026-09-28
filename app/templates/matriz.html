@@ -48,9 +48,17 @@
         <i class="fas fa-user-tie"></i>
         Total por gerencia
     </button>
+    <button id="tabSegmento" type="button" onclick="cambiarTabla('segmento')" class="flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium bg-white text-slate-700 hover:bg-gray-100">
+        <i class="fas fa-layer-group"></i>
+        Resumen por segmento
+    </button>
+    <button id="tabJefatura" type="button" onclick="cambiarTabla('jefatura')" class="flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium bg-white text-slate-700 hover:bg-gray-100">
+        <i class="fas fa-users"></i>
+        Resumen por jefatura
+    </button>
     <button id="tabApertura" type="button" onclick="cambiarTabla('apertura')" class="flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium bg-white text-slate-700 hover:bg-gray-100">
         <i class="fas fa-sitemap"></i>
-        Apertura operativa
+        Servicios por jefatura
     </button>
 </div>
 
@@ -207,8 +215,10 @@ function cambiarTabla(tabla) {
     tablaActiva = tabla;
     const activo = 'flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium bg-slate-800 text-white';
     const inactivo = 'flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium bg-white text-slate-700 hover:bg-gray-100';
-    document.getElementById('tabGerencia').className = tabla === 'gerencia' ? activo : inactivo;
-    document.getElementById('tabApertura').className = tabla === 'apertura' ? activo : inactivo;
+    const tabs = {gerencia: 'tabGerencia', segmento: 'tabSegmento', jefatura: 'tabJefatura', apertura: 'tabApertura'};
+    Object.entries(tabs).forEach(([clave, id]) => {
+        document.getElementById(id).className = tabla === clave ? activo : inactivo;
+    });
     popularMeses(matrizData.columnas);
     renderDesdeEstado();
 }
@@ -237,10 +247,14 @@ function renderDesdeEstado() {
 
     const tituloApertura = matrizData.jefe_site
         ? `Apertura de ${matrizData.jefe_site} por campana`
-        : 'Apertura por jefe de site';
-    document.getElementById('tituloMatriz').textContent = tablaActiva === 'gerencia'
-        ? 'Total por gerencia'
-        : tituloApertura;
+        : 'Servicios agrupados por jefatura';
+    const titulos = {
+        gerencia: 'Total por gerencia',
+        segmento: 'Resumen por segmento',
+        jefatura: 'Resumen por jefatura',
+        apertura: tituloApertura,
+    };
+    document.getElementById('tituloMatriz').textContent = titulos[tablaActiva];
     document.getElementById('subtituloMatriz').textContent = `${subtituloModo(modo)} Periodo: ${periodo}.`;
     const mesesMostrados = columnas.filter(col => col.key !== 'total').length;
     document.getElementById('estadoMatriz').textContent = `${grupos.length} grupo(s), ${mesesMostrados} mes(es)`;
@@ -309,7 +323,10 @@ function popularMeses(columnas) {
 
 function gruposActivosBase() {
     if (!matrizData) return [];
-    return tablaActiva === 'gerencia' ? matrizData.total_gerencia : matrizData.apertura_jefe_site;
+    if (tablaActiva === 'gerencia') return matrizData.total_gerencia;
+    if (tablaActiva === 'segmento') return matrizData.resumen_segmento || [];
+    if (tablaActiva === 'jefatura') return matrizData.resumen_jefatura || [];
+    return matrizData.apertura_jefe_site;
 }
 
 function etiquetaPeriodo(mesSeleccionado) {

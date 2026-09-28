@@ -310,6 +310,8 @@ def ensure_schema():
         db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN tipo_negocio VARCHAR(100)"))
     if asignacion_columns and 'grupo_facturacion' not in asignacion_columns:
         db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN grupo_facturacion VARCHAR(100)"))
+    if asignacion_columns and 'segmento' not in asignacion_columns:
+        db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN segmento VARCHAR(100)"))
     if asignacion_columns and 'es_next_gen' not in asignacion_columns:
         db.session.execute(text("ALTER TABLE asignaciones_comerciales ADD COLUMN es_next_gen BOOLEAN DEFAULT 0 NOT NULL"))
     if asignacion_columns and 'vigencia_desde' not in asignacion_columns:
@@ -335,6 +337,10 @@ def ensure_schema():
         db.session.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_asignaciones_comerciales_grupo_facturacion "
             "ON asignaciones_comerciales (grupo_facturacion)"
+        ))
+        db.session.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_asignaciones_comerciales_segmento "
+            "ON asignaciones_comerciales (segmento)"
         ))
         db.session.execute(text("""
             UPDATE asignaciones_comerciales
