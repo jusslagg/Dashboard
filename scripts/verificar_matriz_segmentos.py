@@ -49,8 +49,8 @@ assert respuesta.status_code == 200, respuesta.get_data(as_text=True)
 datos = respuesta.get_json()
 assert {fila['nombre'] for fila in datos['resumen_segmento']} == {'Customer', 'Retención'}
 assert {fila['nombre'] for fila in datos['resumen_jefatura']} == {'Antelo, Micaela', 'Del Soto, Alejandro'}
-assert {fila['nombre'] for fila in datos['apertura_jefe_site']} == {
-    'Antelo, Micaela · Abonos', 'Del Soto, Alejandro · Retención Cable',
+assert {(fila['jefatura'], fila['nombre']) for fila in datos['apertura_jefe_site']} == {
+    ('Antelo, Micaela', 'Abonos'), ('Del Soto, Alejandro', 'Retención Cable'),
 }
 assert sum(fila['total']['horas_objetivo'] for fila in datos['resumen_segmento']) == 300
 print('OK: matriz por segmento, jefatura y servicio alineada con Datos Maestros.')

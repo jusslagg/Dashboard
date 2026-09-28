@@ -2833,6 +2833,21 @@ def matriz_grupos(registros, campo, meses):
     return salida
 
 
+def matriz_servicios_por_jefatura(registros, meses):
+    """Devuelve las campanas ordenadas dentro de cada jefatura."""
+    por_jefatura = defaultdict(list)
+    for registro in registros:
+        por_jefatura[registro.jefe_site or 'Sin asignar'].append(registro)
+
+    salida = []
+    for jefatura in sorted(por_jefatura):
+        servicios = matriz_grupos(por_jefatura[jefatura], 'campania', meses)
+        for servicio in servicios:
+            servicio['jefatura'] = jefatura
+            salida.append(servicio)
+    return salida
+
+
 def validar_payload_facturacion(data, exigir_configuracion_valor_hora=True, preservar_valores_importados=False):
     errores = []
     es_next_gen = bool(data.get('es_next_gen'))
@@ -5278,11 +5293,7 @@ def api_matriz():
         'total_gerencia': matriz_grupos(registros_year, 'gerente', meses),
         'resumen_segmento': matriz_grupos(registros_year, segmento_registro, meses),
         'resumen_jefatura': matriz_grupos(registros_year, 'jefe_site', meses),
-        'apertura_jefe_site': matriz_grupos(
-            registros_year,
-            'campania' if jefe_site_unico else lambda registro: f'{registro.jefe_site or "Sin asignar"} · {registro.campania or "Sin campaña"}',
-            meses,
-        ),
+        'apertura_jefe_site': matriz_servicios_por_jefatura(registros_year, meses),
         'jefe_site': jefe_site_unico,
     })
 
