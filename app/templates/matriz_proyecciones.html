@@ -81,7 +81,7 @@
         <div class="mb-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <h3 class="text-sm font-bold text-amber-950"><i class="fas fa-paste mr-2"></i>Pegar horas por campaña</h3>
-                <p class="mt-1 text-xs text-amber-800">Pegá cuatro columnas: clasificación, mes, campaña y horas. Acepta tablas de Excel, texto con “|” o separado por punto y coma.</p>
+                <p class="mt-1 text-xs text-amber-800">Pegá clasificación, mes, campaña y horas. Acepta tablas de Excel, “|”, punto y coma o espacios. Las filas sin horas se omiten.</p>
             </div>
             <div class="flex gap-2">
                 <button type="button" onclick="limpiarTablaPegadaPLP()" class="h-9 rounded bg-white px-3 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">Limpiar</button>
@@ -663,13 +663,23 @@ function agregarFilaEditorPLP() {
 }
 
 function celdasTablaPegadaPLP(linea) {
-    const limpia = linea.replace(/\u00a0/g, ' ').trim();
+    const original = linea.replace(/\u00a0/g, ' ');
+    const limpia = original.trim();
     if (!limpia) return [];
-    if (limpia.includes('|')) {
-        return limpia.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(celda => celda.trim());
+    if (original.includes('|')) {
+        const celdas = original.split('|').map(celda => celda.trim());
+        const teniaBordeInicial = celdas[0] === '';
+        if (teniaBordeInicial) celdas.shift();
+        if ((teniaBordeInicial || celdas.length > 4) && celdas.at(-1) === '') celdas.pop();
+        return celdas;
     }
-    if (limpia.includes('\t')) return limpia.split('\t').map(celda => celda.trim());
-    if (limpia.includes(';')) return limpia.split(';').map(celda => celda.trim());
+    // No recortar el final antes de dividir: Excel representa una celda de
+    // horas vacía con un tabulador final, que debe conservarse como 4.ª celda.
+    if (original.includes('\t')) return original.split('\t').map(celda => celda.trim());
+    if (original.includes(';')) return original.split(';').map(celda => celda.trim());
+    const patronMes = '(?:\\d{4}-\\d{1,2}|(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:sto)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)[\\/-]?\\d{2,4})';
+    const partes = limpia.match(new RegExp(`^(.+?)\\s+(${patronMes})\\s+(.+?)(?:\\s+([-+]?\\d[\\d.,]*))?$`, 'i'));
+    if (partes) return [partes[1], partes[2], partes[3], partes[4] || ''];
     return [];
 }
 
@@ -717,10 +727,12 @@ function prepararTablaPegadaPLP() {
     let omitidasSinHoras = 0;
     const claves = new Set();
     texto.split(/\r?\n/).forEach((linea, indice) => {
-        const celdas = celdasTablaPegadaPLP(linea);
+        let celdas = celdasTablaPegadaPLP(linea);
         if (!celdas.length) return;
         if (celdas.every(celda => /^:?-{3,}:?$/.test(celda.replace(/\s/g, '')))) return;
         if (['clasificacion', 'clasificacion plp', 'tipo plp'].includes(normalizar(celdas[0]))) return;
+        if (celdas.length === 3) celdas = [...celdas, ''];
+        if (celdas.length > 4) celdas = [celdas[0], celdas[1], celdas.slice(2, -1).join(' '), celdas.at(-1)];
         if (celdas.length < 4) {
             errores.push(`Línea ${indice + 1}: se esperaban 4 columnas.`);
             return;
