@@ -1,6 +1,7 @@
 """Sincroniza las fuentes de Proyectados desde el libro operativo 2026."""
 
 import argparse
+import re
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -82,6 +83,39 @@ def claves_horas_auxiliares(workbook):
     return claves
 
 
+def jornadas_naturgy_auxiliares(workbook):
+    """Obtiene las jornadas que alimentan los VLOOKUP de Naturgy en Matriz."""
+    jornadas = defaultdict(list)
+    if workbook is None or "Desglose Horas NATURGY" not in workbook.sheetnames:
+        return jornadas
+    for fila in workbook["Desglose Horas NATURGY"].iter_rows(min_row=2, values_only=True):
+        clave_mes = mes(fila[5])
+        campania = texto(fila[3])
+        if not campania or not clave_mes or not clave_mes.startswith(str(YEAR)):
+            continue
+        jornadas[(normalizar_header(campania), clave_mes)].append({
+            "dotacion_requerida": numero(fila[9]),
+            "carga_semanal": texto(fila[6]) or "L a V",
+            "carga_horaria": numero(fila[8]),
+        })
+    return jornadas
+
+
+def jornadas_derivadas_naturgy(campania, clave_mes, filas, fuentes, es_auxiliar):
+    if not es_auxiliar:
+        return None
+    campania_base = re.sub(r"\s+NOCTURNAS$", "", texto(campania), flags=re.IGNORECASE)
+    jornadas_base = fuentes.get((normalizar_header(campania_base), clave_mes))
+    if not jornadas_base:
+        return None
+    porcentajes = [numero(fila[15], 1) for fila in filas if fila[15] not in (None, "")]
+    factor = max(porcentajes, default=1)
+    return [
+        {**jornada, "dotacion_requerida": jornada["dotacion_requerida"] * factor}
+        for jornada in jornadas_base
+    ]
+
+
 def snapshot_simple(registro, tipo=None):
     if not registro:
         return None
@@ -129,6 +163,7 @@ def sincronizar_matriz(workbook, workbook_formulas=None):
     # Se actualizan las claves presentes en el libro y se preservan las demás.
     claves = sorted(set(grupos))
     horas_auxiliares = claves_horas_auxiliares(workbook_formulas)
+    fuentes_naturgy = jornadas_naturgy_auxiliares(workbook)
     feriados = fechas_feriadas_activas(YEAR)
     antes, despues = [], []
     for clave in claves:
@@ -158,18 +193,27 @@ def sincronizar_matriz(workbook, workbook_formulas=None):
         porcentajes_nocturnidad = [numero(f[15]) for f in filas if f[15] not in (None, "")]
         registro.tiene_nocturnidad = bool(porcentajes_nocturnidad and max(porcentajes_nocturnidad) > 0)
         registro.porcentaje_nocturnidad = max(porcentajes_nocturnidad, default=0) * 100
-        # La fórmula del libro define el circuito: la mayoría responde al
-        # calendario; Personal/Naturgy toman horas desde una hoja auxiliar.
-        registro.horas_carga_manual = clave in horas_auxiliares
+        # Personal conserva las horas del auxiliar. Naturgy conserva sus
+        # jornadas base para responder también a cambios de feriados.
+        jornadas_naturgy = jornadas_derivadas_naturgy(
+            campania, clave_mes, filas, fuentes_naturgy, clave in horas_auxiliares
+        )
+        registro.horas_carga_manual = clave in horas_auxiliares and not jornadas_naturgy
         registro.dias_objetivo_manual = None
         registro.horas_requeridas_manual = total_requeridas if registro.horas_carga_manual else None
         registro.jornadas.clear()
-        for fila in filas:
-            registro.jornadas.append(ProyeccionMatrizJornada(
-                dotacion_requerida=numero(fila[9]), carga_semanal=texto(fila[6]) or "L a V",
-                carga_horaria=numero(fila[8]), dias_objetivo=int(numero(fila[7])),
-                horas_requeridas=numero(fila[10]),
-            ))
+        jornadas_origen = jornadas_naturgy or [
+            {
+                "dotacion_requerida": numero(fila[9]),
+                "carga_semanal": texto(fila[6]) or "L a V",
+                "carga_horaria": numero(fila[8]),
+                "dias_objetivo": int(numero(fila[7])),
+                "horas_requeridas": numero(fila[10]),
+            }
+            for fila in filas
+        ]
+        for jornada in jornadas_origen:
+            registro.jornadas.append(ProyeccionMatrizJornada(**jornada))
         if registro.horas_carga_manual:
             aplicar_calculo_proyeccion(registro, {
                 'cliente': cliente, 'campania': campania,
@@ -179,7 +223,7 @@ def sincronizar_matriz(workbook, workbook_formulas=None):
                 'carga_horaria_plp': registro.carga_horaria,
                 'porcentaje_cumplimiento': registro.porcentaje_cumplimiento,
             }, clave_mes, feriados)
-        elif any(
+        elif jornadas_naturgy or any(
             calcular_dias_objetivo(YEAR, int(clave_mes[-2:]), jornada.carga_semanal, feriados) != jornada.dias_objetivo
             for jornada in registro.jornadas
         ):

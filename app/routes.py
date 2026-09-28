@@ -11664,7 +11664,7 @@ def api_template_proyecciones_plp():
         ProyeccionMatriz.tipo_plp.isnot(None),
         ProyeccionMatriz.tipo_plp != '',
     ).order_by(ProyeccionMatriz.mes, ProyeccionMatriz.tipo_plp, ProyeccionMatriz.campania).all()
-    rows = [[registro.tipo_plp, etiqueta_mes_proyeccion(registro.mes), registro.campania, round(registro.horas_requeridas or 0, 2), registro.carga_semanal or 'L a V', registro.carga_horaria or 6, registro.porcentaje_cumplimiento or 0] for registro in registros]
+    rows = [[registro.tipo_plp, etiqueta_mes_proyeccion(registro.mes), registro.campania, registro.horas_requeridas or 0, registro.carga_semanal or 'L a V', registro.carga_horaria or 6, registro.porcentaje_cumplimiento or 0] for registro in registros]
     if not rows:
         rows = [['Personal', f'ene-{str(year)[-2:]}', 'MÓVIL TELEFÓNICO', '', 'L a V', 6, 100]]
     contenido = crear_xlsx(['Clasificación PLP', 'MES', 'CAMPAÑA', 'HORAS', 'Carga semanal', 'Horas jornada', '% cumplimiento'], rows)
@@ -11673,6 +11673,63 @@ def api_template_proyecciones_plp():
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         headers={'Content-Disposition': f'attachment; filename="proyecciones_plp_{year}.xlsx"'},
     )
+
+
+def filas_plp_desde_libro_operativo(contenido, year):
+    """Lee los valores reales del auxiliar Personal, incluidos decimales ocultos."""
+    from openpyxl import load_workbook
+
+    libro = load_workbook(io.BytesIO(contenido), data_only=True, read_only=True)
+    if 'Desglose HORAS PERSONAL' not in libro.sheetnames:
+        libro.close()
+        return None
+
+    por_tipo = {normalizar_header(tipo): tipo for tipo in SERVICIOS_PERSONAL}
+    horas_proyectadas_por_tipo = defaultdict(float)
+    if 'Matriz' in libro.sheetnames:
+        for fila in libro['Matriz'].iter_rows(min_row=3, values_only=True):
+            fecha = fila[5] if len(fila) > 5 else None
+            nombre_tipo = re.sub(
+                r'\s+nocturnos?$', '', normalizar_header(fila[3] if len(fila) > 3 else ''),
+            )
+            tipo = por_tipo.get(nombre_tipo)
+            if not tipo or getattr(fecha, 'year', None) != year:
+                continue
+            proyectadas = fila[11] if len(fila) > 11 else None
+            if isinstance(proyectadas, (int, float)):
+                horas_proyectadas_por_tipo[(tipo, fecha.strftime('%Y-%m'))] += float(proyectadas)
+
+    auxiliares = []
+    horas_auxiliares_por_tipo = defaultdict(float)
+    for fila in libro['Desglose HORAS PERSONAL'].iter_rows(min_row=2, values_only=True):
+        tipo = por_tipo.get(normalizar_header(fila[0] if len(fila) > 0 else ''))
+        fecha = fila[1] if len(fila) > 1 else None
+        campania = str(fila[2] or '').strip() if len(fila) > 2 else ''
+        horas = fila[3] if len(fila) > 3 else None
+        try:
+            horas_numericas = parse_numero(horas) if horas not in (None, '') else 0
+        except (TypeError, ValueError):
+            horas_numericas = None
+        if (
+            getattr(fecha, 'year', None) != year or not tipo or not campania
+            or horas_numericas in (None, 0)
+        ):
+            continue
+        mes = fecha.strftime('%Y-%m')
+        auxiliares.append((tipo, mes, campania, horas_numericas))
+        horas_auxiliares_por_tipo[(tipo, mes)] += horas_numericas
+
+    cumplimientos = {
+        clave: horas_proyectadas_por_tipo.get(clave, horas) / horas * 100 if horas else 100
+        for clave, horas in horas_auxiliares_por_tipo.items()
+    }
+    filas = [['Clasificación PLP', 'MES', 'CAMPAÑA', 'HORAS', 'Carga semanal', 'Horas jornada', '% cumplimiento']]
+    filas.extend([
+        [tipo, mes, campania, horas, 'L a V', 6, cumplimientos.get((tipo, mes), 100)]
+        for tipo, mes, campania, horas in auxiliares
+    ])
+    libro.close()
+    return filas
 
 
 @main_bp.route('/api/proyecciones-plp/importar', methods=['POST'])
@@ -11687,9 +11744,13 @@ def api_importar_proyecciones_plp():
         return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
     nombre = archivo.filename.lower()
     contenido = archivo.read()
+    libro_operativo = False
     try:
         if nombre.endswith('.xlsx'):
-            filas = filas_desde_xlsx(contenido)
+            filas = filas_plp_desde_libro_operativo(contenido, year)
+            libro_operativo = filas is not None
+            if filas is None:
+                filas = filas_desde_xlsx(contenido)
         elif nombre.endswith('.csv'):
             filas = filas_desde_csv(decodificar_texto_importacion(contenido))
         else:
@@ -11757,11 +11818,37 @@ def api_importar_proyecciones_plp():
     if not entradas:
         return jsonify({'success': False, 'errores': ['No se encontraron filas PLP válidas']}), 400
 
+    claves_entradas = set()
+    for tipo, mes, campania, *_ in entradas:
+        clave = (tipo, mes, normalizar_header(campania))
+        if clave in claves_entradas:
+            return jsonify({'success': False, 'errores': [
+                f'La campaña “{campania}” está repetida para {tipo} en {mes}'
+            ]}), 400
+        claves_entradas.add(clave)
+
     antes = []
     guardadas = []
+    eliminadas = []
     actualizadas = 0
     creadas = 0
     feriados = fechas_feriadas_activas(year)
+    if libro_operativo:
+        meses_importados = sorted({entrada[1] for entrada in entradas})
+        existentes_mes = ProyeccionMatriz.query.filter(
+            ProyeccionMatriz.year == year,
+            ProyeccionMatriz.mes.in_(meses_importados),
+            ProyeccionMatriz.tipo_plp.isnot(None),
+            ProyeccionMatriz.tipo_plp != '',
+        ).all()
+        for proyeccion in existentes_mes:
+            clave = (proyeccion.tipo_plp, proyeccion.mes, normalizar_header(proyeccion.campania))
+            if clave not in claves_entradas:
+                antes.append(snapshot_proyeccion(proyeccion))
+                eliminadas.append(proyeccion.id)
+                db.session.delete(proyeccion)
+        if eliminadas:
+            db.session.flush()
     for tipo, mes, campania, horas, carga_semanal, carga_horaria, cumplimiento in entradas:
         proyeccion = buscar_proyeccion_plp(tipo, campania, mes)
         antes.append(snapshot_proyeccion(proyeccion))
@@ -11788,14 +11875,16 @@ def api_importar_proyecciones_plp():
         'importacion', 'proyeccion_matriz', str(year),
         f'Importación anual PLP {year}: {len(guardadas)} registro(s)',
         antes={'proyecciones': antes},
-        despues={'proyecciones': [snapshot_proyeccion(item) for item in guardadas]},
+        despues={'proyecciones': [snapshot_proyeccion(item) for item in guardadas], 'ids_eliminados': eliminadas},
     )
     db.session.commit()
     return jsonify({
         'success': True,
-        'mensaje': f'PLP {year} actualizado: {actualizadas} reemplazadas y {creadas} nuevas',
+        'mensaje': f'PLP {year} actualizado: {actualizadas} reemplazadas, {creadas} nuevas y {len(eliminadas)} anteriores eliminadas',
         'actualizadas': actualizadas,
         'creadas': creadas,
+        'eliminadas': len(eliminadas),
+        'origen': 'libro_operativo' if libro_operativo else 'plantilla_plp',
     })
 
 
