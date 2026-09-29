@@ -5,6 +5,13 @@ Facturación sin cambiar los resultados que entrega la aplicación. El contrato
 vigente está compuesto por los modelos SQLAlchemy, los DDL generados y el
 manifiesto de datos incluidos en este repositorio.
 
+## Acceso desde la aplicación
+
+El documento se consulta dentro de la aplicación desde **Ayuda > Entrega a
+Desarrollo** o mediante `/entrega-desarrollo`. Tanto la vista como las descargas
+del documento y del manifiesto están restringidas exclusivamente al rol
+`Full`; un usuario `Admin` no tiene acceso.
+
 ## Fuentes autoritativas
 
 | Elemento | Fuente |

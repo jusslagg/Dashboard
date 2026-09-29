@@ -40,10 +40,19 @@ def verificar() -> None:
             )
             usuario.set_password("solo-pruebas")
             db.session.add(usuario)
+            usuario_full = Usuario(
+                nombre="Verificacion Full",
+                email="full@example.invalid",
+                rol="Full",
+                activo=True,
+            )
+            usuario_full.set_password("solo-pruebas")
+            db.session.add(usuario_full)
             campania = Campania(cliente="Cliente prueba", nombre="Campaña prueba", activa=True)
             db.session.add(campania)
             db.session.commit()
             usuario_id = usuario.id
+            usuario_full_id = usuario_full.id
             campania_id = campania.id
 
         client = app.test_client()
@@ -63,6 +72,19 @@ def verificar() -> None:
             assert response.status_code == 200, f"{route} devolvio HTTP {response.status_code}."
         assert client.get("/api/matriz?year=invalido").status_code == 400
         assert client.get("/api/resumen-horas?year=2026").status_code == 200
+        assert b"Entrega a Desarrollo" not in client.get("/").data
+        assert client.get("/entrega-desarrollo").status_code == 403
+
+        full_client = app.test_client()
+        with full_client.session_transaction() as session:
+            session["usuario_id"] = usuario_full_id
+        assert b"Entrega a Desarrollo" in full_client.get("/").data
+        assert full_client.get("/entrega-desarrollo").status_code == 200
+        assert full_client.get("/entrega-desarrollo/descargar").status_code == 200
+        assert full_client.get("/entrega-desarrollo/manifiesto").status_code == 200
+        assert full_client.get("/entrega-desarrollo/esquema/postgresql").status_code == 200
+        assert full_client.get("/entrega-desarrollo/esquema/sqlite").status_code == 200
+        assert full_client.get("/entrega-desarrollo/esquema/pdf").status_code == 200
 
         for valor_esperado in (True, False, None):
             response = client.patch(

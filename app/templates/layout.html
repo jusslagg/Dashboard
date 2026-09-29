@@ -264,6 +264,11 @@
                             <i class="fas fa-file-code w-6"></i><span class="sidebar-text">Documentación técnica</span>
                         </a>
                         {% endif %}
+                        {% if usuario_actual and usuario_actual.es_superusuario %}
+                        <a href="/entrega-desarrollo" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded {% if request.path == '/entrega-desarrollo' %}active{% endif %}">
+                            <i class="fas fa-database w-6"></i><span class="sidebar-text">Entrega a Desarrollo</span>
+                        </a>
+                        {% endif %}
                     </div>
                 </section>
             </nav>

@@ -16,6 +16,8 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 ORIGEN = RAIZ / "README.md"
 DESTINO = RAIZ / "docs" / "documentacion_tecnica.html"
+ORIGEN_ENTREGA = RAIZ / "docs" / "ENTREGA_DESARROLLO.md"
+DESTINO_ENTREGA = RAIZ / "docs" / "entrega_desarrollo.html"
 
 MESES = (
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -155,6 +157,49 @@ def construir_indice(indice):
     return "\n".join(items)
 
 
+def generar_entrega_desarrollo() -> None:
+    cuerpo, indice = render_markdown(ORIGEN_ENTREGA.read_text(encoding="utf-8"))
+    documento = f"""<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrega a Desarrollo - Dashboard de Facturación</title>
+  <style>
+    :root{{--navy:#0f2747;--blue:#2563eb;--cyan:#0891b2;--ink:#172033;--muted:#5f6b7a;--line:#dbe4ef;--soft:#f4f7fb}}
+    *{{box-sizing:border-box}} html{{scroll-behavior:smooth}}
+    @font-face{{font-family:Montserrat;src:url('/static/fonts/Montserrat-VariableFont_wght.ttf') format('truetype');font-weight:100 900}}
+    body{{margin:0;color:var(--ink);background:var(--soft);font:15px/1.62 Montserrat,Arial,sans-serif;overflow-wrap:anywhere}}
+    a{{color:#1859ba}} .top{{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px max(18px,calc((100% - 1180px)/2));color:#fff;background:var(--navy)}}
+    .buttons{{display:flex;gap:8px;flex-wrap:wrap}} .button{{display:inline-block;padding:8px 13px;border:1px solid #7fa1ce;border-radius:7px;background:#173b69;color:#fff;text-decoration:none;font-weight:bold}} .button.primary{{border-color:#67e8f9;background:#0e7490}}
+    .page{{width:min(100%,1180px);margin:24px auto 60px;padding:0 18px}} .cover,.toc,.content{{margin-bottom:20px;padding:30px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(15,39,71,.05)}}
+    .cover{{padding:46px;background:linear-gradient(135deg,#0f2747,#155e75);color:#fff}} .cover h1{{margin:0 0 10px;color:#fff;font-size:clamp(30px,5vw,48px);line-height:1.15}} .cover p{{max-width:830px;font-size:18px}}
+    .toc ol{{columns:2;column-gap:45px;padding-left:24px}} .toc li{{margin:5px 0}} .toc li.sub{{margin-left:18px;font-size:14px}} .toc a{{text-decoration:none}}
+    h1,h2,h3,h4{{scroll-margin-top:80px;color:var(--navy)}} h2{{margin-top:44px;padding:12px 15px;border-left:6px solid var(--cyan);background:#eef8fb;font-size:26px}} h3{{margin-top:30px;color:#174b83;font-size:21px}}
+    .anchor{{margin-left:8px;color:#9aa9ba;text-decoration:none;font-size:.75em;opacity:0}} h1:hover .anchor,h2:hover .anchor,h3:hover .anchor{{opacity:1}}
+    ul,ol{{padding-left:26px}} li{{margin:5px 0}} code{{padding:2px 5px;border-radius:4px;background:#edf1f6;color:#8b1d41;font-family:Consolas,monospace}}
+    pre{{max-width:100%;overflow:auto;padding:17px;border-radius:8px;background:#101b2c;color:#e5edf7;line-height:1.5}} pre code{{padding:0;background:none;color:inherit}}
+    .table-wrap{{overflow-x:auto;margin:16px 0}} table{{width:100%;border-collapse:collapse;font-size:14px}} th,td{{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}} th{{background:#e9f0f8;color:var(--navy)}}
+    footer{{padding:25px;color:var(--muted);text-align:center}} .back{{position:fixed;right:20px;bottom:20px;padding:9px 12px;border-radius:8px;background:var(--navy);color:#fff;text-decoration:none}}
+    @media(max-width:720px){{.toc ol{{columns:1}}.cover,.toc,.content{{padding:20px}}.top{{position:static;align-items:flex-start;flex-direction:column}}}}
+    @media print{{body{{background:#fff;font-size:9pt}}.top,.back,.anchor{{display:none}}.page{{max-width:none;margin:0;padding:0}}.cover,.toc,.content{{box-shadow:none;border:0;padding:12mm}}}}
+  </style>
+</head>
+<body>
+  <div class="top"><strong>Entrega a Desarrollo · Acceso Full</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/entrega-desarrollo/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/entrega-desarrollo/esquema/sqlite">SQL SQLite</a><a class="button" href="/entrega-desarrollo/esquema/pdf">Esquema PDF</a><a class="button" href="/entrega-desarrollo/manifiesto">Manifiesto de datos</a><a class="button" href="/entrega-desarrollo/descargar">Descargar documento</a></div></div>
+  <main class="page">
+    <header class="cover"><h1>Entrega a Desarrollo y Base de Datos</h1><p>Procedimiento reproducible para configurar, crear, migrar y verificar la base sin cambiar los resultados de la aplicación.</p><p><strong>Acceso exclusivo para el rol Full.</strong></p><small>Generada desde ENTREGA_DESARROLLO.md · {MESES[date.today().month - 1].capitalize()} de {date.today().year}</small></header>
+    <nav class="toc" id="indice"><h2>Índice de entrega</h2><ol>{construir_indice(indice)}</ol></nav>
+    <article class="content">{cuerpo}</article>
+    <footer>Dashboard de Facturación · Entrega a Desarrollo</footer>
+  </main>
+  <a class="back" href="#indice">Índice ↑</a>
+</body>
+</html>"""
+    DESTINO_ENTREGA.write_text(documento, encoding="utf-8")
+    print(f"Generado: {DESTINO_ENTREGA}")
+
+
 def main():
     cuerpo, indice = render_markdown(ORIGEN.read_text(encoding="utf-8"))
     anexos = [
@@ -222,6 +267,7 @@ def main():
     DESTINO.parent.mkdir(parents=True, exist_ok=True)
     DESTINO.write_text(documento, encoding="utf-8")
     print(f"Generado: {DESTINO}")
+    generar_entrega_desarrollo()
 
 
 if __name__ == "__main__":

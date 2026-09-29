@@ -1,5 +1,5 @@
 ﻿# filepath: app/routes.py
-from flask import Blueprint, Response, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
+from flask import Blueprint, Response, abort, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
 from app import db, get_csrf_token
 from app.personal_objetivos import recalcular_objetivos, reglas_plantilla
 from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, NormalizacionNombreProyectado, PersonalDistribucionHoras, ProformaPersonal, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, SeguimientoPersonalImportacion, normalizar_jefe_site, normalizar_tipo_negocio_personal, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
@@ -317,6 +317,11 @@ def requiere_admin():
     return usuario is not None and usuario.activo and usuario.puede_administrar_usuarios
 
 
+def requiere_full():
+    usuario = usuario_actual()
+    return usuario is not None and usuario.activo and usuario.es_superusuario
+
+
 def requiere_edicion():
     usuario = usuario_actual()
     return usuario is not None and usuario.activo and usuario.puede_editar
@@ -375,6 +380,7 @@ def permiso_requerido(verificador):
 
 
 admin_requerido = permiso_requerido(requiere_admin)
+full_requerido = permiso_requerido(requiere_full)
 carga_requerida = permiso_requerido(requiere_carga)
 edicion_requerida = permiso_requerido(requiere_edicion)
 eliminacion_requerida = permiso_requerido(requiere_eliminacion)
@@ -425,6 +431,8 @@ def modulo_solicitado(path):
         return 'proyecciones'
     if path.startswith(('/api/asignaciones', '/api/campanias')):
         return 'maestros_api'
+    if path.startswith('/entrega-desarrollo'):
+        return 'entrega_full'
     if path.startswith(('/usuarios', '/api/usuarios', '/catalogos', '/documentacion-tecnica')):
         return 'usuarios'
     if path.startswith('/historial') or path.startswith('/api/historial'):
@@ -447,6 +455,7 @@ def proteger_modulos_por_perfil():
         or (modulo == 'proyecciones' and usuario.puede_ver_proyecciones)
         or (modulo == 'maestros_api' and (usuario.puede_administrar_usuarios or usuario.puede_cargar))
         or (modulo == 'usuarios' and usuario.puede_administrar_usuarios)
+        or (modulo == 'entrega_full' and usuario.es_superusuario)
         or (modulo == 'historial' and usuario.puede_eliminar)
     )
     if autorizado:
@@ -3908,6 +3917,59 @@ def documentacion_tecnica():
     ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'documentacion_tecnica.html'))
     contenido = Path(ruta).read_text(encoding='utf-8')
     return Response(contenido, content_type='text/html; charset=utf-8')
+
+
+@main_bp.route('/entrega-desarrollo')
+@full_requerido
+def entrega_desarrollo():
+    """Abre el procedimiento de entrega y migración; exclusivo para Full."""
+    ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'entrega_desarrollo.html'))
+    contenido = Path(ruta).read_text(encoding='utf-8')
+    return Response(contenido, content_type='text/html; charset=utf-8')
+
+
+@main_bp.route('/entrega-desarrollo/descargar')
+@full_requerido
+def descargar_entrega_desarrollo():
+    ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'ENTREGA_DESARROLLO.md'))
+    return send_file(
+        ruta,
+        mimetype='text/markdown; charset=utf-8',
+        as_attachment=True,
+        download_name='ENTREGA_DESARROLLO.md',
+    )
+
+
+@main_bp.route('/entrega-desarrollo/manifiesto')
+@full_requerido
+def descargar_manifiesto_base():
+    ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'base_actual_manifest.json'))
+    return send_file(
+        ruta,
+        mimetype='application/json',
+        as_attachment=True,
+        download_name='base_actual_manifest.json',
+    )
+
+
+@main_bp.route('/entrega-desarrollo/esquema/<motor>')
+@full_requerido
+def descargar_esquema_entrega(motor):
+    archivos = {
+        'sqlite': 'esquema_base_datos_sqlite.sql',
+        'postgresql': 'esquema_base_datos_postgresql.sql',
+        'pdf': 'esquema_base_datos.pdf',
+    }
+    nombre = archivos.get(str(motor or '').lower())
+    if not nombre:
+        abort(404)
+    ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', nombre))
+    return send_file(
+        ruta,
+        mimetype='application/pdf' if motor == 'pdf' else 'application/sql',
+        as_attachment=True,
+        download_name='Esquema_Base_Datos_Dashboard.pdf' if motor == 'pdf' else nombre,
+    )
 
 
 # ========== ENDPOINTS API ==========

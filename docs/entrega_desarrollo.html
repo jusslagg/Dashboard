@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrega a Desarrollo - Dashboard de Facturación</title>
+  <style>
+    :root{--navy:#0f2747;--blue:#2563eb;--cyan:#0891b2;--ink:#172033;--muted:#5f6b7a;--line:#dbe4ef;--soft:#f4f7fb}
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    @font-face{font-family:Montserrat;src:url('/static/fonts/Montserrat-VariableFont_wght.ttf') format('truetype');font-weight:100 900}
+    body{margin:0;color:var(--ink);background:var(--soft);font:15px/1.62 Montserrat,Arial,sans-serif;overflow-wrap:anywhere}
+    a{color:#1859ba} .top{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px max(18px,calc((100% - 1180px)/2));color:#fff;background:var(--navy)}
+    .buttons{display:flex;gap:8px;flex-wrap:wrap} .button{display:inline-block;padding:8px 13px;border:1px solid #7fa1ce;border-radius:7px;background:#173b69;color:#fff;text-decoration:none;font-weight:bold} .button.primary{border-color:#67e8f9;background:#0e7490}
+    .page{width:min(100%,1180px);margin:24px auto 60px;padding:0 18px} .cover,.toc,.content{margin-bottom:20px;padding:30px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(15,39,71,.05)}
+    .cover{padding:46px;background:linear-gradient(135deg,#0f2747,#155e75);color:#fff} .cover h1{margin:0 0 10px;color:#fff;font-size:clamp(30px,5vw,48px);line-height:1.15} .cover p{max-width:830px;font-size:18px}
+    .toc ol{columns:2;column-gap:45px;padding-left:24px} .toc li{margin:5px 0} .toc li.sub{margin-left:18px;font-size:14px} .toc a{text-decoration:none}
+    h1,h2,h3,h4{scroll-margin-top:80px;color:var(--navy)} h2{margin-top:44px;padding:12px 15px;border-left:6px solid var(--cyan);background:#eef8fb;font-size:26px} h3{margin-top:30px;color:#174b83;font-size:21px}
+    .anchor{margin-left:8px;color:#9aa9ba;text-decoration:none;font-size:.75em;opacity:0} h1:hover .anchor,h2:hover .anchor,h3:hover .anchor{opacity:1}
+    ul,ol{padding-left:26px} li{margin:5px 0} code{padding:2px 5px;border-radius:4px;background:#edf1f6;color:#8b1d41;font-family:Consolas,monospace}
+    pre{max-width:100%;overflow:auto;padding:17px;border-radius:8px;background:#101b2c;color:#e5edf7;line-height:1.5} pre code{padding:0;background:none;color:inherit}
+    .table-wrap{overflow-x:auto;margin:16px 0} table{width:100%;border-collapse:collapse;font-size:14px} th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top} th{background:#e9f0f8;color:var(--navy)}
+    footer{padding:25px;color:var(--muted);text-align:center} .back{position:fixed;right:20px;bottom:20px;padding:9px 12px;border-radius:8px;background:var(--navy);color:#fff;text-decoration:none}
+    @media(max-width:720px){.toc ol{columns:1}.cover,.toc,.content{padding:20px}.top{position:static;align-items:flex-start;flex-direction:column}}
+    @media print{body{background:#fff;font-size:9pt}.top,.back,.anchor{display:none}.page{max-width:none;margin:0;padding:0}.cover,.toc,.content{box-shadow:none;border:0;padding:12mm}}
+  </style>
+</head>
+<body>
+  <div class="top"><strong>Entrega a Desarrollo · Acceso Full</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/entrega-desarrollo/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/entrega-desarrollo/esquema/sqlite">SQL SQLite</a><a class="button" href="/entrega-desarrollo/esquema/pdf">Esquema PDF</a><a class="button" href="/entrega-desarrollo/manifiesto">Manifiesto de datos</a><a class="button" href="/entrega-desarrollo/descargar">Descargar documento</a></div></div>
+  <main class="page">
+    <header class="cover"><h1>Entrega a Desarrollo y Base de Datos</h1><p>Procedimiento reproducible para configurar, crear, migrar y verificar la base sin cambiar los resultados de la aplicación.</p><p><strong>Acceso exclusivo para el rol Full.</strong></p><small>Generada desde ENTREGA_DESARROLLO.md · Septiembre de 2026</small></header>
+    <nav class="toc" id="indice"><h2>Índice de entrega</h2><ol><li class=""><a href="#acceso-desde-la-aplicacion">Acceso desde la aplicación</a></li>
+<li class=""><a href="#fuentes-autoritativas">Fuentes autoritativas</a></li>
+<li class=""><a href="#configuracion-sin-valores-locales-fijos">Configuración sin valores locales fijos</a></li>
+<li class=""><a href="#esquema-y-compatibilidad">Esquema y compatibilidad</a></li>
+<li class=""><a href="#datos-que-deben-migrarse">Datos que deben migrarse</a></li>
+<li class=""><a href="#migracion-recomendada">Migración recomendada</a></li>
+<li class=""><a href="#verificacion-de-paridad">Verificación de paridad</a></li>
+<li class=""><a href="#validacion-funcional-posterior">Validación funcional posterior</a></li>
+<li class=""><a href="#reglas-que-deben-conservarse">Reglas que deben conservarse</a></li>
+<li class=""><a href="#despliegue">Despliegue</a></li>
+<li class=""><a href="#criterio-de-aceptacion">Criterio de aceptación</a></li></ol></nav>
+    <article class="content"><h1 id="entrega-tecnica-para-desarrollo-y-base-de-datos">Entrega técnica para Desarrollo y Base de Datos<a class="anchor" href="#entrega-tecnica-para-desarrollo-y-base-de-datos" aria-label="Enlace a esta sección">#</a></h1>
+<p class="">Este documento define cómo conectar, crear o migrar la base del Dashboard de Facturación sin cambiar los resultados que entrega la aplicación. El contrato vigente está compuesto por los modelos SQLAlchemy, los DDL generados y el manifiesto de datos incluidos en este repositorio.</p>
+<h2 id="acceso-desde-la-aplicacion">Acceso desde la aplicación<a class="anchor" href="#acceso-desde-la-aplicacion" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">El documento se consulta dentro de la aplicación desde <strong>Ayuda &gt; Entrega a Desarrollo</strong> o mediante <code>/entrega-desarrollo</code>. Tanto la vista como las descargas del documento y del manifiesto están restringidas exclusivamente al rol <code>Full</code>; un usuario <code>Admin</code> no tiene acceso.</p>
+<h2 id="fuentes-autoritativas">Fuentes autoritativas<a class="anchor" href="#fuentes-autoritativas" aria-label="Enlace a esta sección">#</a></h2>
+<div class="table-wrap"><table><thead><tr>
+<th>Elemento</th>
+<th>Fuente</th>
+</tr></thead><tbody>
+<tr>
+<td>Modelo lógico y reglas de cálculo</td>
+<td><code>app/models.py</code> y <code>app/routes.py</code></td>
+</tr>
+<tr>
+<td>Esquema limpio PostgreSQL</td>
+<td><code>docs/esquema_base_datos_postgresql.sql</code></td>
+</tr>
+<tr>
+<td>Esquema limpio SQLite</td>
+<td><code>docs/esquema_base_datos_sqlite.sql</code></td>
+</tr>
+<tr>
+<td>Línea base del contenido actual</td>
+<td><code>docs/base_actual_manifest.json</code></td>
+</tr>
+<tr>
+<td>Alias configurables de nombres</td>
+<td><code>config/name_aliases.json</code></td>
+</tr>
+<tr>
+<td>Configuración de ambiente</td>
+<td><code>.env.example</code></td>
+</tr>
+</tbody></table></div>
+<p class="">Los DDL se generan desde <code>app/models.py</code>; no deben editarse manualmente. Después de cambiar un modelo se ejecuta:</p>
+<pre><code class="language-powershell">python scripts/generar_esquema_base_datos.py
+python scripts/verificar_handoff.py</code></pre>
+<h2 id="configuracion-sin-valores-locales-fijos">Configuración sin valores locales fijos<a class="anchor" href="#configuracion-sin-valores-locales-fijos" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">La aplicación selecciona la base exclusivamente mediante <code>DATABASE_URL</code>. Direcciones, credenciales, año operativo y año base PLP se configuran por ambiente:</p>
+<pre><code class="language-dotenv">APP_ENV=production
+SECRET_KEY=&lt;secreto persistente administrado por el ambiente&gt;
+DATABASE_URL=postgresql+psycopg://usuario:password@host:5432/facturacion
+APP_DEFAULT_YEAR=2026
+PLP_BASE_YEAR=2026
+NAME_ALIASES_FILE=config/name_aliases.json
+CORS_ORIGINS=https://dominio-del-frontend
+SESSION_COOKIE_SECURE=1</code></pre>
+<p class=""><code>APP_DEFAULT_YEAR</code> define la selección inicial y no limita los años almacenados. <code>PLP_BASE_YEAR</code> identifica la hoja anual del libro histórico de Personal; las proformas nuevas pueden pertenecer a períodos posteriores. Ninguna ruta local, IP de WiFi o archivo del usuario forma parte del código de producción.</p>
+<p class="">Las jefaturas, segmentos, gerencias, campañas y vigencias operativas provienen de <code>asignaciones_comerciales</code>, administrada desde <strong>Datos Maestros</strong>. El archivo <code>config/name_aliases.json</code> sólo normaliza variantes de escritura; no asigna la jefatura de una campaña. Si una campaña nueva no tiene asignación, el circuito de Personal informa el faltante y no inventa un responsable.</p>
+<h2 id="esquema-y-compatibilidad">Esquema y compatibilidad<a class="anchor" href="#esquema-y-compatibilidad" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Una base nueva contiene 27 tablas. <code>facturacion_anio</code> es multianual; el nombre Python <code>Facturacion2026</code> se conserva únicamente como alias de compatibilidad y apunta al mismo modelo, no a otra tabla.</p>
+<p class="">La SQLite operativa puede conservar artefactos históricos que la aplicación ya no consulta: la tabla vacía <code>bajas_operativas</code> y algunas columnas antiguas. El migrador omite esos artefactos. Si <code>bajas_operativas</code> tuviera filas, la auditoría la reportaría como tabla extra y la migración debe detenerse para revisión.</p>
+<p class="">Los importes usan <code>NUMERIC</code>, no <code>FLOAT</code>, con la precisión declarada en los DDL. Las fórmulas se calculan en Python a partir de columnas persistidas; no existen triggers ni columnas calculadas ocultas que deban recrearse en PostgreSQL.</p>
+<h2 id="datos-que-deben-migrarse">Datos que deben migrarse<a class="anchor" href="#datos-que-deben-migrarse" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Se copian las 27 tablas declaradas, incluidos:</p>
+<ul>
+<li>usuarios y hashes de contraseña;</li>
+<li>catálogos, asignaciones y vigencias;</li>
+<li>facturación y justificaciones;</li>
+<li>proyecciones, jornadas, precios, variables y tarifaciones;</li>
+<li>feriados y distribución PLP;</li>
+<li>proformas e importaciones de seguimiento, incluidos sus BLOB de Excel;</li>
+<li>historial de cambios y normalizaciones de nombres;</li>
+<li>tablas de Directorio, dotaciones e indicadores.</li>
+</ul>
+<p class="">Los IDs se preservan porque existen claves foráneas e historial que los referencian. El migrador actualiza las secuencias de PostgreSQL al máximo ID copiado.</p>
+<h2 id="migracion-recomendada">Migración recomendada<a class="anchor" href="#migracion-recomendada" aria-label="Enlace a esta sección">#</a></h2>
+<ol>
+<li>Detener escrituras en la aplicación de origen.</li>
+<li>Crear un backup consistente de SQLite.</li>
+<li>Crear una base PostgreSQL vacía con codificación UTF-8.</li>
+<li>Configurar una cuenta temporal con permisos de creación y carga.</li>
+<li>Ejecutar el migrador desde el repositorio:</li>
+</ol>
+<pre><code class="language-powershell">python scripts/migrar_base_datos.py `
+  --source-url &quot;sqlite:///C:/ruta/instance/facturacion.db&quot; `
+  --target-url &quot;postgresql+psycopg://usuario:password@host:5432/facturacion&quot;</code></pre>
+<p class="">El destino debe estar vacío. El script no borra ni mezcla datos existentes. La copia se ejecuta en transacción, conserva IDs, reinicia secuencias y termina con una comparación de esquema, cantidad de filas y SHA-256 de cada tabla.</p>
+<p class="">Para crear solamente el esquema, un DBA puede ejecutar <code>docs/esquema_base_datos_postgresql.sql</code> y luego usar el mismo migrador sobre las tablas vacías.</p>
+<h2 id="verificacion-de-paridad">Verificación de paridad<a class="anchor" href="#verificacion-de-paridad" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">La línea base actual se regenera únicamente cuando una actualización operativa autorizada cambia la fuente:</p>
+<pre><code class="language-powershell">python scripts/verificar_paridad_bases.py `
+  --write-manifest docs/base_actual_manifest.json</code></pre>
+<p class="">Para comparar directamente SQLite y PostgreSQL:</p>
+<pre><code class="language-powershell">python scripts/verificar_paridad_bases.py `
+  --source-url &quot;sqlite:///C:/ruta/instance/facturacion.db&quot; `
+  --target-url &quot;postgresql+psycopg://usuario:password@host:5432/facturacion&quot;</code></pre>
+<p class="">Para comprobar una copia de SQLite contra el manifiesto entregado:</p>
+<pre><code class="language-powershell">python scripts/verificar_paridad_bases.py `
+  --source-url &quot;sqlite:///C:/ruta/instance/facturacion.db&quot; `
+  --manifest docs/base_actual_manifest.json</code></pre>
+<p class="">El comparador normaliza fechas, booleanos, Unicode y escalas <code>NUMERIC</code>; los BLOB se comparan por tamaño y SHA-256. Nunca imprime la contraseña contenida en una URL de conexión.</p>
+<h2 id="validacion-funcional-posterior">Validación funcional posterior<a class="anchor" href="#validacion-funcional-posterior" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Con <code>DATABASE_URL</code> apuntando al destino:</p>
+<pre><code class="language-powershell">python scripts/verificar_entrega.py
+python scripts/verificar_handoff.py
+python scripts/verificar_matriz_segmentos.py
+python scripts/verificar_proforma_seguimiento.py
+python scripts/verificar_feriados_facturacion.py
+python scripts/verificar_resumen_horas.py</code></pre>
+<p class="">Luego se valida en navegador:</p>
+<ol>
+<li>login y permisos;</li>
+<li>Datos Maestros y edición de jefatura/segmento;</li>
+<li>Resumen por segmento, Resumen por jefatura y Servicios por jefatura;</li>
+<li>carga de una proforma en simulación y publicación;</li>
+<li>feriado, jornadas laborales y facturación;</li>
+<li>edición de Next Gen;</li>
+<li>historial y deshacer;</li>
+<li>exportaciones de Directorio y Proyectados.</li>
+</ol>
+<h2 id="reglas-que-deben-conservarse">Reglas que deben conservarse<a class="anchor" href="#reglas-que-deben-conservarse" aria-label="Enlace a esta sección">#</a></h2>
+<ul>
+<li><code>asignaciones_comerciales</code> gobierna jefe, gerente, segmento y vigencia.</li>
+<li>El bono de Personal es adicional realizado y no integra el objetivo teórico.</li>
+<li>Las horas planificadas PLP son manuales y se distribuyen en Objetivo Masivo.</li>
+<li>Los feriados activos recalculan jornadas y horas proyectadas.</li>
+<li>Una carga mensual PLP reemplaza el mes completo dentro de su alcance.</li>
+<li>Los importes monetarios se redondean con <code>ROUND_HALF_UP</code> a dos decimales.</li>
+<li>Las normalizaciones de Proyectados no alteran nombres ni importes de origen.</li>
+<li>Next Gen conserva la cotización aplicada por producto y mes.</li>
+</ul>
+<h2 id="despliegue">Despliegue<a class="anchor" href="#despliegue" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">En producción se usa una sola instancia lógica detrás del proxy o balanceador, una <code>SECRET_KEY</code> persistente y HTTPS. Las migraciones o normalizaciones no deben ejecutarse desde dos procesos simultáneamente. Antes del primer arranque sobre PostgreSQL se aplica el DDL o el migrador; después se inicia la aplicación con una cuenta de ejecución con los permisos mínimos necesarios.</p>
+<p class="">No se versionan <code>.env</code>, logs, bases temporales ni credenciales. Los respaldos de datos reales deben almacenarse en el repositorio de backups definido por el área responsable y no dentro del repositorio de código.</p>
+<h2 id="criterio-de-aceptacion">Criterio de aceptación<a class="anchor" href="#criterio-de-aceptacion" aria-label="Enlace a esta sección">#</a></h2>
+<ul>
+<li><code>verificar_handoff.py</code> finaliza con <code>HANDOFF OK</code>.</li>
+<li><code>verificar_paridad_bases.py</code> finaliza con <code>PARIDAD OK</code>.</li>
+<li>No faltan tablas, columnas, índices o claves foráneas.</li>
+<li>Todas las tablas tienen la misma cantidad de filas y huella SHA-256.</li>
+<li>Los seis controles funcionales anteriores finalizan sin errores.</li>
+<li>La aplicación inicia con <code>APP_ENV=production</code> y una clave persistente.</li>
+<li>Desarrollo conserva el manifiesto y el backup de origen hasta la aceptación.</li>
+</ul></article>
+    <footer>Dashboard de Facturación · Entrega a Desarrollo</footer>
+  </main>
+  <a class="back" href="#indice">Índice ↑</a>
+</body>
+</html>

@@ -54,6 +54,7 @@ def main() -> int:
         errors.append("El contrato de asignaciones no contiene segmento.")
     required_docs = (
         ROOT / "docs" / "ENTREGA_DESARROLLO.md",
+        ROOT / "docs" / "entrega_desarrollo.html",
         ROOT / "docs" / "base_actual_manifest.json",
     )
     for path in required_docs:
