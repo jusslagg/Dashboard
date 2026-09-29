@@ -16,6 +16,8 @@ Este repositorio separa la documentación según su público:
 | Documento | Destinatario | Contenido |
 | --- | --- | --- |
 | `README.md` | Desarrollo, soporte y mantenimiento | Arquitectura, instalación, base de datos, APIs, reglas de cálculo y diagnóstico técnico. |
+| `docs/ENTREGA_DESARROLLO.md` | Desarrollo y DBA | Contrato de conexión, migración SQLite/PostgreSQL, paridad, configuración y aceptación. |
+| `docs/base_actual_manifest.json` | Desarrollo y DBA | Cantidad de filas y huella SHA-256 por tabla de la línea base entregada. |
 | `docs/guia_usuario.html` | Usuarios operativos nuevos o habituales | Guía sencilla con índice y recorridos paso a paso para facturación real, proyectados, Facturación horas, PLP, variables, adicionales, importaciones e historial. |
 
 Con la aplicación iniciada, la guía funcional se abre desde **Ayuda > Guía de usuario** o desde:
@@ -63,7 +65,7 @@ Dashboard/
 
 ## Requisitos
 
-- Python 3.8 o superior.
+- Python 3.11 o superior.
 - pip.
 - Node.js con npm, si se quiere levantar también Next.js.
 - Navegador moderno.
@@ -155,6 +157,8 @@ npm run flask:dev  # Solo Flask
 npm run next:dev   # Solo Next.js
 npm run build      # Build de producción de Next.js
 npm run verify:python  # Esquema, seguridad, rutas Flask y DDL SQLite
+npm run verify:handoff # Portabilidad, DDL sincronizados y ausencia de rutas locales fijas
+npm run verify:data    # Paridad de la SQLite actual contra el manifiesto entregado
 npm run start      # Alias de npm run dev
 ```
 
@@ -165,6 +169,7 @@ SECRET_KEY=clave-secreta-local
 APP_ENV=development
 APP_DEFAULT_YEAR=2026
 PLP_BASE_YEAR=2026
+NAME_ALIASES_FILE=config/name_aliases.json
 DATABASE_URL=sqlite:///facturacion.db
 CORS_ORIGINS=http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:8009,http://localhost:8009
 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8009
@@ -181,6 +186,7 @@ MAX_CONTENT_LENGTH=10485760
 - `APP_ENV`: use `development` localmente y `production` en el ambiente entregado. En producción, la aplicación rechaza una `SECRET_KEY` ausente o de ejemplo.
 - `APP_DEFAULT_YEAR`: período seleccionado por defecto en pantallas y APIs; no limita ni elimina datos de otros años.
 - `PLP_BASE_YEAR`: año al que pertenece la matriz histórica PLP incluida. Está separado del período operativo para no reinterpretar esos porcentajes como datos de un año nuevo.
+- `NAME_ALIASES_FILE`: archivo versionado con alias ortográficos. No define responsables ni campañas; esas asignaciones se administran en Datos Maestros.
 - `DATABASE_URL`: conexión SQLAlchemy; permite cambiar SQLite por PostgreSQL sin modificar el código.
 - `CORS_ORIGINS`: orígenes autorizados, separados por coma. También alimentan la política `connect-src` de Flask.
 - `NEXT_PUBLIC_API_BASE`: URL pública del backend usada por Next para consultas y enlaces hacia Flask.
@@ -195,12 +201,7 @@ DATABASE_URL=postgresql+psycopg://usuario:password@host:5432/facturacion
 
 El sistema tiene autenticación propia y roles definidos en base de datos.
 
-Roles principales:
-
-- **superusuario**: acceso amplio de administración.
-- **administrador**: administra usuarios, historial y acciones sensibles.
-- **editor**: puede cargar, editar y gestionar datos operativos.
-- **lector**: consulta información sin modificar datos.
+Roles vigentes: `Full`, `Admin`, `RMO_OPS`, `Finanzas`, `Tesorero`, `RMO` y `RMO_WFM`. Los permisos efectivos se completan con el puesto asociado al rol. Las etiquetas antiguas `superusuario`, `administrador` y `usuario` se convierten automáticamente para mantener compatibilidad con instalaciones previas.
 
 Acciones sensibles como edición, eliminación o deshacer cambios requieren sesión activa, token CSRF y permisos suficientes.
 
@@ -578,7 +579,7 @@ Los scripts contienen, tabla por tabla, la definición física en formato
 - restricciones `UNIQUE`;
 - índices y columnas indexadas.
 
-El esquema incluye las 24 tablas vigentes:
+El esquema incluye las 27 tablas vigentes:
 
 ```text
 usuarios
@@ -605,6 +606,9 @@ graficos_dotaciones_mensuales
 campanias
 excepciones_calculo
 asignaciones_comerciales
+normalizacion_nombres_proyectados
+proformas_personal
+seguimiento_personal_importaciones
 ```
 
 ### Características de las bases de Directorio y control
@@ -634,7 +638,7 @@ generar los scripts y la documentación:
 
 #### Compatibilidad con bases locales anteriores
 
-El contrato nuevo está formado por las **24 tablas declaradas en los DDL**. Una
+El contrato nuevo está formado por las **27 tablas declaradas en los DDL**. Una
 base SQLite local actualizada durante versiones anteriores puede conservar la
 tabla vacía `bajas_operativas`, las columnas vacías `facturacion_anio.mes_baja`
 y `facturacion_anio.motivo_baja`, o las columnas en cero
@@ -764,7 +768,7 @@ diferente en cada motor.
 
 Para una base nueva, el orden recomendado de carga es:
 
-1. `usuarios`: crear al menos un usuario `administrador`.
+1. `usuarios`: crear al menos un usuario `Admin` o `Full`.
 2. `asignaciones_comerciales`: cargar el maestro comercial base.
 3. `facturacion_anio`: cargar registros reales si se quiere usar Dashboard, Control, Matriz, Comparativo y Justificaciones.
 4. `feriados_operativos`: cargar feriados si las proyecciones deben descontar días no operativos.
@@ -783,12 +787,12 @@ Campos principales:
 | `nombre` | Nombre visible del usuario. |
 | `email` | Email único para iniciar sesión. |
 | `password_hash` | Contraseña hasheada, nunca texto plano. |
-| `rol` | Rol del usuario. Valores usados: `administrador`, `superusuario`, `usuario`. |
+| `rol` | Rol del usuario. Valores vigentes: `Full`, `Admin`, `RMO_OPS`, `Finanzas`, `Tesorero`, `RMO` y `RMO_WFM`. |
 | `activo` | Define si puede iniciar sesión. |
 
 Datos que necesitás agregar:
 
-- al menos un administrador;
+- al menos un usuario `Admin` o `Full`;
 - usuarios operativos según quién cargue o consulte información.
 
 ### `asignaciones_comerciales`

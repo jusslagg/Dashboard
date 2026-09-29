@@ -1,10 +1,15 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8009';
 const apiOrigin = new URL(apiBase).origin;
 const developmentScriptPolicy = process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : '';
+const appRoot = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  outputFileTracingRoot: appRoot,
   async headers() {
     return [
       {

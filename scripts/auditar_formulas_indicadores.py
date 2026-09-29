@@ -1,8 +1,9 @@
 """Compara el endpoint de Indicadores con las formulas de la hoja Historico."""
+import argparse
 import os
-import sys
 from collections import defaultdict
 from pathlib import Path
+import sys
 
 from openpyxl import load_workbook
 
@@ -11,9 +12,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import create_app
 from app.models import Usuario
 
-ARCHIVO = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(
-    r"C:\Users\jegil\Downloads\2026 Facturacion (36).xlsx"
-)
 CAMPOS = {
     "cumplimiento": ("horas_realizadas", "horas_requeridas", 13, 12),
     "ausentismo": ("horas_ausentismo", "horas_dotacion_activa", 9, 8),
@@ -51,14 +49,25 @@ def diferencia(esperado, actual):
 
 
 def main():
-    libro = load_workbook(ARCHIVO, data_only=True, read_only=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("archivo", type=Path, help="Libro con las hojas Historico e Indicadores")
+    args = parser.parse_args()
+    if not args.archivo.is_file():
+        parser.error(f"No existe el archivo: {args.archivo}")
+    libro = load_workbook(args.archivo, data_only=True, read_only=True)
     hoja = libro["Historico"]
     hoja_indicadores = libro["Indicadores"]
     excel = defaultdict(list)
     for fila in hoja.iter_rows(min_row=3, max_col=16, values_only=True):
         fecha = fila[5]
-        if fecha and 2019 <= fecha.year <= 2026:
+        if fecha and hasattr(fecha, "year"):
             excel[fecha.year].append(fila)
+
+    years = sorted(excel)
+    if not years:
+        raise ValueError("La hoja Historico no contiene períodos válidos.")
+    base_year = years[0]
+    current_year = years[-1]
 
     app = create_app()
     errores = 0
@@ -68,7 +77,7 @@ def main():
         with cliente.session_transaction() as sesion:
             sesion["usuario_id"] = usuario.id
         api_por_year = {}
-        for year in range(2019, 2027):
+        for year in years:
             respuesta = cliente.get(f"/api/historico-clientes?year={year}").get_json()
             filas_api = respuesta["filas"]
             api_por_year[year] = filas_api
@@ -92,14 +101,14 @@ def main():
         # acumulado Ene-último mes. Se valida la matriz tal como la ve el usuario.
         bloques = {"cumplimiento": 4, "ausentismo": 20, "rotacion": 36, "eficiencia": 52}
         for indicador, fila_inicial in bloques.items():
-            for year in range(2019, 2027):
-                columna = 2 + year - 2019
+            for year in years:
+                columna = 2 + year - base_year
                 for mes in range(1, 13):
                     esperado = hoja_indicadores.cell(fila_inicial + mes - 1, columna).value
                     esperado = numero(esperado) if isinstance(esperado, (int, float)) else None
                     filas_mes = [f for f in api_por_year[year] if int(f["mes"][5:7]) == mes]
                     actual = ratios(filas_mes, "api")[indicador]
-                    if year == 2026:
+                    if year == current_year:
                         campo_den = CAMPOS[indicador][1]
                         meses_con_dato = [int(f["mes"][5:7]) for f in api_por_year[year] if numero(f.get(campo_den))]
                         corte = max(meses_con_dato) if meses_con_dato else 0

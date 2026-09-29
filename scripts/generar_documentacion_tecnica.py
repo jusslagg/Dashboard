@@ -9,12 +9,18 @@ from __future__ import annotations
 import html
 import re
 import unicodedata
+from datetime import date
 from pathlib import Path
 
 
 RAIZ = Path(__file__).resolve().parents[1]
 ORIGEN = RAIZ / "README.md"
 DESTINO = RAIZ / "docs" / "documentacion_tecnica.html"
+
+MESES = (
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+)
 
 
 def slug(texto: str, usados: set[str]) -> str:
@@ -205,7 +211,7 @@ def main():
 <body>
   <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/esquema/pdf">Esquema BD en PDF</a><a class="button" href="/documentacion-tecnica/esquema/sqlite">SQL SQLite</a><a class="button" href="/documentacion-tecnica/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/documentacion-tecnica/descargar">Documentación completa PDF</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Septiembre de 2026</small></header>
+    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · {MESES[date.today().month - 1].capitalize()} de {date.today().year}</small></header>
     <nav class="toc" id="indice"><h2>Índice técnico</h2><ol>{construir_indice(indice)}</ol></nav>
     <article class="content">{cuerpo}</article>
     <footer>Dashboard de Facturación · Documentación técnica</footer>

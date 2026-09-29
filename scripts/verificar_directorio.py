@@ -1,5 +1,6 @@
 """Auditoría de solo lectura para las fórmulas y fuentes de Directorio."""
 from math import isclose
+import os
 from pathlib import Path
 import sys
 
@@ -17,14 +18,16 @@ def cerca(a, b, tolerancia=0.02):
 
 def verificar():
     app = create_app()
+    year = app.config['DEFAULT_YEAR']
+    future_year = year + 1
     errores = []
     urls = [
-        '/api/kpis?year=2026', '/api/indicadores?year=2026', '/api/dotaciones-clientes?year=2026',
+        f'/api/kpis?year={year}', f'/api/indicadores?year={year}', f'/api/dotaciones-clientes?year={year}',
         '/api/graficos-dotaciones', '/api/graficos-evolutivo-dotaciones',
-        '/api/variacion-anual?year=2026', '/api/variacion-horas-clientes?year=2026',
-        '/api/dashboard-operativo?year=2026', '/api/historico-clientes?year=2026',
-        '/api/cumplimiento-facturacion-clientes?year=2026',
-        '/api/comparativo-interanual?year=2026', '/api/ratio-eli',
+        f'/api/variacion-anual?year={year}', f'/api/variacion-horas-clientes?year={year}',
+        f'/api/dashboard-operativo?year={year}', f'/api/historico-clientes?year={year}',
+        f'/api/cumplimiento-facturacion-clientes?year={year}',
+        f'/api/comparativo-interanual?year={year}', '/api/ratio-eli',
         '/api/ratio-eli-ii', '/api/share',
     ]
     with app.test_client() as cliente:
@@ -111,7 +114,7 @@ def verificar():
             errores.append('Share: los años no se derivan de todos los datos disponibles')
 
         futuro = Facturacion2026(
-            fecha=__import__('datetime').date(2027, 8, 1), mes='2027-08', cliente='Prueba dinamica',
+            fecha=__import__('datetime').date(future_year, 8, 1), mes=f'{future_year}-08', cliente='Prueba dinamica',
             tipo_jornada='Diurna', horas_objetivo=100, horas_facturadas=90,
             valor_hora_objetivo=20, valor_hora=20, variable_objetivo=100,
             variable_productivo=80, bonos=10, penalizaciones=5, netx_gen=0, otros=0,
@@ -121,10 +124,11 @@ def verificar():
         if not cerca(futuro.total_facturado_control, 1885):
             errores.append('Carga futura: total de control no usa las formulas dinamicas')
 
-        archivo_excel = Path(r'C:\Users\jegil\Downloads\2026 Facturacion (34).xlsx')
-        if archivo_excel.exists():
+        ruta_auditoria = os.getenv('DIRECTORIO_EXCEL_AUDIT', '').strip()
+        archivo_excel = Path(ruta_auditoria) if ruta_auditoria else None
+        if archivo_excel and archivo_excel.exists():
             from openpyxl import load_workbook
-            hoja = load_workbook(archivo_excel, data_only=True, read_only=True)['2026']
+            hoja = load_workbook(archivo_excel, data_only=True, read_only=True)[str(year)]
             total_excel = objetivo_excel = 0.0
             for fila in hoja.iter_rows(min_row=3, max_col=31, values_only=True):
                 if not hasattr(fila[9], 'year'):
@@ -134,12 +138,12 @@ def verificar():
             kpis = respuestas.get('/api/kpis', {}).get('kpis', {})
             if not cerca(kpis.get('total_facturado'), total_excel):
                 errores.append(
-                    f"KPI Total Facturado 2026 no coincide con el SUBTOTAL del Excel: "
+                    f"KPI Total Facturado {year} no coincide con el SUBTOTAL del Excel: "
                     f"app={float(kpis.get('total_facturado') or 0):.2f}; excel={total_excel:.2f}"
                 )
             if not cerca(kpis.get('total_teorico'), objetivo_excel):
                 errores.append(
-                    f"KPI Facturacion Objetivo 2026 no coincide con el SUBTOTAL del Excel: "
+                    f"KPI Facturacion Objetivo {year} no coincide con el SUBTOTAL del Excel: "
                     f"app={float(kpis.get('total_teorico') or 0):.2f}; excel={objetivo_excel:.2f}"
                 )
 

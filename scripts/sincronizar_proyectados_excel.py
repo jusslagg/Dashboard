@@ -1,6 +1,7 @@
-"""Sincroniza las fuentes de Proyectados desde el libro operativo 2026."""
+"""Sincroniza las fuentes de Proyectados desde un libro operativo anual."""
 
 import argparse
+import os
 import re
 import sys
 from collections import defaultdict
@@ -29,13 +30,13 @@ from app.routes import (aplicar_calculo_proyeccion, calcular_dias_objetivo, fech
                         normalizar_header, registrar_historial, site_original_next_gen, snapshot_proyeccion)
 
 
-YEAR = 2026
+YEAR = int(os.getenv("APP_DEFAULT_YEAR", datetime.now().year))
 
 # El libro publica estas aperturas con precio, pero su hoja Facturacion Horas
 # las deja expresamente en cero antes del primer mes con dotacion propia.
 SALIDAS_SIN_HERENCIA = {
-    ("piano referidos", "2026-01"),
-    ("santander getnet supervisor exclusivo", "2026-06"),
+    ("piano referidos", f"{YEAR}-01"),
+    ("santander getnet supervisor exclusivo", f"{YEAR}-06"),
 }
 
 
@@ -500,8 +501,10 @@ def sincronizar_next_gen(workbook):
 
 
 def main():
+    global YEAR, SALIDAS_SIN_HERENCIA
     parser = argparse.ArgumentParser()
     parser.add_argument("archivo")
+    parser.add_argument("--year", type=int, default=int(os.getenv("APP_DEFAULT_YEAR", datetime.now().year)))
     parser.add_argument("--apply", action="store_true")
     parser.add_argument(
         "--section",
@@ -509,6 +512,11 @@ def main():
         default="all",
     )
     args = parser.parse_args()
+    YEAR = args.year
+    SALIDAS_SIN_HERENCIA = {
+        ("piano referidos", f"{YEAR}-01"),
+        ("santander getnet supervisor exclusivo", f"{YEAR}-06"),
+    }
     workbook = openpyxl.load_workbook(args.archivo, data_only=True, read_only=True)
     workbook_formulas = openpyxl.load_workbook(args.archivo, data_only=False, read_only=True)
     app = create_app()

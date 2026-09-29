@@ -1,7 +1,15 @@
 {
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -i ./assets/tailwind.css -o ./app/static/vendor/app-tailwind.css --minify"
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs",
+    "flask:dev": "python run.py",
+    "next:dev": "npm --prefix next-app run dev",
+    "build": "npm run build:css && npm --prefix next-app run build",
+    "build:css": "tailwindcss -i ./assets/tailwind.css -o ./app/static/vendor/app-tailwind.css --minify",
+    "verify:python": "python scripts/verificar_entrega.py",
+    "verify:handoff": "python scripts/verificar_handoff.py",
+    "verify:data": "python scripts/verificar_paridad_bases.py --manifest docs/base_actual_manifest.json"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "6.7.2",

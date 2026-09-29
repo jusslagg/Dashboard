@@ -4,13 +4,12 @@ from datetime import date, datetime
 import json
 import os
 import sys
+from pathlib import Path
 from openpyxl import load_workbook
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import create_app, db
 from app.models import Facturacion2026, HistorialCambio
-
-ARCHIVO = r'C:\Users\jegil\Downloads\2026 Facturacion (34).xlsx'
 
 def texto(v):
     return ' '.join(str(v or '').strip().lower().split())
@@ -45,9 +44,9 @@ def maestro(nombre):
              'bsf carrefour':'bsf carrefour','bice':'bice','gire':'gire'}
     return mapas.get(valor, valor)
 
-def main(aplicar=False):
-    wb = load_workbook(ARCHIVO, data_only=True, read_only=True)
-    ws = wb['2026']
+def main(archivo, year, aplicar=False):
+    wb = load_workbook(archivo, data_only=True, read_only=True)
+    ws = wb[str(year)]
     fuentes = defaultdict(list)
     for row in ws.iter_rows(min_row=3, max_col=31, values_only=True):
         if row[4] and row[9]:
@@ -58,7 +57,10 @@ def main(aplicar=False):
 
     app = create_app()
     with app.app_context():
-        registros = Facturacion2026.query.filter(Facturacion2026.fecha >= date(2026,1,1), Facturacion2026.fecha < date(2027,1,1)).order_by(Facturacion2026.id).all()
+        registros = Facturacion2026.query.filter(
+            Facturacion2026.fecha >= date(year, 1, 1),
+            Facturacion2026.fecha < date(year + 1, 1, 1),
+        ).order_by(Facturacion2026.id).all()
         usados = defaultdict(int); cambios = []; sin_match = []
         for r in registros:
             candidatos = fuentes.get(clave_db(r), [])
@@ -136,8 +138,8 @@ def main(aplicar=False):
                 total_operativo = sum(float(r.total_dashboard or 0) for r in propios)
                 primero.total_facturado_manual += deseado_operativo[3] - total_operativo
             despues = [r.to_dict() for r, _ in cambios]
-            historial = HistorialCambio(accion='reprocesamiento', entidad='facturacion_2026', entidad_id='2026',
-                resumen=f'Reprocesamiento Facturación 2026 desde Excel: {len(cambios)} filas',
+            historial = HistorialCambio(accion='reprocesamiento', entidad='facturacion_anio', entidad_id=str(year),
+                resumen=f'Reprocesamiento Facturación {year} desde Excel: {len(cambios)} filas',
                 antes=json.dumps({'filas': [a for _, a in cambios]}, ensure_ascii=False, default=str),
                 despues=json.dumps({'filas': despues}, ensure_ascii=False, default=str))
             db.session.add(historial); db.session.commit()
@@ -146,5 +148,9 @@ def main(aplicar=False):
             db.session.rollback()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(); parser.add_argument('--apply', action='store_true')
-    main(parser.parse_args().apply)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('archivo', type=Path)
+    parser.add_argument('--year', type=int, default=int(os.getenv('APP_DEFAULT_YEAR', datetime.now().year)))
+    parser.add_argument('--apply', action='store_true')
+    args = parser.parse_args()
+    main(args.archivo, args.year, args.apply)

@@ -1,0 +1,128 @@
+{
+  "format": 1,
+  "engine": "sqlite",
+  "schema_sha256": "33d8313df741bb341aab6997f31af73aa0bd1ab1f88e0c4a80a513d4938543b3",
+  "missing_tables": [],
+  "extra_tables": [],
+  "ignored_empty_legacy_tables": [],
+  "physical_schema": {
+    "missing_columns": {},
+    "extra_columns": {},
+    "missing_indexes": {},
+    "missing_foreign_keys": {}
+  },
+  "integrity": {
+    "foreign_keys": 0,
+    "database": "ok"
+  },
+  "tables": {
+    "campanias": {
+      "rows": 115,
+      "sha256": "04f8818ec8507389368f3125e44c15abd9cffe213538f95bc46a5c899a7f6b5f"
+    },
+    "dashboard_operativo": {
+      "rows": 726,
+      "sha256": "9834801d27011d98728201ddebe03794cfd4f7b430610c369a5faa3a0acfbd5b"
+    },
+    "dotaciones_clientes_mensuales": {
+      "rows": 2060,
+      "sha256": "e252d8e6443c844eb37252e170eee31180157d38ca2a7bccc107ca91aa8e6574"
+    },
+    "dotaciones_mensuales": {
+      "rows": 43,
+      "sha256": "180e09bd351baf2d19a0c98479c94b4a31287379b3b2b654bcf68a65defa9215"
+    },
+    "excepciones_calculo": {
+      "rows": 2,
+      "sha256": "42ff251c5d48bcf3bbf5e962ced3bac075d741af4ce7c1d39225201c4732e4f5"
+    },
+    "facturacion_anio": {
+      "rows": 1619,
+      "sha256": "5fcabd29f06dd090a18053ebfc658a92dd3700e106a6ab3e865316fb56695e81"
+    },
+    "feriados_operativos": {
+      "rows": 18,
+      "sha256": "b7ea8232e19dd2647a5ec49d16296a4b37d09903a8b5a517bc0719130b50bb9b"
+    },
+    "graficos_dotaciones_mensuales": {
+      "rows": 32,
+      "sha256": "a57e9e38fcc30978054d75188daf50f89b8ede2ba00c6db5639c1df8e1c294b3"
+    },
+    "historico_clientes_mensuales": {
+      "rows": 2471,
+      "sha256": "4631e2f82272016331b59933626b445131723147f99eddf058cd62c627688e59"
+    },
+    "matriz_precios": {
+      "rows": 993,
+      "sha256": "703fc09859d023e63626d5905351a28f945aee3ce875158fd42c2ad8b84aa4ec"
+    },
+    "matriz_proyecciones": {
+      "rows": 1192,
+      "sha256": "b31ffaa95011f4ca6a0b2a1a2982ecde2a13dea53d940e7fe0284245deb9aeb0"
+    },
+    "next_gen_dolar": {
+      "rows": 12,
+      "sha256": "92cc1cd34cf0742e8b17cee843f09b8224d5d61ba643da2ff9984734a64bedfc"
+    },
+    "next_gen_productos": {
+      "rows": 138,
+      "sha256": "ad35ef3a8bffb69426e95f9e674b8376aedc43692cfe60c6b13901997db1ee5b"
+    },
+    "personal_distribucion_horas": {
+      "rows": 48,
+      "sha256": "0a272a732972c8dc15c0c985b4acc1030804612b13286da1c7d8aedbdbc9e7c7"
+    },
+    "proforma_personal": {
+      "rows": 6,
+      "sha256": "76fe1d0e01632beff35e1e60af98661aea36349f7424ddd955fdc9f398b581c6"
+    },
+    "ratio_eli_ii_mensual": {
+      "rows": 31,
+      "sha256": "1e0a0cf50a708a4e7493e4bde62b51514a591085344a999447b0d6bb7ca24f46"
+    },
+    "ratio_eli_mensual": {
+      "rows": 45,
+      "sha256": "319952325274ca4214643b34d140fa9a6a19c68756b3d21668983b34bc643a33"
+    },
+    "sites_proyecciones": {
+      "rows": 80,
+      "sha256": "1516c5a7126b181b4260aabbb3ce9063d6f66452a65ab9d52ca3e2af7680ed6e"
+    },
+    "tarifaciones_campanias": {
+      "rows": 282,
+      "sha256": "64da90cc5622347aca325418e7efeda0e3080e0d06c2e0fe5964c348f5962302"
+    },
+    "usuarios": {
+      "rows": 5,
+      "sha256": "a4ea5a01345a76ad107d5c1c3d61a0ad42026d4c69ec8956938c3bf8395f2a2b"
+    },
+    "variables_campanias": {
+      "rows": 220,
+      "sha256": "fb934dd11f49708e8d058ec2418baecbe2b4a5ad32a4365dbed6f424528abb35"
+    },
+    "asignaciones_comerciales": {
+      "rows": 143,
+      "sha256": "be2617863af87554e5bf1d86ecc1e0273e748c453613cf386dc2e2c1af79a273"
+    },
+    "historial_cambios": {
+      "rows": 780,
+      "sha256": "ebef3fc55ebf65ddd9139fe3028e4b8470a40d41c9a23287faaed788b98c963b"
+    },
+    "justificaciones_ajustes": {
+      "rows": 44,
+      "sha256": "5ca955ab7a23814ac0080942397e236eb28fa6744e0b776b6f7d95e47cdafe03"
+    },
+    "matriz_proyecciones_jornadas": {
+      "rows": 1554,
+      "sha256": "8e34f4ee42aa12a01f13c5958d21b9aa3ec98623d6d881dd9af38441c3ea2b3c"
+    },
+    "normalizacion_nombres_proyectados": {
+      "rows": 4,
+      "sha256": "876c3501cc019bf16bd9c199c8c6d9f4cffa4a8cff90011d5899390bc09f4e26"
+    },
+    "seguimiento_personal_importaciones": {
+      "rows": 1,
+      "sha256": "25583b0ede22c68b6bfa02e9137054895ba262a5a44f434741eeb48c06ae4386"
+    }
+  }
+}

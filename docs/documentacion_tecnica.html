@@ -143,6 +143,16 @@
 <td>Arquitectura, instalación, base de datos, APIs, reglas de cálculo y diagnóstico técnico.</td>
 </tr>
 <tr>
+<td><code>docs/ENTREGA_DESARROLLO.md</code></td>
+<td>Desarrollo y DBA</td>
+<td>Contrato de conexión, migración SQLite/PostgreSQL, paridad, configuración y aceptación.</td>
+</tr>
+<tr>
+<td><code>docs/base_actual_manifest.json</code></td>
+<td>Desarrollo y DBA</td>
+<td>Cantidad de filas y huella SHA-256 por tabla de la línea base entregada.</td>
+</tr>
+<tr>
 <td><code>docs/guia_usuario.html</code></td>
 <td>Usuarios operativos nuevos o habituales</td>
 <td>Guía sencilla con índice y recorridos paso a paso para facturación real, proyectados, Facturación horas, PLP, variables, adicionales, importaciones e historial.</td>
@@ -179,7 +189,7 @@
 └─ README.md</code></pre>
 <h2 id="requisitos">Requisitos<a class="anchor" href="#requisitos" aria-label="Enlace a esta sección">#</a></h2>
 <ul>
-<li>Python 3.8 o superior.</li>
+<li>Python 3.11 o superior.</li>
 <li>pip.</li>
 <li>Node.js con npm, si se quiere levantar también Next.js.</li>
 <li>Navegador moderno.</li>
@@ -222,12 +232,15 @@ npm run flask:dev  # Solo Flask
 npm run next:dev   # Solo Next.js
 npm run build      # Build de producción de Next.js
 npm run verify:python  # Esquema, seguridad, rutas Flask y DDL SQLite
+npm run verify:handoff # Portabilidad, DDL sincronizados y ausencia de rutas locales fijas
+npm run verify:data    # Paridad de la SQLite actual contra el manifiesto entregado
 npm run start      # Alias de npm run dev</code></pre>
 <h2 id="variables-de-entorno-principales">Variables de entorno principales<a class="anchor" href="#variables-de-entorno-principales" aria-label="Enlace a esta sección">#</a></h2>
 <pre><code class="language-text">SECRET_KEY=clave-secreta-local
 APP_ENV=development
 APP_DEFAULT_YEAR=2026
 PLP_BASE_YEAR=2026
+NAME_ALIASES_FILE=config/name_aliases.json
 DATABASE_URL=sqlite:///facturacion.db
 CORS_ORIGINS=http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:8009,http://localhost:8009
 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8009
@@ -243,6 +256,7 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <li><code>APP_ENV</code>: use <code>development</code> localmente y <code>production</code> en el ambiente entregado. En producción, la aplicación rechaza una <code>SECRET_KEY</code> ausente o de ejemplo.</li>
 <li><code>APP_DEFAULT_YEAR</code>: período seleccionado por defecto en pantallas y APIs; no limita ni elimina datos de otros años.</li>
 <li><code>PLP_BASE_YEAR</code>: año al que pertenece la matriz histórica PLP incluida. Está separado del período operativo para no reinterpretar esos porcentajes como datos de un año nuevo.</li>
+<li><code>NAME_ALIASES_FILE</code>: archivo versionado con alias ortográficos. No define responsables ni campañas; esas asignaciones se administran en Datos Maestros.</li>
 <li><code>DATABASE_URL</code>: conexión SQLAlchemy; permite cambiar SQLite por PostgreSQL sin modificar el código.</li>
 <li><code>CORS_ORIGINS</code>: orígenes autorizados, separados por coma. También alimentan la política <code>connect-src</code> de Flask.</li>
 <li><code>NEXT_PUBLIC_API_BASE</code>: URL pública del backend usada por Next para consultas y enlaces hacia Flask.</li>
@@ -251,13 +265,7 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <pre><code class="language-text">DATABASE_URL=postgresql+psycopg://usuario:password@host:5432/facturacion</code></pre>
 <h2 id="usuarios-y-permisos">Usuarios y permisos<a class="anchor" href="#usuarios-y-permisos" aria-label="Enlace a esta sección">#</a></h2>
 <p class="">El sistema tiene autenticación propia y roles definidos en base de datos.</p>
-<p class="">Roles principales:</p>
-<ul>
-<li><strong>superusuario</strong>: acceso amplio de administración.</li>
-<li><strong>administrador</strong>: administra usuarios, historial y acciones sensibles.</li>
-<li><strong>editor</strong>: puede cargar, editar y gestionar datos operativos.</li>
-<li><strong>lector</strong>: consulta información sin modificar datos.</li>
-</ul>
+<p class="">Roles vigentes: <code>Full</code>, <code>Admin</code>, <code>RMO_OPS</code>, <code>Finanzas</code>, <code>Tesorero</code>, <code>RMO</code> y <code>RMO_WFM</code>. Los permisos efectivos se completan con el puesto asociado al rol. Las etiquetas antiguas <code>superusuario</code>, <code>administrador</code> y <code>usuario</code> se convierten automáticamente para mantener compatibilidad con instalaciones previas.</p>
 <p class="">Acciones sensibles como edición, eliminación o deshacer cambios requieren sesión activa, token CSRF y permisos suficientes.</p>
 <h2 id="base-de-datos-tablas-y-datos-necesarios">Base de datos, tablas y datos necesarios<a class="anchor" href="#base-de-datos-tablas-y-datos-necesarios" aria-label="Enlace a esta sección">#</a></h2>
 <p class="">La aplicación usa SQLAlchemy. En SQLite o PostgreSQL estos datos viven como <strong>tablas</strong>. Si más adelante se migra a una base documental, se pueden pensar como <strong>colecciones</strong> con la misma responsabilidad funcional.</p>
@@ -800,7 +808,7 @@ WHERE a.cliente &lt;&gt; c.cliente OR a.campania &lt;&gt; c.nombre;</code></pre>
 <li>restricciones <code>UNIQUE</code>;</li>
 <li>índices y columnas indexadas.</li>
 </ul>
-<p class="">El esquema incluye las 24 tablas vigentes:</p>
+<p class="">El esquema incluye las 27 tablas vigentes:</p>
 <pre><code class="language-text">usuarios
 historial_cambios
 facturacion_anio
@@ -824,7 +832,10 @@ dotaciones_clientes_mensuales
 graficos_dotaciones_mensuales
 campanias
 excepciones_calculo
-asignaciones_comerciales</code></pre>
+asignaciones_comerciales
+normalizacion_nombres_proyectados
+proformas_personal
+seguimiento_personal_importaciones</code></pre>
 <h3 id="caracteristicas-de-las-bases-de-directorio-y-control">Características de las bases de Directorio y control<a class="anchor" href="#caracteristicas-de-las-bases-de-directorio-y-control" aria-label="Enlace a esta sección">#</a></h3>
 <div class="table-wrap"><table><thead><tr>
 <th>Tabla</th>
@@ -884,7 +895,7 @@ asignaciones_comerciales</code></pre>
 <p class="">Los campos JSON de <code>dashboard_operativo.datos</code> e <code>historico_clientes_mensuales.datos_base</code> conservan las columnas variables de la fuente importada. Los campos que participan en filtros, edición o unicidad se mantienen como columnas tipadas. El detalle físico de <strong>cada campo</strong>, tipo, obligatoriedad, clave, índice y restricción está en los anexos DDL generados que acompañan esta ficha.</p>
 <p class="">Estos archivos se generan directamente desde <code>app/models.py</code>; por eso son la fuente técnica para construir una base nueva y evitan copiar accidentalmente datos reales de <code>instance/facturacion.db</code>. Cada cambio de modelos exige volver a generar los scripts y la documentación:</p>
 <h4 id="compatibilidad-con-bases-locales-anteriores">Compatibilidad con bases locales anteriores<a class="anchor" href="#compatibilidad-con-bases-locales-anteriores" aria-label="Enlace a esta sección">#</a></h4>
-<p class="">El contrato nuevo está formado por las <strong>24 tablas declaradas en los DDL</strong>. Una base SQLite local actualizada durante versiones anteriores puede conservar la tabla vacía <code>bajas_operativas</code>, las columnas vacías <code>facturacion_anio.mes_baja</code> y <code>facturacion_anio.motivo_baja</code>, o las columnas en cero <code>matriz_precios.aplica_dolar</code> y <code>matriz_precios.valor_dolar</code>. Son artefactos legacy no consultados por la aplicación y <strong>no deben crearse en una base nueva</strong>. La valorización vigente en dólares utiliza <code>next_gen_dolar</code>, <code>next_gen_productos.cantidad_usd</code> y <code>next_gen_productos.cotizacion_aplicada</code>.</p>
+<p class="">El contrato nuevo está formado por las <strong>27 tablas declaradas en los DDL</strong>. Una base SQLite local actualizada durante versiones anteriores puede conservar la tabla vacía <code>bajas_operativas</code>, las columnas vacías <code>facturacion_anio.mes_baja</code> y <code>facturacion_anio.motivo_baja</code>, o las columnas en cero <code>matriz_precios.aplica_dolar</code> y <code>matriz_precios.valor_dolar</code>. Son artefactos legacy no consultados por la aplicación y <strong>no deben crearse en una base nueva</strong>. La valorización vigente en dólares utiliza <code>next_gen_dolar</code>, <code>next_gen_productos.cantidad_usd</code> y <code>next_gen_productos.cotizacion_aplicada</code>.</p>
 <p class="callout">Nota: varios valores predeterminados actuales son aplicados por SQLAlchemy desde Python y no son <code>DEFAULT</code> físicos del motor. El DDL muestra deliberadamente sólo las garantías que la base puede imponer por sí misma; esto permite que el tercero distinga las restricciones de base de las reglas ejecutadas por la aplicación.</p>
 <pre><code class="language-powershell">python scripts\generar_esquema_base_datos.py
 python scripts\generar_documentacion_tecnica.py</code></pre>
@@ -994,7 +1005,7 @@ python scripts\generar_documentacion_tecnica.py</code></pre>
 <h3 id="datos-minimos-para-iniciar">Datos mínimos para iniciar<a class="anchor" href="#datos-minimos-para-iniciar" aria-label="Enlace a esta sección">#</a></h3>
 <p class="">Para una base nueva, el orden recomendado de carga es:</p>
 <ol>
-<li><code>usuarios</code>: crear al menos un usuario <code>administrador</code>.</li>
+<li><code>usuarios</code>: crear al menos un usuario <code>Admin</code> o <code>Full</code>.</li>
 <li><code>asignaciones_comerciales</code>: cargar el maestro comercial base.</li>
 <li><code>facturacion_anio</code>: cargar registros reales si se quiere usar Dashboard, Control, Matriz, Comparativo y Justificaciones.</li>
 <li><code>feriados_operativos</code>: cargar feriados si las proyecciones deben descontar días no operativos.</li>
@@ -1024,7 +1035,7 @@ python scripts\generar_documentacion_tecnica.py</code></pre>
 </tr>
 <tr>
 <td><code>rol</code></td>
-<td>Rol del usuario. Valores usados: <code>administrador</code>, <code>superusuario</code>, <code>usuario</code>.</td>
+<td>Rol del usuario. Valores vigentes: <code>Full</code>, <code>Admin</code>, <code>RMO_OPS</code>, <code>Finanzas</code>, <code>Tesorero</code>, <code>RMO</code> y <code>RMO_WFM</code>.</td>
 </tr>
 <tr>
 <td><code>activo</code></td>
@@ -1033,7 +1044,7 @@ python scripts\generar_documentacion_tecnica.py</code></pre>
 </tbody></table></div>
 <p class="">Datos que necesitás agregar:</p>
 <ul>
-<li>al menos un administrador;</li>
+<li>al menos un usuario <code>Admin</code> o <code>Full</code>;</li>
 <li>usuarios operativos según quién cargue o consulte información.</li>
 </ul>
 <h3 id="asignaciones-comerciales-2"><code>asignaciones_comerciales</code><a class="anchor" href="#asignaciones-comerciales-2" aria-label="Enlace a esta sección">#</a></h3>
@@ -3342,6 +3353,7 @@ CREATE TABLE asignaciones_comerciales (
 	campania VARCHAR(100) NOT NULL,
 	subcampania VARCHAR(100) NOT NULL,
 	tipo_negocio VARCHAR(100),
+	segmento VARCHAR(100),
 	grupo_facturacion VARCHAR(100),
 	es_next_gen BOOLEAN NOT NULL,
 	activa BOOLEAN NOT NULL,
@@ -3355,6 +3367,8 @@ CREATE TABLE asignaciones_comerciales (
 CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
 
 CREATE INDEX ix_asignaciones_comerciales_grupo_facturacion ON asignaciones_comerciales (grupo_facturacion);
+
+CREATE INDEX ix_asignaciones_comerciales_segmento ON asignaciones_comerciales (segmento);
 
 CREATE INDEX ix_asignaciones_comerciales_vigencia_desde ON asignaciones_comerciales (vigencia_desde);
 
@@ -3917,6 +3931,7 @@ CREATE TABLE asignaciones_comerciales (
 	campania VARCHAR(100) NOT NULL,
 	subcampania VARCHAR(100) NOT NULL,
 	tipo_negocio VARCHAR(100),
+	segmento VARCHAR(100),
 	grupo_facturacion VARCHAR(100),
 	es_next_gen BOOLEAN NOT NULL,
 	activa BOOLEAN NOT NULL,
@@ -3930,6 +3945,8 @@ CREATE TABLE asignaciones_comerciales (
 CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
 
 CREATE INDEX ix_asignaciones_comerciales_grupo_facturacion ON asignaciones_comerciales (grupo_facturacion);
+
+CREATE INDEX ix_asignaciones_comerciales_segmento ON asignaciones_comerciales (segmento);
 
 CREATE INDEX ix_asignaciones_comerciales_vigencia_desde ON asignaciones_comerciales (vigencia_desde);
 

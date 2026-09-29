@@ -19,7 +19,7 @@
             <button id="tabCargaAuxiliar" type="button" onclick="seleccionarPestanaCargaPersonal('auxiliar_horas_plp_masivo')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Auxiliar Horas PLP Masivo</button>
             <button id="tabCargaBaseObjetivoMasivo" type="button" onclick="seleccionarPestanaCargaPersonal('base_objetivo_masivo')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Base objetivo Masivo</button>
             <button id="tabCargaPrecios" type="button" onclick="seleccionarPestanaCargaPersonal('precios')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Precios</button>
-            <button id="tabCarga2026" type="button" onclick="seleccionarPestanaCargaPersonal('2026')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">2026</button>
+            <button id="tabCarga2026" type="button" onclick="seleccionarPestanaCargaPersonal(claveHojaFacturacion)" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">{{ config['PLP_BASE_YEAR'] }}</button>
             <button id="tabCargaAux" type="button" onclick="seleccionarPestanaCargaPersonal('aux')" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Aux</button>
         </div>
     </div>
@@ -143,7 +143,7 @@
             <div class="flex flex-col gap-4 p-5 xl:flex-row xl:items-end xl:justify-between">
                 <div class="max-w-2xl">
                     <h2 class="text-lg font-bold text-indigo-950">Configuración inicial del seguimiento</h2>
-                    <p class="mt-1 text-sm text-indigo-700">Cargue este archivo completo una sola vez. Se toman Base objetivo Masivo, Auxiliar Horas PLP masivo, Precios, 2026 y aux como punto de partida; desde entonces sólo deberá importar la Proforma.</p>
+                    <p class="mt-1 text-sm text-indigo-700">Cargue este archivo completo una sola vez. Se toman Base objetivo Masivo, Auxiliar Horas PLP masivo, Precios, la hoja anual y aux como punto de partida; desde entonces sólo deberá importar la Proforma.</p>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <input id="archivoSeguimientoPersonal" type="file" accept=".xlsx" class="block max-w-sm rounded border border-slate-300 bg-white text-sm file:mr-3 file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-semibold">
@@ -339,21 +339,23 @@ function formatoMonedaProforma(valor) {
     return Number(valor || 0).toLocaleString('es-AR', {style: 'currency', currency: 'ARS', minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 
+const claveHojaFacturacion = {{ config['PLP_BASE_YEAR'] | string | tojson }};
+
 const configuracionHojasSeguimientoExcel = {
     base_objetivo_masivo: {
         tab: 'tabCargaBaseObjetivoMasivo', nombre: 'Base objetivo Masivo',
-        logica: 'Consolida por campaña, tipo de hora y mes. Toma horas de 2026 y del Auxiliar, busca el valor hora en Precios y calcula facturación de horas, variable, penalizaciones, total y objetivos.'
+        logica: 'Consolida por campaña, tipo de hora y mes. Toma horas de la hoja anual y del Auxiliar, busca el valor hora en Precios y calcula facturación de horas, variable, penalizaciones, total y objetivos.'
     },
     auxiliar_horas_plp_masivo: {
         tab: 'tabCargaAuxiliar', nombre: 'Auxiliar Horas PLP Masivo',
-        logica: 'Cruza las horas PLP proyectadas y definitivas con 2026. Aplica el tope del 103%, el ajuste de adhesión, distribuye el tipo de hora y valoriza diferencias con la tarifa de Precios.'
+        logica: 'Cruza las horas PLP proyectadas y definitivas con la hoja anual. Aplica el tope del 103%, el ajuste de adhesión, distribuye el tipo de hora y valoriza diferencias con la tarifa de Precios.'
     },
     precios: {
         tab: 'tabCargaPrecios', nombre: 'Precios',
-        logica: 'Mantiene la matriz mensual por tipo de hora. Las fórmulas trasladan valores entre meses y generan la clave tipo de hora + mes que utilizan el Auxiliar y 2026.'
+        logica: 'Mantiene la matriz mensual por tipo de hora. Las fórmulas trasladan valores entre meses y generan la clave tipo de hora + mes que utilizan el Auxiliar y la hoja anual.'
     },
-    '2026': {
-        tab: 'tabCarga2026', nombre: '2026',
+    [claveHojaFacturacion]: {
+        tab: 'tabCarga2026', nombre: claveHojaFacturacion,
         logica: 'Es el motor de facturación: respeta las horas, precio, monto fijo, bonos y total informados por la Proforma. Aux clasifica campaña, segmento, jefatura y negocio; Precios identifica el tipo de tarifa.'
     },
     aux: {
@@ -374,18 +376,18 @@ const configuracionHojasSeguimiento = {
         columnas: [[0,'GRUPO','texto'],[1,'Campaña','texto'],[2,'Tipo VH','texto'],[3,'Mes','fecha'],[4,'Proforma','estado'],[5,'Horas PLANIFICADAS PLP','horas_editables'],[6,'Cierre de tráfico','estado'],[7,'Horas PLANIFICADAS CIERRE DE TRÁFICO','horas'],[8,'HORAS CÁLCULO NETAS CIERRE DE TRÁFICO','horas'],[9,'Brutas','horas'],[10,'Brutas c/Tope','horas'],[11,'% ADH','porcentaje'],[12,'x','texto'],[13,'HORAS FACTURADAS PROYECTADAS','horas'],[14,'% tipo hs','porcentaje'],[15,'HORAS FACTURADAS DEFINITIVAS','horas'],[16,'PRECIO','moneda'],[17,'Estado vigente','estado']]
     },
     precios: {
-        tab: 'tabCargaPrecios', nombre: 'Precios', siguiente: '2026', especial: 'precios', periodo: 0, estado: null,
+        tab: 'tabCargaPrecios', nombre: 'Precios', siguiente: claveHojaFacturacion, especial: 'precios', periodo: 0, estado: null,
         logica: 'Presenta cada precio como un registro simple de tipo de hora y período para verificarlo antes de valorizar la facturación.',
         columnas: [[0,'Período','fecha'],[1,'Tipo de hora','texto'],[2,'Precio','moneda']]
     },
-    '2026': {
-        tab: 'tabCarga2026', nombre: '2026', siguiente: 'aux', inicio: 1, periodo: 2, estado: 3,
+    [claveHojaFacturacion]: {
+        tab: 'tabCarga2026', nombre: claveHojaFacturacion, siguiente: 'aux', inicio: 1, periodo: 2, estado: 3,
         logica: 'Vista final valorizada. Respeta el período, las horas, el precio, los bonos y el total informados por cada Proforma.',
         columnas: [[2,'Período','fecha'],[1,'Empresa','texto'],[0,'Tipo de negocio','texto'],[5,'Campaña','texto'],[17,'Tipo de hora','texto'],[3,'Estado','estado'],[6,'Horas','horas'],[7,'Precio','moneda'],[8,'Facturado horas','moneda'],[9,'Bono','porcentaje'],[10,'Facturado bono','moneda'],[12,'Ajustes','moneda'],[13,'Total','moneda'],[18,'Jefatura','texto']]
     },
     aux: {
         tab: 'tabCargaAux', nombre: 'Aux', siguiente: 'base_objetivo_masivo', especial: 'aux_normalizacion', inicio: 1, periodo: null, estado: null,
-        logica: 'Normaliza el nombre original de cada campaña. Sus cinco correspondencias alimentan Base objetivo Masivo y la vista 2026.',
+        logica: 'Normaliza el nombre original de cada campaña. Sus cinco correspondencias alimentan Base objetivo Masivo y la vista anual.',
         columnas: [[1,'Campaña original','texto_fijo'],[2,'Segmento normalizado','texto_editable'],[3,'Jefatura','texto_editable'],[4,'Tipo de negocio','texto_editable'],[5,'Proforma','texto_editable'],[6,'Segmento de respaldo','texto_editable']]
     }
 };
@@ -411,7 +413,7 @@ function seleccionarPestanaCargaPersonal(clave) {
         document.getElementById('filtroPeriodoHojaSeguimiento').value = '';
         document.getElementById('filtroEstadoHojaSeguimiento').value = '';
         document.querySelectorAll('.filtro-detalle-2026').forEach(elemento => {
-            elemento.classList.toggle('hidden', clave !== '2026');
+            elemento.classList.toggle('hidden', clave !== claveHojaFacturacion);
             elemento.value = '';
         });
         document.querySelectorAll('.filtro-detalle-auxiliar').forEach(elemento => {
@@ -814,7 +816,7 @@ function prepararFiltrosHojaSeguimiento() {
     const estadoInicial = estadosPeriodo.length === 1 ? estadosPeriodo[0] : '';
     const opcionEstadoInicial = estados.find(estado => normalizarPersonal(estado) === estadoInicial);
     if (opcionEstadoInicial && hojaSeguimientoActiva !== 'precios') filtroEstado.value = opcionEstadoInicial;
-    if (hojaSeguimientoActiva === '2026') {
+    if (hojaSeguimientoActiva === claveHojaFacturacion) {
         const filtros = [
             ['filtroEmpresa2026', 1, 'Todas las empresas'],
             ['filtroNegocio2026', 2, 'Todos los tipos de negocio'],
@@ -865,7 +867,7 @@ function filasFiltradasSeguimiento(vista) {
     const estado = normalizarPersonal(document.getElementById('filtroEstadoHojaSeguimiento').value);
     const indicePeriodo = config.columnas.findIndex(([indice]) => indice === config.periodo);
     const indiceEstado = config.columnas.findIndex(([indice]) => indice === config.estado);
-    const filtros2026 = hojaSeguimientoActiva === '2026' ? [
+    const filtros2026 = hojaSeguimientoActiva === claveHojaFacturacion ? [
         [1, document.getElementById('filtroEmpresa2026').value],
         [2, document.getElementById('filtroNegocio2026').value],
         [3, document.getElementById('filtroCampania2026').value],
@@ -1045,7 +1047,7 @@ function renderResumenHojaSeguimiento(filas) {
         const precios = filas.map(fila => Number(fila.valores[2])).filter(Number.isFinite);
         const promedio = precios.length ? precios.reduce((a,b)=>a+b,0)/precios.length : 0;
         tarjetas = [['Precios',precios.length.toLocaleString('es-AR'),'slate'],['Promedio',formatoMonedaProforma(promedio),'blue'],['Mínimo',formatoMonedaProforma(precios.length ? Math.min(...precios) : 0),'emerald'],['Máximo',formatoMonedaProforma(precios.length ? Math.max(...precios) : 0),'violet']];
-    } else if (hojaSeguimientoActiva === '2026') {
+    } else if (hojaSeguimientoActiva === claveHojaFacturacion) {
         tarjetas = [['Registros',filas.length.toLocaleString('es-AR'),'slate'],['Horas',`${formatoHorasPersonal(sumarVista(filas,6))} h`,'blue'],['Facturado horas',formatoMonedaProforma(sumarVista(filas,8)),'emerald'],['Bonos',formatoMonedaProforma(sumarVista(filas,10)),'amber'],['Total',formatoMonedaProforma(sumarVista(filas,12)),'violet']];
     } else if (hojaSeguimientoActiva === 'aux') {
         const unicos = indice => new Set(filas.map(fila => fila.valores[indice]).filter(Boolean)).size;

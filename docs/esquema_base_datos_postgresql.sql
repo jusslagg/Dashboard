@@ -464,6 +464,7 @@ CREATE TABLE asignaciones_comerciales (
 	campania VARCHAR(100) NOT NULL,
 	subcampania VARCHAR(100) NOT NULL,
 	tipo_negocio VARCHAR(100),
+	segmento VARCHAR(100),
 	grupo_facturacion VARCHAR(100),
 	es_next_gen BOOLEAN NOT NULL,
 	activa BOOLEAN NOT NULL,
@@ -477,6 +478,8 @@ CREATE TABLE asignaciones_comerciales (
 CREATE INDEX ix_asignaciones_comerciales_campania_id ON asignaciones_comerciales (campania_id);
 
 CREATE INDEX ix_asignaciones_comerciales_grupo_facturacion ON asignaciones_comerciales (grupo_facturacion);
+
+CREATE INDEX ix_asignaciones_comerciales_segmento ON asignaciones_comerciales (segmento);
 
 CREATE INDEX ix_asignaciones_comerciales_vigencia_desde ON asignaciones_comerciales (vigencia_desde);
 

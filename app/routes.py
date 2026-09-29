@@ -10233,13 +10233,18 @@ def api_importar_proforma_personal():
     })
 
 
-HOJAS_SEGUIMIENTO_PERSONAL = {
+HOJAS_SEGUIMIENTO_PERSONAL_BASE = {
     'base_objetivo_masivo': 'Base objetivo Masivo',
     'auxiliar_horas_plp_masivo': 'Auxiliar Horas PLP masivo',
     'precios': 'Precios',
-    '2026': '2026',
     'aux': 'aux',
 }
+
+
+def hojas_seguimiento_personal():
+    """Contrato de hojas del seguimiento, parametrizado por su año base."""
+    year_base = str(current_app.config['PLP_BASE_YEAR'])
+    return {**HOJAS_SEGUIMIENTO_PERSONAL_BASE, year_base: year_base}
 
 
 def valor_celda_seguimiento(valor):
@@ -10351,6 +10356,19 @@ def periodo_valor_seguimiento(valor):
     return periodo_proforma(valor)
 
 
+def periodos_definitivos_seguimiento(contenido):
+    """Deriva los cierres históricos del estado guardado en la hoja anual."""
+    year_base = str(current_app.config['PLP_BASE_YEAR'])
+    hoja = (contenido.get('hojas') or {}).get(year_base) or {}
+    periodos = {
+        periodo_valor_seguimiento(valor_fila_seguimiento(fila, 2))
+        for fila in hoja.get('filas', [])[1:]
+        if normalizar_header(valor_fila_seguimiento(fila, 3)) == 'definitiva'
+    }
+    periodos.discard(None)
+    return periodos
+
+
 def tipo_hora_seguimiento(tipo):
     clave = normalizar_header(tipo)
     sufijo = ' II' if re.search(r'\bii\b|\b2\b', clave) else ''
@@ -10369,19 +10387,6 @@ def actualizar_metadata_hoja_seguimiento(hoja):
         1 for fila in hoja.get('filas') or [] for celda in fila
         if isinstance(celda, dict) and celda.get('f')
     )
-
-
-def jefatura_personal_por_tipo_negocio(tipo_negocio):
-    clave = normalizar_header(tipo_negocio)
-    if clave.startswith('retencion'):
-        return 'Del Soto, Alejandro'
-    if clave == 'smb' or clave.startswith('soporte'):
-        return 'Canalini, Walter'
-    if clave.startswith('customer') or clave in {'masivo', 'personal pay'}:
-        return 'Antelo, Micaela'
-    if clave.startswith('ventas'):
-        return 'Chanampa, Pablo'
-    return None
 
 
 def grupo_proforma_personal(tipo_negocio, tipo_proforma=None, cliente=None):
@@ -10431,13 +10436,14 @@ def aplicar_proformas_a_seguimiento(contenido):
     if not periodos_administrados and not contenido.get('ajustes_auxiliar_horas'):
         return contenido
     hojas = contenido.get('hojas') or {}
-    requeridas = {'base_objetivo_masivo', 'auxiliar_horas_plp_masivo', 'precios', '2026', 'aux'}
+    year_base = str(current_app.config['PLP_BASE_YEAR'])
+    requeridas = {'base_objetivo_masivo', 'auxiliar_horas_plp_masivo', 'precios', year_base, 'aux'}
     if not requeridas.issubset(hojas):
         return contenido
 
     periodos = periodos_administrados
     ajustes_auxiliar = contenido.get('ajustes_auxiliar_horas') or {}
-    periodos_definitivos_auxiliar = {f'2026{mes:02d}' for mes in range(1, 7)}
+    periodos_definitivos_auxiliar = periodos_definitivos_seguimiento(contenido)
     cierres_auxiliar = {
         clave_cierre_auxiliar_personal(item.get('periodo'), item.get('grupo'), item.get('campania'))
         for item in ajustes_auxiliar.values()
@@ -10493,7 +10499,7 @@ def aplicar_proformas_a_seguimiento(contenido):
                 'jefatura': (
                     normalizar_jefe_site(asignacion.jefe_site if asignacion else '')
                     or normalizar_jefe_site(valor_fila_seguimiento(fila, 3))
-                    or jefatura_personal_por_tipo_negocio(tipo_negocio) or ''
+                    or ''
                 ),
                 'tipo_negocio': tipo_negocio,
                 'proforma': normalizar_tipo_negocio_personal(
@@ -10541,7 +10547,7 @@ def aplicar_proformas_a_seguimiento(contenido):
         }
         clasificacion['jefatura'] = (
             normalizar_jefe_site(asignacion.jefe_site if asignacion else '')
-            or jefatura_personal_por_tipo_negocio(clasificacion['tipo_negocio']) or ''
+            or ''
         )
         ajuste = ajustes_normalizacion.get(clave)
         if ajuste:
@@ -10624,7 +10630,7 @@ def aplicar_proformas_a_seguimiento(contenido):
                 fila[2] = celda_seguimiento_automatica()
     actualizar_metadata_hoja_seguimiento(hoja_precios)
 
-    hoja_2026 = hojas['2026']
+    hoja_2026 = hojas[year_base]
     estilos_automaticos_seguimiento(hoja_2026)
     cabecera_2026 = hoja_2026.get('filas', [])[:1]
     filas_2026 = hoja_2026.get('filas', [])[1:]
@@ -10904,7 +10910,7 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
             }
         ]
         exactas = [item for item in candidatas if normalizar_header(item.cliente) == clave_cliente]
-        return (exactas or candidatas or asignaciones_personal or [None])[0]
+        return (exactas or candidatas or [None])[0]
 
     errores = []
     ajustes_auxiliar = contenido.get('ajustes_auxiliar_horas') or {}
@@ -10956,7 +10962,6 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
         jefatura = (
             normalizar_jefe_site(asignacion.jefe_site if asignacion else '')
             or normalizacion.get('jefatura')
-            or jefatura_personal_por_tipo_negocio(tipo_negocio)
             or ''
         )
         gerente = str(asignacion.gerente if asignacion else '').strip()
@@ -11118,7 +11123,8 @@ def api_seguimiento_personal():
     ).all()
     return jsonify({
         'success': True,
-        'hojas': [{'clave': clave, 'nombre': nombre} for clave, nombre in HOJAS_SEGUIMIENTO_PERSONAL.items()],
+        'hojas': [{'clave': clave, 'nombre': nombre} for clave, nombre in hojas_seguimiento_personal().items()],
+        'clave_hoja_facturacion': str(current_app.config['PLP_BASE_YEAR']),
         'importaciones': [item.to_dict() for item in importaciones],
     })
 
@@ -11128,7 +11134,7 @@ def api_seguimiento_personal():
 def api_hoja_seguimiento_personal():
     importacion_id = request.args.get('importacion_id', type=int)
     clave_hoja = request.args.get('hoja', '').strip()
-    if clave_hoja not in HOJAS_SEGUIMIENTO_PERSONAL:
+    if clave_hoja not in hojas_seguimiento_personal():
         return jsonify({'success': False, 'errores': ['La hoja solicitada no es válida']}), 400
     importacion = db.session.get(SeguimientoPersonalImportacion, importacion_id) if importacion_id else SeguimientoPersonalImportacion.query.order_by(
         SeguimientoPersonalImportacion.creado_en.desc(), SeguimientoPersonalImportacion.id.desc(),
@@ -11525,7 +11531,7 @@ def api_guardar_horas_auxiliar_personal():
     return jsonify({
         'success': True,
         'mensaje': 'Horas guardadas',
-        'estado': 'Definitiva' if cierre_campania or periodo in {f'2026{mes:02d}' for mes in range(1, 7)} else 'Proyectada',
+        'estado': 'Definitiva' if cierre_campania or periodo in periodos_definitivos_seguimiento(contenido) else 'Proyectada',
     })
 
 
@@ -11642,7 +11648,7 @@ def api_guardar_lote_aux_normalizacion_personal():
     db.session.commit()
     return jsonify({
         'success': True,
-        'mensaje': f'{guardadas} correspondencia(s) guardada(s). Base objetivo Masivo y 2026 fueron recalculadas.',
+        'mensaje': f'{guardadas} correspondencia(s) guardada(s). Base objetivo Masivo y la hoja anual fueron recalculadas.',
         'cantidad': guardadas,
     })
 
@@ -11682,7 +11688,8 @@ def api_importar_seguimiento_personal():
         return jsonify({'success': False, 'errores': ['No se pudo leer el archivo Excel']}), 400
 
     nombres_reales = {normalizar_header(nombre): nombre for nombre in libro_formulas.sheetnames}
-    faltantes = [nombre for nombre in HOJAS_SEGUIMIENTO_PERSONAL.values() if normalizar_header(nombre) not in nombres_reales]
+    hojas_requeridas = hojas_seguimiento_personal()
+    faltantes = [nombre for nombre in hojas_requeridas.values() if normalizar_header(nombre) not in nombres_reales]
     if faltantes:
         return jsonify({'success': False, 'errores': [f'Faltan las hojas requeridas: {", ".join(faltantes)}']}), 400
 
@@ -11690,7 +11697,7 @@ def api_importar_seguimiento_personal():
     total_filas = 0
     total_formulas = 0
     total_advertencias = 0
-    for clave, nombre_esperado in HOJAS_SEGUIMIENTO_PERSONAL.items():
+    for clave, nombre_esperado in hojas_requeridas.items():
         nombre_real = nombres_reales[normalizar_header(nombre_esperado)]
         hoja = extraer_hoja_seguimiento(libro_formulas[nombre_real], libro_valores[nombre_real])
         hojas[clave] = hoja
@@ -11699,7 +11706,8 @@ def api_importar_seguimiento_personal():
         total_advertencias += len(hoja['referencias_rotas'])
 
     fechas = []
-    hoja_2026 = libro_formulas[nombres_reales[normalizar_header('2026')]]
+    nombre_hoja_anual = str(current_app.config['PLP_BASE_YEAR'])
+    hoja_2026 = libro_formulas[nombres_reales[normalizar_header(nombre_hoja_anual)]]
     for fila in range(2, hoja_2026.max_row + 1):
         # La columna C es "Mes Facturado"; la E puede contener meses de servicio anteriores.
         valor = hoja_2026.cell(fila, 3).value

@@ -33,7 +33,7 @@ def compilar(elemento, dialecto) -> str:
     return "\n".join(linea.rstrip() for linea in texto.splitlines())
 
 
-def generar(nombre: str, dialecto, destino: Path) -> None:
+def contenido_ddl(nombre: str, dialecto) -> str:
     lineas = [
         "-- Dashboard de Facturación",
         f"-- Esquema físico completo para {nombre.upper()}",
@@ -52,8 +52,12 @@ def generar(nombre: str, dialecto, destino: Path) -> None:
         for indice in sorted(tabla.indexes, key=lambda item: item.name or ""):
             lineas.extend([compilar(CreateIndex(indice), dialecto) + ";", ""])
 
+    return "\n".join(lineas).rstrip() + "\n"
+
+
+def generar(nombre: str, dialecto, destino: Path) -> None:
     destino.parent.mkdir(parents=True, exist_ok=True)
-    destino.write_text("\n".join(lineas).rstrip() + "\n", encoding="utf-8")
+    destino.write_text(contenido_ddl(nombre, dialecto), encoding="utf-8")
     print(f"Generado: {destino}")
 
 

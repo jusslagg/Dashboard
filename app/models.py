@@ -2,6 +2,8 @@ from app import db
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 import json
+import os
+from pathlib import Path
 import re
 import unicodedata
 from sqlalchemy import event
@@ -21,32 +23,32 @@ PUESTOS_POR_ROL = {
     'RMO_WFM': ('WFM',),
 }
 
-JEFES_SITE_CANONICOS = {
-    'alejandro del soto': 'Del Soto, Alejandro', 'del soto alejandro': 'Del Soto, Alejandro',
-    'roxana de la vega': 'De la Vega, Roxana', 'de la vega roxana': 'De la Vega, Roxana',
-    'ismael rissi': 'Rissi, Ismael', 'rissi ismael': 'Rissi, Ismael',
-    'mariela ditto': 'Ditto, Mariela', 'ditto mariela': 'Ditto, Mariela',
-    'micaela antelo': 'Antelo, Micaela', 'antelo micaela': 'Antelo, Micaela',
-    'pablo chanampa': 'Chanampa, Pablo', 'chanampa pablo': 'Chanampa, Pablo',
-    'salvador almeira': 'Almeira, Salvador', 'almeira salvador': 'Almeira, Salvador',
-    'carolina surace': 'Surace, Carolina', 'surace carolina': 'Surace, Carolina',
-    'walter canalini': 'Canalini, Walter', 'canalini walter': 'Canalini, Walter',
-    'nextgen': 'NextGen', 'next gen': 'NextGen',
-}
-
-GERENTES_CANONICOS = {
-    'lucas caamano': 'Caamaño, Lucas', 'caamano lucas': 'Caamaño, Lucas',
-    'mariano quesada': 'Quesada, Mariano', 'quesada mariano': 'Quesada, Mariano',
-    'multicuentas': 'Multicuentas', 'multi cuentas': 'Multicuentas',
-    'nextgen': 'NextGen', 'next gen': 'NextGen',
-    'sin gerencia': 'Sin gerencia', 'sin gerente': 'Sin gerencia',
-}
-
-
 def _clave_nombre(valor):
     sin_acentos = ''.join(letra for letra in unicodedata.normalize('NFD', valor)
                           if unicodedata.category(letra) != 'Mn')
     return re.sub(r'[^a-z0-9]+', '', sin_acentos.lower())
+
+
+def _cargar_aliases_nombres():
+    ruta_default = Path(__file__).resolve().parents[1] / 'config' / 'name_aliases.json'
+    ruta = Path(os.getenv('NAME_ALIASES_FILE', str(ruta_default))).expanduser()
+    if not ruta.is_absolute():
+        ruta = Path(__file__).resolve().parents[1] / ruta
+    if not ruta.exists():
+        return {}, {}
+    contenido = json.loads(ruta.read_text(encoding='utf-8'))
+
+    def normalizar_grupo(nombre):
+        return {
+            _clave_nombre(alias): str(canonico).strip()
+            for alias, canonico in (contenido.get(nombre) or {}).items()
+            if str(alias).strip() and str(canonico).strip()
+        }
+
+    return normalizar_grupo('jefe_site'), normalizar_grupo('gerente')
+
+
+JEFES_SITE_CANONICOS, GERENTES_CANONICOS = _cargar_aliases_nombres()
 
 
 _CLIENTES_CANONICOS = {}
