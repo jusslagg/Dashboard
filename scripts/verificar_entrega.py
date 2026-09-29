@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 import sqlite3
 import sys
@@ -22,7 +23,7 @@ def verificar() -> None:
         os.environ["DATABASE_URL"] = f"sqlite:///{database_path.as_posix()}"
         os.environ["APP_DEFAULT_YEAR"] = "2026"
 
-        from app import create_app, db
+        from app import asegurar_administrador_inicial_db, create_app, db
         from app.models import Campania, ProyeccionMatriz, Usuario
 
         app = create_app()
@@ -74,6 +75,7 @@ def verificar() -> None:
         assert client.get("/api/resumen-horas?year=2026").status_code == 200
         assert b"Entrega a Desarrollo" not in client.get("/").data
         assert client.get("/entrega-desarrollo").status_code == 403
+        assert b'href="/entrega-desarrollo"' not in client.get("/documentacion-tecnica").data
 
         full_client = app.test_client()
         with full_client.session_transaction() as session:
@@ -85,6 +87,7 @@ def verificar() -> None:
         assert full_client.get("/entrega-desarrollo/esquema/postgresql").status_code == 200
         assert full_client.get("/entrega-desarrollo/esquema/sqlite").status_code == 200
         assert full_client.get("/entrega-desarrollo/esquema/pdf").status_code == 200
+        assert b'href="/entrega-desarrollo"' in full_client.get("/documentacion-tecnica").data
 
         for valor_esperado in (True, False, None):
             response = client.patch(
@@ -143,6 +146,22 @@ def verificar() -> None:
             with sqlite3.connect(local_database) as connection:
                 assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
                 assert not connection.execute("PRAGMA foreign_key_check").fetchall()
+
+        with app.app_context():
+            administrador_full = db.session.get(Usuario, usuario_id)
+            administrador_full.rol = "Full"
+            administrador_full.permisos_personalizados = json.dumps({
+                "visualizar": True,
+                "cargar": True,
+                "editar": True,
+                "eliminar": True,
+                "administrar_perfiles": True,
+                "modulos": ["facturacion_total", "directorio", "proyecciones"],
+            })
+            db.session.commit()
+            asegurar_administrador_inicial_db()
+            assert administrador_full.rol == "Full", "El arranque degradó un Full con permisos administrativos."
+        assert client.get("/api/auth/me").get_json()["usuario"]["rol"] == "Full"
 
         os.environ["APP_ENV"] = "production"
         os.environ["SECRET_KEY"] = "generar-un-secreto-de-ejemplo"

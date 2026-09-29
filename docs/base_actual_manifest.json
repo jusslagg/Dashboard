@@ -94,7 +94,7 @@
     },
     "usuarios": {
       "rows": 5,
-      "sha256": "a4ea5a01345a76ad107d5c1c3d61a0ad42026d4c69ec8956938c3bf8395f2a2b"
+      "sha256": "18c1ca41e531c38126297ce0f876a282b3b16c1529ba9ef6ed30bca363f52d5e"
     },
     "variables_campanias": {
       "rows": 220,
@@ -105,8 +105,8 @@
       "sha256": "be2617863af87554e5bf1d86ecc1e0273e748c453613cf386dc2e2c1af79a273"
     },
     "historial_cambios": {
-      "rows": 780,
-      "sha256": "ebef3fc55ebf65ddd9139fe3028e4b8470a40d41c9a23287faaed788b98c963b"
+      "rows": 783,
+      "sha256": "d05b582d1ed7cb8bc1d151ab1274ee43b5db8df31f6ac44fcd4cb0a424ec0364"
     },
     "justificaciones_ajustes": {
       "rows": 44,

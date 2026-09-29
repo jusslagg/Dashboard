@@ -259,7 +259,7 @@
                         <a href="/guia-usuario" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/guia-usuario' %}active{% endif %}">
                             <i class="fas fa-book-open w-6"></i><span class="sidebar-text">Guía de usuario</span>
                         </a>
-                        {% if usuario_actual and usuario_actual.puede_administrar_usuarios %}
+                        {% if usuario_actual and (usuario_actual.puede_administrar_usuarios or usuario_actual.es_superusuario) %}
                         <a href="/documentacion-tecnica" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded {% if request.path == '/documentacion-tecnica' %}active{% endif %}">
                             <i class="fas fa-file-code w-6"></i><span class="sidebar-text">Documentación técnica</span>
                         </a>

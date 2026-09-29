@@ -322,6 +322,10 @@ def requiere_full():
     return usuario is not None and usuario.activo and usuario.es_superusuario
 
 
+def requiere_documentacion():
+    return requiere_admin() or requiere_full()
+
+
 def requiere_edicion():
     usuario = usuario_actual()
     return usuario is not None and usuario.activo and usuario.puede_editar
@@ -381,6 +385,7 @@ def permiso_requerido(verificador):
 
 admin_requerido = permiso_requerido(requiere_admin)
 full_requerido = permiso_requerido(requiere_full)
+documentacion_requerida = permiso_requerido(requiere_documentacion)
 carga_requerida = permiso_requerido(requiere_carga)
 edicion_requerida = permiso_requerido(requiere_edicion)
 eliminacion_requerida = permiso_requerido(requiere_eliminacion)
@@ -433,7 +438,9 @@ def modulo_solicitado(path):
         return 'maestros_api'
     if path.startswith('/entrega-desarrollo'):
         return 'entrega_full'
-    if path.startswith(('/usuarios', '/api/usuarios', '/catalogos', '/documentacion-tecnica')):
+    if path.startswith('/documentacion-tecnica'):
+        return 'documentacion'
+    if path.startswith(('/usuarios', '/api/usuarios', '/catalogos')):
         return 'usuarios'
     if path.startswith('/historial') or path.startswith('/api/historial'):
         return 'historial'
@@ -456,6 +463,7 @@ def proteger_modulos_por_perfil():
         or (modulo == 'maestros_api' and (usuario.puede_administrar_usuarios or usuario.puede_cargar))
         or (modulo == 'usuarios' and usuario.puede_administrar_usuarios)
         or (modulo == 'entrega_full' and usuario.es_superusuario)
+        or (modulo == 'documentacion' and (usuario.puede_administrar_usuarios or usuario.es_superusuario))
         or (modulo == 'historial' and usuario.puede_eliminar)
     )
     if autorizado:
@@ -482,7 +490,7 @@ def asegurar_administrador_inicial():
     """Promueve el primer usuario existente a administrador si aun no hay admin."""
     if not usuarios_registrados():
         return None
-    if Usuario.query.filter(Usuario.rol.in_(('Admin', 'administrador'))).first():
+    if any(usuario.puede_administrar_usuarios for usuario in Usuario.query.all()):
         return None
     primer_usuario = Usuario.query.order_by(Usuario.creado_en.asc(), Usuario.id.asc()).first()
     if primer_usuario:
@@ -3870,7 +3878,7 @@ def descargar_guia_usuario():
 
 
 @main_bp.route('/documentacion-tecnica/descargar')
-@admin_requerido
+@documentacion_requerida
 def descargar_documentacion_tecnica():
     """Descarga la documentación técnica maquetada; solo para administradores."""
     ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'documentacion_tecnica.pdf'))
@@ -3883,7 +3891,7 @@ def descargar_documentacion_tecnica():
 
 
 @main_bp.route('/documentacion-tecnica/esquema/<motor>')
-@admin_requerido
+@documentacion_requerida
 def descargar_esquema_base_datos(motor):
     """Descarga el DDL completo entregable al responsable de la base."""
     if str(motor or '').lower() == 'pdf':
@@ -3911,11 +3919,16 @@ def descargar_esquema_base_datos(motor):
 
 
 @main_bp.route('/documentacion-tecnica')
-@admin_requerido
+@documentacion_requerida
 def documentacion_tecnica():
-    """Abre la documentación técnica legible; solo para administradores."""
+    """Abre la documentación técnica para Admin y Full."""
     ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'documentacion_tecnica.html'))
     contenido = Path(ruta).read_text(encoding='utf-8')
+    usuario = usuario_actual()
+    if usuario and usuario.es_superusuario:
+        marcador = '<a class="button" href="/documentacion-tecnica/descargar">'
+        acceso_entrega = '<a class="button primary" href="/entrega-desarrollo">Entrega a Desarrollo</a>'
+        contenido = contenido.replace(marcador, acceso_entrega + marcador, 1)
     return Response(contenido, content_type='text/html; charset=utf-8')
 
 

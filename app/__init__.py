@@ -580,7 +580,7 @@ def asegurar_administrador_inicial_db():
         return
     if Usuario.query.count() == 0:
         return
-    if Usuario.query.filter(Usuario.rol.in_(('Admin', 'administrador'))).first():
+    if any(usuario.puede_administrar_usuarios for usuario in Usuario.query.all()):
         return
 
     primer_usuario = Usuario.query.order_by(Usuario.creado_en.asc(), Usuario.id.asc()).first()
