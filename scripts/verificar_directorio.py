@@ -53,28 +53,46 @@ def verificar():
         reloj = respuestas.get('/api/indicadores', {}).get('reloj', {})
         with app.app_context():
             historico_reloj = HistoricoClienteMensual.query.filter_by(year=year).all()
-            meses_reloj = sorted({item.mes for item in historico_reloj})
+            horas_esperadas = {}
+            for item in historico_reloj:
+                base = item.base_dict()
+                valores = horas_esperadas.setdefault(item.mes, {'requerido': 0.0, 'realizado': 0.0})
+                valores['requerido'] += float(base.get('horas_requeridas') or 0)
+                valores['realizado'] += float(base.get('horas_realizadas') or 0)
+            facturacion_reloj = Facturacion2026.query.filter(Facturacion2026.mes.like(f'{year}-%')).all()
+            horas_facturacion = {}
+            for item in facturacion_reloj:
+                if item.es_next_gen:
+                    continue
+                valores = horas_facturacion.setdefault(item.mes, {'requerido': 0.0, 'realizado': 0.0})
+                valores['requerido'] += float(item.horas_objetivo or 0)
+                valores['realizado'] += float(item.horas_facturadas or 0)
+            for mes, valores in horas_facturacion.items():
+                if mes not in horas_esperadas:
+                    horas_esperadas[mes] = valores
+            meses_historicos = {item.mes for item in historico_reloj}
+            meses_parciales = set(horas_esperadas) - meses_historicos
+            meses_reloj = sorted(horas_esperadas)
             corte_reloj = meses_reloj[-1] if meses_reloj else None
-            filas_reloj = [item for item in historico_reloj if not corte_reloj or item.mes <= corte_reloj]
-            requerido_reloj = sum(float(item.base_dict().get('horas_requeridas') or 0) for item in filas_reloj)
-            realizado_reloj = sum(float(item.base_dict().get('horas_realizadas') or 0) for item in filas_reloj)
+            requerido_reloj = sum(item['requerido'] for item in horas_esperadas.values())
+            realizado_reloj = sum(item['realizado'] for item in horas_esperadas.values())
         if historico_reloj:
-            if reloj.get('fuente') != 'historico_clientes_mensuales':
-                errores.append('Reloj: no utiliza la base histórica de Directorio')
+            fuente_esperada = 'historico_y_facturacion' if meses_parciales else 'historico_clientes_mensuales'
+            if reloj.get('fuente') != fuente_esperada:
+                errores.append('Reloj: no combina correctamente cierres históricos y meses parciales')
             if reloj.get('corte') != corte_reloj:
-                errores.append('Reloj: el corte no coincide con el último cierre histórico')
+                errores.append('Reloj: el corte no coincide con el último mes disponible')
             if reloj.get('desde') != meses_reloj[0] or reloj.get('hasta') != meses_reloj[-1]:
                 errores.append('Reloj: el rango predeterminado no incluye todos los cierres')
             if not cerca(reloj.get('requerido'), requerido_reloj):
-                errores.append('Reloj: horas requeridas no coinciden con Histórico clientes')
+                errores.append('Reloj: horas requeridas no coinciden con la fuente mensual combinada')
             if not cerca(reloj.get('realizado'), realizado_reloj):
-                errores.append('Reloj: horas realizadas no coinciden con Histórico clientes')
+                errores.append('Reloj: horas realizadas no coinciden con la fuente mensual combinada')
             if meses_reloj:
                 respuesta_corte = cliente.get(
                     f'/api/indicadores?year={year}&desde={meses_reloj[0]}&hasta={meses_reloj[0]}'
                 ).get_json()['reloj']
-                filas_primer_mes = [item for item in historico_reloj if item.mes == meses_reloj[0]]
-                requerido_primer_mes = sum(float(item.base_dict().get('horas_requeridas') or 0) for item in filas_primer_mes)
+                requerido_primer_mes = horas_esperadas[meses_reloj[0]]['requerido']
                 if (respuesta_corte.get('desde') != meses_reloj[0]
                         or respuesta_corte.get('hasta') != meses_reloj[0]
                         or not cerca(respuesta_corte.get('requerido'), requerido_primer_mes)):

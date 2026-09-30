@@ -17,11 +17,21 @@ def verificar():
         operativos = [fila for fila in registros if not fila.es_next_gen]
         historico = HistoricoClienteMensual.query.filter_by(year=2026).all()
         if historico:
-            objetivo = round(sum(float(fila.base_dict().get('horas_requeridas') or 0) for fila in historico), 2)
-            facturadas = round(sum(float(fila.base_dict().get('horas_realizadas') or 0) for fila in historico), 2)
+            meses_historicos = {fila.mes for fila in historico}
+            parciales = [fila for fila in operativos if fila.mes not in meses_historicos]
+            objetivo = round(
+                sum(float(fila.base_dict().get('horas_requeridas') or 0) for fila in historico)
+                + sum(float(fila.horas_objetivo or 0) for fila in parciales), 2
+            )
+            facturadas = round(
+                sum(float(fila.base_dict().get('horas_realizadas') or 0) for fila in historico)
+                + sum(float(fila.horas_facturadas or 0) for fila in parciales), 2
+            )
+            fuente_horas = 'historico_y_facturacion' if parciales else 'historico_clientes_mensuales'
         else:
             objetivo = round(sum(float(fila.horas_objetivo or 0) for fila in operativos), 2)
             facturadas = round(sum(float(fila.horas_facturadas or 0) for fila in operativos), 2)
+            fuente_horas = 'facturacion_anio'
         next_gen = round(sum(float(fila.netx_gen or 0) for fila in registros), 2)
         total_facturado = round(sum(float(fila.total_dashboard or 0) for fila in registros), 2)
         assert usuario is not None
@@ -34,7 +44,7 @@ def verificar():
     assert resumen['total']['horas_objetivo'] == objetivo
     assert resumen['total']['horas_facturadas'] == facturadas
     assert resumen['total']['porcentaje_cumplimiento_horas'] == round(facturadas / objetivo * 100, 2)
-    assert resumen['fuente_horas'] == ('historico_clientes_mensuales' if historico else 'facturacion_anio')
+    assert resumen['fuente_horas'] == fuente_horas
     assert resumen['total']['netx_gen_real'] == next_gen
     assert resumen['total']['total_facturado'] == total_facturado
     assert len(resumen['filas']) == 12

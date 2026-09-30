@@ -4911,6 +4911,15 @@ def api_resumen():
 
 def horas_resumen_por_mes(year):
     """Fuente única de Alcance Hs. para Resumen de horas y Reloj."""
+    facturacion = facturacion_por_anio(Facturacion2026.query, year).order_by(Facturacion2026.mes).all()
+    facturacion_por_mes = {}
+    for item in facturacion:
+        if item.es_next_gen:
+            continue
+        valores = facturacion_por_mes.setdefault(item.mes, {'requerido': 0.0, 'realizado': 0.0})
+        valores['requerido'] += float(item.horas_objetivo or 0)
+        valores['realizado'] += float(item.horas_facturadas or 0)
+
     historico = HistoricoClienteMensual.query.filter_by(year=year).order_by(
         HistoricoClienteMensual.mes, HistoricoClienteMensual.cliente
     ).all()
@@ -4921,19 +4930,14 @@ def horas_resumen_por_mes(year):
             valores = por_mes.setdefault(item.mes, {'requerido': 0.0, 'realizado': 0.0})
             valores['requerido'] += float(base.get('horas_requeridas') or 0)
             valores['realizado'] += float(base.get('horas_realizadas') or 0)
-        actualizado_en = max((item.actualizado_en for item in historico if item.actualizado_en), default=None)
-        return por_mes, 'historico_clientes_mensuales', actualizado_en
+        meses_parciales = set(facturacion_por_mes) - set(por_mes)
+        for mes in meses_parciales:
+            por_mes[mes] = facturacion_por_mes[mes]
+        marcas = [item.actualizado_en for item in historico if item.actualizado_en]
+        fuente = 'historico_y_facturacion' if meses_parciales else 'historico_clientes_mensuales'
+        return por_mes, fuente, max(marcas, default=None)
 
-    facturacion = facturacion_por_anio(Facturacion2026.query, year).order_by(Facturacion2026.mes).all()
-    por_mes = {}
-    for item in facturacion:
-        if item.es_next_gen:
-            continue
-        valores = por_mes.setdefault(item.mes, {'requerido': 0.0, 'realizado': 0.0})
-        valores['requerido'] += float(item.horas_objetivo or 0)
-        valores['realizado'] += float(item.horas_facturadas or 0)
-    actualizado_en = max((item.actualizado_en for item in facturacion if item.actualizado_en), default=None)
-    return por_mes, 'facturacion_anio', actualizado_en
+    return facturacion_por_mes, 'facturacion_anio', None
 
 
 def aplicar_horas_resumen(metricas, horas):
