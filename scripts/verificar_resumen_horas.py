@@ -6,7 +6,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
 from app import create_app  # noqa: E402
-from app.models import Facturacion2026, Usuario  # noqa: E402
+from app.models import Facturacion2026, HistoricoClienteMensual, Usuario  # noqa: E402
 
 
 def verificar():
@@ -15,8 +15,13 @@ def verificar():
         usuario = Usuario.query.filter_by(activo=True).first()
         registros = Facturacion2026.query.filter(Facturacion2026.mes.like('2026-%')).all()
         operativos = [fila for fila in registros if not fila.es_next_gen]
-        objetivo = round(sum(float(fila.horas_objetivo or 0) for fila in operativos), 2)
-        facturadas = round(sum(float(fila.horas_facturadas or 0) for fila in operativos), 2)
+        historico = HistoricoClienteMensual.query.filter_by(year=2026).all()
+        if historico:
+            objetivo = round(sum(float(fila.base_dict().get('horas_requeridas') or 0) for fila in historico), 2)
+            facturadas = round(sum(float(fila.base_dict().get('horas_realizadas') or 0) for fila in historico), 2)
+        else:
+            objetivo = round(sum(float(fila.horas_objetivo or 0) for fila in operativos), 2)
+            facturadas = round(sum(float(fila.horas_facturadas or 0) for fila in operativos), 2)
         next_gen = round(sum(float(fila.netx_gen or 0) for fila in registros), 2)
         total_facturado = round(sum(float(fila.total_dashboard or 0) for fila in registros), 2)
         assert usuario is not None
@@ -28,6 +33,8 @@ def verificar():
     assert resumen['success']
     assert resumen['total']['horas_objetivo'] == objetivo
     assert resumen['total']['horas_facturadas'] == facturadas
+    assert resumen['total']['porcentaje_cumplimiento_horas'] == round(facturadas / objetivo * 100, 2)
+    assert resumen['fuente_horas'] == ('historico_clientes_mensuales' if historico else 'facturacion_anio')
     assert resumen['total']['netx_gen_real'] == next_gen
     assert resumen['total']['total_facturado'] == total_facturado
     assert len(resumen['filas']) == 12

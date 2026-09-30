@@ -2,9 +2,17 @@
 {% block title %}Reloj | Directorio{% endblock %}
 {% block content %}
 <div class="mx-auto max-w-6xl">
-    <div class="mb-6 flex items-end justify-between gap-4">
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div><p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Directorio</p><h2 class="mt-1 text-3xl font-bold text-slate-950">Reloj</h2><p class="mt-1 text-sm text-slate-500">Cumplimiento acumulado de horas requeridas y realizadas.</p></div>
-        <select id="relojYear" onchange="cargar()" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">{% for anio in anios_disponibles %}<option value="{{ anio }}" {% if anio == anio_actual %}selected{% endif %}>{{ anio }}</option>{% endfor %}</select>
+        <div class="flex flex-wrap items-end gap-3">
+            <label class="text-xs font-semibold text-slate-600">Año
+                <select id="relojYear" onchange="cargar(true)" class="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">{% for anio in anios_disponibles %}<option value="{{ anio }}" {% if anio == anio_actual %}selected{% endif %}>{{ anio }}</option>{% endfor %}</select>
+            </label>
+            <label class="text-xs font-semibold text-slate-600">Corte acumulado
+                <select id="relojMes" onchange="cargar()" class="mt-1 block min-w-44 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value="">Último cierre</option></select>
+            </label>
+            <button id="actualizarReloj" type="button" onclick="cargar()" class="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100"><i class="fas fa-rotate mr-1"></i>Actualizar</button>
+        </div>
     </div>
     <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -24,13 +32,15 @@
                 <article class="rounded-xl border border-slate-200 p-5"><p class="text-xs font-semibold uppercase text-slate-500">Diferencia</p><p id="diferencia" class="mt-1 text-3xl font-bold tabular-nums">0</p></article>
             </div>
         </div>
-        <p class="mt-4 text-center text-xs text-slate-500">Escala calibrada: 100% se ubica al 75% del recorrido total; el extremo representa 133,33%.</p>
+        <p id="periodoReloj" class="mt-4 text-center text-xs font-semibold text-slate-600">Cargando período…</p>
+        <p class="mt-1 text-center text-xs text-slate-500">Escala calibrada: 100% se ubica al 75% del recorrido total; el extremo representa 133,33%.</p>
     </section>
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
 const formato = value => new Intl.NumberFormat('es-AR', {maximumFractionDigits:2}).format(Number(value||0)); let reloj;
+const etiquetaMes = mes => mes ? new Intl.DateTimeFormat('es-AR',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(`${mes}-01T00:00:00Z`)) : 'sin datos';
 let gaugeTextColor = '#f8fafc';
 function cambiarFondo(color){
     gaugePanel.style.backgroundColor=color;
@@ -76,11 +86,32 @@ function descargarReloj(){
     c.font='12px Montserrat';c.fillText('C U M P L I M I E N T O',ancho/2,344);
     imagen.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`reloj-directorio-${relojYear.value}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)},'image/png');
 }
-async function cargar(){const response=await fetch(`/api/indicadores?year=${relojYear.value}`),data=await response.json(),r=data.reloj;reloj=r;requerido.textContent=formato(r.requerido);realizado.textContent=formato(r.realizado);diferencia.textContent=`${r.diferencia>0?'+':''}${formato(r.diferencia)}`;diferencia.className=`mt-1 text-3xl font-bold tabular-nums ${r.diferencia>=0?'text-emerald-600':'text-red-600'}`;cumplimiento.textContent=`${formato(r.cumplimiento*100)}%`;dibujar(r.cumplimiento)}
+async function cargar(reiniciarMes=false){
+    if(reiniciarMes)relojMes.value='';
+    const boton=actualizarReloj,mes=relojMes.value;
+    boton.disabled=true;periodoReloj.textContent='Actualizando medición…';
+    try{
+        const query=new URLSearchParams({year:relojYear.value});if(mes)query.set('mes',mes);
+        const response=await fetch(`/api/indicadores?${query}`,{credentials:'same-origin',cache:'no-store'});
+        const data=await response.json();if(!response.ok||!data.success)throw new Error((data.errores||['No se pudo actualizar el reloj']).join('. '));
+        const r=data.reloj;reloj=r;
+        relojMes.innerHTML=(r.meses||[]).map(valor=>`<option value="${valor}">${etiquetaMes(valor)}</option>`).join('')||'<option value="">Sin cierres</option>';
+        relojMes.value=r.corte||'';
+        requerido.textContent=formato(r.requerido);realizado.textContent=formato(r.realizado);
+        diferencia.textContent=`${r.diferencia>0?'+':''}${formato(r.diferencia)}`;
+        diferencia.className=`mt-1 text-3xl font-bold tabular-nums ${r.diferencia>=0?'text-emerald-600':'text-red-600'}`;
+        cumplimiento.textContent=`${formato(r.cumplimiento*100)}%`;dibujar(r.cumplimiento);
+        periodoReloj.className='mt-4 text-center text-xs font-semibold text-slate-600';
+        periodoReloj.textContent=`Acumulado hasta ${etiquetaMes(r.corte)} · Mismo cálculo de Resumen de horas`;
+    }catch(error){periodoReloj.textContent=error.message||'No se pudo actualizar el reloj';periodoReloj.className='mt-4 text-center text-xs font-semibold text-red-600';}
+    finally{boton.disabled=false}
+}
 const savedGaugeBackground=localStorage.getItem('gaugeBackground');
 if(savedGaugeBackground&&/^#[0-9a-f]{6}$/i.test(savedGaugeBackground))gaugeBackground.value=savedGaugeBackground;
 cambiarFondo(gaugeBackground.value);
 gaugeBackground.addEventListener('input',()=>{cambiarFondo(gaugeBackground.value);localStorage.setItem('gaugeBackground',gaugeBackground.value)});
 cargar();addEventListener('resize',()=>reloj&&dibujar(reloj.cumplimiento));
+setInterval(()=>{if(!document.hidden)cargar()},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)cargar()});
 </script>
 {% endblock %}

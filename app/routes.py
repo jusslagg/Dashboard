@@ -4909,6 +4909,59 @@ def api_resumen():
     })
 
 
+def horas_resumen_por_mes(year):
+    """Fuente única de Alcance Hs. para Resumen de horas y Reloj."""
+    historico = HistoricoClienteMensual.query.filter_by(year=year).order_by(
+        HistoricoClienteMensual.mes, HistoricoClienteMensual.cliente
+    ).all()
+    if historico:
+        por_mes = {}
+        for item in historico:
+            base = item.base_dict()
+            valores = por_mes.setdefault(item.mes, {'requerido': 0.0, 'realizado': 0.0})
+            valores['requerido'] += float(base.get('horas_requeridas') or 0)
+            valores['realizado'] += float(base.get('horas_realizadas') or 0)
+        actualizado_en = max((item.actualizado_en for item in historico if item.actualizado_en), default=None)
+        return por_mes, 'historico_clientes_mensuales', actualizado_en
+
+    facturacion = facturacion_por_anio(Facturacion2026.query, year).order_by(Facturacion2026.mes).all()
+    por_mes = {}
+    for item in facturacion:
+        if item.es_next_gen:
+            continue
+        valores = por_mes.setdefault(item.mes, {'requerido': 0.0, 'realizado': 0.0})
+        valores['requerido'] += float(item.horas_objetivo or 0)
+        valores['realizado'] += float(item.horas_facturadas or 0)
+    actualizado_en = max((item.actualizado_en for item in facturacion if item.actualizado_en), default=None)
+    return por_mes, 'facturacion_anio', actualizado_en
+
+
+def aplicar_horas_resumen(metricas, horas):
+    """Alinea el bloque operativo con las horas del cierre mensual oficial."""
+    resultado = dict(metricas)
+    requerido = round(float(horas.get('requerido') or 0), 2)
+    realizado = round(float(horas.get('realizado') or 0), 2)
+    porcentaje = round(realizado / requerido * 100, 2) if requerido else 0
+    resultado.update({
+        'horas_objetivo': requerido,
+        'horas_facturadas': realizado,
+        'horas_netas_facturadas': realizado,
+        'desvio_horas': round(realizado - requerido, 2),
+        'porcentaje_cumplimiento_horas': porcentaje,
+        'porcentaje_cumplimiento_logueo': porcentaje,
+        'porcentaje_cumplimiento_horas_adh': porcentaje,
+    })
+    return resultado
+
+
+def sumar_horas_resumen(por_mes, meses=None):
+    claves = set(meses) if meses is not None else set(por_mes)
+    return {
+        'requerido': sum(valores['requerido'] for mes, valores in por_mes.items() if mes in claves),
+        'realizado': sum(valores['realizado'] for mes, valores in por_mes.items() if mes in claves),
+    }
+
+
 @main_bp.route('/api/resumen-horas', methods=['GET'])
 @login_requerido
 def api_resumen_horas():
@@ -4921,6 +4974,7 @@ def api_resumen_horas():
         return jsonify({'success': False, 'errores': ['El año debe estar entre 2020 y 2100']}), 400
 
     facturacion = facturacion_por_anio(Facturacion2026.query, year).all()
+    horas_por_mes, fuente_horas, _ = horas_resumen_por_mes(year)
     facturacion_operativa = [registro for registro in facturacion if not registro.es_next_gen]
     facturacion_next_gen = [registro for registro in facturacion if (registro.netx_gen or 0) != 0]
     dotacion_por_mes = dict(
@@ -4969,7 +5023,11 @@ def api_resumen_horas():
     for mes in range(1, 13):
         clave = f'{year}-{mes:02d}'
         registros_mes = [registro for registro in facturacion if registro.mes == clave]
-        filas.append({'nombre': clave, **metricas(registros_mes, dotacion_por_mes.get(clave))})
+        metricas_mes = aplicar_horas_resumen(
+            metricas(registros_mes, dotacion_por_mes.get(clave)),
+            horas_por_mes.get(clave, {}),
+        )
+        filas.append({'nombre': clave, **metricas_mes})
     dotaciones_con_dato = [fila['dotacion_requerida'] for fila in filas if fila['dotacion_requerida'] > 0]
     promedio_dotacion = sum(dotaciones_con_dato) / len(dotaciones_con_dato) if dotaciones_con_dato else 0
 
@@ -4985,7 +5043,11 @@ def api_resumen_horas():
         claves = {f'{year}-{mes:02d}' for mes in meses}
         registros = [registro for registro in facturacion if registro.mes in claves]
         dotaciones = [float(dotacion_por_mes.get(clave) or 0) for clave in claves if float(dotacion_por_mes.get(clave) or 0) > 0]
-        trimestres.append({'nombre': f'{numero}T', **metricas(registros, sum(dotaciones) / len(dotaciones) if dotaciones else 0)})
+        metricas_trimestre = aplicar_horas_resumen(
+            metricas(registros, sum(dotaciones) / len(dotaciones) if dotaciones else 0),
+            sumar_horas_resumen(horas_por_mes, claves),
+        )
+        trimestres.append({'nombre': f'{numero}T', **metricas_trimestre})
 
     def familia(registro):
         texto = f'{registro.cliente or ""} {registro.campania or ""}'.casefold()
@@ -4995,7 +5057,7 @@ def api_resumen_horas():
             return 'Santander'
         return 'Multicampaña'
 
-    total = metricas(facturacion, promedio_dotacion)
+    total = aplicar_horas_resumen(metricas(facturacion, promedio_dotacion), sumar_horas_resumen(horas_por_mes))
 
     def participaciones(items):
         base = total['total_facturado']
@@ -5059,6 +5121,7 @@ def api_resumen_horas():
         'detalle_jefaturas': detalle_jefaturas,
         'next_gen': next_gen,
         'total': total,
+        'fuente_horas': fuente_horas,
     })
 
 
@@ -8322,7 +8385,12 @@ def api_indicadores():
     asegurar_dotaciones_iniciales()
     registros = DotacionMensual.query.order_by(DotacionMensual.fecha).all()
     anios_dotacion = sorted({item.fecha.year for item in registros})
-    year = int(request.args.get('year') or (anios_dotacion[-1] if anios_dotacion else datetime.utcnow().year))
+    try:
+        year = int(request.args.get('year') or (anios_dotacion[-1] if anios_dotacion else datetime.utcnow().year))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
+    if not 2020 <= year <= 2100:
+        return jsonify({'success': False, 'errores': ['El año debe estar entre 2020 y 2100']}), 400
     actuales = [item for item in registros if item.fecha.year == year]
     ultimo = actuales[-1] if actuales else None
     diciembre = next(
@@ -8334,14 +8402,23 @@ def api_indicadores():
         valores = [float(getattr(item, campo) or 0) for item in actuales if float(getattr(item, campo) or 0) > 0]
         return round(sum(valores) / len(valores), 2) if valores else 0
 
-    facturacion = facturacion_por_anio(Facturacion2026.query, year).all()
-    requerido = round(sum(float(item.horas_objetivo or 0) for item in facturacion), 2)
-    realizado = round(sum(float(item.horas_facturadas or 0) for item in facturacion), 2)
+    horas_por_mes, fuente, actualizado_en = horas_resumen_por_mes(year)
+    meses_disponibles = sorted(horas_por_mes)
+    mes_solicitado = str(request.args.get('mes') or '').strip()
+    mes_corte = mes_solicitado if mes_solicitado in meses_disponibles else (
+        meses_disponibles[-1] if meses_disponibles else None
+    )
+    meses_acumulados = [mes for mes in meses_disponibles if not mes_corte or mes <= mes_corte]
+    horas_reloj = sumar_horas_resumen(horas_por_mes, meses_acumulados)
+    requerido = round(horas_reloj['requerido'], 2)
+    realizado = round(horas_reloj['realizado'], 2)
     cumplimiento = realizado / requerido if requerido else 0
     return jsonify({
         'success': True,
         'reloj': {'year': year, 'requerido': requerido, 'realizado': realizado,
-                  'diferencia': round(realizado - requerido, 2), 'cumplimiento': round(cumplimiento, 6)},
+                  'diferencia': round(realizado - requerido, 2), 'cumplimiento': round(cumplimiento, 6),
+                  'meses': meses_disponibles, 'corte': mes_corte, 'fuente': fuente,
+                  'actualizado_en': actualizado_en.isoformat() if actualizado_en else None},
         'dotaciones': {
             'serie': [item.to_dict() for item in registros],
             'ultimo': ultimo.to_dict() if ultimo else None,

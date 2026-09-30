@@ -1490,6 +1490,8 @@ La aplicación permite exportar información a Excel desde módulos de control y
 
 Las exportaciones respetan filtros activos cuando el endpoint lo contempla. La descarga completa de **Directorio** genera un libro de Excel con una hoja por solapa o vista disponible. Los valores se exportan como datos editables, con títulos y estructura legible. El reloj también puede descargarse como imagen desde su propia pantalla.
 
+El **Reloj** y la columna **% Alcance Hs.** de `TOTAL CAT` en **Resumen de horas** comparten la función `horas_resumen_por_mes`. Cuando existe un cierre en `historico_clientes_mensuales`, ambos acumulan `horas_realizadas / horas_requeridas` hasta el último mes disponible y dejan los meses posteriores en cero. El Reloj permite elegir un corte anterior y se actualiza automáticamente cada minuto. Si un año todavía no tiene histórico, la función usa como alternativa las horas operativas de `facturacion_anio`, excluyendo las filas exclusivas de Next Gen. Esta fuente única evita que ambas pantallas informen porcentajes diferentes.
+
 Los números visibles siguen la convención argentina: punto para miles y coma para decimales. Los archivos tabulares usan valores numéricos o representaciones compatibles con Excel según el formato de descarga.
 
 ## Proyectado vs Facturado y normalización de nombres

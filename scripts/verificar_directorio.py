@@ -50,6 +50,38 @@ def verificar():
                 continue
             respuestas[url.split('?')[0]] = data
 
+        reloj = respuestas.get('/api/indicadores', {}).get('reloj', {})
+        with app.app_context():
+            historico_reloj = HistoricoClienteMensual.query.filter_by(year=year).all()
+            meses_reloj = sorted({item.mes for item in historico_reloj})
+            corte_reloj = meses_reloj[-1] if meses_reloj else None
+            filas_reloj = [item for item in historico_reloj if not corte_reloj or item.mes <= corte_reloj]
+            requerido_reloj = sum(float(item.base_dict().get('horas_requeridas') or 0) for item in filas_reloj)
+            realizado_reloj = sum(float(item.base_dict().get('horas_realizadas') or 0) for item in filas_reloj)
+        if historico_reloj:
+            if reloj.get('fuente') != 'historico_clientes_mensuales':
+                errores.append('Reloj: no utiliza la base histórica de Directorio')
+            if reloj.get('corte') != corte_reloj:
+                errores.append('Reloj: el corte no coincide con el último cierre histórico')
+            if not cerca(reloj.get('requerido'), requerido_reloj):
+                errores.append('Reloj: horas requeridas no coinciden con Histórico clientes')
+            if not cerca(reloj.get('realizado'), realizado_reloj):
+                errores.append('Reloj: horas realizadas no coinciden con Histórico clientes')
+            if meses_reloj:
+                respuesta_corte = cliente.get(f'/api/indicadores?year={year}&mes={meses_reloj[0]}').get_json()['reloj']
+                filas_primer_mes = [item for item in historico_reloj if item.mes <= meses_reloj[0]]
+                requerido_primer_mes = sum(float(item.base_dict().get('horas_requeridas') or 0) for item in filas_primer_mes)
+                if respuesta_corte.get('corte') != meses_reloj[0] or not cerca(respuesta_corte.get('requerido'), requerido_primer_mes):
+                    errores.append('Reloj: el selector de corte mensual no recalcula el acumulado')
+            resumen_horas = cliente.get(f'/api/resumen-horas?year={year}').get_json()
+            total_resumen = resumen_horas.get('total', {})
+            if not cerca(reloj.get('requerido'), total_resumen.get('horas_objetivo')):
+                errores.append('Reloj: requerido distinto de TOTAL CAT en Resumen de horas')
+            if not cerca(reloj.get('realizado'), total_resumen.get('horas_facturadas')):
+                errores.append('Reloj: realizado distinto de TOTAL CAT en Resumen de horas')
+            if not cerca(float(reloj.get('cumplimiento') or 0) * 100, total_resumen.get('porcentaje_cumplimiento_horas')):
+                errores.append('Reloj: porcentaje distinto de % Alcance Hs de TOTAL CAT')
+
         for fila in respuestas.get('/api/ratio-eli', {}).get('serie', []):
             esperado = fila['staff'] / fila['requerido'] if fila['requerido'] else None
             if esperado is not None and not cerca(fila['ratio'], esperado, 1e-10):
