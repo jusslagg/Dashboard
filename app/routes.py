@@ -8404,12 +8404,21 @@ def api_indicadores():
 
     horas_por_mes, fuente, actualizado_en = horas_resumen_por_mes(year)
     meses_disponibles = sorted(horas_por_mes)
-    mes_solicitado = str(request.args.get('mes') or '').strip()
-    mes_corte = mes_solicitado if mes_solicitado in meses_disponibles else (
+    desde_solicitado = str(request.args.get('desde') or '').strip()
+    hasta_solicitado = str(request.args.get('hasta') or request.args.get('mes') or '').strip()
+    mes_desde = desde_solicitado if desde_solicitado in meses_disponibles else (
+        meses_disponibles[0] if meses_disponibles else None
+    )
+    mes_hasta = hasta_solicitado if hasta_solicitado in meses_disponibles else (
         meses_disponibles[-1] if meses_disponibles else None
     )
-    meses_acumulados = [mes for mes in meses_disponibles if not mes_corte or mes <= mes_corte]
-    horas_reloj = sumar_horas_resumen(horas_por_mes, meses_acumulados)
+    if mes_desde and mes_hasta and mes_desde > mes_hasta:
+        return jsonify({'success': False, 'errores': ['El mes Desde no puede ser posterior al mes Hasta']}), 400
+    meses_rango = [
+        mes for mes in meses_disponibles
+        if (not mes_desde or mes >= mes_desde) and (not mes_hasta or mes <= mes_hasta)
+    ]
+    horas_reloj = sumar_horas_resumen(horas_por_mes, meses_rango)
     requerido = round(horas_reloj['requerido'], 2)
     realizado = round(horas_reloj['realizado'], 2)
     cumplimiento = realizado / requerido if requerido else 0
@@ -8417,7 +8426,8 @@ def api_indicadores():
         'success': True,
         'reloj': {'year': year, 'requerido': requerido, 'realizado': realizado,
                   'diferencia': round(realizado - requerido, 2), 'cumplimiento': round(cumplimiento, 6),
-                  'meses': meses_disponibles, 'corte': mes_corte, 'fuente': fuente,
+                  'meses': meses_disponibles, 'desde': mes_desde, 'hasta': mes_hasta,
+                  'corte': mes_hasta, 'fuente': fuente,
                   'actualizado_en': actualizado_en.isoformat() if actualizado_en else None},
         'dotaciones': {
             'serie': [item.to_dict() for item in registros],

@@ -8,8 +8,11 @@
             <label class="text-xs font-semibold text-slate-600">Año
                 <select id="relojYear" onchange="cargar(true)" class="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">{% for anio in anios_disponibles %}<option value="{{ anio }}" {% if anio == anio_actual %}selected{% endif %}>{{ anio }}</option>{% endfor %}</select>
             </label>
-            <label class="text-xs font-semibold text-slate-600">Corte acumulado
-                <select id="relojMes" onchange="cargar()" class="mt-1 block min-w-44 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value="">Último cierre</option></select>
+            <label class="text-xs font-semibold text-slate-600">Desde
+                <select id="relojDesde" onchange="cambiarRango('desde')" class="mt-1 block min-w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value="">Primer cierre</option></select>
+            </label>
+            <label class="text-xs font-semibold text-slate-600">Hasta
+                <select id="relojHasta" onchange="cambiarRango('hasta')" class="mt-1 block min-w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value="">Último cierre</option></select>
             </label>
             <button id="actualizarReloj" type="button" onclick="cargar()" class="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100"><i class="fas fa-rotate mr-1"></i>Actualizar</button>
         </div>
@@ -84,25 +87,32 @@ function descargarReloj(){
     c.fillStyle=gaugeTextColor;c.textAlign='center';c.font='38px Montserrat';
     c.fillText(cumplimiento.textContent,ancho/2,320);
     c.font='12px Montserrat';c.fillText('C U M P L I M I E N T O',ancho/2,344);
-    imagen.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`reloj-directorio-${relojYear.value}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)},'image/png');
+    imagen.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`reloj-directorio-${relojDesde.value}-${relojHasta.value}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)},'image/png');
+}
+function cambiarRango(origen){
+    if(relojDesde.value&&relojHasta.value&&relojDesde.value>relojHasta.value){
+        if(origen==='desde')relojHasta.value=relojDesde.value;else relojDesde.value=relojHasta.value;
+    }
+    cargar();
 }
 async function cargar(reiniciarMes=false){
-    if(reiniciarMes)relojMes.value='';
-    const boton=actualizarReloj,mes=relojMes.value;
+    if(reiniciarMes){relojDesde.value='';relojHasta.value=''}
+    const boton=actualizarReloj,desde=relojDesde.value,hasta=relojHasta.value;
     boton.disabled=true;periodoReloj.textContent='Actualizando medición…';
     try{
-        const query=new URLSearchParams({year:relojYear.value});if(mes)query.set('mes',mes);
+        const query=new URLSearchParams({year:relojYear.value});if(desde)query.set('desde',desde);if(hasta)query.set('hasta',hasta);
         const response=await fetch(`/api/indicadores?${query}`,{credentials:'same-origin',cache:'no-store'});
         const data=await response.json();if(!response.ok||!data.success)throw new Error((data.errores||['No se pudo actualizar el reloj']).join('. '));
         const r=data.reloj;reloj=r;
-        relojMes.innerHTML=(r.meses||[]).map(valor=>`<option value="${valor}">${etiquetaMes(valor)}</option>`).join('')||'<option value="">Sin cierres</option>';
-        relojMes.value=r.corte||'';
+        const opciones=(r.meses||[]).map(valor=>`<option value="${valor}">${etiquetaMes(valor)}</option>`).join('')||'<option value="">Sin cierres</option>';
+        relojDesde.innerHTML=opciones;relojHasta.innerHTML=opciones;
+        relojDesde.value=r.desde||'';relojHasta.value=r.hasta||'';
         requerido.textContent=formato(r.requerido);realizado.textContent=formato(r.realizado);
         diferencia.textContent=`${r.diferencia>0?'+':''}${formato(r.diferencia)}`;
         diferencia.className=`mt-1 text-3xl font-bold tabular-nums ${r.diferencia>=0?'text-emerald-600':'text-red-600'}`;
         cumplimiento.textContent=`${formato(r.cumplimiento*100)}%`;dibujar(r.cumplimiento);
         periodoReloj.className='mt-4 text-center text-xs font-semibold text-slate-600';
-        periodoReloj.textContent=`Acumulado hasta ${etiquetaMes(r.corte)} · Mismo cálculo de Resumen de horas`;
+        periodoReloj.textContent=`Período ${etiquetaMes(r.desde)} a ${etiquetaMes(r.hasta)} · Mismo cálculo de Resumen de horas`;
     }catch(error){periodoReloj.textContent=error.message||'No se pudo actualizar el reloj';periodoReloj.className='mt-4 text-center text-xs font-semibold text-red-600';}
     finally{boton.disabled=false}
 }

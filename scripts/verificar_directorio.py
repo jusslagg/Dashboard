@@ -63,16 +63,27 @@ def verificar():
                 errores.append('Reloj: no utiliza la base histórica de Directorio')
             if reloj.get('corte') != corte_reloj:
                 errores.append('Reloj: el corte no coincide con el último cierre histórico')
+            if reloj.get('desde') != meses_reloj[0] or reloj.get('hasta') != meses_reloj[-1]:
+                errores.append('Reloj: el rango predeterminado no incluye todos los cierres')
             if not cerca(reloj.get('requerido'), requerido_reloj):
                 errores.append('Reloj: horas requeridas no coinciden con Histórico clientes')
             if not cerca(reloj.get('realizado'), realizado_reloj):
                 errores.append('Reloj: horas realizadas no coinciden con Histórico clientes')
             if meses_reloj:
-                respuesta_corte = cliente.get(f'/api/indicadores?year={year}&mes={meses_reloj[0]}').get_json()['reloj']
-                filas_primer_mes = [item for item in historico_reloj if item.mes <= meses_reloj[0]]
+                respuesta_corte = cliente.get(
+                    f'/api/indicadores?year={year}&desde={meses_reloj[0]}&hasta={meses_reloj[0]}'
+                ).get_json()['reloj']
+                filas_primer_mes = [item for item in historico_reloj if item.mes == meses_reloj[0]]
                 requerido_primer_mes = sum(float(item.base_dict().get('horas_requeridas') or 0) for item in filas_primer_mes)
-                if respuesta_corte.get('corte') != meses_reloj[0] or not cerca(respuesta_corte.get('requerido'), requerido_primer_mes):
-                    errores.append('Reloj: el selector de corte mensual no recalcula el acumulado')
+                if (respuesta_corte.get('desde') != meses_reloj[0]
+                        or respuesta_corte.get('hasta') != meses_reloj[0]
+                        or not cerca(respuesta_corte.get('requerido'), requerido_primer_mes)):
+                    errores.append('Reloj: el rango mensual no recalcula la medición')
+                respuesta_invalida = cliente.get(
+                    f'/api/indicadores?year={year}&desde={meses_reloj[-1]}&hasta={meses_reloj[0]}'
+                )
+                if respuesta_invalida.status_code != 400:
+                    errores.append('Reloj: acepta un rango Desde/Hasta invertido')
             resumen_horas = cliente.get(f'/api/resumen-horas?year={year}').get_json()
             total_resumen = resumen_horas.get('total', {})
             if not cerca(reloj.get('requerido'), total_resumen.get('horas_objetivo')):
