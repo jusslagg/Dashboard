@@ -1931,6 +1931,11 @@ python scripts\generar_documentacion_tecnica.py</code></pre>
 <li>desvío;</li>
 <li>porcentaje de cumplimiento.</li>
 </ul>
+<p class="">En <strong>Matriz</strong>, el bloque de valor hora conserva las fórmulas del libro operativo y se calcula siempre sobre los importes agregados del mismo período y agrupación:</p>
+<pre><code class="language-text">VH Objetivo = Importe Horas Obj / Horas Objetivo
+VH Realizado = Importe Horas Real / Horas Realizadas
+% Valor hora = VH Realizado / VH Objetivo</code></pre>
+<p class="">Esta definición también cubre importes manuales, penalidades y campañas con el ajuste de valor hora separado como bono. Los dos valores hora se redondean a dos decimales antes de obtener el porcentaje para que la división de los valores visibles coincida con el porcentaje informado.</p>
 <h3 id="penalizaciones">Penalizaciones<a class="anchor" href="#penalizaciones" aria-label="Enlace a esta sección">#</a></h3>
 <p class="">Las penalizaciones impactan como descuento. Aunque se carguen como valor positivo, el cálculo las resta del total correspondiente.</p>
 <h3 id="redondeo-monetario">Redondeo monetario<a class="anchor" href="#redondeo-monetario" aria-label="Enlace a esta sección">#</a></h3>

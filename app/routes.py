@@ -1953,6 +1953,37 @@ def resumen_registros(registros):
     }
 
 
+def metricas_valor_hora(registros):
+    """Replica el bloque VH del Excel sobre los importes agregados.
+
+    VH objetivo = Importe Horas Obj / Horas Objetivo.
+    VH realizado = Importe Horas Real / Horas Realizadas.
+    % VH = VH realizado / VH objetivo.
+
+    Los valores se redondean antes de calcular el porcentaje para que la
+    división de los dos importes visibles en la matriz reproduzca exactamente
+    el porcentaje informado.
+    """
+    horas_objetivo = sum(r.horas_objetivo or 0 for r in registros)
+    horas_realizadas = sum(r.horas_facturadas or 0 for r in registros)
+    importe_objetivo = sum(r.objetivo_facturacion_horas for r in registros)
+    importe_realizado = sum(r.facturado_horas for r in registros)
+    valor_hora_objetivo = round(
+        importe_objetivo / horas_objetivo if horas_objetivo != 0 else 0,
+        2,
+    )
+    valor_hora_realizado = round(
+        importe_realizado / horas_realizadas if horas_realizadas != 0 else 0,
+        2,
+    )
+    porcentaje_valor_hora = round(
+        valor_hora_realizado / valor_hora_objetivo * 100
+        if valor_hora_objetivo != 0 else 0,
+        2,
+    )
+    return valor_hora_objetivo, valor_hora_realizado, porcentaje_valor_hora
+
+
 def resumen_dashboard(registros):
     registros_con_objetivo = [r for r in registros if not r.es_next_gen]
     resumen = resumen_registros(registros_con_objetivo)
@@ -1980,20 +2011,7 @@ def resumen_dashboard(registros):
     horas_penalizadas = sum(r.horas_penalizadas or 0 for r in registros)
     objetivo_bono = sum(r.objetivo_facturacion_bono for r in registros)
     facturado_bono = sum(r.facturado_bono for r in registros)
-    horas_objetivo_tarifadas = sum(r.horas_objetivo or 0 for r in registros if (r.horas_objetivo or 0) > 0)
-    horas_netas_tarifadas = sum(
-        max((r.horas_facturadas or 0) - (r.horas_penalizadas or 0), 0)
-        for r in registros
-        if max((r.horas_facturadas or 0) - (r.horas_penalizadas or 0), 0) > 0
-    )
-    valor_hora_objetivo = (
-        sum((r.valor_hora_objetivo_calculo or 0) * (r.horas_objetivo or 0) for r in registros) / horas_objetivo_tarifadas
-        if horas_objetivo_tarifadas > 0 else 0
-    )
-    valor_hora_realizado = (
-        sum((r.valor_hora_alcanzado or 0) * max((r.horas_facturadas or 0) - (r.horas_penalizadas or 0), 0) for r in registros) / horas_netas_tarifadas
-        if horas_netas_tarifadas > 0 else 0
-    )
+    _, _, porcentaje_valor_hora = metricas_valor_hora(registros_con_objetivo)
     return {
         **resumen,
         'total_facturado': round(total_facturado, 2),
@@ -2003,7 +2021,7 @@ def resumen_dashboard(registros):
         'porcentaje_cumplimiento': round(porcentaje, 2),
         'porcentaje_cumplimiento_horas': round((horas_facturadas / horas_objetivo * 100) if horas_objetivo > 0 else 0, 2),
         'porcentaje_cumplimiento_horas_adh': round(((horas_facturadas - horas_penalizadas) / horas_objetivo * 100) if horas_objetivo > 0 else 0, 2),
-        'porcentaje_valor_hora': round((valor_hora_realizado / valor_hora_objetivo * 100) if valor_hora_objetivo > 0 else 0, 2),
+        'porcentaje_valor_hora': porcentaje_valor_hora,
         'porcentaje_bono': round((facturado_bono / objetivo_bono * 100) if objetivo_bono > 0 else 0, 2),
         'porcentaje_cumplimiento_facturacion': round(porcentaje, 2),
     }
@@ -2749,20 +2767,7 @@ def metricas_matriz(registros):
     objetivo_horas = sum(r.objetivo_facturacion_horas for r in registros)
     objetivo_bono = sum(r.objetivo_facturacion_bono for r in registros)
     horas_netas_facturadas = max(resumen['horas_facturadas'] - resumen['horas_penalizadas'], 0)
-    horas_objetivo_tarifadas = sum(r.horas_objetivo for r in registros if (r.horas_objetivo or 0) > 0)
-    horas_netas_tarifadas = sum(
-        max((r.horas_facturadas or 0) - (r.horas_penalizadas or 0), 0)
-        for r in registros
-        if max((r.horas_facturadas or 0) - (r.horas_penalizadas or 0), 0) > 0
-    )
-    valor_hora_objetivo = (
-        sum((r.valor_hora_objetivo_calculo or 0) * (r.horas_objetivo or 0) for r in registros) / horas_objetivo_tarifadas
-        if horas_objetivo_tarifadas > 0 else 0
-    )
-    valor_hora_realizado = (
-        sum((r.valor_hora_alcanzado or 0) * max((r.horas_facturadas or 0) - (r.horas_penalizadas or 0), 0) for r in registros) / horas_netas_tarifadas
-        if horas_netas_tarifadas > 0 else 0
-    )
+    valor_hora_objetivo, valor_hora_realizado, porcentaje_valor_hora = metricas_valor_hora(registros)
     horas_con_penalidad_adh = horas_netas_facturadas
     desvio_horas = horas_netas_facturadas - resumen['horas_objetivo']
     desvio_horas_monto = facturado_horas - objetivo_horas
@@ -2782,8 +2787,8 @@ def metricas_matriz(registros):
             if total_objetivo > 0 else 0,
             2
         ),
-        'valor_hora_objetivo': round(valor_hora_objetivo, 2),
-        'valor_hora_realizado': round(valor_hora_realizado, 2),
+        'valor_hora_objetivo': valor_hora_objetivo,
+        'valor_hora_realizado': valor_hora_realizado,
         'porcentaje_cumplimiento_horas': round(
             (resumen['horas_facturadas'] / resumen['horas_objetivo'] * 100)
             if resumen['horas_objetivo'] > 0 else 0,
@@ -2799,11 +2804,7 @@ def metricas_matriz(registros):
             if resumen['horas_objetivo'] > 0 else 0,
             2
         ),
-        'porcentaje_valor_hora': round(
-            (valor_hora_realizado / valor_hora_objetivo * 100)
-            if valor_hora_objetivo > 0 else 0,
-            2
-        ),
+        'porcentaje_valor_hora': porcentaje_valor_hora,
         'porcentaje_bono': round(
             (facturado_bono / objetivo_bono * 100)
             if objetivo_bono > 0 else 0,

@@ -1521,6 +1521,21 @@ El modelo de facturación calcula, entre otros:
 - desvío;
 - porcentaje de cumplimiento.
 
+En **Matriz**, el bloque de valor hora conserva las fórmulas del libro
+operativo y se calcula siempre sobre los importes agregados del mismo período
+y agrupación:
+
+```text
+VH Objetivo = Importe Horas Obj / Horas Objetivo
+VH Realizado = Importe Horas Real / Horas Realizadas
+% Valor hora = VH Realizado / VH Objetivo
+```
+
+Esta definición también cubre importes manuales, penalidades y campañas con
+el ajuste de valor hora separado como bono. Los dos valores hora se redondean
+a dos decimales antes de obtener el porcentaje para que la división de los
+valores visibles coincida con el porcentaje informado.
+
 ### Penalizaciones
 
 Las penalizaciones impactan como descuento. Aunque se carguen como valor positivo, el cálculo las resta del total correspondiente.

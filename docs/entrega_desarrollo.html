@@ -158,6 +158,10 @@ python scripts/verificar_resumen_horas.py</code></pre>
 <li>Los feriados activos recalculan jornadas y horas proyectadas.</li>
 <li>Una carga mensual PLP reemplaza el mes completo dentro de su alcance.</li>
 <li>Los importes monetarios se redondean con <code>ROUND_HALF_UP</code> a dos decimales.</li>
+<li>La Matriz replica el bloque de valor hora del Excel sobre importes agregados:</li>
+</ul>
+<p class=""><code>VH Objetivo = Importe Horas Obj / Horas Objetivo</code>, <code>VH Realizado = Importe Horas Real / Horas Realizadas</code> y <code>% Valor hora = VH Realizado / VH Objetivo</code>. Los bonos, la tarifación, Next Gen y otros ajustes no integran estos tres cálculos.</p>
+<ul>
 <li>Las normalizaciones de Proyectados no alteran nombres ni importes de origen.</li>
 <li>Next Gen conserva la cotización aplicada por producto y mes.</li>
 </ul>

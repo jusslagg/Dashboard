@@ -175,6 +175,11 @@ Luego se valida en navegador:
 - Los feriados activos recalculan jornadas y horas proyectadas.
 - Una carga mensual PLP reemplaza el mes completo dentro de su alcance.
 - Los importes monetarios se redondean con `ROUND_HALF_UP` a dos decimales.
+- La Matriz replica el bloque de valor hora del Excel sobre importes agregados:
+  `VH Objetivo = Importe Horas Obj / Horas Objetivo`,
+  `VH Realizado = Importe Horas Real / Horas Realizadas` y
+  `% Valor hora = VH Realizado / VH Objetivo`. Los bonos, la tarifación,
+  Next Gen y otros ajustes no integran estos tres cálculos.
 - Las normalizaciones de Proyectados no alteran nombres ni importes de origen.
 - Next Gen conserva la cotización aplicada por producto y mes.
 
