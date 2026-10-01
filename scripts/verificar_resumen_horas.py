@@ -66,6 +66,13 @@ def verificar():
     pagina = cliente.get('/resumen-horas')
     assert pagina.status_code == 200
     assert b'>Resumen</h1>' in pagina.data
+    assert b'id="alcanceFiltro"' in pagina.data
+    assert b'renderKpis(total);renderGrafico()' in pagina.data
+    for jefatura in resumen['detalle_jefaturas']:
+        total = jefatura['total']
+        comparable = total['horas_real'] + total['variable_real'] + total['penalizaciones_bonos']
+        esperado = round(comparable / total['total_obj'] * 100, 2) if total['total_obj'] else 0
+        assert total['porcentaje_cumplimiento'] == esperado, (jefatura['nombre'], total)
     kpis = cliente.get('/api/kpis?year=2026&cliente=Gire').get_json()['kpis']
     kpis_anuales = cliente.get('/api/kpis?year=2026').get_json()['kpis']
     assert kpis_anuales['desvio'] == resumen['total']['total_desvio'], (
