@@ -186,9 +186,9 @@ def generar_entrega_desarrollo() -> None:
   </style>
 </head>
 <body>
-  <div class="top"><strong>Entrega a Desarrollo · Acceso Full</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/entrega-desarrollo/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/entrega-desarrollo/esquema/sqlite">SQL SQLite</a><a class="button" href="/entrega-desarrollo/esquema/pdf">Esquema PDF</a><a class="button" href="/entrega-desarrollo/manifiesto">Manifiesto de datos</a><a class="button" href="/entrega-desarrollo/descargar">Descargar documento</a></div></div>
+  <div class="top"><strong>Entrega a Desarrollo · Acceso autorizado</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/entrega-desarrollo/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/entrega-desarrollo/esquema/sqlite">SQL SQLite</a><a class="button" href="/entrega-desarrollo/esquema/pdf">Esquema PDF</a><a class="button" href="/entrega-desarrollo/manifiesto">Manifiesto de datos</a><a class="button" href="/entrega-desarrollo/descargar">Descargar documento</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Entrega a Desarrollo y Base de Datos</h1><p>Procedimiento reproducible para configurar, crear, migrar y verificar la base sin cambiar los resultados de la aplicación.</p><p><strong>Acceso exclusivo para el rol Full.</strong></p><small>Generada desde ENTREGA_DESARROLLO.md · {MESES[date.today().month - 1].capitalize()} de {date.today().year}</small></header>
+    <header class="cover"><h1>Entrega a Desarrollo y Base de Datos</h1><p>Procedimiento reproducible para configurar, crear, migrar y verificar la base sin cambiar los resultados de la aplicación.</p><p><strong>Acceso para Full o perfiles expresamente autorizados.</strong></p><small>Generada desde ENTREGA_DESARROLLO.md · {MESES[date.today().month - 1].capitalize()} de {date.today().year}</small></header>
     <nav class="toc" id="indice"><h2>Índice de entrega</h2><ol>{construir_indice(indice)}</ol></nav>
     <article class="content">{cuerpo}</article>
     <footer>Dashboard de Facturación · Entrega a Desarrollo</footer>
@@ -256,7 +256,7 @@ def main():
 <body>
   <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/esquema/pdf">Esquema BD en PDF</a><a class="button" href="/documentacion-tecnica/esquema/sqlite">SQL SQLite</a><a class="button" href="/documentacion-tecnica/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/documentacion-tecnica/descargar">Documentación completa PDF</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · {MESES[date.today().month - 1].capitalize()} de {date.today().year}</small></header>
+    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso para Admin y Full.</strong></p><small>Generada desde README.md · {MESES[date.today().month - 1].capitalize()} de {date.today().year}</small></header>
     <nav class="toc" id="indice"><h2>Índice técnico</h2><ol>{construir_indice(indice)}</ol></nav>
     <article class="content">{cuerpo}</article>
     <footer>Dashboard de Facturación · Documentación técnica</footer>

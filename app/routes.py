@@ -322,6 +322,11 @@ def requiere_full():
     return usuario is not None and usuario.activo and usuario.es_superusuario
 
 
+def requiere_entrega_desarrollo():
+    usuario = usuario_actual()
+    return usuario is not None and usuario.activo and usuario.puede_ver_entrega_desarrollo
+
+
 def requiere_documentacion():
     return requiere_admin() or requiere_full()
 
@@ -385,6 +390,7 @@ def permiso_requerido(verificador):
 
 admin_requerido = permiso_requerido(requiere_admin)
 full_requerido = permiso_requerido(requiere_full)
+entrega_desarrollo_requerida = permiso_requerido(requiere_entrega_desarrollo)
 documentacion_requerida = permiso_requerido(requiere_documentacion)
 carga_requerida = permiso_requerido(requiere_carga)
 edicion_requerida = permiso_requerido(requiere_edicion)
@@ -462,7 +468,7 @@ def proteger_modulos_por_perfil():
         or (modulo == 'proyecciones' and usuario.puede_ver_proyecciones)
         or (modulo == 'maestros_api' and (usuario.puede_administrar_usuarios or usuario.puede_cargar))
         or (modulo == 'usuarios' and usuario.puede_administrar_usuarios)
-        or (modulo == 'entrega_full' and usuario.es_superusuario)
+        or (modulo == 'entrega_full' and usuario.puede_ver_entrega_desarrollo)
         or (modulo == 'documentacion' and (usuario.puede_administrar_usuarios or usuario.es_superusuario))
         or (modulo == 'historial' and usuario.puede_eliminar)
     )
@@ -3926,7 +3932,7 @@ def documentacion_tecnica():
     ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'documentacion_tecnica.html'))
     contenido = Path(ruta).read_text(encoding='utf-8')
     usuario = usuario_actual()
-    if usuario and usuario.es_superusuario:
+    if usuario and usuario.puede_ver_entrega_desarrollo:
         marcador = '<a class="button" href="/documentacion-tecnica/descargar">'
         acceso_entrega = '<a class="button primary" href="/entrega-desarrollo">Entrega a Desarrollo</a>'
         contenido = contenido.replace(marcador, acceso_entrega + marcador, 1)
@@ -3934,16 +3940,16 @@ def documentacion_tecnica():
 
 
 @main_bp.route('/entrega-desarrollo')
-@full_requerido
+@entrega_desarrollo_requerida
 def entrega_desarrollo():
-    """Abre el procedimiento de entrega y migración; exclusivo para Full."""
+    """Abre el procedimiento de entrega y migración para perfiles autorizados."""
     ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'entrega_desarrollo.html'))
     contenido = Path(ruta).read_text(encoding='utf-8')
     return Response(contenido, content_type='text/html; charset=utf-8')
 
 
 @main_bp.route('/entrega-desarrollo/descargar')
-@full_requerido
+@entrega_desarrollo_requerida
 def descargar_entrega_desarrollo():
     ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'ENTREGA_DESARROLLO.md'))
     return send_file(
@@ -3955,7 +3961,7 @@ def descargar_entrega_desarrollo():
 
 
 @main_bp.route('/entrega-desarrollo/manifiesto')
-@full_requerido
+@entrega_desarrollo_requerida
 def descargar_manifiesto_base():
     ruta = os.path.abspath(os.path.join(current_app.root_path, '..', 'docs', 'base_actual_manifest.json'))
     return send_file(
@@ -3967,7 +3973,7 @@ def descargar_manifiesto_base():
 
 
 @main_bp.route('/entrega-desarrollo/esquema/<motor>')
-@full_requerido
+@entrega_desarrollo_requerida
 def descargar_esquema_entrega(motor):
     archivos = {
         'sqlite': 'esquema_base_datos_sqlite.sql',

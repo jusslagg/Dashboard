@@ -1,10 +1,11 @@
 """Verifica que la matriz de perfiles coincida con la definición aprobada."""
 from pathlib import Path
+import json
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.models import permisos_perfil
+from app.models import Usuario, permisos_perfil
 
 
 CASOS = {
@@ -24,5 +25,13 @@ for (rol, puesto), (modulos, atributos) in CASOS.items():
     assert permisos['modulos'] == modulos, f'Módulos incorrectos para {rol} / {puesto}'
     actuales = (permisos['cargar'], permisos['editar'], permisos['eliminar'], permisos['administrar_perfiles'])
     assert actuales == atributos, f'Atributos incorrectos para {rol} / {puesto}'
+
+admin_entrega = Usuario(
+    nombre='Admin entrega', email='admin-entrega@example.test', rol='Admin', puesto='Controller',
+    permisos_personalizados=json.dumps({'entrega_desarrollo': True}),
+)
+assert admin_entrega.puede_ver_entrega_desarrollo
+assert admin_entrega.puede_editar and admin_entrega.puede_administrar_usuarios
+assert Usuario(nombre='Full', email='full@example.test', rol='Full').puede_ver_entrega_desarrollo
 
 print(f'RBAC OK: {len(CASOS)} combinaciones representativas verificadas.')

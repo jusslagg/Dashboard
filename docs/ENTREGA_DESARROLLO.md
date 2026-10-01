@@ -9,8 +9,9 @@ manifiesto de datos incluidos en este repositorio.
 
 El documento se consulta dentro de la aplicación desde **Ayuda > Entrega a
 Desarrollo** o mediante `/entrega-desarrollo`. Tanto la vista como las descargas
-del documento y del manifiesto están restringidas exclusivamente al rol
-`Full`; un usuario `Admin` no tiene acceso.
+del documento y del manifiesto están habilitadas automáticamente para `Full` y
+para usuarios con la autorización puntual
+`permisos_personalizados.entrega_desarrollo = true`.
 
 ## Fuentes autoritativas
 

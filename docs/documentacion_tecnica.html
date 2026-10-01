@@ -34,7 +34,7 @@
 <body>
   <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/esquema/pdf">Esquema BD en PDF</a><a class="button" href="/documentacion-tecnica/esquema/sqlite">SQL SQLite</a><a class="button" href="/documentacion-tecnica/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/documentacion-tecnica/descargar">Documentación completa PDF</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Octubre de 2026</small></header>
+    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso para Admin y Full.</strong></p><small>Generada desde README.md · Octubre de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice técnico</h2><ol><li class=""><a href="#documentacion-disponible">Documentación disponible</a></li>
 <li class=""><a href="#estado-del-proyecto">Estado del proyecto</a></li>
 <li class=""><a href="#estructura">Estructura</a></li>
@@ -160,9 +160,9 @@
 </tbody></table></div>
 <p class="">Con la aplicación iniciada, la guía funcional se abre desde <strong>Ayuda &gt; Guía de usuario</strong> o desde:</p>
 <pre><code class="language-text">http://127.0.0.1:8009/guia-usuario</code></pre>
-<p class="">La guía puede descargarse directamente en PDF por cualquier usuario autenticado. La documentación técnica del README también puede descargarse en PDF, pero esa opción y su endpoint están reservados exclusivamente al rol <code>administrador</code>.</p>
+<p class="">La guía puede descargarse directamente en PDF por cualquier usuario autenticado. La documentación técnica del README también puede descargarse en PDF para los perfiles <code>Admin</code> y <code>Full</code>.</p>
 <pre><code class="language-text">/guia-usuario/descargar                 # Cualquier usuario autenticado
-/documentacion-tecnica/descargar        # Solo administrador</code></pre>
+/documentacion-tecnica/descargar        # Admin y Full</code></pre>
 <h2 id="estado-del-proyecto">Estado del proyecto<a class="anchor" href="#estado-del-proyecto" aria-label="Enlace a esta sección">#</a></h2>
 <p class="">El proyecto tiene dos frentes:</p>
 <ul>
@@ -266,7 +266,7 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <h2 id="usuarios-y-permisos">Usuarios y permisos<a class="anchor" href="#usuarios-y-permisos" aria-label="Enlace a esta sección">#</a></h2>
 <p class="">El sistema tiene autenticación propia y roles definidos en base de datos.</p>
 <p class="">Roles vigentes: <code>Full</code>, <code>Admin</code>, <code>RMO_OPS</code>, <code>Finanzas</code>, <code>Tesorero</code>, <code>RMO</code> y <code>RMO_WFM</code>. Los permisos efectivos se completan con el puesto asociado al rol. Las etiquetas antiguas <code>superusuario</code>, <code>administrador</code> y <code>usuario</code> se convierten automáticamente para mantener compatibilidad con instalaciones previas.</p>
-<p class=""><code>Full</code> conserva acceso integral a todos los módulos, incluidos Datos Maestros, Historial, Usuarios y Documentación técnica. Además, es el único rol que ve Entrega a Desarrollo. Los permisos personalizados no reducen este alcance.</p>
+<p class=""><code>Full</code> conserva acceso integral a todos los módulos, incluidos Datos Maestros, Historial, Usuarios, Documentación técnica y Entrega a Desarrollo. Un usuario no Full puede recibir autorización puntual para Entrega a Desarrollo mediante <code>permisos_personalizados.entrega_desarrollo</code>, sin ampliar el resto del perfil. Los permisos personalizados no reducen el alcance automático de Full.</p>
 <p class="">Acciones sensibles como edición, eliminación o deshacer cambios requieren sesión activa, token CSRF y permisos suficientes.</p>
 <h2 id="base-de-datos-tablas-y-datos-necesarios">Base de datos, tablas y datos necesarios<a class="anchor" href="#base-de-datos-tablas-y-datos-necesarios" aria-label="Enlace a esta sección">#</a></h2>
 <p class="">La aplicación usa SQLAlchemy. En SQLite o PostgreSQL estos datos viven como <strong>tablas</strong>. Si más adelante se migra a una base documental, se pueden pensar como <strong>colecciones</strong> con la misma responsabilidad funcional.</p>

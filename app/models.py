@@ -216,12 +216,15 @@ class Usuario(db.Model):
             'rmo_multi_sq', 'rmo_personal', 'directorio', 'proyecciones',
         }
         return {
-            'visualizar': bool(guardados.get('visualizar', True)),
-            'cargar': bool(guardados.get('cargar', False)),
-            'editar': bool(guardados.get('editar', False)),
-            'eliminar': bool(guardados.get('eliminar', False)),
-            'administrar_perfiles': bool(guardados.get('administrar_perfiles', False)),
-            'modulos': set(guardados.get('modulos') or ()) & modulos_validos,
+            'visualizar': bool(guardados.get('visualizar', base['visualizar'])),
+            'cargar': bool(guardados.get('cargar', base['cargar'])),
+            'editar': bool(guardados.get('editar', base['editar'])),
+            'eliminar': bool(guardados.get('eliminar', base['eliminar'])),
+            'administrar_perfiles': bool(guardados.get('administrar_perfiles', base['administrar_perfiles'])),
+            'modulos': (
+                set(guardados.get('modulos') or ()) & modulos_validos
+                if 'modulos' in guardados else set(base['modulos'])
+            ),
         }
 
     def puede_acceder(self, modulo):
@@ -260,6 +263,16 @@ class Usuario(db.Model):
     @property
     def puede_ver_catalogos(self):
         return self.es_administrador or self.es_superusuario
+
+    @property
+    def puede_ver_entrega_desarrollo(self):
+        if self.es_superusuario:
+            return True
+        try:
+            guardados = json.loads(self.permisos_personalizados or '{}')
+        except (TypeError, ValueError):
+            return False
+        return bool(guardados.get('entrega_desarrollo', False))
 
     @property
     def puede_administrar_usuarios(self):

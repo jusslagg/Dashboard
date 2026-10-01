@@ -25,9 +25,9 @@
   </style>
 </head>
 <body>
-  <div class="top"><strong>Entrega a Desarrollo · Acceso Full</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/entrega-desarrollo/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/entrega-desarrollo/esquema/sqlite">SQL SQLite</a><a class="button" href="/entrega-desarrollo/esquema/pdf">Esquema PDF</a><a class="button" href="/entrega-desarrollo/manifiesto">Manifiesto de datos</a><a class="button" href="/entrega-desarrollo/descargar">Descargar documento</a></div></div>
+  <div class="top"><strong>Entrega a Desarrollo · Acceso autorizado</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/entrega-desarrollo/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/entrega-desarrollo/esquema/sqlite">SQL SQLite</a><a class="button" href="/entrega-desarrollo/esquema/pdf">Esquema PDF</a><a class="button" href="/entrega-desarrollo/manifiesto">Manifiesto de datos</a><a class="button" href="/entrega-desarrollo/descargar">Descargar documento</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Entrega a Desarrollo y Base de Datos</h1><p>Procedimiento reproducible para configurar, crear, migrar y verificar la base sin cambiar los resultados de la aplicación.</p><p><strong>Acceso exclusivo para el rol Full.</strong></p><small>Generada desde ENTREGA_DESARROLLO.md · Octubre de 2026</small></header>
+    <header class="cover"><h1>Entrega a Desarrollo y Base de Datos</h1><p>Procedimiento reproducible para configurar, crear, migrar y verificar la base sin cambiar los resultados de la aplicación.</p><p><strong>Acceso para Full o perfiles expresamente autorizados.</strong></p><small>Generada desde ENTREGA_DESARROLLO.md · Octubre de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice de entrega</h2><ol><li class=""><a href="#acceso-desde-la-aplicacion">Acceso desde la aplicación</a></li>
 <li class=""><a href="#fuentes-autoritativas">Fuentes autoritativas</a></li>
 <li class=""><a href="#configuracion-sin-valores-locales-fijos">Configuración sin valores locales fijos</a></li>
@@ -42,7 +42,7 @@
     <article class="content"><h1 id="entrega-tecnica-para-desarrollo-y-base-de-datos">Entrega técnica para Desarrollo y Base de Datos<a class="anchor" href="#entrega-tecnica-para-desarrollo-y-base-de-datos" aria-label="Enlace a esta sección">#</a></h1>
 <p class="">Este documento define cómo conectar, crear o migrar la base del Dashboard de Facturación sin cambiar los resultados que entrega la aplicación. El contrato vigente está compuesto por los modelos SQLAlchemy, los DDL generados y el manifiesto de datos incluidos en este repositorio.</p>
 <h2 id="acceso-desde-la-aplicacion">Acceso desde la aplicación<a class="anchor" href="#acceso-desde-la-aplicacion" aria-label="Enlace a esta sección">#</a></h2>
-<p class="">El documento se consulta dentro de la aplicación desde <strong>Ayuda &gt; Entrega a Desarrollo</strong> o mediante <code>/entrega-desarrollo</code>. Tanto la vista como las descargas del documento y del manifiesto están restringidas exclusivamente al rol <code>Full</code>; un usuario <code>Admin</code> no tiene acceso.</p>
+<p class="">El documento se consulta dentro de la aplicación desde <strong>Ayuda &gt; Entrega a Desarrollo</strong> o mediante <code>/entrega-desarrollo</code>. Tanto la vista como las descargas del documento y del manifiesto están habilitadas automáticamente para <code>Full</code> y para usuarios con la autorización puntual <code>permisos_personalizados.entrega_desarrollo = true</code>.</p>
 <h2 id="fuentes-autoritativas">Fuentes autoritativas<a class="anchor" href="#fuentes-autoritativas" aria-label="Enlace a esta sección">#</a></h2>
 <div class="table-wrap"><table><thead><tr>
 <th>Elemento</th>

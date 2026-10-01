@@ -26,11 +26,11 @@ Con la aplicación iniciada, la guía funcional se abre desde **Ayuda > Guía de
 http://127.0.0.1:8009/guia-usuario
 ```
 
-La guía puede descargarse directamente en PDF por cualquier usuario autenticado. La documentación técnica del README también puede descargarse en PDF, pero esa opción y su endpoint están reservados exclusivamente al rol `administrador`.
+La guía puede descargarse directamente en PDF por cualquier usuario autenticado. La documentación técnica del README también puede descargarse en PDF para los perfiles `Admin` y `Full`.
 
 ```text
 /guia-usuario/descargar                 # Cualquier usuario autenticado
-/documentacion-tecnica/descargar        # Solo administrador
+/documentacion-tecnica/descargar        # Admin y Full
 ```
 
 ## Estado del proyecto
@@ -204,8 +204,10 @@ El sistema tiene autenticación propia y roles definidos en base de datos.
 Roles vigentes: `Full`, `Admin`, `RMO_OPS`, `Finanzas`, `Tesorero`, `RMO` y `RMO_WFM`. Los permisos efectivos se completan con el puesto asociado al rol. Las etiquetas antiguas `superusuario`, `administrador` y `usuario` se convierten automáticamente para mantener compatibilidad con instalaciones previas.
 
 `Full` conserva acceso integral a todos los módulos, incluidos Datos Maestros,
-Historial, Usuarios y Documentación técnica. Además, es el único rol que ve
-Entrega a Desarrollo. Los permisos personalizados no reducen este alcance.
+Historial, Usuarios, Documentación técnica y Entrega a Desarrollo. Un usuario
+no Full puede recibir autorización puntual para Entrega a Desarrollo mediante
+`permisos_personalizados.entrega_desarrollo`, sin ampliar el resto del perfil.
+Los permisos personalizados no reducen el alcance automático de Full.
 
 Acciones sensibles como edición, eliminación o deshacer cambios requieren sesión activa, token CSRF y permisos suficientes.
 
