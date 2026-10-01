@@ -156,6 +156,20 @@ python scripts/verificar_feriados_facturacion.py
 python scripts/verificar_resumen_horas.py
 ```
 
+Si se recibe una nueva versión del libro operativo, se concilia contra la
+solapa anual con este comando. Sin `--apply` funciona como auditoría y debe
+informar `filas_actualizadas: 0` después de una carga correcta:
+
+```powershell
+python scripts/reprocesar_facturacion_2026.py "RUTA_EXCEL" --year 2026 --apply
+python scripts/reprocesar_facturacion_2026.py "RUTA_EXCEL" --year 2026
+```
+
+La asociación usa mes, cliente, servicio y tipo de jornada; no depende de que
+las horas continúen iguales. Cada aplicación registra el nombre y SHA-256 del
+archivo en `historial_cambios`. Las cargas creadas solo en la app se conservan
+si no existe una fila equivalente en el archivo.
+
 Luego se valida en navegador:
 
 1. login y permisos;
@@ -176,10 +190,11 @@ Luego se valida en navegador:
 - Una carga mensual PLP reemplaza el mes completo dentro de su alcance.
 - Los importes monetarios se redondean con `ROUND_HALF_UP` a dos decimales.
 - La Matriz replica el bloque de valor hora del Excel sobre importes agregados:
-  `VH Objetivo = Importe Horas Obj / Horas Objetivo`,
-  `VH Realizado = Importe Horas Real / Horas Realizadas` y
-  `% Valor hora = VH Realizado / VH Objetivo`. Los bonos, la tarifación,
-  Next Gen y otros ajustes no integran estos tres cálculos.
+  `VH Objetivo = Total Obj / Horas Objetivo`,
+  `VH Realizado = Total Real / Horas Realizadas` y
+  `% Valor hora = VH Realizado / VH Objetivo`. `Total Obj` incluye horas y
+  variable objetivo; `Total Real` incluye horas, variable productivo, bonos y
+  penalizaciones. Tarifación, Next Gen y otros no integran estos cálculos.
 - Las normalizaciones de Proyectados no alteran nombres ni importes de origen.
 - Next Gen conserva la cotización aplicada por producto y mes.
 

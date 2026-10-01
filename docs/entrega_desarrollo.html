@@ -27,7 +27,7 @@
 <body>
   <div class="top"><strong>Entrega a Desarrollo · Acceso Full</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/entrega-desarrollo/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/entrega-desarrollo/esquema/sqlite">SQL SQLite</a><a class="button" href="/entrega-desarrollo/esquema/pdf">Esquema PDF</a><a class="button" href="/entrega-desarrollo/manifiesto">Manifiesto de datos</a><a class="button" href="/entrega-desarrollo/descargar">Descargar documento</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Entrega a Desarrollo y Base de Datos</h1><p>Procedimiento reproducible para configurar, crear, migrar y verificar la base sin cambiar los resultados de la aplicación.</p><p><strong>Acceso exclusivo para el rol Full.</strong></p><small>Generada desde ENTREGA_DESARROLLO.md · Septiembre de 2026</small></header>
+    <header class="cover"><h1>Entrega a Desarrollo y Base de Datos</h1><p>Procedimiento reproducible para configurar, crear, migrar y verificar la base sin cambiar los resultados de la aplicación.</p><p><strong>Acceso exclusivo para el rol Full.</strong></p><small>Generada desde ENTREGA_DESARROLLO.md · Octubre de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice de entrega</h2><ol><li class=""><a href="#acceso-desde-la-aplicacion">Acceso desde la aplicación</a></li>
 <li class=""><a href="#fuentes-autoritativas">Fuentes autoritativas</a></li>
 <li class=""><a href="#configuracion-sin-valores-locales-fijos">Configuración sin valores locales fijos</a></li>
@@ -139,6 +139,10 @@ python scripts/verificar_matriz_segmentos.py
 python scripts/verificar_proforma_seguimiento.py
 python scripts/verificar_feriados_facturacion.py
 python scripts/verificar_resumen_horas.py</code></pre>
+<p class="">Si se recibe una nueva versión del libro operativo, se concilia contra la solapa anual con este comando. Sin <code>--apply</code> funciona como auditoría y debe informar <code>filas_actualizadas: 0</code> después de una carga correcta:</p>
+<pre><code class="language-powershell">python scripts/reprocesar_facturacion_2026.py &quot;RUTA_EXCEL&quot; --year 2026 --apply
+python scripts/reprocesar_facturacion_2026.py &quot;RUTA_EXCEL&quot; --year 2026</code></pre>
+<p class="">La asociación usa mes, cliente, servicio y tipo de jornada; no depende de que las horas continúen iguales. Cada aplicación registra el nombre y SHA-256 del archivo en <code>historial_cambios</code>. Las cargas creadas solo en la app se conservan si no existe una fila equivalente en el archivo.</p>
 <p class="">Luego se valida en navegador:</p>
 <ol>
 <li>login y permisos;</li>
@@ -160,7 +164,7 @@ python scripts/verificar_resumen_horas.py</code></pre>
 <li>Los importes monetarios se redondean con <code>ROUND_HALF_UP</code> a dos decimales.</li>
 <li>La Matriz replica el bloque de valor hora del Excel sobre importes agregados:</li>
 </ul>
-<p class=""><code>VH Objetivo = Importe Horas Obj / Horas Objetivo</code>, <code>VH Realizado = Importe Horas Real / Horas Realizadas</code> y <code>% Valor hora = VH Realizado / VH Objetivo</code>. Los bonos, la tarifación, Next Gen y otros ajustes no integran estos tres cálculos.</p>
+<p class=""><code>VH Objetivo = Total Obj / Horas Objetivo</code>, <code>VH Realizado = Total Real / Horas Realizadas</code> y <code>% Valor hora = VH Realizado / VH Objetivo</code>. <code>Total Obj</code> incluye horas y variable objetivo; <code>Total Real</code> incluye horas, variable productivo, bonos y penalizaciones. Tarifación, Next Gen y otros no integran estos cálculos.</p>
 <ul>
 <li>Las normalizaciones de Proyectados no alteran nombres ni importes de origen.</li>
 <li>Next Gen conserva la cotización aplicada por producto y mes.</li>

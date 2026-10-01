@@ -8,7 +8,7 @@ from app.models import permisos_perfil
 
 
 CASOS = {
-    ('Full', 'Controller'): ({'facturacion_total', 'rmo_santander', 'rmo_multi_co', 'rmo_multi_sq', 'rmo_personal', 'directorio', 'proyecciones'}, (True, False, False, False)),
+    ('Full', 'Controller'): ({'facturacion_total', 'rmo_santander', 'rmo_multi_co', 'rmo_multi_sq', 'rmo_personal', 'directorio', 'proyecciones'}, (True, True, True, True)),
     ('Admin', 'Administrador'): ({'facturacion_total', 'rmo_santander', 'rmo_multi_co', 'rmo_multi_sq', 'directorio', 'proyecciones'}, (True, True, True, True)),
     ('RMO_OPS', 'Jefe de site'): ({'facturacion_asignada'}, (False, False, False, False)),
     ('Finanzas', 'Resp Planif y ctrl'): (set(), (False, False, False, False)),

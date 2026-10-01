@@ -147,9 +147,9 @@ def permisos_perfil(rol, puesto=''):
     return {
         'visualizar': True,
         'cargar': rol in ('Full', 'Admin'),
-        'editar': rol == 'Admin',
-        'eliminar': rol == 'Admin',
-        'administrar_perfiles': rol == 'Admin',
+        'editar': rol in ('Full', 'Admin'),
+        'eliminar': rol in ('Full', 'Admin'),
+        'administrar_perfiles': rol in ('Full', 'Admin'),
         'modulos': modulos,
     }
 
@@ -201,6 +201,10 @@ class Usuario(db.Model):
     @property
     def permisos(self):
         base = permisos_perfil(self.rol, self.puesto)
+        # Full siempre conserva el acceso integral. Los permisos personalizados
+        # sirven para acotar perfiles operativos, no al perfil dueño del sistema.
+        if self.es_superusuario:
+            return base
         if not self.permisos_personalizados:
             return base
         try:
@@ -255,7 +259,7 @@ class Usuario(db.Model):
 
     @property
     def puede_ver_catalogos(self):
-        return self.es_administrador
+        return self.es_administrador or self.es_superusuario
 
     @property
     def puede_administrar_usuarios(self):

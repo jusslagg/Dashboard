@@ -203,6 +203,10 @@ El sistema tiene autenticación propia y roles definidos en base de datos.
 
 Roles vigentes: `Full`, `Admin`, `RMO_OPS`, `Finanzas`, `Tesorero`, `RMO` y `RMO_WFM`. Los permisos efectivos se completan con el puesto asociado al rol. Las etiquetas antiguas `superusuario`, `administrador` y `usuario` se convierten automáticamente para mantener compatibilidad con instalaciones previas.
 
+`Full` conserva acceso integral a todos los módulos, incluidos Datos Maestros,
+Historial, Usuarios y Documentación técnica. Además, es el único rol que ve
+Entrega a Desarrollo. Los permisos personalizados no reducen este alcance.
+
 Acciones sensibles como edición, eliminación o deshacer cambios requieren sesión activa, token CSRF y permisos suficientes.
 
 ## Base de datos, tablas y datos necesarios
@@ -1526,13 +1530,15 @@ operativo y se calcula siempre sobre los importes agregados del mismo período
 y agrupación:
 
 ```text
-VH Objetivo = Importe Horas Obj / Horas Objetivo
-VH Realizado = Importe Horas Real / Horas Realizadas
+VH Objetivo = Total Obj / Horas Objetivo
+VH Realizado = Total Real / Horas Realizadas
 % Valor hora = VH Realizado / VH Objetivo
 ```
 
-Esta definición también cubre importes manuales, penalidades y campañas con
-el ajuste de valor hora separado como bono. Los dos valores hora se redondean
+`Total Obj` incluye el objetivo de horas y el variable objetivo. `Total Real`
+incluye importe de horas, variable productivo, bonos y penalizaciones; excluye
+tarifación, Next Gen y otros. Esta definición también cubre importes manuales
+y campañas con el ajuste de valor hora separado como bono. Los dos valores hora se redondean
 a dos decimales antes de obtener el porcentaje para que la división de los
 valores visibles coincida con el porcentaje informado.
 

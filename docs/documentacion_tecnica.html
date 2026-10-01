@@ -34,7 +34,7 @@
 <body>
   <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/esquema/pdf">Esquema BD en PDF</a><a class="button" href="/documentacion-tecnica/esquema/sqlite">SQL SQLite</a><a class="button" href="/documentacion-tecnica/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/documentacion-tecnica/descargar">Documentación completa PDF</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Septiembre de 2026</small></header>
+    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso exclusivo para administradores.</strong></p><small>Generada desde README.md · Octubre de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice técnico</h2><ol><li class=""><a href="#documentacion-disponible">Documentación disponible</a></li>
 <li class=""><a href="#estado-del-proyecto">Estado del proyecto</a></li>
 <li class=""><a href="#estructura">Estructura</a></li>
@@ -266,6 +266,7 @@ MAX_CONTENT_LENGTH=10485760</code></pre>
 <h2 id="usuarios-y-permisos">Usuarios y permisos<a class="anchor" href="#usuarios-y-permisos" aria-label="Enlace a esta sección">#</a></h2>
 <p class="">El sistema tiene autenticación propia y roles definidos en base de datos.</p>
 <p class="">Roles vigentes: <code>Full</code>, <code>Admin</code>, <code>RMO_OPS</code>, <code>Finanzas</code>, <code>Tesorero</code>, <code>RMO</code> y <code>RMO_WFM</code>. Los permisos efectivos se completan con el puesto asociado al rol. Las etiquetas antiguas <code>superusuario</code>, <code>administrador</code> y <code>usuario</code> se convierten automáticamente para mantener compatibilidad con instalaciones previas.</p>
+<p class=""><code>Full</code> conserva acceso integral a todos los módulos, incluidos Datos Maestros, Historial, Usuarios y Documentación técnica. Además, es el único rol que ve Entrega a Desarrollo. Los permisos personalizados no reducen este alcance.</p>
 <p class="">Acciones sensibles como edición, eliminación o deshacer cambios requieren sesión activa, token CSRF y permisos suficientes.</p>
 <h2 id="base-de-datos-tablas-y-datos-necesarios">Base de datos, tablas y datos necesarios<a class="anchor" href="#base-de-datos-tablas-y-datos-necesarios" aria-label="Enlace a esta sección">#</a></h2>
 <p class="">La aplicación usa SQLAlchemy. En SQLite o PostgreSQL estos datos viven como <strong>tablas</strong>. Si más adelante se migra a una base documental, se pueden pensar como <strong>colecciones</strong> con la misma responsabilidad funcional.</p>
@@ -1932,10 +1933,10 @@ python scripts\generar_documentacion_tecnica.py</code></pre>
 <li>porcentaje de cumplimiento.</li>
 </ul>
 <p class="">En <strong>Matriz</strong>, el bloque de valor hora conserva las fórmulas del libro operativo y se calcula siempre sobre los importes agregados del mismo período y agrupación:</p>
-<pre><code class="language-text">VH Objetivo = Importe Horas Obj / Horas Objetivo
-VH Realizado = Importe Horas Real / Horas Realizadas
+<pre><code class="language-text">VH Objetivo = Total Obj / Horas Objetivo
+VH Realizado = Total Real / Horas Realizadas
 % Valor hora = VH Realizado / VH Objetivo</code></pre>
-<p class="">Esta definición también cubre importes manuales, penalidades y campañas con el ajuste de valor hora separado como bono. Los dos valores hora se redondean a dos decimales antes de obtener el porcentaje para que la división de los valores visibles coincida con el porcentaje informado.</p>
+<p class=""><code>Total Obj</code> incluye el objetivo de horas y el variable objetivo. <code>Total Real</code> incluye importe de horas, variable productivo, bonos y penalizaciones; excluye tarifación, Next Gen y otros. Esta definición también cubre importes manuales y campañas con el ajuste de valor hora separado como bono. Los dos valores hora se redondean a dos decimales antes de obtener el porcentaje para que la división de los valores visibles coincida con el porcentaje informado.</p>
 <h3 id="penalizaciones">Penalizaciones<a class="anchor" href="#penalizaciones" aria-label="Enlace a esta sección">#</a></h3>
 <p class="">Las penalizaciones impactan como descuento. Aunque se carguen como valor positivo, el cálculo las resta del total correspondiente.</p>
 <h3 id="redondeo-monetario">Redondeo monetario<a class="anchor" href="#redondeo-monetario" aria-label="Enlace a esta sección">#</a></h3>

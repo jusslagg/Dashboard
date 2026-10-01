@@ -1956,8 +1956,8 @@ def resumen_registros(registros):
 def metricas_valor_hora(registros):
     """Replica el bloque VH del Excel sobre los importes agregados.
 
-    VH objetivo = Importe Horas Obj / Horas Objetivo.
-    VH realizado = Importe Horas Real / Horas Realizadas.
+    VH objetivo = Total Obj / Horas Objetivo.
+    VH realizado = Total Real / Horas Realizadas.
     % VH = VH realizado / VH objetivo.
 
     Los valores se redondean antes de calcular el porcentaje para que la
@@ -1966,8 +1966,8 @@ def metricas_valor_hora(registros):
     """
     horas_objetivo = sum(r.horas_objetivo or 0 for r in registros)
     horas_realizadas = sum(r.horas_facturadas or 0 for r in registros)
-    importe_objetivo = sum(r.objetivo_facturacion_horas for r in registros)
-    importe_realizado = sum(r.facturado_horas for r in registros)
+    importe_objetivo = sum(r.total_teorico for r in registros)
+    importe_realizado = sum(r.total_comparable for r in registros)
     valor_hora_objetivo = round(
         importe_objetivo / horas_objetivo if horas_objetivo != 0 else 0,
         2,

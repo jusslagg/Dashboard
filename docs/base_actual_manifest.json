@@ -38,7 +38,7 @@
     },
     "facturacion_anio": {
       "rows": 1619,
-      "sha256": "5fcabd29f06dd090a18053ebfc658a92dd3700e106a6ab3e865316fb56695e81"
+      "sha256": "e4a36de2556002be8c45f19c2557b21a8b1d48abe9e46dd715ae3760b9175fba"
     },
     "feriados_operativos": {
       "rows": 18,
@@ -94,7 +94,7 @@
     },
     "usuarios": {
       "rows": 5,
-      "sha256": "18c1ca41e531c38126297ce0f876a282b3b16c1529ba9ef6ed30bca363f52d5e"
+      "sha256": "5b2d93742a5b83a77ba60607841f03cf42a55f3a51f8ce12d47ec31b438b4d6f"
     },
     "variables_campanias": {
       "rows": 220,
@@ -105,8 +105,8 @@
       "sha256": "be2617863af87554e5bf1d86ecc1e0273e748c453613cf386dc2e2c1af79a273"
     },
     "historial_cambios": {
-      "rows": 783,
-      "sha256": "d05b582d1ed7cb8bc1d151ab1274ee43b5db8df31f6ac44fcd4cb0a424ec0364"
+      "rows": 786,
+      "sha256": "fff2ba68f1a0b654192980d604b8c57d66f0d0ece7107d0bb629eddb62251777"
     },
     "justificaciones_ajustes": {
       "rows": 44,

@@ -91,4 +91,19 @@ metricas_negativas = metricas_matriz([registro_objetivo_negativo])
 assert metricas_negativas['valor_hora_objetivo'] == -10
 assert metricas_negativas['valor_hora_realizado'] == 5
 assert metricas_negativas['porcentaje_valor_hora'] == -50
+
+# Caso real de control: Assurant enero. El libro obtiene los valores hora con
+# Total Obj y Total Real, incluyendo el variable objetivo en el primero.
+registro_assurant = Facturacion2026(
+    fecha=date(2026, 1, 1), mes='2026-01', cliente='Assurant', gerente='Multicampañas',
+    jefe_site='Surace, Carolina', campania='Assurant', subcampania='Assurant',
+    tipo_negocio='Assurant', tipo_jornada='Diurna', horas_objetivo=3402,
+    horas_facturadas=2810, valor_hora_objetivo=14698.64, valor_hora=14698.64,
+    facturado_horas_manual=41303178.4, variable_objetivo=5190125.22,
+    control_objetivo_total=55194898.5,
+)
+metricas_assurant = metricas_matriz([registro_assurant])
+assert metricas_assurant['valor_hora_objetivo'] == 16224.25
+assert metricas_assurant['valor_hora_realizado'] == 14698.64
+assert metricas_assurant['porcentaje_valor_hora'] == 90.6
 print('OK: matriz por segmento, jefatura y servicio alineada con Datos Maestros.')

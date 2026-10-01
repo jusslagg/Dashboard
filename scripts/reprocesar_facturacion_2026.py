@@ -1,156 +1,212 @@
+"""Concilia la base anual contra la solapa del año del libro operativo."""
+
 import argparse
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, datetime
+import hashlib
 import json
 import os
 import sys
 from pathlib import Path
+
 from openpyxl import load_workbook
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from app import create_app, db
 from app.models import Facturacion2026, HistorialCambio
+from app.routes import normalizar_header, normalizar_tipo_vh
 
-def texto(v):
-    return ' '.join(str(v or '').strip().lower().split())
 
-def numero(v):
-    # Excel SUM/SUBTOTAL ignora importes almacenados como texto, aunque tengan
-    # apariencia monetaria. La conciliación debe respetar ese mismo tipo.
-    try: return round(float(v or 0), 4)
-    except (TypeError, ValueError): return 0.0
+def texto(valor):
+    return normalizar_header(valor)
 
-def mes(v):
-    if isinstance(v, (date, datetime)): return v.strftime('%Y-%m')
-    return str(v or '')[:7]
 
-def clave_excel(row):
-    return (mes(row[9]), texto(row[6]),
-            numero(row[10]))
+def numero(valor):
+    try:
+        return round(float(valor or 0), 4)
+    except (TypeError, ValueError):
+        return 0.0
 
-def clave_db(r):
-    cliente = texto(r.cliente)
-    if cliente == 'santander getnet' and 'onboarding' in texto(r.campania):
-        cliente = 'santander getnet onboarding'
-    return (r.mes, cliente,
-            numero(r.horas_objetivo))
 
-def maestro(nombre):
-    valor = texto(nombre)
-    if valor.startswith('personal'): return 'personal'
-    if valor.startswith('santander'): return 'santander'
-    if valor.startswith('naturgy'): return 'naturgy'
-    mapas = {'bbva seguros':'bbva','galicia seguros':'galicia','river plate':'river plate',
-             'bsf carrefour':'bsf carrefour','bice':'bice','gire':'gire'}
-    return mapas.get(valor, valor)
+def periodo(valor):
+    if isinstance(valor, (date, datetime)):
+        return valor.strftime("%Y-%m")
+    return str(valor or "")[:7]
+
+
+def identidad_fuente(fila):
+    return (texto(fila[4]), texto(fila[7]), texto(normalizar_tipo_vh(fila[8])))
+
+
+def identidad_registro(registro):
+    return (texto(registro.cliente), texto(registro.subcampania), texto(registro.tipo_jornada))
+
+
+def clave_semilla_fuente(fila, nombre):
+    return (periodo(fila[9]), texto(nombre), numero(fila[10]))
+
+
+def clave_semilla_registro(registro):
+    cliente = texto(registro.cliente)
+    if cliente == "santander getnet" and "onboarding" in texto(registro.campania):
+        cliente = "santander getnet onboarding"
+    return (registro.mes, cliente, numero(registro.horas_objetivo))
+
+
+def vector_fuente(fila):
+    return tuple(numero(fila[indice]) for indice in (10, 11, 12, 13, 17, 18, 21, 26, 30))
+
+
+def vector_registro(registro):
+    return (
+        numero(registro.horas_objetivo), numero(registro.horas_facturadas),
+        numero(registro.valor_hora), numero(registro.facturado_horas),
+        numero(registro.variable_productivo_calculo),
+        numero(registro.facturado_bono + registro.penalizaciones_incumplimientos),
+        numero(registro.total_dashboard), numero(registro.total_teorico),
+        numero(registro.total_facturado_control),
+    )
+
+
+def distancia(registro, fila):
+    total = 0.0
+    for actual, deseado in zip(vector_registro(registro), vector_fuente(fila)):
+        total += abs(actual - deseado) / max(abs(actual), abs(deseado), 1.0)
+    return total
+
+
+def construir_asociaciones(registros, filas):
+    """Asocia filas aunque el libro nuevo haya cambiado horas o importes."""
+    fuentes_semilla = defaultdict(list)
+    for indice, fila in filas:
+        for nombre in {fila[4], fila[6]}:
+            fuentes_semilla[clave_semilla_fuente(fila, nombre)].append((indice, fila))
+
+    usados = defaultdict(int)
+    traducciones = defaultdict(Counter)
+    for registro in registros:
+        clave = clave_semilla_registro(registro)
+        posicion = usados[clave]
+        candidatos = fuentes_semilla.get(clave, ())
+        if posicion >= len(candidatos):
+            continue
+        _, fila = candidatos[posicion]
+        usados[clave] += 1
+        # Las filas en cero se repiten entre muchos servicios y no identifican
+        # un alias de forma segura. Los alias se aprenden solo de filas con base.
+        if numero(fila[10]) == 0:
+            continue
+        traducciones[identidad_fuente(fila)][identidad_registro(registro)] += 1
+
+    identidades_db = {identidad_registro(registro) for registro in registros}
+    fuentes_por_grupo = defaultdict(list)
+    for indice, fila in filas:
+        identidad = identidad_fuente(fila)
+        if identidad not in identidades_db and identidad in traducciones:
+            identidad = traducciones[identidad].most_common(1)[0][0]
+        fuentes_por_grupo[(periodo(fila[9]), *identidad)].append((indice, fila))
+
+    registros_por_grupo = defaultdict(list)
+    for registro in registros:
+        registros_por_grupo[(registro.mes, *identidad_registro(registro))].append(registro)
+
+    asociaciones, sin_fuente = [], []
+    for clave, propios in registros_por_grupo.items():
+        disponibles = list(fuentes_por_grupo.get(clave, ()))
+        for registro in propios:
+            if not disponibles:
+                sin_fuente.append(registro)
+                continue
+            mejor = min(range(len(disponibles)), key=lambda i: distancia(registro, disponibles[i][1]))
+            indice, fila = disponibles.pop(mejor)
+            asociaciones.append((registro, indice, fila))
+    return asociaciones, sin_fuente
+
+
+def aplicar_fila(registro, fila):
+    horas_objetivo = numero(fila[10])
+    valor_hora = numero(fila[12])
+    valor_hora_objetivo = numero(fila[22]) or valor_hora
+    objetivo_horas = numero(fila[24])
+
+    registro.horas_objetivo = horas_objetivo
+    registro.horas_facturadas = numero(fila[11])
+    registro.valor_hora = valor_hora
+    registro.valor_hora_objetivo = valor_hora_objetivo
+    registro.objetivo_separar_ajuste_vh = bool(
+        horas_objetivo
+        and abs(objetivo_horas - horas_objetivo * valor_hora_objetivo) > 0.02
+        and abs(objetivo_horas - horas_objetivo * valor_hora) <= 0.02
+    )
+    registro.facturado_horas_manual = numero(fila[13])
+    registro.tarifacion = numero(fila[14])
+    registro.variable_productivo = numero(fila[17])
+    ajuste = numero(fila[18])
+    registro.bonos = max(ajuste, 0)
+    registro.penalizaciones = abs(min(ajuste, 0))
+    registro.netx_gen = numero(fila[19])
+    registro.otros = numero(fila[20])
+    registro.total_facturado_manual = numero(fila[21])
+    registro.variable_objetivo = numero(fila[25])
+    registro.control_objetivo_total = numero(fila[26])
+    registro.control_facturado_horas = numero(fila[27])
+    registro.control_variable_productivo = numero(fila[28])
+    registro.control_penalizaciones_bonos = numero(fila[29])
+    registro.control_total_facturado = numero(fila[30])
+
 
 def main(archivo, year, aplicar=False):
-    wb = load_workbook(archivo, data_only=True, read_only=True)
-    ws = wb[str(year)]
-    fuentes = defaultdict(list)
-    for row in ws.iter_rows(min_row=3, max_col=31, values_only=True):
-        if row[4] and row[9]:
-            fuentes[clave_excel(row)].append(row)
-            clave_grupo = (mes(row[9]), texto(row[4]), numero(row[10]))
-            if clave_grupo != clave_excel(row):
-                fuentes[clave_grupo].append(row)
+    hoja = load_workbook(archivo, data_only=True, read_only=True)[str(year)]
+    filas = [
+        (indice, fila)
+        for indice, fila in enumerate(hoja.iter_rows(min_row=3, max_col=31, values_only=True), start=3)
+        if fila[4] and periodo(fila[9]).startswith(f"{year:04d}-")
+    ]
 
     app = create_app()
     with app.app_context():
+        meses_fuente = sorted({periodo(fila[9]) for _, fila in filas})
         registros = Facturacion2026.query.filter(
-            Facturacion2026.fecha >= date(year, 1, 1),
-            Facturacion2026.fecha < date(year + 1, 1, 1),
+            Facturacion2026.mes.in_(meses_fuente),
+            Facturacion2026.es_next_gen.is_(False),
         ).order_by(Facturacion2026.id).all()
-        usados = defaultdict(int); cambios = []; sin_match = []
-        for r in registros:
-            candidatos = fuentes.get(clave_db(r), [])
-            indice = usados[clave_db(r)]
-            if indice >= len(candidatos):
-                sin_match.append(r.id); continue
-            row = candidatos[indice]; usados[clave_db(r)] += 1
-            antes = r.to_dict()
-            objetivo_horas = numero(row[24]); horas_obj = float(r.horas_objetivo or 0)
-            if horas_obj:
-                r.valor_hora_objetivo = objetivo_horas / horas_obj
-            elif objetivo_horas:
-                r.importe_fijo = objetivo_horas
-            r.variable_objetivo = numero(row[25])
-            r.facturado_horas_manual = numero(row[13])
-            r.variable_productivo = numero(row[17])
-            ajuste = numero(row[18])
-            r.bonos = max(ajuste, 0)
-            r.penalizaciones = abs(min(ajuste, 0))
-            r.total_facturado_manual = numero(row[21])
-            r.control_facturado_horas = numero(row[27])
-            r.control_variable_productivo = numero(row[28])
-            r.control_penalizaciones_bonos = numero(row[29])
-            r.control_total_facturado = numero(row[30])
-            r.control_objetivo_total = numero(row[26])
-            cambios.append((r, antes))
-        print({'db': len(registros), 'matched': len(cambios), 'unmatched': len(sin_match), 'unmatched_ids': sin_match[:20]})
-        sin_match_material = [registro_id for registro_id in sin_match if registro_id not in (1334, 1335)]
-        if aplicar and not sin_match_material:
-            # La hoja RESUMEN consolida por mes. La conciliación debe respetar
-            # ese mismo corte; si se ajusta sólo el total anual, el resultado
-            # anual coincide pero los meses quedan redistribuidos.
-            objetivos = defaultdict(lambda: [0,0,0,0,0,0])
-            objetivos_totales = defaultdict(float)
-            operativos = defaultdict(lambda: [0,0,0,0])
-            for row in ws.iter_rows(min_row=3, max_col=31, values_only=True):
-                if not row[4] or not row[9]: continue
-                grupo = (mes(row[9]), maestro(row[4]))
-                for i, columna in enumerate((24,25,27,28,29,30)):
-                    objetivos[grupo][i] += numero(row[columna])
-                objetivos_totales[grupo] += numero(row[26])
-                for i, columna in enumerate((13,17,18,21)):
-                    operativos[grupo][i] += numero(row[columna])
-            por_grupo = defaultdict(list)
-            for r in registros: por_grupo[(r.mes, maestro(r.cliente))].append(r)
-            for grupo, deseado in objetivos.items():
-                propios = por_grupo.get(grupo, [])
-                if not propios: continue
-                primero = next((r for r in propios if float(r.horas_objetivo or 0)), propios[0])
-                actual_obj_h = sum(float(r.objetivo_facturacion_horas or 0) for r in propios)
-                if float(primero.horas_objetivo or 0):
-                    primero.valor_hora_objetivo += (deseado[0] - actual_obj_h) / float(primero.horas_objetivo)
-                primero.variable_objetivo += deseado[1] - sum(float(r.variable_objetivo or 0) for r in propios)
-                primero.control_facturado_horas += deseado[2] - sum(float(r.facturado_horas_control or 0) for r in propios)
-                primero.control_variable_productivo += deseado[3] - sum(float(r.variable_productivo_control or 0) for r in propios)
-                ajuste_actual = sum(float(r.penalizaciones_bonos_control or 0) for r in propios)
-                delta_ajuste = deseado[4] - ajuste_actual
-                primero.control_penalizaciones_bonos += delta_ajuste
-                # Total Facturado de control (AE) es una columna independiente
-                # en la matriz. Debe conciliarse después de ajustar todos los
-                # componentes para que ningún valor manual anterior prevalezca.
-                total_actual = sum(float(r.total_facturado_control or 0) for r in propios)
-                primero.control_total_facturado += deseado[5] - total_actual
-                objetivo_total_actual = sum(float(r.total_teorico or 0) for r in propios)
-                primero.control_objetivo_total += objetivos_totales[grupo] - objetivo_total_actual
-                deseado_operativo = operativos[grupo]
-                primero.facturado_horas_manual += deseado_operativo[0] - sum(float(r.facturado_horas or 0) for r in propios)
-                primero.variable_productivo += deseado_operativo[1] - sum(float(r.variable_productivo_calculo or 0) for r in propios)
-                ajuste_operativo = sum(float(r.facturado_bono or 0) + float(r.penalizaciones_incumplimientos or 0) for r in propios)
-                delta_operativo = deseado_operativo[2] - ajuste_operativo
-                if delta_operativo >= 0:
-                    primero.bonos += delta_operativo
-                else:
-                    primero.penalizaciones += abs(delta_operativo)
-                total_operativo = sum(float(r.total_dashboard or 0) for r in propios)
-                primero.total_facturado_manual += deseado_operativo[3] - total_operativo
-            despues = [r.to_dict() for r, _ in cambios]
-            historial = HistorialCambio(accion='reprocesamiento', entidad='facturacion_anio', entidad_id=str(year),
-                resumen=f'Reprocesamiento Facturación {year} desde Excel: {len(cambios)} filas',
-                antes=json.dumps({'filas': [a for _, a in cambios]}, ensure_ascii=False, default=str),
-                despues=json.dumps({'filas': despues}, ensure_ascii=False, default=str))
-            db.session.add(historial); db.session.commit()
-            print({'applied': len(cambios), 'history_id': historial.id})
+        asociaciones, sin_fuente = construir_asociaciones(registros, filas)
+        cambios = []
+        for registro, fila_excel, fila in asociaciones:
+            antes = registro.to_dict()
+            aplicar_fila(registro, fila)
+            despues = registro.to_dict()
+            if antes != despues:
+                cambios.append({"id": registro.id, "fila_excel": fila_excel, "antes": antes, "despues": despues})
+
+        resultado = {
+            "archivo": str(archivo),
+            "sha256": hashlib.sha256(Path(archivo).read_bytes()).hexdigest(),
+            "filas_db": len(registros), "filas_asociadas": len(asociaciones),
+            "filas_actualizadas": len(cambios), "filas_sin_fuente": len(sin_fuente),
+            "ids_sin_fuente": [registro.id for registro in sin_fuente],
+        }
+        if aplicar:
+            historial = HistorialCambio(
+                accion="reprocesamiento", entidad="facturacion_anio", entidad_id=str(year),
+                resumen=f"Conciliación Facturación {year} desde solapa {year}: {len(cambios)} filas",
+                detalle=f"Fuente: {Path(archivo).name}; SHA-256: {resultado['sha256']}",
+                antes=json.dumps({"cambios": cambios}, ensure_ascii=False, default=str),
+                despues=json.dumps(resultado, ensure_ascii=False, default=str),
+            )
+            db.session.add(historial)
+            db.session.commit()
+            resultado["history_id"] = historial.id
         else:
             db.session.rollback()
+        print(json.dumps(resultado, ensure_ascii=False, indent=2))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('archivo', type=Path)
-    parser.add_argument('--year', type=int, default=int(os.getenv('APP_DEFAULT_YEAR', datetime.now().year)))
-    parser.add_argument('--apply', action='store_true')
+    parser.add_argument("archivo", type=Path)
+    parser.add_argument("--year", type=int, default=int(os.getenv("APP_DEFAULT_YEAR", datetime.now().year)))
+    parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
     main(args.archivo, args.year, args.apply)
