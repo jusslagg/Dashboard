@@ -66,8 +66,10 @@ def verificar():
     pagina = cliente.get('/resumen-horas')
     assert pagina.status_code == 200
     assert b'>Resumen</h1>' in pagina.data
+    assert b'id="alcanceTitulo"' in pagina.data
     assert b'id="alcanceFiltro"' in pagina.data
     assert b'renderKpis(total);renderGrafico()' in pagina.data
+    assert b"if(bloque==='operacion')" in pagina.data
     for jefatura in resumen['detalle_jefaturas']:
         total = jefatura['total']
         comparable = total['horas_real'] + total['variable_real'] + total['penalizaciones_bonos']
