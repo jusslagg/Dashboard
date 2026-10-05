@@ -43,10 +43,15 @@
     function prepararGrupos(raiz) {
         const grupos = new Set();
         raiz.querySelectorAll?.('.app-filter-control').forEach(control => {
-            const grupo = control.closest('[data-filter-bar], [data-filter-scope], .rs-tools, .grid, .flex');
+            const alcance = control.closest('[data-filter-scope]');
+            const grupoSemantico = control.closest('[data-filter-bar], .rs-tools');
+            const grupoVisual = alcance ? control.closest('.grid, .flex') : null;
+            const grupo = grupoSemantico
+                || (grupoVisual && alcance.contains(grupoVisual) ? grupoVisual : alcance);
             if (grupo) grupos.add(grupo);
         });
         grupos.forEach(grupo => {
+            if (grupo.matches('body, #appShell, #sidebar, main')) return;
             if (grupo.querySelectorAll('.app-filter-control').length > 1) {
                 grupo.classList.add('app-filter-row');
                 grupo.querySelectorAll('button:not(.app-filter-trigger):not(.app-filter-tab)').forEach(boton => {
@@ -54,6 +59,9 @@
                     if (boton.parentElement !== grupo) boton.parentElement?.classList.add('app-filter-actions');
                 });
             }
+        });
+        document.querySelectorAll('#appShell, #sidebar, main').forEach(contenedor => {
+            contenedor.classList.remove('app-filter-row', 'app-filter-actions');
         });
     }
 
