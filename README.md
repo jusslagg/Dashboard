@@ -866,7 +866,7 @@ Campos principales:
 | `variable_productivo` | Variable productiva real. |
 | `bonos` | Bonos facturados. |
 | `penalizaciones` | Penalizaciones, tratadas como descuento. |
-| `netx_gen`, `otros` | Otros importes de apertura. |
+| `netx_gen`, `otros` | Otros importes de apertura. `otros` conserva el signo: un valor negativo descuenta del total facturado. |
 
 Datos que necesitás agregar:
 
@@ -1547,6 +1547,13 @@ valores visibles coincida con el porcentaje informado.
 ### Penalizaciones
 
 Las penalizaciones impactan como descuento. Aunque se carguen como valor positivo, el cálculo las resta del total correspondiente.
+
+### Otros ajustes
+
+`otros` admite importes positivos y negativos. Los positivos incrementan el Total
+Facturado y los negativos lo reducen. El signo también se conserva en la
+justificación asociada. Este concepto no integra el `Total Real` comparable que
+se usa para calcular valor hora y cumplimiento contra el objetivo.
 
 ### Redondeo monetario
 

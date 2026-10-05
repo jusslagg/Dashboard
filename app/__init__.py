@@ -97,24 +97,32 @@ def create_app():
         response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
         response.headers.setdefault('X-Permitted-Cross-Domain-Policies', 'none')
         response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
-        script_attrs = ' '.join(sorted(script_attr_hashes)) or "'none'"
-        style_attrs = ' '.join(sorted(style_attr_hashes)) or "'none'"
-        response.headers.setdefault(
-            'Content-Security-Policy',
-            "default-src 'self'; "
-            f"script-src 'self' 'nonce-{csp_nonce}'; "
-            f"script-src-elem 'self' 'nonce-{csp_nonce}'; "
+        script_attrs = ' '.join(sorted(script_attr_hashes))
+        style_attrs = ' '.join(sorted(style_attr_hashes))
+        script_attr_policy = (
             f"script-src-attr 'unsafe-hashes' {script_attrs}; "
-            f"style-src 'self' 'nonce-{csp_nonce}'; "
-            f"style-src-elem 'self' 'nonce-{csp_nonce}'; "
-            f"style-src-attr 'unsafe-hashes' {style_attrs}; "
-            "img-src 'self' data:; "
-            "font-src 'self' data:; "
-            "connect-src 'self'; object-src 'none'; "
-            "frame-ancestors 'none'; "
-            "base-uri 'none'; "
-            "form-action 'self'"
+            if script_attrs else "script-src-attr 'none'; "
         )
+        style_attr_policy = (
+            f"style-src-attr 'unsafe-hashes' {style_attrs}; "
+            if style_attrs else "style-src-attr 'none'; "
+        )
+        csp_policy = ''.join((
+            "default-src 'self'; ",
+            f"script-src 'self' 'nonce-{csp_nonce}'; ",
+            f"script-src-elem 'self' 'nonce-{csp_nonce}'; ",
+            script_attr_policy,
+            f"style-src 'self' 'nonce-{csp_nonce}'; ",
+            f"style-src-elem 'self' 'nonce-{csp_nonce}'; ",
+            style_attr_policy,
+            "img-src 'self' data:; ",
+            "font-src 'self' data:; ",
+            "connect-src 'self'; object-src 'none'; ",
+            "frame-ancestors 'none'; ",
+            "base-uri 'none'; ",
+            "form-action 'self'",
+        ))
+        response.headers.setdefault('Content-Security-Policy', csp_policy)
         response.headers.setdefault('Cache-Control', 'no-store')
         if request.is_secure:
             response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')

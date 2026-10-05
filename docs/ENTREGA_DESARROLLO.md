@@ -212,6 +212,10 @@ Luego se valida en navegador:
   `% Valor hora = VH Realizado / VH Objetivo`. `Total Obj` incluye horas y
   variable objetivo; `Total Real` incluye horas, variable productivo, bonos y
   penalizaciones. Tarifación, Next Gen y otros no integran estos cálculos.
+- `facturacion_anio.otros` conserva el signo informado: los valores positivos
+  aumentan el Total Facturado y los negativos lo reducen. Las justificaciones
+  de tipo `otros` deben conservar el mismo signo y no modifican el Total Real
+  comparable utilizado para valor hora y cumplimiento.
 - Las normalizaciones de Proyectados no alteran nombres ni importes de origen.
 - Next Gen conserva la cotización aplicada por producto y mes.
 

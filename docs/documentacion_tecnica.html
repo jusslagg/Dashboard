@@ -88,6 +88,7 @@
 <li class=""><a href="#calculos-principales">Cálculos principales</a></li>
 <li class="sub"><a href="#facturacion-real">Facturación real</a></li>
 <li class="sub"><a href="#penalizaciones">Penalizaciones</a></li>
+<li class="sub"><a href="#otros-ajustes">Otros ajustes</a></li>
 <li class="sub"><a href="#redondeo-monetario">Redondeo monetario</a></li>
 <li class="sub"><a href="#proyeccion-plp">Proyección PLP</a></li>
 <li class="sub"><a href="#consolidado-proyectado">Consolidado proyectado</a></li>
@@ -1175,7 +1176,7 @@ python scripts\generar_documentacion_tecnica.py</code></pre>
 </tr>
 <tr>
 <td><code>netx_gen</code>, <code>otros</code></td>
-<td>Otros importes de apertura.</td>
+<td>Otros importes de apertura. <code>otros</code> conserva el signo: un valor negativo descuenta del total facturado.</td>
 </tr>
 </tbody></table></div>
 <p class="">Datos que necesitás agregar:</p>
@@ -1939,6 +1940,8 @@ VH Realizado = Total Real / Horas Realizadas
 <p class=""><code>Total Obj</code> incluye el objetivo de horas y el variable objetivo. <code>Total Real</code> incluye importe de horas, variable productivo, bonos y penalizaciones; excluye tarifación, Next Gen y otros. Esta definición también cubre importes manuales y campañas con el ajuste de valor hora separado como bono. Los dos valores hora se redondean a dos decimales antes de obtener el porcentaje para que la división de los valores visibles coincida con el porcentaje informado.</p>
 <h3 id="penalizaciones">Penalizaciones<a class="anchor" href="#penalizaciones" aria-label="Enlace a esta sección">#</a></h3>
 <p class="">Las penalizaciones impactan como descuento. Aunque se carguen como valor positivo, el cálculo las resta del total correspondiente.</p>
+<h3 id="otros-ajustes">Otros ajustes<a class="anchor" href="#otros-ajustes" aria-label="Enlace a esta sección">#</a></h3>
+<p class=""><code>otros</code> admite importes positivos y negativos. Los positivos incrementan el Total Facturado y los negativos lo reducen. El signo también se conserva en la justificación asociada. Este concepto no integra el <code>Total Real</code> comparable que se usa para calcular valor hora y cumplimiento contra el objetivo.</p>
 <h3 id="redondeo-monetario">Redondeo monetario<a class="anchor" href="#redondeo-monetario" aria-label="Enlace a esta sección">#</a></h3>
 <p class="">Los importes monetarios proyectados usan redondeo centralizado para evitar diferencias pequeñas entre campañas con el mismo precio base.</p>
 <h3 id="proyeccion-plp">Proyección PLP<a class="anchor" href="#proyeccion-plp" aria-label="Enlace a esta sección">#</a></h3>

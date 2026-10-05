@@ -1895,12 +1895,18 @@ def validar_justificaciones(data):
             continue
         if item['cantidad'] <= 0:
             errores.append(f'Justificacion {indice}: la cantidad debe ser mayor a 0')
-        if item['precio'] <= 0:
+        if item['tipo'] == 'otros':
+            if item['precio'] == 0:
+                errores.append(f'Justificacion {indice}: el precio debe ser distinto de 0')
+        elif item['precio'] <= 0:
             errores.append(f'Justificacion {indice}: el precio debe ser mayor a 0')
         importe_absoluto = abs(item['importe'])
         if importe_absoluto <= 0:
             errores.append(f'Justificacion {indice}: el importe debe ser mayor a 0')
-        if abs(importe_absoluto - (item['cantidad'] * item['precio'])) > 0.01:
+        importe_esperado = item['cantidad'] * item['precio']
+        if item['tipo'] == 'penalizaciones':
+            importe_esperado = -abs(importe_esperado)
+        if abs(item['importe'] - importe_esperado) > 0.01:
             errores.append(f'Justificacion {indice}: el importe debe coincidir con cantidad por precio')
         if not item['descripcion']:
             errores.append(f'Justificacion {indice}: la descripcion es obligatoria')
@@ -4812,6 +4818,7 @@ def api_actualizar_dato(registro_id):
                     subcampania=nombre_next_gen, tipo_negocio='NextGen', tipo_jornada='NextGen')
     preparar_payload_edicion_facturacion(registro, data)
     errores = validar_payload_facturacion(data, exigir_configuracion_valor_hora=False)
+    errores.extend(validar_justificaciones(data))
     if errores:
         return jsonify({'success': False, 'errores': errores}), 400
 
@@ -4840,6 +4847,7 @@ def api_actualizar_dato(registro_id):
         registro.penalizaciones = normalizar_importe_ajuste('penalizaciones', data.get('penalizaciones'))
         registro.netx_gen = float(data.get('netx_gen', 0) or 0)
         registro.otros = float(data.get('otros', 0) or 0)
+        guardar_justificaciones(registro, data)
         # Control edita los componentes del total. Los totales manuales traídos
         # por una importación anterior no deben congelar ni ocultar el cambio.
         registro.total_facturado_manual = None
