@@ -1,0 +1,100 @@
+/*
+ * Lenguaje visual compartido para filtros.
+ * ui-filters.js identifica los controles por su finalidad para evitar repetir
+ * utilidades en cada vista y no alterar los formularios de carga o edición.
+ */
+.app-filter-control {
+    height: 30px !important;
+    min-height: 30px;
+    min-width: 0 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    background-color: #fff !important;
+    padding: 0 9px !important;
+    color: #334155 !important;
+    font-family: inherit;
+    font-size: 11px !important;
+    font-weight: 650;
+    line-height: 28px;
+    box-shadow: none !important;
+    transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+.app-filter-control::placeholder { color: #94a3b8; font-weight: 500; }
+.app-filter-control:hover { border-color: #94a3b8 !important; }
+.app-filter-control:focus,
+.app-filter-control:focus-visible {
+    border-color: #64748b !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(148, 163, 184, .2) !important;
+}
+
+select.app-filter-control { padding-right: 27px !important; line-height: normal; }
+
+.app-filter-trigger {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 7px;
+    text-align: left;
+}
+
+.app-filter-label {
+    color: #64748b !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    letter-spacing: .04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.app-filter-label > .app-filter-control,
+.app-filter-label > div > .app-filter-control { margin-top: 4px !important; }
+
+.app-filter-row { align-items: end !important; gap: 4px !important; }
+.app-filter-row.grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 115px), 1fr)) !important;
+}
+
+.app-filter-popover {
+    margin-top: 4px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    padding: 8px !important;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .12) !important;
+}
+
+.app-filter-bar,
+[data-filter-bar] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid #dbe3ee;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.app-filter-tabs { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.app-filter-tab {
+    height: 28px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    padding: 0 8px;
+    color: #334155;
+    font-size: 10px;
+    font-weight: 700;
+}
+.app-filter-tab.active,
+.app-filter-tab[aria-selected="true"],
+.app-filter-tab[aria-pressed="true"] { border-color: #0f172a; background: #0f172a; color: #fff; }
+
+@media (max-width: 639px) {
+    .app-filter-control { width: 100%; }
+    .app-filter-row { grid-template-columns: minmax(0, 1fr) !important; }
+    .app-filter-row > * { min-width: 0; }
+    .app-filter-bar,
+    [data-filter-bar] { align-items: stretch; }
+}

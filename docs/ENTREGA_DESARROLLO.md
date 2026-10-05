@@ -60,6 +60,21 @@ de `asignaciones_comerciales`, administrada desde **Datos Maestros**. El archivo
 jefatura de una campaña. Si una campaña nueva no tiene asignación, el circuito
 de Personal informa el faltante y no inventa un responsable.
 
+## Filtros de interfaz
+
+El diseño de filtros es compartido por toda la aplicación. La plantilla
+`app/templates/layout.html` carga `app/static/ui-filters.css` y
+`app/static/ui-filters.js`. El script reconoce controles de búsqueda, período
+y filtros de negocio, incluidos los que se crean después de una llamada a la
+API, y les aplica el mismo tamaño, foco, espaciado y adaptación móvil. Los
+formularios de carga y edición no se modifican.
+
+Para un filtro nuevo se debe usar un identificador semántico (`filtro...`,
+`buscar...`) o el atributo `data-filter-control`. Una barra completa puede
+marcarse con `data-filter-bar`; los botones segmentados usan
+`app-filter-tabs`, `app-filter-tab` y `active`. No se deben copiar estilos de
+altura, borde o color dentro de cada plantilla.
+
 ## Esquema y compatibilidad
 
 Una base nueva contiene 27 tablas. `facturacion_anio` es multianual; el nombre

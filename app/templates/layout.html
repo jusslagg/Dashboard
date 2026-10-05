@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/app-tailwind.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='montserrat.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='ui-filters.css') }}">
     <link rel="preload" href="{{ url_for('static', filename='fonts/Montserrat-VariableFont_wght.ttf') }}" as="font" type="font/ttf" crossorigin>
     <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
     <script>
@@ -490,6 +491,7 @@
         }
     </script>
     <script src="{{ url_for('static', filename='password-fields.js') }}"></script>
+    <script src="{{ url_for('static', filename='ui-filters.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
