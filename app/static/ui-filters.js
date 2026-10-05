@@ -1,15 +1,29 @@
 (function () {
     'use strict';
 
-    const idFiltro = /(?:^filtro|filtro$|Filtro|^buscar|Buscar|^year$|^yearSelect$|^reloj(?:Year|Desde|Hasta)$|^mesFiltro$|^(?:cliente|gerente|jefeSite|campania|tipoNegocio)Select$|^modoFilas$|^jefatura$|^periodoJefatura$|^bloque$|^signo$|^estado$|^umbral$)/;
+    const idFiltro = /(?:^filtro|filtro$|Filtro|^buscar|Buscar)/;
+    const selectoresFiltro = new Set([
+        'year', 'yearSelect', 'anio', 'mesFiltro', 'estadoFiltro', 'metricaFiltro',
+        'relojYear', 'relojDesde', 'relojHasta', 'modoFilas', 'jefatura',
+        'periodoJefatura', 'bloque', 'signo', 'estado', 'orden', 'desde', 'hasta',
+        'baseComparacion', 'baseYear', 'actualYear', 'normalizacionYear',
+        'selectorCierreTraficoControl', 'pvfYear', 'pvfDesde', 'pvfHasta',
+        'pvfSite', 'pvfCliente', 'pvfServicio', 'pvfMetrica',
+    ]);
+    const valoresFiltro = new Set(['umbral', 'minimo', 'maximo', 'desde', 'hasta']);
 
     function esControlFiltro(elemento) {
         if (!(elemento instanceof HTMLElement)) return false;
         if (elemento.matches('[data-filter-control]')) return true;
         if (elemento.matches('input[type="search"]')) return true;
         if (elemento.matches('[data-dropdown-multiple] > button')) return true;
+        if (elemento.closest('[data-filter-scope]') && elemento.matches('button[aria-expanded]')) return true;
+        if (elemento.closest('[data-filter-scope]') && elemento.matches('select, input[type="text"], input[type="search"], input[type="number"], input[type="month"]')) return true;
         if (!elemento.matches('input, select, button')) return false;
-        return idFiltro.test(elemento.id || '');
+        const id = elemento.id || '';
+        if (idFiltro.test(id)) return true;
+        if (elemento.matches('select') && selectoresFiltro.has(id)) return true;
+        return elemento.matches('input') && valoresFiltro.has(id);
     }
 
     function prepararControl(elemento) {
@@ -25,11 +39,16 @@
     function prepararGrupos(raiz) {
         const grupos = new Set();
         raiz.querySelectorAll?.('.app-filter-control').forEach(control => {
-            const grupo = control.closest('[data-filter-bar], .rs-tools, .grid, .flex');
+            const grupo = control.closest('[data-filter-bar], [data-filter-scope], .rs-tools, .grid, .flex');
             if (grupo) grupos.add(grupo);
         });
         grupos.forEach(grupo => {
-            if (grupo.querySelectorAll('.app-filter-control').length > 1) grupo.classList.add('app-filter-row');
+            if (grupo.querySelectorAll('.app-filter-control').length > 1) {
+                grupo.classList.add('app-filter-row');
+                grupo.querySelectorAll('button:not(.app-filter-trigger):not(.app-filter-tab)').forEach(boton => {
+                    boton.classList.add('app-filter-action');
+                });
+            }
         });
     }
 

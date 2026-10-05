@@ -70,8 +70,9 @@ API, y les aplica el mismo tamaño, foco, espaciado y adaptación móvil. Los
 formularios de carga y edición no se modifican.
 
 Para un filtro nuevo se debe usar un identificador semántico (`filtro...`,
-`buscar...`) o el atributo `data-filter-control`. Una barra completa puede
-marcarse con `data-filter-bar`; los botones segmentados usan
+`buscar...`) o el atributo `data-filter-control`. Cuando una sección contiene
+varios controles con nombres heredados, se marca con `data-filter-scope`. Una
+barra completa puede marcarse con `data-filter-bar`; los botones segmentados usan
 `app-filter-tabs`, `app-filter-tab` y `active`. No se deben copiar estilos de
 altura, borde o color dentro de cada plantilla.
 

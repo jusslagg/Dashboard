@@ -29,7 +29,7 @@
     box-shadow: 0 0 0 2px rgba(148, 163, 184, .2) !important;
 }
 
-select.app-filter-control { padding-right: 27px !important; line-height: normal; }
+select.app-filter-control { min-width: 90px !important; padding-right: 27px !important; line-height: normal; }
 
 .app-filter-trigger {
     display: flex !important;
@@ -54,6 +54,16 @@ select.app-filter-control { padding-right: 27px !important; line-height: normal;
 .app-filter-row { align-items: end !important; gap: 4px !important; }
 .app-filter-row.grid {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 115px), 1fr)) !important;
+}
+
+.app-filter-action {
+    height: 30px !important;
+    min-height: 30px !important;
+    border-radius: 6px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    font-size: 11px !important;
+    line-height: 28px;
 }
 
 .app-filter-popover {
