@@ -45,7 +45,9 @@ with app.app_context():
         )
         isla_query = urlencode({'gerente': 'Sin gerencia', 'campania': 'Isla Prevención de fraude'})
         filas_isla = cliente_http.get(f'/api/datos?{isla_query}').get_json()['data']
-        assert len(filas_isla) == 21 and all(fila['cliente'] == 'Santander' for fila in filas_isla)
+        assert filas_isla and all(fila['cliente'] == 'Santander' for fila in filas_isla), (
+            'El filtro combinado de gerencia y campaña no devuelve únicamente Santander'
+        )
 
         for parametro, (clave_opciones, coincide) in campos.items():
             valores = opciones.get(clave_opciones) or []

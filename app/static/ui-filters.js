@@ -33,6 +33,10 @@
         const desplegable = elemento.closest('[data-dropdown-multiple]');
         const etiqueta = elemento.closest('label') || desplegable?.parentElement?.querySelector(':scope > label');
         etiqueta?.classList.add('app-filter-label');
+        if (desplegable && etiqueta) {
+            elemento.dataset.filterName = etiqueta.textContent.trim();
+            if (elemento.closest('.app-filter-panel')) etiqueta.classList.add('app-filter-caption');
+        }
         desplegable?.querySelector(':scope > div[id^="panel"]')?.classList.add('app-filter-popover');
     }
 
@@ -47,6 +51,7 @@
                 grupo.classList.add('app-filter-row');
                 grupo.querySelectorAll('button:not(.app-filter-trigger):not(.app-filter-tab)').forEach(boton => {
                     boton.classList.add('app-filter-action');
+                    if (boton.parentElement !== grupo) boton.parentElement?.classList.add('app-filter-actions');
                 });
             }
         });

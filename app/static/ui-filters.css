@@ -34,10 +34,20 @@ select.app-filter-control { min-width: 90px !important; padding-right: 27px !imp
 .app-filter-trigger {
     display: flex !important;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 7px;
     text-align: left;
 }
+.app-filter-trigger[data-filter-name]::before {
+    content: attr(data-filter-name) " ·";
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .025em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.app-filter-trigger i { float: none !important; margin-left: auto !important; }
 
 .app-filter-label {
     color: #64748b !important;
@@ -64,6 +74,7 @@ select.app-filter-control { min-width: 90px !important; padding-right: 27px !imp
     padding-bottom: 0 !important;
     font-size: 11px !important;
     line-height: 28px;
+    white-space: nowrap;
 }
 
 .app-filter-popover {
@@ -72,6 +83,36 @@ select.app-filter-control { min-width: 90px !important; padding-right: 27px !imp
     border-radius: 8px !important;
     padding: 8px !important;
     box-shadow: 0 10px 24px rgba(15, 23, 42, .12) !important;
+}
+
+.app-filter-panel {
+    border: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+.app-filter-panel > .app-filter-row {
+    border: 1px solid #dbe3ee;
+    border-radius: 8px;
+    background: #fff;
+    padding: 6px !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+.app-filter-panel .app-filter-caption {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+.app-filter-panel .app-filter-popover { min-width: 220px; }
+
+@media (max-width: 639px) {
+    .app-filter-panel .app-filter-actions { grid-column: 1 / -1; }
 }
 
 .app-filter-bar,
