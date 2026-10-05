@@ -2255,6 +2255,25 @@ def mes_plp_importado(valor, year):
     return f'{year_valor}-{numero}' if year_valor == year else None
 
 
+def sincronizar_jornadas_proyeccion(proyeccion, jornadas):
+    """Actualiza jornadas sin regenerar sus claves cuando no cambió el cálculo."""
+    actuales = list(proyeccion.jornadas)
+    campos = (
+        'dotacion_requerida', 'carga_semanal', 'carga_horaria',
+        'dias_objetivo', 'horas_requeridas',
+    )
+    for indice, valores in enumerate(jornadas):
+        if indice < len(actuales):
+            jornada = actuales[indice]
+        else:
+            jornada = ProyeccionMatrizJornada()
+            proyeccion.jornadas.append(jornada)
+        for campo in campos:
+            setattr(jornada, campo, valores.get(campo))
+    for jornada in actuales[len(jornadas):]:
+        proyeccion.jornadas.remove(jornada)
+
+
 def aplicar_calculo_proyeccion(proyeccion, valores, mes, feriados=None):
     year = int(mes[:4])
     mes_numero = int(mes[-2:])
@@ -2332,10 +2351,7 @@ def aplicar_calculo_proyeccion(proyeccion, valores, mes, feriados=None):
     distribucion = distribucion_personal(valores['cliente'], valores['campania'], mes, proyeccion.tipo_plp)
     proyeccion.tiene_nocturnidad = bool(distribucion and distribucion.porcentaje_nocturno > 0)
     proyeccion.porcentaje_nocturnidad = distribucion.porcentaje_nocturno if distribucion else 0
-    proyeccion.jornadas = [
-        ProyeccionMatrizJornada(**jornada)
-        for jornada in jornadas_calculadas
-    ]
+    sincronizar_jornadas_proyeccion(proyeccion, jornadas_calculadas)
     return proyeccion
 
 
