@@ -66,8 +66,13 @@ El diseño de filtros es compartido por toda la aplicación. La plantilla
 `app/templates/layout.html` carga `app/static/ui-filters.css` y
 `app/static/ui-filters.js`. El script reconoce controles de búsqueda, período
 y filtros de negocio, incluidos los que se crean después de una llamada a la
-API, y les aplica el mismo tamaño, foco, espaciado y adaptación móvil. Los
-formularios de carga y edición no se modifican.
+API. Los filtros de opciones abren una ventana centrada con fondo atenuado, búsqueda,
+opciones marcables, limpieza, cancelación y aplicación explícita. Los filtros
+múltiples conservan la selección previa hasta pulsar «Aplicar filtro» y
+disparan una sola actualización; los selectores de valor único mantienen esa
+restricción. El control original conserva su valor y su evento `change` para
+que las consultas existentes sigan funcionando. Los formularios de carga y
+edición no se modifican.
 
 Para un filtro nuevo se debe usar un identificador semántico (`filtro...`,
 `buscar...`) o el atributo `data-filter-control`. Cuando una sección contiene

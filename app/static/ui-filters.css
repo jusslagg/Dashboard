@@ -63,7 +63,7 @@ select.app-filter-control { min-width: 90px !important; padding-right: 27px !imp
 
 .app-filter-row { align-items: end !important; gap: 4px !important; }
 .app-filter-row.grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 115px), 1fr)) !important;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)) !important;
 }
 
 .app-filter-action {
@@ -148,4 +148,162 @@ select.app-filter-control { min-width: 90px !important; padding-right: 27px !imp
     .app-filter-row > * { min-width: 0; }
     .app-filter-bar,
     [data-filter-bar] { align-items: stretch; }
+}
+
+/* El selector real conserva su valor y sus eventos; el botón abre la vista común. */
+.app-filter-native-select {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+.app-filter-select-trigger {
+    display: flex !important;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: left;
+}
+.app-filter-select-trigger::after {
+    content: "";
+    flex: 0 0 auto;
+    width: 7px;
+    height: 7px;
+    margin-right: 2px;
+    border-right: 1.5px solid #64748b;
+    border-bottom: 1.5px solid #64748b;
+    transform: rotate(45deg) translateY(-2px);
+}
+.app-filter-select-trigger[hidden] { display: none !important; }
+.app-filter-select-trigger:disabled { opacity: .55; cursor: not-allowed; }
+
+body.app-filter-dialog-open { overflow: hidden; }
+.app-filter-dialog[hidden],
+.app-filter-dialog [hidden] { display: none !important; }
+.app-filter-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(13, 35, 56, .56);
+    backdrop-filter: blur(3px);
+}
+.app-filter-dialog-card {
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 496px);
+    max-height: min(680px, calc(100dvh - 32px));
+    padding: 28px;
+    border: 1px solid #dce6ef;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 22px 70px rgba(8, 27, 46, .26);
+    color: #243b53;
+    font-size: 13px;
+}
+.app-filter-dialog-card h2 {
+    margin: 0 0 14px;
+    font-size: 17px;
+    font-weight: 750;
+    line-height: 1.3;
+}
+.app-filter-dialog-search {
+    width: 100%;
+    height: 44px;
+    padding: 0 12px;
+    border: 1px solid #d7e1eb;
+    border-radius: 9px;
+    background: #f8fafc;
+    color: #243b53;
+    font: inherit;
+}
+.app-filter-dialog-search:focus {
+    outline: 2px solid rgba(14, 116, 144, .3);
+    border-color: #0e7490;
+}
+.app-filter-dialog-tools {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 17px 0;
+    border-bottom: 1px solid #dce6ef;
+}
+.app-filter-dialog-tools button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #0e7490;
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+}
+.app-filter-dialog-tools button:hover { text-decoration: underline; }
+.app-filter-dialog-options {
+    min-height: 100px;
+    max-height: 360px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+.app-filter-dialog-option {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-height: 47px;
+    padding: 8px 12px;
+    border-radius: 7px;
+    cursor: pointer;
+}
+.app-filter-dialog-option:hover { background: #f1f7fa; }
+.app-filter-dialog-option input {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: #0e7490;
+}
+.app-filter-dialog-option span { overflow-wrap: anywhere; }
+.app-filter-dialog-empty { padding: 20px 12px; color: #64748b; }
+.app-filter-dialog-count {
+    min-height: 33px;
+    padding: 10px 0 8px;
+    border-top: 1px solid #dce6ef;
+    color: #64748b;
+    font-size: 11px;
+}
+.app-filter-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 16px;
+}
+.app-filter-dialog-footer button {
+    min-height: 46px;
+    padding: 0 16px;
+    border-radius: 9px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+.app-filter-dialog-cancel {
+    border: 1px solid #d7e1eb;
+    background: #fff;
+    color: #243b53;
+}
+.app-filter-dialog-apply {
+    border: 1px solid #0e7490;
+    background: #0e7490;
+    color: #fff;
+}
+@media (max-width: 639px) {
+    .app-filter-dialog-card { padding: 20px; }
+    .app-filter-dialog-options { max-height: calc(100dvh - 270px); }
 }
