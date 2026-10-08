@@ -211,6 +211,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Importe fijo facturado</label>
                 <input type="number" id="importe_fijo" name="importe_fijo" min="0" step="0.01" placeholder="Opcional para tarifa plana"
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="mt-1 text-xs text-gray-500">El monto fijo también será el objetivo en $, sin desvío por diferencia de horas.</p>
             </div>
 
             <div>
@@ -1185,11 +1186,11 @@ function calcularPreview() {
 
     const valorHoraAlcanzado = valorHora;
     const horasNetas = Math.max(horasFacturadas - horasPenalizadas, 0);
-    const usaImporteFijo = importeFijo !== null && !Number.isNaN(importeFijo);
-    // El importe fijo reemplaza el facturado real, pero no el objetivo. El
-    // objetivo sigue surgiendo de las horas y el valor hora objetivo para que
-    // la diferencia informada se vea como desvio.
-    const objetivoHoras = horasObjetivo * (separaAjusteVH ? valorHoraAlcanzado : valorHoraObjetivo);
+    const usaImporteFijo = importeFijo !== null && Number.isFinite(importeFijo) && importeFijo > 0;
+    // La tarifa fija es el objetivo monetario de la línea. Las horas siguen
+    // comparándose por separado y no modifican ese objetivo en pesos.
+    const objetivoHoras = usaImporteFijo ? importeFijo
+        : horasObjetivo * (separaAjusteVH ? valorHoraAlcanzado : valorHoraObjetivo);
     const objetivoBono = separaAjusteVH ? horasObjetivo * (valorHoraObjetivo - valorHoraAlcanzado) : variableObjetivo;
     const facturacionObjetivo = objetivoHoras + objetivoBono;
     const facturadoHoras = usaFacturadoManual ? facturadoHorasManual : (usaImporteFijo ? importeFijo : horasNetas * valorHoraAlcanzado);

@@ -408,7 +408,14 @@ class FacturacionAnio(db.Model):
         return self.importe_fijo is not None and self.importe_fijo > 0
 
     @property
+    def objetivo_es_importe_fijo(self):
+        """La carga manual fija su objetivo; una importación conserva su control."""
+        return self.usa_importe_fijo and self.control_objetivo_total is None
+
+    @property
     def objetivo_facturacion_horas(self):
+        if self.objetivo_es_importe_fijo:
+            return self.importe_fijo
         if self.objetivo_separar_ajuste_vh:
             return self.horas_objetivo * self.valor_hora_alcanzado
         return self.horas_objetivo * self.valor_hora_objetivo_calculo

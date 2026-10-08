@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import json
+from datetime import date
 from pathlib import Path
 import sqlite3
 import sys
@@ -25,11 +26,39 @@ def verificar() -> None:
         os.environ["APP_DEFAULT_YEAR"] = "2026"
 
         from app import asegurar_administrador_inicial_db, create_app, db
-        from app.models import AsignacionComercial, Campania, ProyeccionMatriz, Usuario
+        from app.models import AsignacionComercial, Campania, Facturacion2026, ProyeccionMatriz, Usuario
+        from app.routes import metricas_matriz, resumen_dashboard
 
         app = create_app()
         app.config.update(TESTING=True)
         with app.app_context():
+            bice_fijo = Facturacion2026(
+                fecha=date(2026, 9, 1), mes="2026-09", cliente="BICE",
+                gerente="Multicuentas", jefe_site="De la Vega, Roxana",
+                campania="BICE", subcampania="BICE", tipo_jornada="Diurna",
+                horas_objetivo=396, horas_facturadas=398.07,
+                valor_hora_objetivo=18778.42, valor_hora=18778.42,
+                importe_fijo=6452969.19, variable_objetivo=0,
+            )
+            assert bice_fijo.objetivo_facturacion_horas == 6452969.19
+            assert bice_fijo.total_teorico == bice_fijo.total_comparable
+            assert bice_fijo.desvio == 0 and bice_fijo.porcentaje_cumplimiento == 100
+            assert bice_fijo.porcentaje_cumplimiento_horas > 100
+            assert resumen_dashboard([bice_fijo])["desvio"] == 0
+            assert metricas_matriz([bice_fijo])["desvio"] == 0
+            bice_fijo.bonos = 100
+            assert bice_fijo.desvio == 100, "Un bono adicional no debe desaparecer."
+            bice_fijo.bonos = 0
+            bice_fijo.control_objetivo_total = 7500000
+            assert bice_fijo.total_teorico == 7500000
+            assert bice_fijo.desvio < 0, "El objetivo explícito importado debe prevalecer."
+            assert bice_fijo.objetivo_facturacion_horas == 396 * 18778.42
+            bice_fijo.control_objetivo_total = 6452969.19
+            assert bice_fijo.total_teorico == 6452969.19
+            assert bice_fijo.objetivo_facturacion_horas == 396 * 18778.42
+            bice_fijo.importe_fijo = None
+            assert bice_fijo.objetivo_facturacion_horas == 396 * 18778.42
+
             assert len(db.metadata.tables) == 27, "La cantidad de tablas cambio sin actualizar el contrato."
             assert "facturacion_anio" in db.metadata.tables
             assert "facturacion_2026" not in db.metadata.tables

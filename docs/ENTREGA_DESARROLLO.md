@@ -207,6 +207,10 @@ Luego se valida en navegador:
 
 - `asignaciones_comerciales` gobierna jefe, gerente, segmento y vigencia.
 - El bono de Personal es adicional realizado y no integra el objetivo teórico.
+- Una carga manual con `importe_fijo` y sin `control_objetivo_total` usa ese
+  monto como objetivo monetario de horas; las horas objetivo y facturadas siguen
+  controlándose por separado. Un objetivo explícito de una importación conserva
+  el valor de origen. Bonos y penalizaciones mantienen su efecto en el desvío.
 - Las horas planificadas PLP son manuales y se distribuyen en Objetivo Masivo.
 - Los feriados activos recalculan jornadas y horas proyectadas.
 - Una carga mensual PLP reemplaza el mes completo dentro de su alcance.

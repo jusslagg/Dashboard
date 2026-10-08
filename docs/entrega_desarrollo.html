@@ -162,6 +162,10 @@ python scripts/reprocesar_facturacion_2026.py &quot;RUTA_EXCEL&quot; --year 2026
 <ul>
 <li><code>asignaciones_comerciales</code> gobierna jefe, gerente, segmento y vigencia.</li>
 <li>El bono de Personal es adicional realizado y no integra el objetivo teórico.</li>
+<li>Una carga manual con <code>importe_fijo</code> y sin <code>control_objetivo_total</code> usa ese</li>
+</ul>
+<p class="">monto como objetivo monetario de horas; las horas objetivo y facturadas siguen controlándose por separado. Un objetivo explícito de una importación conserva el valor de origen. Bonos y penalizaciones mantienen su efecto en el desvío.</p>
+<ul>
 <li>Las horas planificadas PLP son manuales y se distribuyen en Objetivo Masivo.</li>
 <li>Los feriados activos recalculan jornadas y horas proyectadas.</li>
 <li>Una carga mensual PLP reemplaza el mes completo dentro de su alcance.</li>
