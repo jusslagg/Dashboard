@@ -102,6 +102,12 @@ def _canonizar_campania(cliente, valor):
     )
 
 
+def canonizar_cliente_campania(cliente, campania):
+    """Resuelve los nombres del padrón antes de consultar claves únicas."""
+    cliente_canonico = _canonizar_cliente(cliente)
+    return cliente_canonico, _canonizar_campania(cliente_canonico, campania)
+
+
 def normalizar_gerente(valor):
     if valor is None:
         return None

@@ -2,12 +2,12 @@
 from flask import Blueprint, Response, abort, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
 from app import db, get_csrf_token
 from app.personal_objetivos import recalcular_objetivos, reglas_plantilla
-from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, NormalizacionNombreProyectado, PersonalDistribucionHoras, ProformaPersonal, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, SeguimientoPersonalImportacion, normalizar_jefe_site, normalizar_tipo_negocio_personal, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
+from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, NormalizacionNombreProyectado, PersonalDistribucionHoras, ProformaPersonal, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, SeguimientoPersonalImportacion, canonizar_cliente_campania, normalizar_gerente, normalizar_jefe_site, normalizar_tipo_negocio_personal, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
 import calendar
 from collections import defaultdict
 from sqlalchemy import func, or_
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from html import escape
 from html.parser import HTMLParser
 from functools import wraps
@@ -1829,8 +1829,7 @@ def obtener_o_crear_asignacion(campos):
 
 def obtener_o_crear_campania(cliente, nombre):
     """Devuelve el ID canónico para la combinación cliente + campaña."""
-    cliente = str(cliente or '').strip()
-    nombre = nombre_campania_canonico(nombre)
+    cliente, nombre = canonizar_cliente_campania(cliente, nombre_campania_canonico(nombre))
     campania = Campania.query.filter_by(cliente=cliente, nombre=nombre).first()
     if campania:
         campania.activa = True
@@ -13186,28 +13185,44 @@ def crear_asignacion_desde_request():
             'tipo_negocio': str(data.get('tipo_negocio') or '').strip() or None,
             'es_next_gen': es_next_gen,
         }
-        grupo_facturacion = str(data.get('grupo_facturacion') or '').strip() or inferir_grupo_facturacion(campos['cliente'], campos['campania'])
-        segmento = str(data.get('segmento') or '').strip() or segmento_inferido_asignacion(
-            campos['cliente'], campos['campania'], campos['subcampania'], campos['tipo_negocio'],
-        )
         if es_next_gen:
             campos.update(cliente=nombre_next_gen, gerente='NextGen', jefe_site='NextGen',
                           campania=nombre_next_gen, subcampania=nombre_next_gen, tipo_negocio='NextGen')
         else:
             normalizar_identidad_campania(campos)
+        campos['cliente'], campos['campania'] = canonizar_cliente_campania(campos['cliente'], campos['campania'])
+        _, campos['subcampania'] = canonizar_cliente_campania(campos['cliente'], campos['subcampania'])
+        campos['gerente'] = normalizar_gerente(campos['gerente'])
+        campos['jefe_site'] = normalizar_jefe_site(campos['jefe_site'])
+        grupo_facturacion = str(data.get('grupo_facturacion') or '').strip() or inferir_grupo_facturacion(campos['cliente'], campos['campania'])
+        segmento = str(data.get('segmento') or '').strip() or segmento_inferido_asignacion(
+            campos['cliente'], campos['campania'], campos['subcampania'], campos['tipo_negocio'],
+        )
         errores = [f'{campo} es obligatorio' for campo, valor in campos.items() if campo not in ('tipo_negocio', 'es_next_gen') and not valor]
         if errores:
             return jsonify({'success': False, 'errores': errores}), 400
 
         existente = AsignacionComercial.query.filter_by(**campos).first()
+        if not existente:
+            # Algunas asociaciones antiguas conservan otra grafía de gerente o jefe.
+            candidatas = AsignacionComercial.query.filter_by(
+                cliente=campos['cliente'], campania=campos['campania'],
+                subcampania=campos['subcampania'], tipo_negocio=campos['tipo_negocio'],
+                es_next_gen=campos['es_next_gen'],
+            ).all()
+            existente = next((item for item in candidatas
+                              if normalizar_gerente(item.gerente) == campos['gerente']
+                              and normalizar_jefe_site(item.jefe_site) == campos['jefe_site']), None)
         if existente:
             existente.activa = True
-            existente.grupo_facturacion = grupo_facturacion
-            existente.segmento = segmento
+            if str(data.get('grupo_facturacion') or '').strip() or not existente.grupo_facturacion:
+                existente.grupo_facturacion = grupo_facturacion
+            if str(data.get('segmento') or '').strip() or not existente.segmento:
+                existente.segmento = segmento
             if not existente.campania_id:
                 existente.campania_catalogo = obtener_o_crear_campania(campos['cliente'], campos['campania'])
             db.session.commit()
-            return jsonify({'success': True, 'mensaje': 'La asociacion ya existia y quedo activa', 'asignacion': existente.to_dict()})
+            return jsonify({'success': True, 'mensaje': f'La asociación ya existía (ID {existente.id}) y quedó activa', 'asignacion': existente.to_dict()})
 
         campania = obtener_o_crear_campania(campos['cliente'], campos['campania'])
         asignacion = AsignacionComercial(
@@ -13230,10 +13245,21 @@ def crear_asignacion_desde_request():
             current_app.logger.exception('No se pudo registrar historial de asignacion: %s', historial_error)
         db.session.commit()
         return jsonify({'success': True, 'mensaje': 'Asociacion creada correctamente', 'asignacion': asignacion.to_dict()})
-    except Exception as exc:
+    except IntegrityError as exc:
+        db.session.rollback()
+        current_app.logger.exception('Conflicto de identidad comercial al crear asociación')
+        es_duplicado = (
+            'UNIQUE constraint failed' in str(exc.orig)
+            or getattr(exc.orig, 'sqlstate', None) == '23505'
+            or getattr(exc.orig, 'pgcode', None) == '23505'
+        )
+        if es_duplicado:
+            return jsonify({'success': False, 'errores': ['La asociación o campaña ya existe con ese nombre. Actualizá la lista y editá la asociación existente.']}), 409
+        return jsonify({'success': False, 'errores': ['No se pudo guardar la asociación por un dato incompatible. Revisá los campos e intentá nuevamente.']}), 400
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Error creando asignacion')
-        return jsonify({'success': False, 'errores': [f'No se pudo crear la asociacion: {exc}']}), 500
+        return jsonify({'success': False, 'errores': ['No se pudo guardar la asociación. Intentá nuevamente o contactá a soporte.']}), 500
 
 
 @main_bp.route('/api/asignaciones/<int:asignacion_id>', methods=['PATCH', 'PUT'])

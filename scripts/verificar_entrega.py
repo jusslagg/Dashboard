@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import sqlite3
 import sys
+from sqlalchemy import text
 
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -24,7 +25,7 @@ def verificar() -> None:
         os.environ["APP_DEFAULT_YEAR"] = "2026"
 
         from app import asegurar_administrador_inicial_db, create_app, db
-        from app.models import Campania, ProyeccionMatriz, Usuario
+        from app.models import AsignacionComercial, Campania, ProyeccionMatriz, Usuario
 
         app = create_app()
         app.config.update(TESTING=True)
@@ -73,6 +74,51 @@ def verificar() -> None:
             assert response.status_code == 200, f"{route} devolvio HTTP {response.status_code}."
         assert client.get("/api/matriz?year=invalido").status_code == 400
         assert client.get("/api/resumen-horas?year=2026").status_code == 200
+
+        # El catálogo canoniza al insertar: una variante de mayúsculas debe
+        # encontrar la campaña existente antes de llegar a su clave única.
+        with app.app_context():
+            galicia = Campania(cliente="Galicia Seguros", nombre="GALICIA SEGUROS - LITIGIOS")
+            db.session.add(galicia)
+            db.session.flush()
+            asignacion_galicia = AsignacionComercial(
+                campania_catalogo=galicia, cliente="Galicia Seguros",
+                gerente="Sin gerencia", jefe_site="Ditto, Mariela",
+                campania=galicia.nombre, subcampania=galicia.nombre,
+                tipo_negocio=None, es_next_gen=False, activa=True,
+            )
+            db.session.add(asignacion_galicia)
+            db.session.commit()
+            galicia_id = galicia.id
+            asignacion_galicia_id = asignacion_galicia.id
+            db.session.execute(text(
+                "UPDATE asignaciones_comerciales SET jefe_site = 'Mariela Ditto' WHERE id = :id"
+            ), {"id": asignacion_galicia_id})
+            db.session.commit()
+
+        payload_galicia = {
+            "cliente": "GALICIA SEGUROS", "gerente": "Sin Gerente",
+            "jefe_site": "Ditto, Mariela", "campania": "GALICIA SEGUROS - LITIGIOS",
+            "subcampania": "GALICIA SEGUROS - LITIGIOS", "csrf_token": "csrf-verificacion",
+        }
+        response = client.post("/api/asignaciones", json=payload_galicia,
+                               headers={"X-CSRF-Token": "csrf-verificacion"})
+        assert response.status_code == 200, response.get_json()
+        assert response.get_json()["asignacion"]["id"] == asignacion_galicia_id
+        with app.app_context():
+            assert Campania.query.filter_by(cliente="Galicia Seguros", nombre=payload_galicia["campania"]).count() == 1
+            assert AsignacionComercial.query.filter_by(campania_id=galicia_id).count() == 1
+
+        # Una subcampaña nueva sí puede compartir la campaña canónica.
+        otra_subcampania = {**payload_galicia, "subcampania": "LITIGIOS BACKOFFICE"}
+        response = client.post("/api/asignaciones", json=otra_subcampania,
+                               headers={"X-CSRF-Token": "csrf-verificacion"})
+        assert response.status_code == 200, response.get_json()
+        assert response.get_json()["asignacion"]["campania_id"] == galicia_id
+        with app.app_context():
+            assert Campania.query.filter_by(cliente="Galicia Seguros", nombre=payload_galicia["campania"]).count() == 1
+            assert AsignacionComercial.query.filter_by(campania_id=galicia_id).count() == 2
+
         assert b"Entrega a Desarrollo" not in client.get("/").data
         assert client.get("/entrega-desarrollo").status_code == 403
         assert b'href="/entrega-desarrollo"' not in client.get("/documentacion-tecnica").data
