@@ -81,9 +81,9 @@
             <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                 <div><h2 class="text-lg font-bold text-slate-950">Proformas importadas</h2><p id="contadorProformaPersonal" class="mt-1 text-xs text-slate-500">Cargando...</p></div>
                 <div class="flex flex-col gap-2 sm:flex-row">
-                    <select id="filtroPeriodoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los períodos</option></select>
-                    <select id="filtroTipoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos</option><option value="Masivo">Masivo</option><option value="Personal Pay">Personal Pay</option><option value="Soporte">Soporte</option></select>
-                    <select id="filtroEstadoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los estados</option><option value="Proyectada">Proyectadas</option><option value="Definitiva">Definitivas</option></select>
+                    <select multiple id="filtroPeriodoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los períodos</option></select>
+                    <select multiple id="filtroTipoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos</option><option value="Masivo">Masivo</option><option value="Personal Pay">Personal Pay</option><option value="Soporte">Soporte</option></select>
+                    <select multiple id="filtroEstadoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los estados</option><option value="Proyectada">Proyectadas</option><option value="Definitiva">Definitivas</option></select>
                     <input id="buscarProformaPersonal" type="search" oninput="renderProformaPersonal()" class="h-10 rounded border border-slate-300 px-3 text-sm" placeholder="Buscar segmento...">
                 </div>
             </div>
@@ -170,20 +170,20 @@
             <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-3 xl:flex-row xl:items-center xl:justify-between">
                 <div class="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-4">
                     <input id="buscarHojaSeguimiento" type="search" oninput="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="h-10 rounded border border-slate-300 px-3 text-sm" placeholder="Buscar campaña o dato...">
-                    <select id="filtroPeriodoHojaSeguimiento" onchange="cambiarPeriodoHojaSeguimiento()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los períodos</option></select>
-                    <select id="filtroEstadoHojaSeguimiento" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los estados</option></select>
-                    <select id="filtroEmpresa2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las empresas</option></select>
-                    <select id="filtroNegocio2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos de negocio</option></select>
-                    <select id="filtroCampania2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las campañas</option></select>
-                    <select id="filtroTipoHora2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos de hora</option></select>
-                    <select id="filtroJefatura2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las jefaturas</option></select>
-                    <select id="filtroGrupoAuxiliar" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-auxiliar hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los grupos</option></select>
-                    <select id="filtroCampaniaAuxiliar" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-auxiliar hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las campañas</option></select>
-                    <select id="filtroTipoVHAuxiliar" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-auxiliar hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos VH</option></select>
-                    <select id="filtroSegmentoAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los segmentos</option></select>
-                    <select id="filtroJefaturaAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las jefaturas</option></select>
-                    <select id="filtroNegocioAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos de negocio</option></select>
-                    <select id="filtroProformaAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los grupos de Proforma</option></select>
+                    <select multiple id="filtroPeriodoHojaSeguimiento" onchange="cambiarPeriodoHojaSeguimiento()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los períodos</option></select>
+                    <select multiple id="filtroEstadoHojaSeguimiento" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los estados</option></select>
+                    <select multiple id="filtroEmpresa2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las empresas</option></select>
+                    <select multiple id="filtroNegocio2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos de negocio</option></select>
+                    <select multiple id="filtroCampania2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las campañas</option></select>
+                    <select multiple id="filtroTipoHora2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos de hora</option></select>
+                    <select multiple id="filtroJefatura2026" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-2026 hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las jefaturas</option></select>
+                    <select multiple id="filtroGrupoAuxiliar" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-auxiliar hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los grupos</option></select>
+                    <select multiple id="filtroCampaniaAuxiliar" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-auxiliar hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las campañas</option></select>
+                    <select multiple id="filtroTipoVHAuxiliar" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-auxiliar hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos VH</option></select>
+                    <select multiple id="filtroSegmentoAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los segmentos</option></select>
+                    <select multiple id="filtroJefaturaAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todas las jefaturas</option></select>
+                    <select multiple id="filtroNegocioAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos de negocio</option></select>
+                    <select multiple id="filtroProformaAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los grupos de Proforma</option></select>
                 </div>
                 <div class="flex items-center gap-2">
                     <button id="guardarCambiosHorasAuxiliar" type="button" onclick="guardarCambiosHorasAuxiliarPersonal()" class="hidden h-9 shrink-0 whitespace-nowrap rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"><i class="fas fa-save mr-1"></i> Guardar cambios</button>
@@ -270,7 +270,7 @@
                 <p id="contadorPersonal" class="mt-1 text-xs text-slate-500">Cargando...</p>
             </div>
             <div class="flex flex-col gap-2 sm:flex-row">
-                <select id="filtroMesPersonal" onchange="renderDatosPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"></select>
+                <select multiple id="filtroMesPersonal" onchange="renderDatosPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"></select>
                 <input id="buscarPersonal" type="search" oninput="renderDatosPersonal()" class="h-10 rounded border border-slate-300 px-3 text-sm" placeholder="Buscar campaña...">
             </div>
         </div>
@@ -789,6 +789,7 @@ function construirVistaSeguimiento() {
 }
 
 function prepararFiltrosHojaSeguimiento() {
+    const anteriores = new Map([...document.querySelectorAll('select[multiple][id^="filtro"]')].map(control => [control.id, AppFilters.valores(control)]));
     const vista = construirVistaSeguimiento();
     const config = configuracionHojasSeguimiento[hojaSeguimientoActiva];
     const filtroPeriodo = document.getElementById('filtroPeriodoHojaSeguimiento');
@@ -858,55 +859,56 @@ function prepararFiltrosHojaSeguimiento() {
             selector.innerHTML = `<option value="">${etiqueta}</option>` + opciones.map(opcion => `<option value="${escaparPersonal(opcion)}">${escaparPersonal(opcion)}</option>`).join('');
         });
     }
+    anteriores.forEach((valores, id) => { if (valores.length) AppFilters.seleccionar(id, valores); });
 }
 
 function filasFiltradasSeguimiento(vista) {
     const config = configuracionHojasSeguimiento[hojaSeguimientoActiva];
     const consulta = normalizarPersonal(document.getElementById('buscarHojaSeguimiento').value);
-    const periodo = document.getElementById('filtroPeriodoHojaSeguimiento').value;
-    const estado = normalizarPersonal(document.getElementById('filtroEstadoHojaSeguimiento').value);
+    const periodo = AppFilters.valores('filtroPeriodoHojaSeguimiento');
+    const estado = AppFilters.valores('filtroEstadoHojaSeguimiento').map(normalizarPersonal);
     const indicePeriodo = config.columnas.findIndex(([indice]) => indice === config.periodo);
     const indiceEstado = config.columnas.findIndex(([indice]) => indice === config.estado);
     const filtros2026 = hojaSeguimientoActiva === claveHojaFacturacion ? [
-        [1, document.getElementById('filtroEmpresa2026').value],
-        [2, document.getElementById('filtroNegocio2026').value],
-        [3, document.getElementById('filtroCampania2026').value],
-        [4, document.getElementById('filtroTipoHora2026').value],
-        [13, document.getElementById('filtroJefatura2026').value],
+        [1, AppFilters.valores('filtroEmpresa2026')],
+        [2, AppFilters.valores('filtroNegocio2026')],
+        [3, AppFilters.valores('filtroCampania2026')],
+        [4, AppFilters.valores('filtroTipoHora2026')],
+        [13, AppFilters.valores('filtroJefatura2026')],
     ] : [];
     const filtrosAuxiliar = hojaSeguimientoActiva === 'auxiliar_horas_plp_masivo' ? [
-        [0, document.getElementById('filtroGrupoAuxiliar').value],
-        [1, document.getElementById('filtroCampaniaAuxiliar').value],
-        [2, document.getElementById('filtroTipoVHAuxiliar').value],
+        [0, AppFilters.valores('filtroGrupoAuxiliar')],
+        [1, AppFilters.valores('filtroCampaniaAuxiliar')],
+        [2, AppFilters.valores('filtroTipoVHAuxiliar')],
     ] : [];
     const filtrosAux = hojaSeguimientoActiva === 'aux' ? [
-        [1, document.getElementById('filtroSegmentoAux').value],
-        [2, document.getElementById('filtroJefaturaAux').value],
-        [3, document.getElementById('filtroNegocioAux').value],
-        [4, document.getElementById('filtroProformaAux').value],
+        [1, AppFilters.valores('filtroSegmentoAux')],
+        [2, AppFilters.valores('filtroJefaturaAux')],
+        [3, AppFilters.valores('filtroNegocioAux')],
+        [4, AppFilters.valores('filtroProformaAux')],
     ] : [];
     return vista.filas.filter(fila => {
         if (consulta && !normalizarPersonal(fila.valores.join(' ')).includes(consulta)) return false;
-        if (periodo && periodoVistaSeguimiento(fila.valores[indicePeriodo]) !== periodo) return false;
-        if (estado && normalizarPersonal(fila.valores[indiceEstado]) !== estado) return false;
-        if (filtros2026.some(([indice, valor]) => valor && normalizarPersonal(fila.valores[indice]) !== normalizarPersonal(valor))) return false;
-        if (filtrosAuxiliar.some(([indice, valor]) => valor && normalizarPersonal(fila.valores[indice]) !== normalizarPersonal(valor))) return false;
-        if (filtrosAux.some(([indice, valor]) => valor && normalizarPersonal(fila.valores[indice]) !== normalizarPersonal(valor))) return false;
+        if (!AppFilters.coincide(periodo, periodoVistaSeguimiento(fila.valores[indicePeriodo]))) return false;
+        if (!AppFilters.coincide(estado, normalizarPersonal(fila.valores[indiceEstado]))) return false;
+        if (filtros2026.some(([indice, valor]) => !AppFilters.coincide(valor.map(normalizarPersonal), normalizarPersonal(fila.valores[indice])))) return false;
+        if (filtrosAuxiliar.some(([indice, valor]) => !AppFilters.coincide(valor.map(normalizarPersonal), normalizarPersonal(fila.valores[indice])))) return false;
+        if (filtrosAux.some(([indice, valor]) => !AppFilters.coincide(valor.map(normalizarPersonal), normalizarPersonal(fila.valores[indice])))) return false;
         return true;
     });
 }
 
 function cambiarPeriodoHojaSeguimiento() {
     paginaHojaSeguimiento = 1;
-    const periodo = document.getElementById('filtroPeriodoHojaSeguimiento').value;
-    periodoTrabajoSeguimiento = periodo;
+    const periodo = AppFilters.valores('filtroPeriodoHojaSeguimiento');
+    periodoTrabajoSeguimiento = periodo.length === 1 ? periodo[0] : '';
     const selectorEstado = document.getElementById('filtroEstadoHojaSeguimiento');
     const vista = construirVistaSeguimiento();
     const config = configuracionHojasSeguimiento[hojaSeguimientoActiva];
     const indicePeriodo = config.columnas.findIndex(([indice]) => indice === config.periodo);
     const indiceEstado = config.columnas.findIndex(([indice]) => indice === config.estado);
-    const estados = periodo && indiceEstado >= 0
-        ? [...new Set(vista.filas.filter(fila => periodoVistaSeguimiento(fila.valores[indicePeriodo]) === periodo).map(fila => String(fila.valores[indiceEstado] || '')).filter(Boolean))]
+    const estados = periodo.length && indiceEstado >= 0
+        ? [...new Set(vista.filas.filter(fila => AppFilters.coincide(periodo, periodoVistaSeguimiento(fila.valores[indicePeriodo]))).map(fila => String(fila.valores[indiceEstado] || '')).filter(Boolean))]
         : [];
     selectorEstado.value = estados.length === 1 ? estados[0] : '';
     renderHojaSeguimiento();
@@ -1130,7 +1132,8 @@ function actualizarPanelPublicacionDashboardPersonal(filas = []) {
     const visible = hojaSeguimientoActiva === 'base_objetivo_masivo' && Boolean(datosHojaSeguimiento);
     panel.classList.toggle('hidden', !visible);
     if (!visible) return;
-    const periodo = document.getElementById('filtroPeriodoHojaSeguimiento').value;
+    const periodos = AppFilters.valores('filtroPeriodoHojaSeguimiento');
+    const periodo = periodos.length === 1 ? periodos[0] : '';
     const errores = periodo ? (validacionesDashboardSeguimiento[periodo.replace('-', '')] || []) : [];
     boton.disabled = !periodo || !filas.length || errores.length > 0;
     if (!periodo) {
@@ -1147,7 +1150,8 @@ function actualizarPanelPublicacionDashboardPersonal(filas = []) {
 
 async function publicarSeguimientoPersonalDashboard(periodoElegido) {
     if (publicandoDashboardPersonal) return;
-    const periodo = periodoElegido ?? document.getElementById('filtroPeriodoHojaSeguimiento').value;
+    const periodos = AppFilters.valores('filtroPeriodoHojaSeguimiento');
+    const periodo = periodoElegido ?? (periodos.length === 1 ? periodos[0] : '');
     const importacionId = document.getElementById('versionSeguimientoPersonal').value;
     if (!periodo) {
         mostrarMensajeSeguimiento('Seleccione un período antes de pasar los datos al dashboard.');
@@ -1271,9 +1275,9 @@ async function cargarProformaPersonal() {
         proformasPersonal = data.proformas || [];
         importacionesProforma = data.importaciones || [];
         const filtro = document.getElementById('filtroPeriodoProforma');
-        const actual = filtro.value;
+        const actual = AppFilters.valores(filtro);
         filtro.innerHTML = '<option value="">Todos los períodos</option>' + (data.periodos || []).map(periodo => `<option value="${escaparPersonal(periodo)}">${escaparPersonal(periodo.slice(4, 6))}/${escaparPersonal(periodo.slice(0, 4))}</option>`).join('');
-        if ((data.periodos || []).includes(actual)) filtro.value = actual;
+        AppFilters.seleccionar(filtro, actual);
         renderProformaPersonal();
         renderImportacionesProforma();
     } catch (error) {
@@ -1304,11 +1308,11 @@ function renderImportacionesProforma() {
 }
 
 function renderProformaPersonal() {
-    const periodo = document.getElementById('filtroPeriodoProforma').value;
-    const tipo = document.getElementById('filtroTipoProforma').value;
-    const estado = document.getElementById('filtroEstadoProforma').value;
+    const periodo = AppFilters.valores('filtroPeriodoProforma');
+    const tipo = AppFilters.valores('filtroTipoProforma');
+    const estado = AppFilters.valores('filtroEstadoProforma');
     const busqueda = normalizarPersonal(document.getElementById('buscarProformaPersonal').value);
-    const filas = proformasPersonal.filter(item => (!periodo || item.periodo === periodo) && (!tipo || item.tipo_proforma === tipo) && (!estado || item.estado_proforma === estado) && (!busqueda || normalizarPersonal(`${item.tipo_proforma} ${item.estado_proforma} ${item.fdv} ${item.negocio} ${item.sitio_proveedor} ${item.segmento} ${item.subsitio} ${item.tipo_hora}`).includes(busqueda)));
+    const filas = proformasPersonal.filter(item => (AppFilters.coincide(periodo, item.periodo)) && (AppFilters.coincide(tipo, item.tipo_proforma)) && (AppFilters.coincide(estado, item.estado_proforma)) && (!busqueda || normalizarPersonal(`${item.tipo_proforma} ${item.estado_proforma} ${item.fdv} ${item.negocio} ${item.sitio_proveedor} ${item.segmento} ${item.subsitio} ${item.tipo_hora}`).includes(busqueda)));
     document.getElementById('contadorProformaPersonal').textContent = `${filas.length} de ${proformasPersonal.length} fila(s)`;
     document.getElementById('kpiProformaHoras').textContent = formatoHorasPersonal(filas.reduce((suma, item) => suma + Number(item.total_horas || 0), 0));
     document.getElementById('kpiProformaFijo').textContent = formatoMonedaProforma(filas.reduce((suma, item) => suma + Number(item.monto_fijo || 0), 0));
@@ -1400,9 +1404,9 @@ async function cargarDatosPersonal() {
         mesesPersonal = data.meses || [];
         serviciosPersonalCarga = data.servicios || serviciosPersonalCarga;
         const filtro = document.getElementById('filtroMesPersonal');
-        const mesActual = filtro.value;
+        const mesActual = AppFilters.valores(filtro);
         filtro.innerHTML = '<option value="">Todos los meses</option>' + mesesPersonal.map(mes => `<option value="${escaparPersonal(mes.value)}">${escaparPersonal(mes.label)}</option>`).join('');
-        if (mesesPersonal.some(mes => mes.value === mesActual)) filtro.value = mesActual;
+        AppFilters.seleccionar(filtro, mesActual);
         renderDatosPersonal();
     } catch (error) {
         document.getElementById('tbodyDatosPersonal').innerHTML = `<tr><td colspan="5" class="p-8 text-center text-rose-700">${escaparPersonal(error.message)}</td></tr>`;
@@ -1410,9 +1414,9 @@ async function cargarDatosPersonal() {
 }
 
 function renderDatosPersonal() {
-    const mes = document.getElementById('filtroMesPersonal').value;
+    const mes = AppFilters.valores('filtroMesPersonal');
     const busqueda = normalizarPersonal(document.getElementById('buscarPersonal').value);
-    const filas = datosPersonal.filter(item => (!mes || item.mes === mes) && (!busqueda || normalizarPersonal(`${item.tipo_plp} ${item.campania}`).includes(busqueda)));
+    const filas = datosPersonal.filter(item => (AppFilters.coincide(mes, item.mes)) && (!busqueda || normalizarPersonal(`${item.tipo_plp} ${item.campania}`).includes(busqueda)));
     document.getElementById('contadorPersonal').textContent = `${filas.length} de ${datosPersonal.length} registro(s)`;
     document.getElementById('tbodyDatosPersonal').innerHTML = filas.length ? filas.map(item => `
         <tr class="hover:bg-slate-50">

@@ -98,8 +98,8 @@
                     <i data-lucide="chevron-down" class="h-4 w-4 shrink-0 text-slate-500"></i>
                 </button>
             </div>
-            <select id="filtroCampania" onchange="renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
-            <select id="filtroConcepto" onchange="renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+            <select multiple id="filtroCampania" onchange="renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+            <select multiple id="filtroConcepto" onchange="renderResumen()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
             <button type="button" onclick="limpiarFiltros()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
                 <i data-lucide="x-circle" class="h-4 w-4"></i>
                 Limpiar filtros
@@ -229,8 +229,8 @@ function setLoadingState() {
 }
 
 function popularFiltros() {
-    const conceptoActual = document.getElementById('filtroConcepto').value;
-    const campaniaActual = document.getElementById('filtroCampania').value;
+    const conceptoActual = AppFilters.valores('filtroConcepto');
+    const campaniaActual = AppFilters.valores('filtroCampania');
     const detalles = filas.filter(item => item.tipo === 'total_campania');
     const clientes = [...new Set(detalles.map(item => item.cliente).filter(Boolean))].sort();
     const conceptos = [...new Set(filas
@@ -241,7 +241,7 @@ function popularFiltros() {
     clientesSeleccionados = new Set([...clientesSeleccionados].filter(cliente => clientes.includes(cliente)));
     renderOpcionesClientes(clientes);
     document.getElementById('filtroConcepto').innerHTML = '<option value="">Todos los conceptos</option>' + conceptos.map(concepto =>
-        `<option value="${escapeHtml(concepto)}" ${concepto === conceptoActual ? 'selected' : ''}>${escapeHtml(concepto)}</option>`
+        `<option value="${escapeHtml(concepto)}" ${conceptoActual.includes(String(concepto)) ? 'selected' : ''}>${escapeHtml(concepto)}</option>`
     ).join('');
     actualizarFiltroCampania(campaniaActual);
 }
@@ -328,7 +328,7 @@ function actualizarLabelClientes() {
 }
 
 function actualizarFiltroCampania(valorActual) {
-    const actual = valorActual === undefined ? document.getElementById('filtroCampania').value : valorActual;
+    const actual = valorActual === undefined ? AppFilters.valores('filtroCampania') : valorActual;
     const campanias = [...new Set(filas
         .filter(item => item.tipo === 'total_campania')
         .filter(item => !clientesSeleccionados.size || clientesSeleccionados.has(item.cliente))
@@ -337,19 +337,19 @@ function actualizarFiltroCampania(valorActual) {
         .filter(Boolean)
     )].sort();
     document.getElementById('filtroCampania').innerHTML = '<option value="">Todas las campañas</option>' + campanias.map(campania =>
-        `<option value="${escapeHtml(campania)}" ${campania === actual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
+        `<option value="${escapeHtml(campania)}" ${actual.includes(String(campania)) ? 'selected' : ''}>${escapeHtml(campania)}</option>`
     ).join('');
 }
 
 function obtenerFilasFiltradas() {
     const texto = normalizar(document.getElementById('buscarResumen').value);
-    const concepto = document.getElementById('filtroConcepto').value;
-    const campania = document.getElementById('filtroCampania').value;
+    const concepto = AppFilters.valores('filtroConcepto');
+    const campania = AppFilters.valores('filtroCampania');
     return filas.filter(item => {
         if (clientesSeleccionados.size && !clientesSeleccionados.has(item.cliente)) return false;
         if (grupoSeleccionado && !perteneceAlGrupo(item, grupoSeleccionado)) return false;
-        if (concepto && item.concepto !== concepto) return false;
-        if (campania && item.campania !== campania) return false;
+        if (!AppFilters.coincide(concepto, item.concepto)) return false;
+        if (!AppFilters.coincide(campania, item.campania)) return false;
         if (!texto) return true;
         return normalizar(`${item.cliente} ${item.concepto} ${item.campania}`).includes(texto);
     });
@@ -582,8 +582,8 @@ function badgeConcepto(concepto) {
 function filtrosActivos() {
     const filtros = [];
     const buscar = document.getElementById('buscarResumen').value.trim();
-    const concepto = document.getElementById('filtroConcepto').value;
-    const campania = document.getElementById('filtroCampania').value;
+    const concepto = AppFilters.valores('filtroConcepto');
+    const campania = AppFilters.valores('filtroCampania');
     if (buscar) filtros.push({ key: 'buscar', label: `Búsqueda: ${buscar}` });
     if (clientesSeleccionados.size) {
         const nombres = [...clientesSeleccionados];
@@ -591,8 +591,8 @@ function filtrosActivos() {
         filtros.push({ key: 'clientes', label: `Clientes: ${label}` });
     }
     if (grupoSeleccionado) filtros.push({ key: 'grupo', label: `Grupo: ${grupoSeleccionado}` });
-    if (concepto) filtros.push({ key: 'concepto', label: `Concepto: ${concepto}` });
-    if (campania) filtros.push({ key: 'campania', label: `Campaña: ${campania}` });
+    if (concepto.length) filtros.push({ key: 'concepto', label: `Concepto: ${concepto.join(', ')}` });
+    if (campania.length) filtros.push({ key: 'campania', label: `Campaña: ${campania.join(', ')}` });
     return filtros;
 }
 

@@ -13,22 +13,22 @@
         <select id="yearSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             {% for year in anios_disponibles %}<option value="{{ year }}"{% if year == anio_actual %} selected{% endif %}>{{ year }}</option>{% endfor %}
         </select>
-        <select id="mesFiltro" onchange="renderDesdeEstado()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+        <select multiple id="mesFiltro" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todos los meses</option>
         </select>
-        <select id="clienteSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+        <select multiple id="clienteSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todos los clientes</option>
         </select>
-        <select id="gerenteSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+        <select multiple id="gerenteSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todas las gerencias</option>
         </select>
-        <select id="jefeSiteSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+        <select multiple id="jefeSiteSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todos los jefes de site</option>
         </select>
-        <select id="campaniaSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+        <select multiple id="campaniaSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todas las campanas</option>
         </select>
-        <select id="tipoNegocioSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
+        <select multiple id="tipoNegocioSelect" onchange="cargarMatriz()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todos los tipos de negocio</option>
         </select>
         <select id="modoFilas" onchange="renderDesdeEstado()" class="h-10 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm">
@@ -178,17 +178,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function cargarMatriz() {
     const year = document.getElementById('yearSelect').value;
-    const cliente = document.getElementById('clienteSelect').value;
-    const gerente = document.getElementById('gerenteSelect').value;
-    const jefeSite = document.getElementById('jefeSiteSelect').value;
-    const campania = document.getElementById('campaniaSelect').value;
-    const tipoNegocio = document.getElementById('tipoNegocioSelect').value;
+    const cliente = AppFilters.valores('clienteSelect');
+    const gerente = AppFilters.valores('gerenteSelect');
+    const jefeSite = AppFilters.valores('jefeSiteSelect');
+    const campania = AppFilters.valores('campaniaSelect');
+    const tipoNegocio = AppFilters.valores('tipoNegocioSelect');
     const params = new URLSearchParams({ year });
-    if (cliente) params.set('cliente', cliente);
-    if (gerente) params.set('gerente', gerente);
-    if (jefeSite) params.set('jefe_site', jefeSite);
-    if (campania) params.set('campania', campania);
-    if (tipoNegocio) params.set('tipo_negocio', tipoNegocio);
+    AppFilters.agregar(params, 'mes', AppFilters.valores('mesFiltro'));
+    AppFilters.agregar(params, 'cliente', cliente);
+    AppFilters.agregar(params, 'gerente', gerente);
+    AppFilters.agregar(params, 'jefe_site', jefeSite);
+    AppFilters.agregar(params, 'campania', campania);
+    AppFilters.agregar(params, 'tipo_negocio', tipoNegocio);
 
     setEstado('Cargando...');
     try {
@@ -229,7 +230,7 @@ function cambiarTabla(tabla) {
 function renderDesdeEstado() {
     if (!matrizData) return;
     const gruposBase = gruposActivosBase();
-    const mesSeleccionado = document.getElementById('mesFiltro').value;
+    const mesSeleccionado = AppFilters.valores('mesFiltro');
     const busqueda = document.getElementById('buscarGrupo').value.trim().toLowerCase();
     const gruposBusqueda = busqueda
         ? gruposBase.filter(grupo => textoBusquedaGrupo(grupo).includes(busqueda))
@@ -275,53 +276,35 @@ function filasVisibles() {
 }
 
 function columnasVisibles(columnas, grupos, mesSeleccionado) {
-    if (mesSeleccionado) return columnas.filter(col => col.key === mesSeleccionado);
+    if (mesSeleccionado.length) return columnas.filter(col => mesSeleccionado.includes(col.key));
     return columnas.filter(col => {
         if (col.key === 'total') return true;
         return grupos.some(grupo => Boolean(grupo.meses[col.key]));
     });
 }
 
-function aplicarFiltroMes(grupos, mesSeleccionado) {
-    if (!mesSeleccionado) return grupos;
-    return grupos
-        .map(grupo => {
-            const metricasMes = grupo.meses[mesSeleccionado];
-            if (!metricasMes) return null;
-            return {
-                ...grupo,
-                total: metricasMes,
-                meses: { [mesSeleccionado]: metricasMes },
-            };
-        })
-        .filter(Boolean);
-}
-
-function valorSeleccionado(seleccionado, actual) {
-    if (Array.isArray(seleccionado)) return seleccionado.length === 1 ? seleccionado[0] : '';
-    return seleccionado || actual || '';
+function aplicarFiltroMes(grupos, seleccion) {
+    if (!seleccion.length) return grupos;
+    return grupos.map(grupo => ({ ...grupo,
+        meses: Object.fromEntries(Object.entries(grupo.meses).filter(([mes]) => seleccion.includes(mes))),
+    })).filter(grupo => Object.keys(grupo.meses).length);
 }
 
 function popularFiltro(id, valores, placeholder, seleccionado) {
     const select = document.getElementById(id);
-    const actual = valorSeleccionado(seleccionado, select.value);
+    const actual = seleccionado == null ? AppFilters.valores(select) : (Array.isArray(seleccionado) ? seleccionado : [seleccionado]);
     select.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>` + valores.map(valor =>
-        `<option value="${escapeHtml(valor)}" ${valor === actual ? 'selected' : ''}>${escapeHtml(valor)}</option>`
+        `<option value="${escapeHtml(valor)}" ${actual.includes(String(valor)) ? 'selected' : ''}>${escapeHtml(valor)}</option>`
     ).join('');
 }
 
 function popularMeses(columnas) {
     const select = document.getElementById('mesFiltro');
-    const actual = select.value;
-    const grupos = gruposActivosBase();
-    const meses = columnas.filter(col =>
-        col.key !== 'total' && grupos.some(grupo => Boolean(grupo.meses[col.key]))
-    );
-    const existeActual = meses.some(mes => mes.key === actual);
+    const actual = AppFilters.valores(select);
+    const meses = columnas.filter(col => col.key !== 'total');
     select.innerHTML = '<option value="">Todos los meses</option>' + meses.map(mes =>
-        `<option value="${escapeHtml(mes.key)}" ${mes.key === actual ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`
+        `<option value="${escapeHtml(mes.key)}" ${actual.includes(mes.key) ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`
     ).join('');
-    if (actual && !existeActual) select.value = '';
 }
 
 function gruposActivosBase() {
@@ -351,10 +334,9 @@ function encabezadoJefatura(grupo, columnas) {
     return `<tr class="bg-slate-800 text-white"><td colspan="${columnas}" class="px-3 py-2 text-sm font-bold"><i class="fas fa-user-tie mr-2"></i>${escapeHtml(grupo.jefatura)}</td></tr>`;
 }
 
-function etiquetaPeriodo(mesSeleccionado) {
-    if (!mesSeleccionado || !matrizData) return matrizData ? matrizData.year : 'Todos los meses';
-    const columna = matrizData.columnas.find(col => col.key === mesSeleccionado);
-    return columna ? columna.label : mesSeleccionado;
+function etiquetaPeriodo(seleccion) {
+    if (!seleccion.length || !matrizData) return matrizData ? matrizData.year : 'Todos los meses';
+    return seleccion.map(mes => matrizData.columnas.find(col => col.key === mes)?.label || mes).join(', ');
 }
 
 function renderKpis(grupos) {

@@ -1,6 +1,20 @@
 (function () {
     'use strict';
 
+    // Shared by screens: an empty selection means all values.
+    const control = origen => typeof origen === 'string' ? document.getElementById(origen) : origen;
+    const valores = origen => [...(control(origen)?.selectedOptions || [])].map(opcion => opcion.value).filter(valor => valor !== '' && valor !== 'todos');
+    const coincide = (seleccion, valor) => !seleccion.length || seleccion.includes(String(valor ?? ''));
+    const seleccionar = (origen, seleccion) => {
+        const elemento = control(origen);
+        const elegidos = new Set(Array.isArray(seleccion) ? seleccion.map(String) : seleccion ? [String(seleccion)] : []);
+        [...elemento.options].forEach(opcion => { opcion.selected = elegidos.has(opcion.value); });
+        elemento.dispatchEvent(new Event('app-filter-sync'));
+    };
+    window.AppFilters = { valores, coincide, seleccionar,
+        agregar: (params, nombre, seleccion) => seleccion.forEach(valor => params.append(nombre, valor)),
+    };
+
     const idFiltro = /(?:^filtro|filtro$|Filtro|^buscar|Buscar)/;
     const selectoresFiltro = new Set([
         'year', 'yearSelect', 'anio', 'mesFiltro', 'estadoFiltro', 'metricaFiltro',
@@ -87,13 +101,25 @@
         boton.addEventListener('click', () => abrirFiltro({ tipo: 'select', origen: select, disparador: boton }));
         select.insertAdjacentElement('afterend', boton);
         const actualizar = () => {
-            const elegida = select.selectedOptions[0];
-            boton.textContent = elegida?.textContent?.trim() || 'Seleccionar';
+            boton.dataset.filterName = nombreFiltro(select);
+            boton.setAttribute('aria-label', `Filtrar por ${boton.dataset.filterName}`);
+            const elegidas = [...select.selectedOptions].filter(opcion => opcion.value !== '' && opcion.value !== 'todos');
+            boton.textContent = select.multiple
+                ? (elegidas.length > 1 ? `${elegidas.length} seleccionados` : elegidas[0]?.textContent?.trim() || select.options[0]?.textContent?.trim() || 'Todos')
+                : select.selectedOptions[0]?.textContent?.trim() || 'Seleccionar';
             boton.disabled = select.disabled;
             boton.hidden = select.hidden || select.classList.contains('hidden') || select.style.display === 'none';
         };
         actualizar();
         select.addEventListener('change', actualizar);
+        select.addEventListener('app-filter-sync', actualizar);
+        // Screen shortcuts and reset buttons assign .value without a change event.
+        const propiedadValor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+        Object.defineProperty(select, 'value', {
+            configurable: true,
+            get() { return propiedadValor.get.call(this); },
+            set(valor) { propiedadValor.set.call(this, valor); actualizar(); },
+        });
         new MutationObserver(actualizar).observe(select, { childList: true, subtree: true, characterData: true });
         new MutationObserver(actualizar).observe(select, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'disabled'] });
     }
@@ -137,7 +163,7 @@
         dialogo.querySelector('.app-filter-dialog-options').addEventListener('change', event => {
             if (!filtroActivo || !event.target.matches('input[data-filter-option]')) return;
             const valor = event.target.value;
-            if (filtroActivo.tipo === 'select') filtroActivo.seleccion.clear();
+            if (filtroActivo.tipo === 'select' && !filtroActivo.origen.multiple) filtroActivo.seleccion.clear();
             if (event.target.checked) filtroActivo.seleccion.add(valor);
             else filtroActivo.seleccion.delete(valor);
             pintarOpciones();
@@ -169,17 +195,17 @@
             ? [...origen.querySelectorAll('input[type="checkbox"]:not([data-todos])')].map(input => ({
                 valor: input.value, etiqueta: input.closest('label')?.querySelector('span')?.textContent?.trim() || input.value,
             }))
-            : [...origen.options].filter(option => !option.disabled || option.selected).map(option => ({
+            : [...origen.options].filter(option => (!option.disabled || option.selected) && (!origen.multiple || (option.value !== '' && option.value !== 'todos'))).map(option => ({
                 valor: option.value, etiqueta: option.textContent.trim(),
             }));
         const seleccion = tipo === 'multiple'
             ? new Set([...origen.querySelectorAll('input[type="checkbox"]:not([data-todos]):checked')].map(input => input.value))
-            : new Set([origen.value]);
+            : new Set(origen.multiple ? valores(origen) : [origen.value]);
         filtroActivo = { tipo, origen, disparador, opciones, seleccion };
         focoAnterior = disparador;
         modal.querySelector('#appFilterTitle').textContent = `Filtrar por ${nombreFiltro(disparador)}`;
-        modal.querySelector('[data-filter-all]').hidden = tipo !== 'multiple';
-        modal.querySelector('[data-filter-clear]').hidden = tipo === 'select' && !opciones.some(opcion => opcion.valor === '');
+        modal.querySelector('[data-filter-all]').hidden = tipo !== 'multiple' && !origen.multiple;
+        modal.querySelector('[data-filter-clear]').hidden = tipo === 'select' && !origen.multiple && !opciones.some(opcion => opcion.valor === '');
         modal.querySelector('.app-filter-dialog-search').value = '';
         modal.hidden = false;
         document.body.classList.add('app-filter-dialog-open');
@@ -199,7 +225,8 @@
             const etiqueta = document.createElement('label');
             etiqueta.className = 'app-filter-dialog-option';
             const input = document.createElement('input');
-            input.type = 'checkbox';
+            input.type = filtroActivo.tipo === 'select' && !filtroActivo.origen.multiple ? 'radio' : 'checkbox';
+            input.name = 'app-filter-option';
             input.dataset.filterOption = 'true';
             input.value = opcion.valor;
             input.checked = filtroActivo.seleccion.has(opcion.valor);
@@ -244,6 +271,14 @@
                 (inputs[0] || todos).dispatchEvent(new Event('change', { bubbles: true }));
             }
         } else {
+            if (origen.multiple) {
+                const antes = valores(origen);
+                seleccionar(origen, [...seleccion]);
+                const cambio = antes.join('\u0000') !== valores(origen).join('\u0000');
+                cerrarFiltro();
+                if (cambio) origen.dispatchEvent(new Event('change', { bubbles: true }));
+                return;
+            }
             const valor = [...seleccion][0] ?? '';
             const cambio = origen.value !== valor;
             cerrarFiltro();

@@ -71,7 +71,7 @@
         <div class="flex flex-wrap gap-2">
             <label class="flex h-10 items-center gap-2 rounded bg-amber-50 px-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200">
                 <span>Mes</span>
-                <select id="filtroMesEditorPLP" onchange="renderEditorPLP(); renderResumenPLP()" class="h-8 min-w-32 rounded border border-amber-300 bg-white px-2 font-normal"></select>
+                <select multiple id="filtroMesEditorPLP" onchange="renderEditorPLP(); renderResumenPLP()" class="h-8 min-w-32 rounded border border-amber-300 bg-white px-2 font-normal"></select>
             </label>
             <button type="button" onclick="agregarFilaEditorPLP()" class="inline-flex h-10 items-center gap-2 rounded bg-white px-4 text-sm font-semibold text-amber-900 ring-1 ring-amber-300 hover:bg-amber-50"><i class="fas fa-plus"></i> Agregar fila</button>
             <button type="button" onclick="guardarEditorPLP()" class="inline-flex h-10 items-center gap-2 rounded bg-amber-600 px-4 text-sm font-semibold text-white hover:bg-amber-700"><i class="fas fa-save"></i> Guardar cambios</button>
@@ -298,9 +298,9 @@
                 </div>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-4">
                     <input id="buscarProyeccion" type="search" oninput="renderProyecciones()" placeholder="Buscar..." class="h-10 rounded border border-gray-300 px-3 text-sm">
-                    <select id="filtroCliente" onchange="actualizarFiltroCampania(); renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
-                    <select id="filtroCampania" onchange="renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
-                    <select id="filtroMes" onchange="renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                    <select multiple id="filtroCliente" onchange="actualizarFiltroCampania(); renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                    <select multiple id="filtroCampania" onchange="renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                    <select multiple id="filtroMes" onchange="renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
                 </div>
             </div>
         </div>
@@ -548,7 +548,7 @@ function actualizarCampanias() {
     const cliente = document.getElementById('cliente').value;
     const actual = document.getElementById('campania').value;
     const campanias = [...new Set([...asociaciones, ...proyecciones]
-        .filter(item => !cliente || item.cliente === cliente)
+        .filter(item => AppFilters.coincide(cliente, item.cliente))
         .map(item => item.campania)
         .filter(Boolean)
     )].sort();
@@ -621,10 +621,10 @@ function renderEditorPLP() {
     const tbody = document.getElementById('tbodyEditorPLP');
     if (!tbody) return;
     const filtro = document.getElementById('filtroMesEditorPLP');
-    const mesActual = filtro.value;
-    filtro.innerHTML = '<option value="">Todos los meses</option>' + meses.map(mes => `<option value="${escapeHtml(mes.value)}" ${mes.value === mesActual ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`).join('');
-    const mesSeleccionado = filtro.value;
-    const filas = proyecciones.filter(item => item.tipo_plp && (!mesSeleccionado || item.mes === mesSeleccionado)).sort((a, b) => `${a.mes}|${a.tipo_plp}|${a.campania}`.localeCompare(`${b.mes}|${b.tipo_plp}|${b.campania}`));
+    const mesActual = AppFilters.valores(filtro);
+    filtro.innerHTML = '<option value="">Todos los meses</option>' + meses.map(mes => `<option value="${escapeHtml(mes.value)}" ${mesActual.includes(mes.value) ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`).join('');
+    const mesSeleccionado = AppFilters.valores(filtro);
+    const filas = proyecciones.filter(item => item.tipo_plp && (AppFilters.coincide(mesSeleccionado, item.mes))).sort((a, b) => `${a.mes}|${a.tipo_plp}|${a.campania}`.localeCompare(`${b.mes}|${b.tipo_plp}|${b.campania}`));
     tbody.innerHTML = filas.length
         ? filas.map(filaEditorPLP).join('')
         : '<tr><td colspan="8" class="border border-slate-200 px-4 py-8 text-center text-slate-500">No hay campañas PLP para el mes seleccionado. Usá “Agregar fila” para crear una.</td></tr>';
@@ -655,7 +655,7 @@ function alternarEliminarFilaPLP(button) {
 }
 
 function agregarFilaEditorPLP() {
-    const mesSeleccionado = document.getElementById('filtroMesEditorPLP').value;
+    const mesSeleccionado = AppFilters.valores('filtroMesEditorPLP')[0];
     const tbody = document.getElementById('tbodyEditorPLP');
     if (!tbody.querySelector('tr[data-plp-id]')) tbody.innerHTML = '';
     tbody.insertAdjacentHTML('beforeend', filaEditorPLP({ mes: mesSeleccionado || meses[0]?.value }));
@@ -845,7 +845,7 @@ async function guardarEditorPLP() {
 
 function renderResumenPLP() {
     const tipos = ['Personal CX', 'Personal', 'Personal Soporte', 'Personal SMB'];
-    const mesFiltrado = document.getElementById('filtroMesEditorPLP')?.value || '';
+    const mesFiltrado = AppFilters.valores('filtroMesEditorPLP');
     const acumulados = Object.fromEntries(meses.map(mes => [mes.value, Object.fromEntries(tipos.map(tipo => [tipo, 0]))]));
     proyecciones.filter(item => item.tipo_plp && acumulados[item.mes]).forEach(item => {
         // Este cuadro resume la carga PLP al 100%; el cumplimiento se controla
@@ -854,7 +854,7 @@ function renderResumenPLP() {
     });
     // Toda hora adicional debe existir como fila PLP visible; el resumen no
     // incorpora excepciones ocultas ni importes hardcodeados.
-    const filas = meses.filter(mes => !mesFiltrado || mes.value === mesFiltrado).map(mes => {
+    const filas = meses.filter(mes => AppFilters.coincide(mesFiltrado, mes.value)).map(mes => {
         const valores = acumulados[mes.value] || {};
         const cx = Number(valores['Personal CX'] || 0);
         const personal = Number(valores.Personal || 0);
@@ -993,31 +993,31 @@ async function guardarDistribucionPersonal() {
 function popularFiltros() {
     const clientes = [...new Set([...asociaciones, ...proyecciones]
         .map(item => item.cliente).filter(Boolean))].sort();
-    const clienteActual = document.getElementById('filtroCliente').value;
+    const clienteActual = AppFilters.valores('filtroCliente');
     document.getElementById('filtroCliente').innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(cliente =>
-        `<option value="${escapeHtml(cliente)}" ${cliente === clienteActual ? 'selected' : ''}>${escapeHtml(cliente)}</option>`
+        `<option value="${escapeHtml(cliente)}" ${clienteActual.includes(String(cliente)) ? 'selected' : ''}>${escapeHtml(cliente)}</option>`
     ).join('');
     popularFiltroMes();
     actualizarFiltroCampania();
 }
 
 function popularFiltroMes() {
-    const actual = document.getElementById('filtroMes').value;
+    const actual = AppFilters.valores('filtroMes');
     document.getElementById('filtroMes').innerHTML = '<option value="">Todos los meses</option>' + meses.map(mes =>
-        `<option value="${escapeHtml(mes.value)}" ${mes.value === actual ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`
+        `<option value="${escapeHtml(mes.value)}" ${actual.includes(String(mes.value)) ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`
     ).join('');
 }
 
 function actualizarFiltroCampania() {
-    const cliente = document.getElementById('filtroCliente').value;
-    const actual = document.getElementById('filtroCampania').value;
+    const cliente = AppFilters.valores('filtroCliente');
+    const actual = AppFilters.valores('filtroCampania');
     const campanias = [...new Set([...asociaciones, ...proyecciones]
-        .filter(item => !cliente || item.cliente === cliente)
+        .filter(item => AppFilters.coincide(cliente, item.cliente))
         .map(item => item.campania)
         .filter(Boolean)
     )].sort();
     document.getElementById('filtroCampania').innerHTML = '<option value="">Todas las campañas</option>' + campanias.map(campania =>
-        `<option value="${escapeHtml(campania)}" ${campania === actual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
+        `<option value="${escapeHtml(campania)}" ${actual.includes(String(campania)) ? 'selected' : ''}>${escapeHtml(campania)}</option>`
     ).join('');
 }
 
@@ -1296,14 +1296,14 @@ async function eliminarProyeccion(id) {
 function renderProyecciones() {
     const tbody = document.getElementById('tbodyProyecciones');
     const texto = normalizar(document.getElementById('buscarProyeccion').value);
-    const cliente = document.getElementById('filtroCliente').value;
-    const campania = document.getElementById('filtroCampania').value;
-    const mes = document.getElementById('filtroMes').value;
+    const cliente = AppFilters.valores('filtroCliente');
+    const campania = AppFilters.valores('filtroCampania');
+    const mes = AppFilters.valores('filtroMes');
     const filtradas = proyecciones.filter(item => {
         if (pestaniaActual === 'personal' && !item.tipo_plp) return false;
-        if (cliente && item.cliente !== cliente) return false;
-        if (campania && item.campania !== campania) return false;
-        if (mes && item.mes !== mes) return false;
+        if (!AppFilters.coincide(cliente, item.cliente)) return false;
+        if (!AppFilters.coincide(campania, item.campania)) return false;
+        if (!AppFilters.coincide(mes, item.mes)) return false;
         if (!texto) return true;
         return normalizar(`${item.cliente} ${item.campania} ${item.mes_label}`).includes(texto);
     });

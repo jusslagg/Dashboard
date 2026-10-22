@@ -116,49 +116,49 @@
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold text-gray-600">Cliente</label>
-                <select id="filtroClienteCatalogo" data-filtro-catalogo="cliente" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select multiple id="filtroClienteCatalogo" data-filtro-catalogo="cliente" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Todos</option>
                 </select>
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold text-gray-600">Campania</label>
-                <select id="filtroCampaniaCatalogo" data-filtro-catalogo="campania" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select multiple id="filtroCampaniaCatalogo" data-filtro-catalogo="campania" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Todas</option>
                 </select>
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold text-gray-600">Gerente</label>
-                <select id="filtroGerenteCatalogo" data-filtro-catalogo="gerente" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select multiple id="filtroGerenteCatalogo" data-filtro-catalogo="gerente" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Todos</option>
                 </select>
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold text-gray-600">Jefe de Site</label>
-                <select id="filtroJefeSiteCatalogo" data-filtro-catalogo="jefe_site" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select multiple id="filtroJefeSiteCatalogo" data-filtro-catalogo="jefe_site" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Todos</option>
                 </select>
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold text-gray-600">Sub campania</label>
-                <select id="filtroSubcampaniaCatalogo" data-filtro-catalogo="subcampania" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select multiple id="filtroSubcampaniaCatalogo" data-filtro-catalogo="subcampania" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Todas</option>
                 </select>
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold text-gray-600">Tipo negocio</label>
-                <select id="filtroTipoNegocioCatalogo" data-filtro-catalogo="tipo_negocio" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select multiple id="filtroTipoNegocioCatalogo" data-filtro-catalogo="tipo_negocio" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Todos</option>
                 </select>
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold text-gray-600">Grupo Facturación horas</label>
-                <select id="filtroGrupoFacturacionCatalogo" data-filtro-catalogo="grupo_facturacion" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select multiple id="filtroGrupoFacturacionCatalogo" data-filtro-catalogo="grupo_facturacion" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Todos</option>
                 </select>
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold text-gray-600">Segmento matriz</label>
-                <select id="filtroSegmentoCatalogo" data-filtro-catalogo="segmento" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select multiple id="filtroSegmentoCatalogo" data-filtro-catalogo="segmento" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Todos</option>
                 </select>
             </div>
@@ -369,13 +369,13 @@ function poblarFiltrosCatalogo() {
     ];
     filtros.forEach(([id, campo, label]) => {
         const select = document.getElementById(id);
-        const valorActual = select.value;
+        const valorActual = AppFilters.valores(select);
         const opciones = [...new Set(asignacionesCatalogo.map(item => String(item[campo] || '').trim()).filter(Boolean))]
             .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
         select.innerHTML = `<option value="">${label}</option>` + opciones
             .map(valor => `<option value="${escapeHtml(valor)}">${escapeHtml(valor)}</option>`)
             .join('');
-        if (opciones.includes(valorActual)) select.value = valorActual;
+        AppFilters.seleccionar(select, valorActual);
     });
 }
 
@@ -383,10 +383,10 @@ function asignacionesFiltradas() {
     const texto = normalizarBusqueda(document.getElementById('filtroTextoCatalogo').value);
     const filtros = {};
     document.querySelectorAll('[data-filtro-catalogo]').forEach(select => {
-        if (select.value) filtros[select.dataset.filtroCatalogo] = select.value;
+        filtros[select.dataset.filtroCatalogo] = AppFilters.valores(select);
     });
     return asignacionesCatalogo.filter(item => {
-        const coincideFiltros = Object.entries(filtros).every(([campo, valor]) => String(item[campo] || '') === valor);
+        const coincideFiltros = Object.entries(filtros).every(([campo, valor]) => AppFilters.coincide(valor, item[campo]));
         if (!coincideFiltros) return false;
         if (!texto) return true;
         return normalizarBusqueda([

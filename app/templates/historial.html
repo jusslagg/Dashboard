@@ -10,7 +10,7 @@
         <p class="mt-2 text-sm text-gray-600">Modificaciones y eliminaciones con fecha, hora, usuario y detalle.</p>
     </div>
     <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <select id="filtroAccion" onchange="cargarHistorial()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
+        <select multiple id="filtroAccion" onchange="cargarHistorial()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todas las acciones</option>
             <option value="creacion">Creacion</option>
             <option value="edicion">Edicion</option>
@@ -18,7 +18,7 @@
             <option value="importacion">Importacion</option>
             <option value="deshacer">Deshacer</option>
         </select>
-        <select id="filtroEntidad" onchange="cargarHistorial()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
+        <select multiple id="filtroEntidad" onchange="cargarHistorial()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
             <option value="">Todas las areas</option>
             <option value="facturacion">Facturacion</option>
             <option value="asignacion">Datos maestros</option>
@@ -70,10 +70,10 @@ let historialActual = [];
 
 async function cargarHistorial() {
     const params = new URLSearchParams({ limite: '150' });
-    const accion = document.getElementById('filtroAccion').value;
-    const entidad = document.getElementById('filtroEntidad').value;
-    if (accion) params.set('accion', accion);
-    if (entidad) params.set('entidad', entidad);
+    const accion = AppFilters.valores('filtroAccion');
+    const entidad = AppFilters.valores('filtroEntidad');
+    AppFilters.agregar(params, 'accion', accion);
+    AppFilters.agregar(params, 'entidad', entidad);
 
     params.set('_ts', Date.now());
     const contenedor = document.getElementById('listaHistorial');

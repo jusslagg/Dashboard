@@ -144,9 +144,9 @@
                 </div>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-4">
                     <input id="buscarPrecio" type="search" oninput="renderPrecios()" placeholder="Buscar..." class="h-10 rounded border border-gray-300 px-3 text-sm">
-                    <select id="filtroSite" onchange="renderPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
-                    <select id="filtroCliente" onchange="actualizarFiltroCampania(); renderPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
-                    <select id="filtroCampania" onchange="renderPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                    <select multiple id="filtroSite" onchange="renderPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                    <select multiple id="filtroCliente" onchange="actualizarFiltroCampania(); renderPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                    <select multiple id="filtroCampania" onchange="renderPrecios()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
                 </div>
             </div>
             <div id="mensajeGrillaPrecios" class="mt-3 hidden rounded px-3 py-2 text-sm" role="status" aria-live="polite"></div>
@@ -276,7 +276,7 @@ function actualizarCampanias() {
     const cliente = document.getElementById('cliente').value;
     const actual = document.getElementById('campania').value;
     const campanias = [...new Set([...asociaciones, ...precios]
-        .filter(item => !cliente || item.cliente === cliente)
+        .filter(item => AppFilters.coincide(cliente, item.cliente))
         .map(item => item.campania)
         .filter(Boolean)
     )].sort();
@@ -286,29 +286,29 @@ function actualizarCampanias() {
 }
 
 function popularFiltros() {
-    const siteActual = document.getElementById('filtroSite').value;
-    const clienteActual = document.getElementById('filtroCliente').value;
+    const siteActual = AppFilters.valores('filtroSite');
+    const clienteActual = AppFilters.valores('filtroCliente');
     const sites = [...new Set([...asociaciones, ...precios].map(item => item.site).filter(Boolean))].sort();
     const clientes = [...new Set([...asociaciones, ...precios].map(item => item.cliente).filter(Boolean))].sort();
     document.getElementById('filtroSite').innerHTML = '<option value="">Todos los sites</option>' + sites.map(site =>
-        `<option value="${escapeHtml(site)}" ${site === siteActual ? 'selected' : ''}>${escapeHtml(site)}</option>`
+        `<option value="${escapeHtml(site)}" ${siteActual.includes(String(site)) ? 'selected' : ''}>${escapeHtml(site)}</option>`
     ).join('');
     document.getElementById('filtroCliente').innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(cliente =>
-        `<option value="${escapeHtml(cliente)}" ${cliente === clienteActual ? 'selected' : ''}>${escapeHtml(cliente)}</option>`
+        `<option value="${escapeHtml(cliente)}" ${clienteActual.includes(String(cliente)) ? 'selected' : ''}>${escapeHtml(cliente)}</option>`
     ).join('');
     actualizarFiltroCampania();
 }
 
 function actualizarFiltroCampania() {
-    const cliente = document.getElementById('filtroCliente').value;
-    const actual = document.getElementById('filtroCampania').value;
+    const cliente = AppFilters.valores('filtroCliente');
+    const actual = AppFilters.valores('filtroCampania');
     const campanias = [...new Set([...asociaciones, ...precios]
-        .filter(item => !cliente || item.cliente === cliente)
+        .filter(item => AppFilters.coincide(cliente, item.cliente))
         .map(item => item.campania)
         .filter(Boolean)
     )].sort();
     document.getElementById('filtroCampania').innerHTML = '<option value="">Todas las campanias</option>' + campanias.map(campania =>
-        `<option value="${escapeHtml(campania)}" ${campania === actual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
+        `<option value="${escapeHtml(campania)}" ${actual.includes(String(campania)) ? 'selected' : ''}>${escapeHtml(campania)}</option>`
     ).join('');
 }
 
@@ -464,9 +464,9 @@ async function eliminarPrecio(id) {
 function renderPrecios() {
     const tbody = document.getElementById('tbodyPrecios');
     const texto = normalizar(document.getElementById('buscarPrecio').value);
-    const site = document.getElementById('filtroSite').value;
-    const cliente = document.getElementById('filtroCliente').value;
-    const campania = document.getElementById('filtroCampania').value;
+    const site = AppFilters.valores('filtroSite');
+    const cliente = AppFilters.valores('filtroCliente');
+    const campania = AppFilters.valores('filtroCampania');
     const year = document.getElementById('yearFiltro').value;
     const mesesYear = meses.filter(item => item.value.startsWith(`${year}-`));
     document.getElementById('theadPrecios').innerHTML = `<tr>
@@ -488,9 +488,9 @@ function renderPrecios() {
         a.cliente.localeCompare(b.cliente, 'es') || a.campania.localeCompare(b.campania, 'es')
     );
     const filtradas = filas.filter(item => {
-        if (site && item.site !== site) return false;
-        if (cliente && item.cliente !== cliente) return false;
-        if (campania && item.campania !== campania) return false;
+        if (!AppFilters.coincide(site, item.site)) return false;
+        if (!AppFilters.coincide(cliente, item.cliente)) return false;
+        if (!AppFilters.coincide(campania, item.campania)) return false;
         return !texto || normalizar(`${item.cliente} ${item.site} ${item.campania}`).includes(texto);
     });
     document.getElementById('contadorPrecios').textContent = `${filtradas.length} de ${filas.length} filas · ${mesesYear.length} meses`;

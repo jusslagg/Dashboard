@@ -4241,12 +4241,12 @@ def api_eliminar_usuario(usuario_id):
 @eliminacion_requerida
 def api_historial():
     query = HistorialCambio.query
-    accion = request.args.get('accion')
-    entidad = request.args.get('entidad')
+    accion = [valor for valor in request.args.getlist('accion') if valor]
+    entidad = [valor for valor in request.args.getlist('entidad') if valor]
     if accion:
-        query = query.filter(HistorialCambio.accion == accion)
+        query = query.filter(HistorialCambio.accion.in_(accion))
     if entidad:
-        query = query.filter(HistorialCambio.entidad == entidad)
+        query = query.filter(HistorialCambio.entidad.in_(entidad))
     limite = min(numero_request('limite') or 100, 300)
     items = query.order_by(HistorialCambio.creado_en.desc()).limit(int(limite)).all()
     return jsonify({'success': True, 'historial': [item.to_dict() for item in items]})
@@ -5118,7 +5118,7 @@ def api_resumen_horas():
         clave_jefatura = normalizar_header(jefatura)
         grupo = por_jefatura.setdefault(clave_jefatura, {'nombre': jefatura, 'registros': []})
         grupo['registros'].append(registro)
-    for grupo in sorted(por_jefatura.values(), key=lambda item: item['nombre'].casefold()):
+    def detalle_jefatura(grupo):
         jefatura, registros = grupo['nombre'], grupo['registros']
         meses_jefatura = []
         for mes in range(1, 13):
@@ -5128,12 +5128,21 @@ def api_resumen_horas():
         for numero, meses in enumerate(((1, 2, 3), (4, 5, 6), (7, 8, 9), (10, 11, 12)), 1):
             claves = {f'{year}-{mes:02d}' for mes in meses}
             trimestres_jefatura.append({'nombre': f'{numero}T', **metricas([r for r in registros if r.mes in claves])})
-        detalle_jefaturas.append({
+        return {
             'nombre': jefatura,
             'total': metricas(registros),
             'meses': meses_jefatura,
             'trimestres': trimestres_jefatura,
-        })
+        }
+    for grupo in sorted(por_jefatura.values(), key=lambda item: item['nombre'].casefold()):
+        detalle_jefaturas.append(detalle_jefatura(grupo))
+    seleccion_jefaturas = {normalizar_header(valor) for valor in request.args.getlist('jefatura') if valor}
+    grupos_seleccionados = [grupo for clave, grupo in por_jefatura.items()
+                           if not seleccion_jefaturas or clave in seleccion_jefaturas]
+    detalle_seleccionado = detalle_jefatura({
+        'nombre': ', '.join(grupo['nombre'] for grupo in grupos_seleccionados) if seleccion_jefaturas else 'Todas las jefaturas',
+        'registros': [registro for grupo in grupos_seleccionados for registro in grupo['registros']],
+    })
     jefaturas = participaciones([
         {'nombre': item['nombre'], **item['total']}
         for item in detalle_jefaturas
@@ -5153,6 +5162,7 @@ def api_resumen_horas():
         'gerencias': gerencias,
         'jefaturas': jefaturas,
         'detalle_jefaturas': detalle_jefaturas,
+        'detalle_seleccionado': detalle_seleccionado,
         'next_gen': next_gen,
         'total': total,
         'fuente_horas': fuente_horas,
@@ -8193,14 +8203,17 @@ def construir_notificaciones_proyecciones(year):
 
 
 def filtrar_notificaciones_proyecciones(items, argumentos):
-    mes = str(argumentos.get('mes') or '').strip()
-    estado = str(argumentos.get('estado') or '').strip()
-    metrica = str(argumentos.get('metrica') or '').strip()
+    def seleccion(nombre):
+        valores = argumentos.getlist(nombre) if hasattr(argumentos, 'getlist') else [argumentos.get(nombre)]
+        return {str(valor).strip() for valor in valores if valor and str(valor).strip()}
+    mes = seleccion('mes')
+    estado = seleccion('estado')
+    metrica = seleccion('metrica')
     busqueda = normalizar_header(argumentos.get('buscar') or '')
     return [item for item in items if (
-        (not mes or item['mes'] == mes)
-        and (not estado or item['estado'] == estado)
-        and (not metrica or metrica in item.get('metricas_cambiadas', []))
+        (not mes or item['mes'] in mes)
+        and (not estado or item['estado'] in estado)
+        and (not metrica or metrica.intersection(item.get('metricas_cambiadas', [])))
         and (not busqueda or busqueda in normalizar_header(
             f"{item['site']} {item['cliente']} {item['campania']} {item['detalle']}"
         ))
@@ -8846,10 +8859,10 @@ def descargar_plantilla_dashboard_operativo():
 @login_requerido
 def api_dashboard_operativo():
     year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
-    mes = str(request.args.get('mes') or '').strip()
+    mes = [valor.strip() for valor in request.args.getlist('mes') if valor.strip()]
     query = DashboardOperativo.query.filter_by(year=year)
     if mes:
-        query = query.filter_by(mes=mes)
+        query = query.filter(DashboardOperativo.mes.in_(mes))
     filas = query.order_by(DashboardOperativo.mes, DashboardOperativo.cliente, DashboardOperativo.campania).all()
     meses = sorted({fila.mes for fila in DashboardOperativo.query.filter_by(year=year).all()})
     datos = []

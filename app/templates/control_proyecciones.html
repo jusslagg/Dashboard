@@ -49,9 +49,9 @@
             </div>
             <div class="grid w-full grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(180px,260px)_minmax(170px,220px)_minmax(170px,220px)_minmax(190px,260px)_auto]">
                 <input id="buscarControl" type="search" oninput="renderControl()" placeholder="Buscar..." class="h-10 rounded-md border border-gray-300 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
-                <select id="filtroSite" onchange="actualizarFiltrosDependientes(); renderControl()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
-                <select id="filtroCliente" onchange="actualizarFiltrosDependientes(); renderControl()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
-                <select id="filtroCampania" onchange="renderControl()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+                <select multiple id="filtroSite" onchange="actualizarFiltrosDependientes(); renderControl()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+                <select multiple id="filtroCliente" onchange="actualizarFiltrosDependientes(); renderControl()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+                <select multiple id="filtroCampania" onchange="renderControl()" class="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
                 <button type="button" onclick="limpiarFiltros()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
                     <i class="fas fa-circle-xmark text-xs"></i>
                     Limpiar
@@ -98,6 +98,8 @@ function cambiarVista(vista) {
 }
 
 function popularFiltros() {
+    const sitesSeleccionados = AppFilters.valores('filtroSite');
+    const clientesSeleccionados = AppFilters.valores('filtroCliente');
     const sites = [...new Set(filas.map(item => item.site).filter(Boolean))].sort();
     const clientes = [...new Set(filas.map(item => item.cliente).filter(Boolean))].sort();
     document.getElementById('filtroSite').innerHTML = '<option value="">Todos los sites</option>' + sites.map(site =>
@@ -106,17 +108,19 @@ function popularFiltros() {
     document.getElementById('filtroCliente').innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(cliente =>
         `<option value="${escapeHtml(cliente)}">${escapeHtml(cliente)}</option>`
     ).join('');
+    AppFilters.seleccionar('filtroSite', sitesSeleccionados);
+    AppFilters.seleccionar('filtroCliente', clientesSeleccionados);
     actualizarFiltrosDependientes();
 }
 
 function actualizarFiltrosDependientes() {
-    const site = document.getElementById('filtroSite').value;
-    const cliente = document.getElementById('filtroCliente').value;
-    const actual = document.getElementById('filtroCampania').value;
-    const opciones = filas.filter(item => (!site || item.site === site) && (!cliente || item.cliente === cliente));
+    const site = AppFilters.valores('filtroSite');
+    const cliente = AppFilters.valores('filtroCliente');
+    const actual = AppFilters.valores('filtroCampania');
+    const opciones = filas.filter(item => (AppFilters.coincide(site, item.site)) && (AppFilters.coincide(cliente, item.cliente)));
     const campanias = [...new Set(opciones.map(item => item.campania).filter(Boolean))].sort();
     document.getElementById('filtroCampania').innerHTML = '<option value="">Todas las campañas</option>' + campanias.map(campania =>
-        `<option value="${escapeHtml(campania)}" ${campania === actual ? 'selected' : ''}>${escapeHtml(campania)}</option>`
+        `<option value="${escapeHtml(campania)}" ${actual.includes(String(campania)) ? 'selected' : ''}>${escapeHtml(campania)}</option>`
     ).join('');
 }
 
@@ -131,9 +135,9 @@ function limpiarFiltros() {
 
 function renderControl() {
     const busqueda = normalizar(document.getElementById('buscarControl').value);
-    const site = document.getElementById('filtroSite').value;
-    const cliente = document.getElementById('filtroCliente').value;
-    const campania = document.getElementById('filtroCampania').value;
+    const site = AppFilters.valores('filtroSite');
+    const cliente = AppFilters.valores('filtroCliente');
+    const campania = AppFilters.valores('filtroCampania');
     const campoMeses = vistaActual === 'horas' ? 'horas' : 'dotaciones';
     const campoTotal = vistaActual === 'horas' ? 'total_horas' : 'total_dotaciones';
     const tipo = vistaActual === 'horas' ? 'Horas' : 'Dotaciones';
@@ -144,9 +148,9 @@ function renderControl() {
     const visibles = filas.filter(item => {
         const texto = normalizar(`${item.site} ${item.cliente} ${item.campania}`);
         return (!busqueda || texto.includes(busqueda))
-            && (!site || item.site === site)
-            && (!cliente || item.cliente === cliente)
-            && (!campania || item.campania === campania);
+            && (AppFilters.coincide(site, item.site))
+            && (AppFilters.coincide(cliente, item.cliente))
+            && (AppFilters.coincide(campania, item.campania));
     });
 
     const totalMeses = Object.fromEntries(meses.map(mes => [mes.value, 0]));

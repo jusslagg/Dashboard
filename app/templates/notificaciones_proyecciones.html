@@ -47,14 +47,14 @@
     <div class="border-b border-slate-200 p-4">
         <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
             <input id="buscarFiltro" type="search" oninput="renderNotificaciones()" placeholder="Buscar site, cliente, campaña o detalle..." class="h-10 rounded-md border border-slate-300 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
-            <select id="mesFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm"><option value="">Todos los meses</option></select>
-            <select id="estadoFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm">
+            <select multiple id="mesFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm"><option value="">Todos los meses</option></select>
+            <select multiple id="estadoFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm">
                 <option value="">Todos los estados</option>
                 <option value="positiva">Positivos</option>
                 <option value="negativa">Negativos</option>
                 <option value="mixta">Mixtos</option>
             </select>
-            <select id="metricaFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm"><option value="">Todas las métricas</option></select>
+            <select multiple id="metricaFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm"><option value="">Todas las métricas</option></select>
             <button type="button" onclick="limpiarFiltros()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 <i class="fas fa-circle-xmark"></i>Limpiar
             </button>
@@ -105,13 +105,13 @@ async function cargarNotificaciones() {
 }
 
 function popularFiltros() {
-    const mesActual = document.getElementById('mesFiltro').value;
-    const metricaActual = document.getElementById('metricaFiltro').value;
+    const mesActual = AppFilters.valores('mesFiltro');
+    const metricaActual = AppFilters.valores('metricaFiltro');
     document.getElementById('mesFiltro').innerHTML = '<option value="">Todos los meses</option>' + (datosNotificaciones.meses || []).map(mes =>
-        `<option value="${escapeHtml(mes.value)}" ${mes.value === mesActual ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`
+        `<option value="${escapeHtml(mes.value)}" ${mesActual.includes(String(mes.value)) ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`
     ).join('');
     document.getElementById('metricaFiltro').innerHTML = '<option value="">Todas las métricas</option>' + (datosNotificaciones.metricas || []).map(metrica =>
-        `<option value="${escapeHtml(metrica.value)}" ${metrica.value === metricaActual ? 'selected' : ''}>${escapeHtml(metrica.label)}</option>`
+        `<option value="${escapeHtml(metrica.value)}" ${metricaActual.includes(String(metrica.value)) ? 'selected' : ''}>${escapeHtml(metrica.label)}</option>`
     ).join('');
     if (!filtrosInicializados) {
         const numeroMes = String(new Date().getMonth() + 1).padStart(2, '0');
@@ -125,15 +125,15 @@ function popularFiltros() {
 
 function notificacionesVisibles() {
     const buscar = normalizar(document.getElementById('buscarFiltro').value);
-    const mes = document.getElementById('mesFiltro').value;
-    const estado = document.getElementById('estadoFiltro').value;
-    const metrica = document.getElementById('metricaFiltro').value;
+    const mes = AppFilters.valores('mesFiltro');
+    const estado = AppFilters.valores('estadoFiltro');
+    const metrica = AppFilters.valores('metricaFiltro');
     return (datosNotificaciones.notificaciones || []).filter(item => {
         const texto = normalizar(`${item.site} ${item.cliente} ${item.campania} ${item.detalle}`);
         return (!buscar || texto.includes(buscar))
-            && (!mes || item.mes === mes)
-            && (!estado || item.estado === estado)
-            && (!metrica || (item.metricas_cambiadas || []).includes(metrica));
+            && (AppFilters.coincide(mes, item.mes))
+            && (AppFilters.coincide(estado, item.estado))
+            && (!metrica.length || metrica.some(valor => (item.metricas_cambiadas || []).includes(valor)));
     }).sort((a, b) => b.mes.localeCompare(a.mes) || Math.abs(b.impacto_facturacion) - Math.abs(a.impacto_facturacion));
 }
 
@@ -207,7 +207,7 @@ function impactoServicio(servicio) {
 function exportarReporte() {
     const params = new URLSearchParams({ year: document.getElementById('yearFiltro').value });
     const filtros = { mes: 'mesFiltro', estado: 'estadoFiltro', metrica: 'metricaFiltro', buscar: 'buscarFiltro' };
-    Object.entries(filtros).forEach(([clave, id]) => { const valor = document.getElementById(id).value.trim(); if (valor) params.set(clave, valor); });
+    Object.entries(filtros).forEach(([clave, id]) => { const control = document.getElementById(id); if (control.matches('select')) AppFilters.agregar(params, clave, AppFilters.valores(control)); else if (control.value.trim()) params.set(clave, control.value.trim()); });
     window.location.href = `/api/notificaciones-proyecciones/exportar?${params.toString()}`;
 }
 
