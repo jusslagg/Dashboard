@@ -7,4 +7,9 @@ node_modules/
 instance/*.db
 .env
 .env.local
+.env.docker
+.env.docker.*
+!.env.docker.example
+*.image.tar
+entregas/
 .vercel/

@@ -3,6 +3,8 @@
 {% block title %}Variable - Facturación{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='operaciones-ux.css') }}">
+<div id="variableWorkspace">
 <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
     <div>
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Proyectados</p>
@@ -22,6 +24,9 @@
     </div>
 </div>
 
+<p id="estadoCargaVariable" class="ops-status" role="status" aria-live="polite">Preparando datos de Variables…</p>
+<div id="mensajeVariable" role="status" aria-live="polite" class="hidden ops-feedback mb-4 rounded-md px-3 py-2 text-sm"></div>
+<p class="mb-4 text-sm text-slate-600">Las celdas editadas de Next Gen y Tarifación se guardan con el botón de su sección. Cambiar de vista conserva esos cambios pendientes.</p>
 <div class="mb-4 inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1">
     <button id="tabPorcentajes" type="button" onclick="cambiarVistaVariable('porcentajes')" class="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white">% Variable</button>
     <button id="tabEstimacion" type="button" onclick="cambiarVistaVariable('estimacion')" class="rounded-md px-4 py-2 text-sm font-semibold text-slate-600">Estimación variable</button>
@@ -62,7 +67,6 @@
             Guardar
         </button>
     </form>
-    <div id="mensajeVariable" class="hidden mx-4 mb-4 rounded-md px-3 py-2 text-sm"></div>
 </section>
 
 <section id="panelTarifacion" class="mb-4 hidden rounded-lg border border-amber-200 bg-white p-4 shadow-sm">
@@ -131,6 +135,7 @@
         </table>
     </div>
 </section>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -145,6 +150,16 @@ let dataNextGen = {dolares: {}, filas: [], total_usd: {meses: {}, total: 0}, tot
 const cambiosDolarNextGen = new Map();
 const cambiosProductoNextGen = new Map();
 let yearCambiosNextGen = null;
+let yearDatosVariable = '';
+let versionCargaVariable = 0;
+let guardandoNextGen = false;
+let guardandoTarifacion = false;
+
+window.addEventListener('beforeunload', event => {
+    if (!cambiosDolarNextGen.size && !cambiosProductoNextGen.size && !cambiosTarifacion.size && !guardandoNextGen && !guardandoTarifacion) return;
+    event.preventDefault();
+    event.returnValue = '';
+});
 
 document.addEventListener('DOMContentLoaded', cargarVariable);
 
@@ -232,18 +247,43 @@ async function importarVariables() {
 
 async function cargarVariable() {
     const year = document.getElementById('yearFiltro').value;
-    if (yearCambiosNextGen !== null && yearCambiosNextGen !== year) {
+    const cambioYear = Boolean(yearDatosVariable && yearDatosVariable !== year);
+    const restaurarYear = () => {
+        if (!yearDatosVariable) return;
+        document.getElementById('yearFiltro').value = yearDatosVariable;
+        document.getElementById('yearFiltro').dispatchEvent(new Event('app-filter-sync'));
+    };
+    if (guardandoNextGen || guardandoTarifacion) {
+        restaurarYear();
+        mostrarMensaje('Esperá a que termine el guardado antes de actualizar o cambiar el año.', false);
+        return;
+    }
+    if (cambioYear && (cambiosDolarNextGen.size || cambiosProductoNextGen.size || cambiosTarifacion.size)
+        && !confirm('Hay cambios de Next Gen o Tarifación sin guardar. ¿Descartarlos y consultar otro año?')) {
+        restaurarYear();
+        return;
+    }
+    const version = ++versionCargaVariable;
+    document.getElementById('variableWorkspace').inert = true;
+    const estado = document.getElementById('estadoCargaVariable');
+    estado.textContent = `Cargando Variables, Tarifación y Next Gen de ${year}…`;
+    estado.dataset.state = 'loading';
+    document.getElementById('contadorVariable').textContent = 'Cargando datos...';
+    try {
+    const [data, tarifacionData, nextGenData] = await Promise.all(['/api/variables', '/api/tarifaciones', '/api/next-gen'].map(async ruta => {
+        const response = await fetch(`${ruta}?year=${encodeURIComponent(year)}&_=${Date.now()}`, {cache: 'no-store', signal: AbortSignal.timeout(20000)});
+        const data = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : null;
+        if (!response.ok || !data?.success) throw new Error('No se pudieron consultar todas las secciones.');
+        return data;
+    }));
+    if (version !== versionCargaVariable) return;
+    if (cambioYear) {
         cambiosDolarNextGen.clear();
         cambiosProductoNextGen.clear();
-        yearCambiosNextGen = year;
+        cambiosTarifacion.clear();
     }
-    document.getElementById('contadorVariable').textContent = 'Cargando datos...';
-    const response = await fetch(`/api/variables?year=${encodeURIComponent(year)}`);
-    const data = await response.json();
-    const tarifacionResponse = await fetch(`/api/tarifaciones?year=${encodeURIComponent(year)}&_=${Date.now()}`, {cache: 'no-store'});
-    const tarifacionData = await tarifacionResponse.json();
-    const nextGenResponse = await fetch(`/api/next-gen?year=${encodeURIComponent(year)}&_=${Date.now()}`, {cache: 'no-store'});
-    const nextGenData = await nextGenResponse.json();
+    yearCambiosNextGen = year;
+    yearDatosVariable = year;
     meses = data.meses || [];
     filas = data.filas || [];
     campanias = data.campanias || [];
@@ -252,6 +292,19 @@ async function cargarVariable() {
     popularFormulario();
     popularFiltros();
     renderVariable();
+    actualizarEstadoCambiosNextGen();
+    document.getElementById('guardarGrillaTarifacion').disabled = cambiosTarifacion.size === 0;
+    estado.textContent = `Año ${year} · Las tres secciones se actualizaron a las ${new Date().toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit'})}. Se conservan las ediciones pendientes del mismo año.`;
+    estado.dataset.state = 'success';
+    } catch (error) {
+        if (version !== versionCargaVariable) return;
+        restaurarYear();
+        estado.textContent = 'No se pudo actualizar. Se conservan los datos anteriores y tus cambios pendientes. Usá Actualizar para reintentar.';
+        estado.dataset.state = 'error';
+        document.getElementById('contadorVariable').textContent = 'Consulta incompleta; los valores visibles pueden estar desactualizados.';
+    } finally {
+        if (version === versionCargaVariable) document.getElementById('variableWorkspace').inert = false;
+    }
 }
 
 function popularFormulario() {
@@ -323,7 +376,7 @@ function actualizarEstadoCambiosNextGen() {
     const cantidad = cambiosDolarNextGen.size + cambiosProductoNextGen.size;
     const boton = document.getElementById('guardarCambiosNextGen');
     if (!boton) return;
-    boton.disabled = cantidad === 0;
+    boton.disabled = cantidad === 0 || guardandoNextGen;
     boton.className = cantidad
         ? 'inline-flex h-9 items-center gap-2 rounded-md bg-cyan-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-cyan-800'
         : 'inline-flex h-9 items-center gap-2 rounded-md bg-slate-300 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed';
@@ -334,8 +387,11 @@ function actualizarEstadoCambiosNextGen() {
 }
 
 async function guardarCambiosNextGen() {
+    if (guardandoNextGen) return;
     const cambios = [...cambiosDolarNextGen.values(), ...cambiosProductoNextGen.values()];
     if (!cambios.length) return;
+    guardandoNextGen = true;
+    document.getElementById('variableWorkspace').inert = true;
     const boton = document.getElementById('guardarCambiosNextGen');
     boton.disabled = true;
     boton.querySelector('span').textContent = 'Guardando...';
@@ -343,6 +399,7 @@ async function guardarCambiosNextGen() {
     try {
         const response = await fetch('/api/next-gen/edicion-masiva', {
             method: 'POST',
+            signal: AbortSignal.timeout(20000),
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
@@ -365,6 +422,8 @@ async function guardarCambiosNextGen() {
     } catch (error) {
         mostrarMensaje('Los cambios no pudieron confirmarse. Volvé a intentar.', false);
     } finally {
+        guardandoNextGen = false;
+        document.getElementById('variableWorkspace').inert = false;
         actualizarEstadoCambiosNextGen();
         if (guardado) {
             const estado = document.getElementById('estadoCambiosNextGen');
@@ -418,11 +477,16 @@ function editarTarifacion(raw, mes, valor) {
 }
 
 async function guardarGrillaTarifacion() {
+    if (guardandoTarifacion) return;
     if (!cambiosTarifacion.size) return;
+    guardandoTarifacion = true;
+    document.getElementById('variableWorkspace').inert = true;
     const boton = document.getElementById('guardarGrillaTarifacion');
     boton.disabled = true;
+    try {
     const response = await fetch('/api/tarifaciones/edicion-masiva', {
         method: 'POST',
+        signal: AbortSignal.timeout(20000),
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
@@ -436,9 +500,17 @@ async function guardarGrillaTarifacion() {
     mostrarMensaje(data.mensaje || (data.errores || []).join(' | '), response.ok && data.success);
     if (response.ok && data.success) {
         cambiosTarifacion.clear();
+        guardandoTarifacion = false;
         await cargarVariable();
     } else {
         boton.disabled = false;
+    }
+    } catch (error) {
+        mostrarMensaje('No se pudo confirmar el guardado de Tarifación. Se conservan los cambios; revisá el estado antes de reintentar.', false);
+    } finally {
+        guardandoTarifacion = false;
+        document.getElementById('variableWorkspace').inert = false;
+        boton.disabled = cambiosTarifacion.size === 0;
     }
 }
 
@@ -581,6 +653,7 @@ function renderTarifacion() {
         <th class="border-b border-r border-slate-200 px-3 py-3 text-left">Concepto</th>
         <th class="border-b border-r border-amber-200 bg-amber-100 px-3 py-3 text-center">Total tarifación</th>
         ${meses.map(mes => `<th class="border-b border-r border-slate-200 px-3 py-3 text-center">${escapeHtml(mes.label)}</th>`).join('')}`;
+    const montoPendiente = (item, mes) => cambiosTarifacion.get(`${item.cliente}\u0000${item.campania}\u0000${item.concepto}\u0000${mes}`)?.monto ?? Number((item.montos || {})[mes] || 0);
     const rows = visibles.map(item => {
         const raw = encodeURIComponent(JSON.stringify({site: item.site, cliente: item.cliente, campania: item.campania, concepto: item.concepto}));
         return `<tr class="hover:bg-amber-50/40">
@@ -588,7 +661,7 @@ function renderTarifacion() {
         <td class="border-b border-r border-slate-200 px-3 py-3"><div>${escapeHtml(item.cliente)}</div><div class="font-semibold">${escapeHtml(item.campania)}</div></td>
         <td class="border-b border-r border-slate-200 px-3 py-3">${escapeHtml(item.concepto)}</td>
         <td class="border-b border-r border-amber-200 bg-amber-50 px-3 py-3 text-center font-semibold">${formatoMoneda(item.total_monto)}</td>
-        ${meses.map(mes => `<td class="border-b border-r border-slate-200 px-2 py-2"><input type="number" step="0.01" value="${Number((item.montos || {})[mes.value] || 0)}" onclick="this.select()" onchange="editarTarifacion('${raw}', '${mes.value}', this.value)" class="h-9 w-full rounded border border-amber-200 bg-white px-2 text-right text-xs tabular-nums focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100"></td>`).join('')}
+        ${meses.map(mes => `<td class="border-b border-r border-slate-200 px-2 py-2"><input type="number" step="0.01" value="${escapeHtml(montoPendiente(item, mes.value))}" onclick="this.select()" onchange="editarTarifacion('${raw}', '${mes.value}', this.value)" class="h-9 w-full rounded border border-amber-200 bg-white px-2 text-right text-xs tabular-nums focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100"></td>`).join('')}
     </tr>`;
     }).join('');
     document.getElementById('tbodyVariable').innerHTML = rows || `<tr><td colspan="${meses.length + 4}" class="px-4 py-8 text-center text-slate-500">Sin tarifaciones para mostrar.</td></tr>`;
@@ -642,7 +715,7 @@ function renderNextGen() {
 function mostrarMensaje(texto, ok) {
     const mensaje = document.getElementById('mensajeVariable');
     mensaje.textContent = texto;
-    mensaje.className = `mx-4 mb-4 rounded-md px-3 py-2 text-sm ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`;
+    mensaje.className = `ops-feedback mb-4 rounded-md px-3 py-2 text-sm ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`;
 }
 
 function formatoMoneda(valor) {

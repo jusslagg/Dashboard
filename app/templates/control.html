@@ -3,6 +3,7 @@
 {% block title %}Control - Facturación{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='operaciones-ux.css') }}">
 <div class="mb-8">
     <h1 class="text-3xl font-bold text-gray-800">Control de Facturación</h1>
     <p class="text-gray-600 mt-2">Vista detallada con filtros</p>
@@ -125,7 +126,9 @@
     </div>
 </div>
 
-<div id="mensajeControl" class="mb-4 hidden rounded px-4 py-3 text-sm"></div>
+<p id="estadoControl" class="ops-status" role="status" aria-live="polite">Preparando registros…</p>
+<p class="mb-3 text-sm text-slate-600">Excel descarga todos los registros que coinciden con los filtros, independientemente de la página visible.</p>
+<div id="mensajeControl" role="status" aria-live="polite" class="mb-4 hidden rounded px-4 py-3 text-sm"></div>
 
 <!-- Tabla de Datos -->
 <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -146,7 +149,7 @@
             </div>
         </div>
     </div>
-    <div id="tablaControlScroll" class="overflow-x-auto">
+    <div id="tablaControlScroll" class="overflow-x-auto" role="region" tabindex="0" aria-label="Registros de facturación con desplazamiento horizontal y vertical">
         <table class="w-full min-w-[2320px] text-sm">
             <thead class="bg-gray-800 text-white">
                 <tr>
@@ -188,13 +191,20 @@
     </div>
 </div>
 
-<div id="modalEditar" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center p-4 z-50">
+<div class="ops-pager">
+    <label for="controlTamanoPagina">Registros por página <select id="controlTamanoPagina" onchange="ControlUX.resize(this.value)"><option value="25">25</option><option value="50" selected>50</option><option value="100">100</option></select></label>
+    <button id="controlPaginaAnterior" type="button" onclick="ControlUX.page(-1)">Anterior</button>
+    <button id="controlPaginaSiguiente" type="button" onclick="ControlUX.page(1)">Siguiente</button>
+</div>
+<dialog id="modalEditar" aria-labelledby="tituloEditarControl" aria-describedby="estadoEdicionControl">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-auto p-6">
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold text-gray-800">Editar registro</h2>
-            <button onclick="cerrarModal()" class="text-gray-500 hover:text-gray-800 text-xl">&times;</button>
+            <h2 id="tituloEditarControl" class="text-xl font-bold text-gray-800">Editar registro</h2>
+            <button type="button" onclick="cerrarModal()" aria-label="Cerrar edición del registro" class="text-gray-500 hover:text-gray-800 text-xl">&times;</button>
         </div>
         <form id="formEditar" onsubmit="guardarEdicion(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <p id="estadoEdicionControl" class="ops-status" role="status" aria-live="polite"></p>
+            <p id="errorEdicionControl" hidden role="alert" tabindex="-1"></p>
             <input type="hidden" id="editId">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de carga</label>
@@ -325,13 +335,13 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar con contrasena</label>
                 <input type="password" id="editClave" required class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Contrasena de tu cuenta">
             </div>
-            <div class="md:col-span-3 flex justify-end gap-2 mt-2">
+            <div class="ops-form-actions md:col-span-3 flex justify-end gap-2 mt-2">
                 <button type="button" onclick="cerrarModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Cancelar</button>
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Guardar cambios</button>
+                <button id="guardarEdicionControlBtn" type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Guardar cambios</button>
             </div>
         </form>
     </div>
-</div>
+</dialog>
 
 <!-- Leyenda -->
 <div class="mt-4 bg-white rounded-lg shadow p-4">
@@ -354,6 +364,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='control-ux.js') }}"></script>
 <script>
 const controlConfig = document.getElementById('controlConfig');
 const puedeEditar = controlConfig?.dataset.puedeEditar === 'true';
@@ -543,15 +554,19 @@ function actualizarResumenMultiple(id) {
 async function cargarDatos() {
     const secuenciaActual = ++secuenciaCargaDatos;
     const url = '/api/datos' + buildQuery({ ...getFiltrosControl(), _ts: Date.now() });
+    ControlUX.status('Actualizando registros… Los datos visibles corresponden a la consulta anterior.');
 
     try {
-        const response = await fetch(url, { cache: 'no-store' });
+        const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(20000) });
         const data = await leerJsonSeguro(response);
 
         if (data.success && secuenciaActual === secuenciaCargaDatos) {
+            ControlUX.setRows(data.data, buildQuery(getFiltrosControl()));
             actualizarTabla(data.data);
         }
     } catch (error) {
+        if (secuenciaActual !== secuenciaCargaDatos) return;
+        ControlUX.status('No se pudo actualizar. Los registros visibles pueden estar desactualizados. Usá Filtrar para reintentar.', 'error');
         mostrarMensajeControl(error.message || 'No se pudieron cargar los datos.', 'error');
     }
 }
@@ -561,6 +576,7 @@ async function onFiltroMultipleChange() {
 }
 
 function actualizarTabla(datos) {
+    datos = ControlUX.pageRows();
     const tbody = document.getElementById('tablaDatos');
 
     if (datos.length === 0) {
@@ -579,15 +595,15 @@ function actualizarTabla(datos) {
 
         return `
             <tr class="${rowClass}">
-                <td class="px-4 py-3">${d.fecha}</td>
+                <td class="px-4 py-3">${ControlUX.escape(d.fecha)}</td>
                 <td class="px-4 py-3">${formatMes(d.mes)}</td>
-                <td class="px-4 py-3 font-medium">${d.cliente}</td>
-                <td class="px-4 py-3">${d.gerente || '-'}</td>
-                <td class="px-4 py-3">${d.jefe_site || '-'}</td>
-                <td class="px-4 py-3">${d.campania || '-'}</td>
-                <td class="px-4 py-3">${d.subcampania || '-'}</td>
-                <td class="px-4 py-3">${d.tipo_negocio || '-'}</td>
-                <td class="px-4 py-3">${d.tipo_jornada}</td>
+                <td class="px-4 py-3 font-medium">${ControlUX.escape(d.cliente)}</td>
+                <td class="px-4 py-3">${ControlUX.escape(d.gerente || '-')}</td>
+                <td class="px-4 py-3">${ControlUX.escape(d.jefe_site || '-')}</td>
+                <td class="px-4 py-3">${ControlUX.escape(d.campania || '-')}</td>
+                <td class="px-4 py-3">${ControlUX.escape(d.subcampania || '-')}</td>
+                <td class="px-4 py-3">${ControlUX.escape(d.tipo_negocio || '-')}</td>
+                <td class="px-4 py-3">${ControlUX.escape(d.tipo_jornada)}</td>
                 <td class="px-4 py-3 text-right">${formatDecimal(d.horas_objetivo)}</td>
                 <td class="px-4 py-3 text-right ${alertaHoras ? 'font-bold text-yellow-700' : ''}">
                     ${alertaHoras ? '<i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>' : ''}
@@ -627,7 +643,7 @@ function actualizarTabla(datos) {
 function accionesRegistro(d) {
     const acciones = [];
     if (puedeEditar) {
-        acciones.push(`<button onclick='abrirEditar(${JSON.stringify(d)})' class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Editar</button>`);
+        acciones.push(`<button type="button" data-control-edit="${Number(d.id)}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Editar</button>`);
     }
     if (puedeEliminar) {
         acciones.push(`<button onclick="eliminarRegistro(${d.id})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs ml-1">Eliminar</button>`);
@@ -733,13 +749,11 @@ function abrirEditar(d) {
     actualizarModoTipoVHEdicion();
     renderJustificacionesEdicion();
     document.getElementById('editClave').value = '';
-    document.getElementById('modalEditar').classList.remove('hidden');
-    document.getElementById('modalEditar').classList.add('flex');
+    ControlUX.open();
 }
 
 function cerrarModal() {
-    document.getElementById('modalEditar').classList.add('hidden');
-    document.getElementById('modalEditar').classList.remove('flex');
+    ControlUX.close();
 }
 
 function parseNumeroCampo(id) {
@@ -871,6 +885,7 @@ function justificacionesDesdeImportes(payload) {
 
 async function guardarEdicion(event) {
     event.preventDefault();
+    if (ControlUX.state.saving) return;
     const id = document.getElementById('editId').value;
     const payload = {
         password_confirmacion: document.getElementById('editClave').value,
@@ -901,19 +916,35 @@ async function guardarEdicion(event) {
         justificaciones: []
     };
     payload.justificaciones = justificacionesDesdeImportes(payload);
+    const boton = document.getElementById('guardarEdicionControlBtn');
+    ControlUX.state.saving = true;
+    boton.disabled = true;
+    boton.textContent = 'Guardando…';
+    document.getElementById('formEditar').inert = true;
+    try {
     const response = await fetch(`/api/datos/${id}`, {
         method: 'PUT',
+        signal: AbortSignal.timeout(20000),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
     const data = await leerJsonSeguro(response).catch(error => ({ success: false, errores: [error.message] }));
     if (data.success) {
         mostrarMensajeControl(data.mensaje || 'Registro actualizado correctamente', 'success');
-        cerrarModal();
+        ControlUX.close(true);
         cargarDatos();
         cargarFiltros();
     } else {
-        alert((data.errores || ['Error al actualizar']).join(', '));
+        ControlUX.error((data.errores || ['No se pudo actualizar el registro.']).join(', '));
+    }
+    } catch (error) {
+        ControlUX.error('No se pudo confirmar el guardado. Los datos siguen en el formulario; revisá el registro antes de reintentar.');
+    } finally {
+        ControlUX.state.saving = false;
+        boton.disabled = false;
+        boton.textContent = 'Guardar cambios';
+        document.getElementById('formEditar').inert = false;
+        if (document.getElementById('modalEditar').open && !document.getElementById('errorEdicionControl').hidden) document.getElementById('errorEdicionControl').focus();
     }
 }
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Facturacion</title>
+    <title>Dashboard - Facturación</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -24,8 +24,14 @@
             body.sidebar-collapsed #sidebarToggleIcon { transform: rotate(180deg); }
         }
     </style>
+    <link rel="stylesheet" href="./assets/workspace.css">
+    <script src="./assets/config.js"></script>
+    <script src="./assets/api-client.js"></script>
+<link rel="stylesheet" href="./assets/dashboard-alertas.css">
+<script src="./assets/dashboard-alertas.js" defer></script>
 </head>
 <body class="bg-gray-100">
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
     <div class="flex flex-col md:flex-row min-h-screen">
         <!-- Sidebar -->
         <aside id="sidebar" class="w-full md:w-64 bg-slate-800 text-white flex flex-col">
@@ -66,11 +72,11 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 p-4 md:p-8 overflow-auto">
+        <main id="contenido" tabindex="-1" class="flex-1 p-4 md:p-8 overflow-auto">
             
 <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
     <div>
-        <h1 class="text-3xl font-bold text-gray-800">Dashboard de Facturacion</h1>
+        <h1 class="text-3xl font-bold text-gray-800">Dashboard de Facturación</h1>
         <p class="text-gray-600 mt-2">Vista ejecutiva por mes, cliente, gerente, jefe de site, campaña y sub campaña</p>
     </div>
     <button onclick="exportarExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-medium">
@@ -78,6 +84,10 @@
     </button>
 </div>
 
+<div class="workspace-toolbar">
+    <p id="estadoDashboard" class="workspace-status" role="status" aria-live="polite">Preparando información...</p>
+    <button id="btnActualizar" type="button" onclick="actualizarVista()" class="workspace-button"><i class="fas fa-rotate" aria-hidden="true"></i>Actualizar datos</button>
+</div>
 <!-- Filtros -->
 <div class="bg-white rounded-lg shadow p-4 mb-6">
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-4 items-end">
@@ -165,6 +175,8 @@
     </div>
 </div>
 
+<div id="filtrosActivos" class="workspace-chips" aria-label="Filtros aplicados"></div>
+<p class="workspace-hint">Los indicadores y la exportación usan los filtros seleccionados. Las tablas se pueden desplazar horizontalmente.</p>
 <div id="alertasDashboard" class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6"></div>
 
 <!-- KPIs -->
@@ -198,6 +210,10 @@
             <div>
                 <p class="text-sm text-gray-500">Desvio</p>
                 <p class="text-2xl font-bold text-gray-800" id="kpiDesvio">$0</p>
+                <details class="da-criterion-note">
+                    <summary>Desvío comparable · ver criterio</summary>
+                    <p>Compara horas facturadas + variable productiva + bonos/penalizaciones contra el objetivo. Excluye Next Gen, tarifación y otros. La diferencia entre Total Facturado y Total Teórico incluye conceptos adicionales y puede dar otro importe.</p>
+                </details>
             </div>
             <div class="bg-orange-100 p-3 rounded-full">
                 <i class="fas fa-scale-balanced text-orange-500 text-xl"></i>
@@ -226,12 +242,18 @@
         </div>
     </div>
     <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Facturacion por Cliente</h2>
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Facturación por Cliente</h2>
         <div class="h-80">
             <canvas id="graficoClientes"></canvas>
         </div>
     </div>
 </div>
+
+
+
+
+
+
 
 <!-- Agrupacion por Cliente -->
 <div class="bg-white rounded-lg shadow p-6 mb-8">
@@ -321,19 +343,59 @@
     </script>
     
 <script>
+document.querySelectorAll('[data-dropdown-multiple]').forEach(dropdown => {
+    const button = dropdown.querySelector('button');
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-controls', dropdown.querySelector('[id^="panel"]').id);
+    dropdown.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        dropdown.querySelector('[id^="panel"]').classList.add('hidden');
+        button.setAttribute('aria-expanded', 'false');
+        button.focus();
+    });
+});
 let chartEvolucion = null;
 let chartClientes = null;
 let filtrosInicializados = false;
+let versionDashboard = 0;
+let peticionDashboard = null;
+let temporizadorDashboard;
+function estadoDashboard(texto, estado) {
+    const elemento = document.getElementById('estadoDashboard');
+    elemento.textContent = texto;
+    elemento.dataset.state = estado;
+    document.getElementById('btnActualizar').disabled = estado === 'loading';
+}
+function resumirFiltros() {
+    const container = document.getElementById('filtrosActivos');
+    container.replaceChildren();
+    const nombres = { year: 'Año', mes: 'Mes', cliente: 'Cliente', gerente: 'Gerente', jefe_site: 'Jefe de site', campania: 'Campaña', subcampania: 'Subcampaña', tipo_negocio: 'Tipo de negocio' };
+    Object.entries(getFiltros()).forEach(([campo, valores]) => {
+        if (!valores.length) return;
+        const chip = document.createElement('span');
+        chip.className = 'workspace-chip';
+        chip.textContent = nombres[campo] + ': ' + valores.map(valor => campo === 'mes' ? formatMes(valor) : valor).join(', ');
+        container.appendChild(chip);
+    });
+}
+async function actualizarVista() {
+    try {
+        estadoDashboard('Cargando filtros...', 'loading');
+        if (!filtrosInicializados) await cargarFiltrosDashboard();
+        await cargarDashboard();
+    } catch (error) {
+        estadoDashboard('No se pudo cargar la información. Revise la conexión y pulse Actualizar datos.', 'error');
+    }
+}
 
 document.addEventListener('DOMContentLoaded', async function() {
-    await cargarFiltrosDashboard();
-    await cargarDashboard();
+    await actualizarVista();
 });
 
 document.addEventListener('click', function(event) {
     document.querySelectorAll('[data-dropdown-multiple="true"]').forEach(dropdown => {
         if (!dropdown.contains(event.target)) {
-            dropdown.querySelectorAll('[id^="panel"]').forEach(panel => panel.classList.add('hidden'));
+            dropdown.querySelectorAll('[id^="panel"]').forEach(panel => { panel.classList.add('hidden'); dropdown.querySelector('button').setAttribute('aria-expanded', 'false'); });
         }
     });
 });
@@ -363,20 +425,25 @@ function buildQuery() {
 }
 
 async function onFiltroChange() {
-    await cargarFiltrosDashboard(true);
-    await cargarDashboard();
+    clearTimeout(temporizadorDashboard);
+    // Invalidate in-flight data as soon as the selection changes.
+    versionDashboard += 1;
+    if (peticionDashboard) peticionDashboard.abort();
+    resumirFiltros();
+    if (typeof DashboardAlertas !== 'undefined') DashboardAlertas.marcarCarga();
+    estadoDashboard('Filtros modificados; actualizando datos...', 'loading');
+    temporizadorDashboard = setTimeout(cargarDashboard, 250);
 }
 
 async function onFiltroMultipleChange() {
-    await cargarFiltrosDashboard(true);
-    await cargarDashboard();
+    return onFiltroChange();
 }
 
 async function cargarFiltrosDashboard(mantenerSeleccion = false) {
     const seleccion = getFiltros();
     const response = await fetch('/api/filtros' + (mantenerSeleccion ? buildQuery() : ''));
     const data = await response.json();
-    if (!data.success) return;
+    if (!response.ok || !data.success) throw new Error("No se pudieron cargar los filtros");
 
     popularSelect('filtroMes', data.filtros.meses, 'Todos', formatMes, seleccion.mes);
     popularSelect('filtroCliente', data.filtros.clientes, 'Todos', value => value, seleccion.cliente);
@@ -482,33 +549,35 @@ function filtrarOpciones(selectId, texto) {
 }
 
 async function cargarDashboard() {
+    clearTimeout(temporizadorDashboard);
+    const version = ++versionDashboard;
+    if (peticionDashboard) peticionDashboard.abort();
+    peticionDashboard = new AbortController();
+    const signal = peticionDashboard.signal;
     const query = buildQuery();
-
+    resumirFiltros();
+    estadoDashboard('Actualizando información... Los valores visibles corresponden a la consulta anterior.', 'loading');
     try {
-        const [kpisResponse, graficoResponse, resumenResponse, clientesResponse, alertasResponse] = await Promise.all([
-            fetch('/api/kpis' + query),
-            fetch('/api/grafico' + query),
-            fetch('/api/resumen' + query),
-            fetch('/api/por-cliente' + query),
-            fetch('/api/alertas' + query)
-        ]);
-
-        const kpisData = await kpisResponse.json();
-        const graficoData = await graficoResponse.json();
-        const resumenData = await resumenResponse.json();
-        const clientesData = await clientesResponse.json();
-        const alertasData = await alertasResponse.json();
-
-        if (kpisData.success) actualizarKPIs(kpisData.kpis);
-        if (graficoData.success) actualizarGrafico(graficoData.datos);
-        if (resumenData.success) actualizarTablaResumen(resumenData.resumen);
-        if (clientesData.success) {
-            actualizarTablaClientes(clientesData.clientes);
-            actualizarGraficoClientes(clientesData.clientes);
-        }
-        if (alertasData.success) actualizarAlertas(alertasData.alertas);
+        const datos = await Promise.all(['/api/kpis', '/api/grafico', '/api/resumen', '/api/por-cliente', '/api/alertas'].map(async ruta => {
+            const response = await fetch(ruta + query, { signal });
+            if (!response.ok) throw new Error('Error de consulta');
+            const data = await response.json();
+            if (!data.success) throw new Error('Respuesta incompleta');
+            return data;
+        }));
+        if (version !== versionDashboard) return;
+        const [kpis, grafico, resumen, clientes, alertas] = datos;
+        actualizarKPIs(kpis.kpis);
+        actualizarGrafico(grafico.datos);
+        actualizarTablaResumen(resumen.resumen);
+        actualizarTablaClientes(clientes.clientes);
+        actualizarGraficoClientes(clientes.clientes);
+        actualizarAlertas(alertas.alertas, query);
+        const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+        estadoDashboard(resumen.resumen.length ? 'Información actualizada a las ' + hora : 'Sin registros para estos filtros. Pruebe limpiar los filtros o cargar datos.', 'success');
     } catch (error) {
-        console.error('Error cargando dashboard:', error);
+        if (error.name === 'AbortError' || version !== versionDashboard) return;
+        estadoDashboard('No se pudo actualizar. Los valores visibles pueden estar desactualizados. Pulse Actualizar datos para reintentar.', 'error');
     }
 }
 
@@ -521,7 +590,8 @@ function actualizarKPIs(kpis) {
     document.getElementById('kpiCumplimiento').className = `text-2xl font-bold ${(kpis.porcentaje_cumplimiento || 0) >= 100 ? 'text-green-600' : 'text-red-600'}`;
 }
 
-function actualizarAlertas(alertas) {
+function actualizarAlertas(alertas, query) {
+    if (typeof DashboardAlertas !== 'undefined') { DashboardAlertas.renderizar(alertas, query); return; }
     const container = document.getElementById('alertasDashboard');
     const styles = {
         success: 'border-green-500 bg-green-50 text-green-800',

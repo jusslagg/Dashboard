@@ -1,6 +1,7 @@
-﻿# filepath: app/routes.py
+# filepath: app/routes.py
 from flask import Blueprint, Response, abort, current_app, redirect, render_template, request, jsonify, send_file, session, url_for
 from app import db, get_csrf_token
+from app.operacion import anio_operativo
 from app.personal_objetivos import recalcular_objetivos, reglas_plantilla
 from app.models import AsignacionComercial, Campania, DashboardOperativo, DotacionClienteMensual, DotacionMensual, ExcepcionCalculo, Facturacion2026, FeriadoOperativo, GraficoDotacionMensual, HistorialCambio, HistoricoClienteMensual, JustificacionAjuste, NextGenDolar, NextGenProducto, NormalizacionNombreProyectado, PersonalDistribucionHoras, ProformaPersonal, ProyeccionMatriz, ProyeccionMatrizJornada, ProyeccionPrecio, RatioEliMensual, RatioEliIIMensual, ROLES_USUARIO, PUESTOS_POR_ROL, SeguimientoPersonalImportacion, canonizar_cliente_campania, normalizar_gerente, normalizar_jefe_site, normalizar_tipo_negocio_personal, permisos_perfil, SiteProyeccion, TarifacionCampania, Usuario, VariableCampania, redondear_moneda
 from datetime import date, datetime, timedelta
@@ -428,6 +429,8 @@ RUTAS_PROYECCIONES = (
     '/control-proyecciones', '/notificaciones-proyecciones', '/calendario-operativo', '/api/proyeccion',
     '/api/matriz-proyecciones', '/api/precios', '/api/suma-fija', '/api/variable',
     '/api/control-proyecciones', '/api/notificaciones-proyecciones', '/api/calendario-operativo', '/api/feriados',
+    '/api/matriz-precios', '/api/resumen-proyeccion', '/api/sites-proyeccion',
+    '/api/tarifaciones', '/api/next-gen', '/api/personal-distribucion',
 )
 RUTAS_PUBLICAS_AUTENTICADAS = (
     '/login', '/logout', '/cambiar-password', '/api/auth/', '/api/usuarios/setup',
@@ -438,7 +441,8 @@ RUTAS_PUBLICAS_AUTENTICADAS = (
 def modulo_solicitado(path):
     if any(path.startswith(prefijo) for prefijo in RUTAS_DIRECTORIO):
         return 'directorio'
-    if any(path.startswith(prefijo) for prefijo in RUTAS_PROYECCIONES):
+    # /resumen is a Proyectados page; /resumen-horas belongs to Facturación.
+    if any(path.startswith(prefijo) and (prefijo != '/resumen' or path == '/resumen') for prefijo in RUTAS_PROYECCIONES):
         return 'proyecciones'
     if path.startswith(('/api/asignaciones', '/api/campanias')):
         return 'maestros_api'
@@ -3023,7 +3027,7 @@ def cargar():
 @carga_requerida
 def carga_datos_personal():
     """Carga mensual focalizada de horas proyectadas de Personal."""
-    year_actual = datetime.utcnow().year
+    year_actual = anio_operativo()
     years = {year_actual}
     for (mes,) in db.session.query(ProyeccionMatriz.mes).filter(
         ProyeccionMatriz.tipo_plp.isnot(None),
@@ -3207,7 +3211,7 @@ def proyectado_vs_facturado():
         for (mes,) in db.session.query(model.mes).distinct().all():
             if mes and str(mes)[:4].isdigit():
                 years.add(int(str(mes)[:4]))
-    years.add(current_app.config['DEFAULT_YEAR'])
+    years.add(anio_operativo())
     return render_template('proyectado_vs_facturado.html', anios_disponibles=sorted(years, reverse=True))
 
 
@@ -3217,7 +3221,7 @@ def api_proyectado_vs_facturado():
     if not usuario_actual().puede_ver_directorio:
         return respuesta_no_autorizado()
     try:
-        year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+        year = int(request.args.get('year') or anio_operativo())
         if not 2020 <= year <= 2100:
             raise ValueError
     except ValueError:
@@ -3229,7 +3233,7 @@ def api_proyectado_vs_facturado():
 @edicion_requerida
 def api_normalizaciones_proyectados():
     try:
-        year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+        year = int(request.args.get('year') or anio_operativo())
         if not 2020 <= year <= 2100:
             raise ValueError
     except ValueError:
@@ -3352,7 +3356,7 @@ def exportar_proyectados():
     if not usuario_actual().puede_ver_proyecciones:
         return respuesta_no_autorizado()
     try:
-        year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+        year = int(request.args.get('year') or anio_operativo())
         if not 2020 <= year <= 2100:
             raise ValueError
     except ValueError:
@@ -3375,7 +3379,7 @@ def exportar_directorio():
     if not usuario_actual().puede_ver_directorio:
         return respuesta_no_autorizado()
     try:
-        year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+        year = int(request.args.get('year') or anio_operativo())
         if not 2020 <= year <= 2100:
             raise ValueError
     except ValueError:
@@ -3458,7 +3462,7 @@ def comparativo_anual_clientes():
     anios.update(fila[0].year for fila in db.session.query(DotacionClienteMensual.fecha).distinct().all() if fila[0])
     anios = sorted(anio for anio in anios if anio >= 2024)
     return render_template('comparativo_anual_clientes.html', anios_comparativo=anios,
-                           anio_comparativo=anios[-1] if anios else current_app.config['DEFAULT_YEAR'])
+                           anio_comparativo=anios[-1] if anios else anio_operativo())
 
 
 @main_bp.route('/ratio-eli')
@@ -5001,7 +5005,7 @@ def sumar_horas_resumen(por_mes, meses=None):
 def api_resumen_horas():
     """Resumen integral equivalente a la pestaña RESUMEN del libro operativo."""
     try:
-        year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+        year = int(request.args.get('year') or anio_operativo())
     except (TypeError, ValueError):
         return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
     if not 2020 <= year <= 2100:
@@ -5167,6 +5171,13 @@ def api_resumen_horas():
         'total': total,
         'fuente_horas': fuente_horas,
     })
+
+
+@main_bp.route('/api/dashboard/desvios', methods=['GET'])
+@login_requerido
+def api_dashboard_desvios():
+    from .dashboard_desvios import construir_dashboard_desvios
+    return jsonify(construir_dashboard_desvios(registros_filtrados(), request.args))
 
 
 @main_bp.route('/api/kpis', methods=['GET'])
@@ -5398,7 +5409,7 @@ def api_comparativo():
 @login_requerido
 def api_matriz():
     """Matriz mensual de cumplimiento por gerencia y apertura por jefe de site."""
-    year = request.args.get('year', str(current_app.config['DEFAULT_YEAR'])).strip()
+    year = request.args.get('year', str(anio_operativo())).strip()
     try:
         year_number = int(year)
     except ValueError:
@@ -5510,9 +5521,9 @@ def payload_proyeccion(data):
             errores.append('La jornada laboral PLP debe ser mayor a cero')
 
     try:
-        year = int(data.get('year') or (mes.split('-')[0] if '-' in mes else datetime.utcnow().year))
+        year = int(data.get('year') or (mes.split('-')[0] if '-' in mes else anio_operativo()))
     except (TypeError, ValueError):
-        year = datetime.utcnow().year
+        year = anio_operativo()
         errores.append('El año no es valido')
 
     if not cliente:
@@ -5620,9 +5631,9 @@ def payload_precio(data):
     errores = []
 
     try:
-        year = int(data.get('year') or (mes.split('-')[0] if '-' in mes else datetime.utcnow().year))
+        year = int(data.get('year') or (mes.split('-')[0] if '-' in mes else anio_operativo()))
     except (TypeError, ValueError):
-        year = datetime.utcnow().year
+        year = anio_operativo()
         errores.append('El año no es valido')
 
     if not cliente:
@@ -5774,7 +5785,7 @@ def payload_feriado(data):
 @main_bp.route('/api/calendario-operativo', methods=['GET'])
 @login_requerido
 def api_calendario_operativo():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     feriados = FeriadoOperativo.query.filter_by(year=year).order_by(FeriadoOperativo.fecha).all()
     return jsonify({
         'success': True,
@@ -5840,7 +5851,7 @@ def api_eliminar_feriado(feriado_id):
 @main_bp.route('/api/matriz-precios', methods=['GET'])
 @login_requerido
 def api_matriz_precios():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     meses = [item['value'] for item in opciones_meses_proyeccion(year)]
     registros = ProyeccionPrecio.query.filter(ProyeccionPrecio.mes.in_(meses)).order_by(
         ProyeccionPrecio.cliente,
@@ -6010,7 +6021,7 @@ def api_eliminar_matriz_precio(precio_id):
 @main_bp.route('/api/matriz-precios/template', methods=['GET'])
 @login_requerido
 def api_template_matriz_precios():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     meses = [item['value'] for item in opciones_meses_proyeccion(year)]
     registros = ProyeccionPrecio.query.filter(ProyeccionPrecio.mes.in_(meses)).all()
     asociaciones = filas_maestras_proyeccion()
@@ -6562,7 +6573,7 @@ def construir_resumen_proyeccion_data(year):
 @main_bp.route('/api/resumen-proyeccion', methods=['GET'])
 @login_requerido
 def api_resumen_proyeccion():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     data = construir_resumen_proyeccion_data(year)
     salida = consolidar_resumen_proyeccion(data)
     salida['filas_resumen'] = construir_filas_resumen_excel(data)
@@ -6679,7 +6690,7 @@ def exportar_resumen_proyeccion():
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
 
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     data = construir_resumen_proyeccion_data(year)
     filas = construir_filas_resumen_excel(data)
     meses = data['meses']
@@ -7095,7 +7106,7 @@ def construir_tarifacion_data(year):
 @main_bp.route('/api/tarifaciones', methods=['GET'])
 @login_requerido
 def api_tarifaciones():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     return jsonify(construir_tarifacion_data(year))
 
 
@@ -7209,7 +7220,7 @@ def api_edicion_masiva_tarifaciones():
 @main_bp.route('/api/tarifaciones/template', methods=['GET'])
 @login_requerido
 def api_template_tarifaciones():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     data = construir_tarifacion_data(year)
     headers = ['Cuenta', 'Site', 'Cliente', 'Concepto'] + [mes['label'] for mes in data['meses']]
     rows = [[fila['cliente'], fila['site'], fila['campania'], fila['concepto'],
@@ -7225,7 +7236,7 @@ def api_importar_tarifaciones():
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename:
         return jsonify({'success': False, 'errores': ['Seleccione el archivo de tarifación']}), 400
-    year = int(request.form.get('year') or datetime.utcnow().year)
+    year = int(request.form.get('year') or anio_operativo())
     try:
         contenido = archivo.read()
         filas = filas_desde_xlsx(contenido) if archivo.filename.lower().endswith('.xlsx') else filas_desde_csv(decodificar_texto_importacion(contenido))
@@ -7283,7 +7294,7 @@ def api_importar_tarifaciones():
 @main_bp.route('/api/variables', methods=['GET'])
 @login_requerido
 def api_variables():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     return jsonify(construir_variable_data(year))
 
 
@@ -7330,7 +7341,7 @@ def construir_next_gen_data(year):
 @edicion_si_mutacion_requerida
 def api_next_gen():
     if request.method == 'GET':
-        year = int(request.args.get('year') or datetime.utcnow().year)
+        year = int(request.args.get('year') or anio_operativo())
         return jsonify(construir_next_gen_data(year))
     data = request.get_json(silent=True) or {}
     mes = mes_valido(data.get('mes'))
@@ -7491,7 +7502,7 @@ def api_edicion_masiva_next_gen():
 @main_bp.route('/api/next-gen/template', methods=['GET'])
 @login_requerido
 def api_template_next_gen():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     data = construir_next_gen_data(year)
     headers = ['CLIENTE'] + [mes['label'] for mes in data['meses']]
     rows = [[fila['producto'], *[fila['usd'][mes['value']] for mes in data['meses']]] for fila in data['filas']]
@@ -7508,7 +7519,7 @@ def api_importar_next_gen():
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename:
         return jsonify({'success': False, 'errores': ['Seleccione el archivo de Next Gen']}), 400
-    year = int(request.form.get('year') or datetime.utcnow().year)
+    year = int(request.form.get('year') or anio_operativo())
     try:
         contenido = archivo.read()
         if archivo.filename.lower().endswith('.xlsx'):
@@ -7604,7 +7615,7 @@ def api_importar_next_gen():
 @main_bp.route('/api/variables/template', methods=['GET'])
 @login_requerido
 def api_template_variables():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     data = construir_variable_data(year)
     meses = data['meses']
     headers = ['Cuenta', 'Site', 'Cliente'] + [mes['label'] for mes in meses]
@@ -7632,7 +7643,7 @@ def api_importar_variables():
     if not archivo or not archivo.filename:
         return jsonify({'success': False, 'errores': ['Seleccione el archivo de variables']}), 400
     try:
-        year = int(request.form.get('year') or datetime.utcnow().year)
+        year = int(request.form.get('year') or anio_operativo())
     except (TypeError, ValueError):
         return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
     try:
@@ -8202,17 +8213,24 @@ def construir_notificaciones_proyecciones(year):
     }
 
 
+def direccion_importe_notificacion(impacto):
+    importe = numero_seguro(impacto)
+    return 'sube' if importe > 0.005 else 'baja' if importe < -0.005 else 'sin_impacto'
+
+
 def filtrar_notificaciones_proyecciones(items, argumentos):
     def seleccion(nombre):
         valores = argumentos.getlist(nombre) if hasattr(argumentos, 'getlist') else [argumentos.get(nombre)]
         return {str(valor).strip() for valor in valores if valor and str(valor).strip()}
     mes = seleccion('mes')
     estado = seleccion('estado')
+    direccion_importe = seleccion('direccion_importe')
     metrica = seleccion('metrica')
     busqueda = normalizar_header(argumentos.get('buscar') or '')
     return [item for item in items if (
         (not mes or item['mes'] in mes)
         and (not estado or item['estado'] in estado)
+        and (not direccion_importe or direccion_importe_notificacion(item['impacto_facturacion']) in direccion_importe)
         and (not metrica or metrica.intersection(item.get('metricas_cambiadas', [])))
         and (not busqueda or busqueda in normalizar_header(
             f"{item['site']} {item['cliente']} {item['campania']} {item['detalle']}"
@@ -8223,7 +8241,7 @@ def filtrar_notificaciones_proyecciones(items, argumentos):
 @main_bp.route('/api/notificaciones-proyecciones', methods=['GET'])
 @login_requerido
 def api_notificaciones_proyecciones():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     data = construir_notificaciones_proyecciones(year)
     data['notificaciones'] = filtrar_notificaciones_proyecciones(data['notificaciones'], request.args)
     return jsonify(data)
@@ -8237,7 +8255,7 @@ def exportar_notificaciones_proyecciones():
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
 
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     data = construir_notificaciones_proyecciones(year)
     items = filtrar_notificaciones_proyecciones(data['notificaciones'], request.args)
     wb = Workbook()
@@ -8245,8 +8263,8 @@ def exportar_notificaciones_proyecciones():
     ws.title = 'REPORTE'
     ws.append([
         'Mes', 'Comparado con', 'Campaña / bloque', 'Site', 'Cliente',
-        'Cambio de dotación', 'Cambio de horas', 'Cambio de precio',
-        'Cambio total $', 'Lectura', 'Detalle completo',
+        'Cambio de dotación', 'Cambio de horas comparables', 'Cambio de precio promedio ponderado',
+        'Impacto neto comparable $', 'Lectura', 'Detalle completo',
     ])
 
     def texto_comparacion(item, metrica, tipo):
@@ -8265,13 +8283,13 @@ def exportar_notificaciones_proyecciones():
             texto_comparacion(item, 'dotacion_requerida', 'numero'),
             texto_comparacion(item, 'horas_proyectadas', 'numero'),
             texto_comparacion(item, 'precio_final', 'moneda'),
-            item['impacto_facturacion'], item['lectura'], item['detalle'],
+            item['impacto_facturacion'], item['lectura'].replace('Suba real', 'Suba comparable').replace('Baja real', 'Baja comparable'), item['detalle'],
         ])
 
     detalle_ws = wb.create_sheet('DETALLE')
     headers = [
-        'Mes', 'Comparado con', 'Estado', 'Movimiento', 'Site', 'Cliente', 'Campaña',
-        'Facturación anterior', 'Facturación actual', 'Impacto facturación',
+        'Mes', 'Comparado con', 'Dirección del importe', 'Movimiento', 'Site', 'Cliente', 'Campaña',
+        'Importe comparable anterior', 'Importe comparable actual', 'Impacto comparable',
         'Métrica', 'Valor anterior', 'Valor actual', 'Diferencia', 'Variación %', 'Detalle',
     ]
     detalle_ws.append(headers)
@@ -8279,7 +8297,9 @@ def exportar_notificaciones_proyecciones():
         for servicio in item['servicios']:
             for cambio in servicio['cambios']:
                 detalle_ws.append([
-                    item['mes_label'], item['mes_anterior_label'], servicio['estado'].capitalize(),
+                    item['mes_label'], item['mes_anterior_label'], {
+                        'sube': 'Subió el importe', 'baja': 'Bajó el importe', 'sin_impacto': 'Sin impacto neto relevante'
+                    }[direccion_importe_notificacion(servicio['impacto_facturacion'])],
                     servicio['movimiento'].capitalize(), servicio['site'], item['cliente'], servicio['campania'],
                     servicio['facturacion_anterior'], servicio['facturacion_actual'], servicio['impacto_facturacion'],
                     cambio['etiqueta'], cambio['anterior'], cambio['actual'], cambio['diferencia'],
@@ -8314,6 +8334,15 @@ def exportar_notificaciones_proyecciones():
     anchos = [16, 16, 12, 12, 20, 22, 30, 20, 20, 20, 24, 18, 18, 18, 14, 80]
     for indice, ancho in enumerate(anchos, 1):
         detalle_ws.column_dimensions[get_column_letter(indice)].width = ancho
+    criterio_ws = wb.create_sheet('COMO LEER')
+    criterio_ws.append(['Criterio', data['criterio']])
+    criterio_ws.append(['Comparación', 'Cada mes se compara con su mes anterior. No es un historial de ediciones.'])
+    criterio_ws.append(['Dirección', 'Subió y bajó describen el importe comparable; no califican si el cambio es bueno o malo.'])
+    criterio_ws.append(['Servicios', 'Un cliente puede tener servicios con subas y bajas que se compensen en el neto.'])
+    criterio_ws.column_dimensions['A'].width = 20
+    criterio_ws.column_dimensions['B'].width = 110
+    for fila_criterio in criterio_ws:
+        fila_criterio[1].alignment = Alignment(wrap_text=True, vertical='top')
     salida = BytesIO()
     wb.save(salida)
     salida.seek(0)
@@ -8328,7 +8357,7 @@ def exportar_notificaciones_proyecciones():
 @main_bp.route('/api/control-proyecciones', methods=['GET'])
 @login_requerido
 def api_control_proyecciones():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     meses_info = opciones_meses_proyeccion(year)
     data = construir_control_proyecciones_data(year)
     data.update({
@@ -8389,7 +8418,7 @@ def construir_dotaciones_clientes_data(year=None):
     asegurar_dotaciones_clientes_iniciales()
     registros = DotacionClienteMensual.query.order_by(DotacionClienteMensual.fecha, DotacionClienteMensual.cliente).all()
     anios = sorted({item.fecha.year for item in registros})
-    year = year if year in anios else (anios[-1] if anios else datetime.utcnow().year)
+    year = year if year in anios else (anios[-1] if anios else anio_operativo())
     fechas_todas = sorted({item.fecha for item in registros})
     fechas = [fecha for fecha in fechas_todas if fecha.year == year]
     meses = [fecha.strftime('%Y-%m') for fecha in fechas]
@@ -8433,7 +8462,7 @@ def api_indicadores():
     registros = DotacionMensual.query.order_by(DotacionMensual.fecha).all()
     anios_dotacion = sorted({item.fecha.year for item in registros})
     try:
-        year = int(request.args.get('year') or (anios_dotacion[-1] if anios_dotacion else datetime.utcnow().year))
+        year = int(request.args.get('year') or (anios_dotacion[-1] if anios_dotacion else anio_operativo()))
     except (TypeError, ValueError):
         return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
     if not 2020 <= year <= 2100:
@@ -8692,7 +8721,7 @@ def base_horas_clientes(anio):
 @main_bp.route('/api/variacion-horas-clientes', methods=['GET'])
 @login_requerido
 def api_variacion_horas_clientes():
-    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    year = int(request.args.get('year') or anio_operativo())
     anterior = year - 1
     meses = [item['value'] for item in opciones_meses_proyeccion(year)]
     reales_por_mes = dict(facturacion_por_anio(Facturacion2026.query.with_entities(
@@ -8858,7 +8887,7 @@ def descargar_plantilla_dashboard_operativo():
 @main_bp.route('/api/dashboard-operativo', methods=['GET'])
 @login_requerido
 def api_dashboard_operativo():
-    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    year = int(request.args.get('year') or anio_operativo())
     mes = [valor.strip() for valor in request.args.getlist('mes') if valor.strip()]
     query = DashboardOperativo.query.filter_by(year=year)
     if mes:
@@ -9025,7 +9054,7 @@ def api_guardar_bajas_dashboard(registro_id):
 @main_bp.route('/api/historico-clientes', methods=['GET'])
 @login_requerido
 def api_historico_clientes():
-    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    year = int(request.args.get('year') or anio_operativo())
     mes_filtro = str(request.args.get('mes') or '').strip()
     # Histórico es la única fuente de los indicadores. Los valores importados
     # no se sustituyen durante la lectura por Dashboard ni por Facturación.
@@ -9107,7 +9136,7 @@ def cliente_cumplimiento_facturacion(nombre):
 @login_requerido
 def api_cumplimiento_horas_clientes():
     """Cumplimiento de horas exactamente desde la base histórica importada."""
-    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    year = int(request.args.get('year') or anio_operativo())
     grupos = {}
 
     def nuevo(mes, cliente):
@@ -9135,7 +9164,7 @@ def api_cumplimiento_horas_clientes():
 @main_bp.route('/api/cumplimiento-facturacion-clientes', methods=['GET'])
 @login_requerido
 def api_cumplimiento_facturacion_clientes():
-    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    year = int(request.args.get('year') or anio_operativo())
     filas = {}
     def obtener(cliente):
         return filas.setdefault(cliente, {
@@ -9210,7 +9239,7 @@ def api_cumplimiento_facturacion_clientes():
 @main_bp.route('/api/comparativo-interanual', methods=['GET'])
 @login_requerido
 def api_comparativo_interanual():
-    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    year = int(request.args.get('year') or anio_operativo())
     anterior = year - 1
     ruta_historico = os.path.join(current_app.root_path, 'data', 'comparativo_interanual_historico.json')
     with open(ruta_historico, encoding='utf-8') as archivo:
@@ -9306,7 +9335,7 @@ def api_guardar_manual_historico():
 @main_bp.route('/api/variacion-anual', methods=['GET'])
 @login_requerido
 def api_variacion_anual():
-    year = int(request.args.get('year') or current_app.config['DEFAULT_YEAR'])
+    year = int(request.args.get('year') or anio_operativo())
     anterior = year - 1
     meses = opciones_meses_proyeccion(year)
     claves = [item['value'] for item in meses]
@@ -9433,7 +9462,7 @@ def api_matriz_proyecciones_nuevo_anio():
         ultimo_year = int(data.get('year_base'))
     except (TypeError, ValueError):
         return jsonify({'success': False, 'errores': ['Seleccioná un año base válido']}), 400
-    if not 2020 <= ultimo_year <= 2100:
+    if not 2020 <= ultimo_year < 2100:
         return jsonify({'success': False, 'errores': ['El año base está fuera del rango permitido']}), 400
     if not ProyeccionMatriz.query.filter_by(year=ultimo_year).first():
         return jsonify({'success': False, 'errores': ['No hay proyecciones cargadas para usar como base']}), 400
@@ -9455,6 +9484,15 @@ def api_matriz_proyecciones_nuevo_anio():
             'success': False,
             'errores': [f'El año {year_destino} ya tiene proyecciones. No se sobrescribió ningún dato.'],
         }), 409
+
+    cargados = [nombre for modelo, nombre in (
+        (ProyeccionPrecio, 'precios'), (VariableCampania, 'variables'),
+        (PersonalDistribucionHoras, 'distribución de horas'),
+    ) if modelo.query.filter_by(year=year_destino).first()]
+    if cargados:
+        return jsonify(success=False, errores=[
+            f'El año {year_destino} ya tiene {", ".join(cargados)}. No se copió ni sobrescribió ningún dato. '
+            'Revisá lo cargado antes de abrir el año desde una fotografía.']), 409
 
     feriados_destino = fechas_feriadas_activas(year_destino)
     creadas = []
@@ -9524,6 +9562,7 @@ def api_matriz_proyecciones_nuevo_anio():
         'variables': len(variables_base) * 12,
         'distribuciones_personal': len(distribuciones_base) * 12,
         'feriados': 0,
+        'feriados_existentes': len(feriados_destino),
     }
     registrar_historial(
         'creacion', 'matriz_proyecciones', str(year_destino),
@@ -9534,7 +9573,7 @@ def api_matriz_proyecciones_nuevo_anio():
     db.session.commit()
     return jsonify({
         'success': True,
-        'mensaje': f'Año {year_destino} creado desde la fotografía de {mes_base}. Los feriados quedaron vacíos.',
+        'mensaje': f'Año {year_destino} creado desde la fotografía de {mes_base}. No se copiaron feriados; se conservan {len(feriados_destino)} feriados activos ya configurados para ese año.',
         **resumen,
     })
 
@@ -9542,7 +9581,7 @@ def api_matriz_proyecciones_nuevo_anio():
 @main_bp.route('/api/matriz-proyecciones', methods=['GET'])
 @login_requerido
 def api_matriz_proyecciones():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     if recalcular_proyecciones_plp_year(year):
         db.session.commit()
     meses = [item['value'] for item in opciones_meses_proyeccion(year)]
@@ -9569,7 +9608,7 @@ def api_matriz_proyecciones():
 @main_bp.route('/api/suma-fija', methods=['GET'])
 @login_requerido
 def api_suma_fija():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     meses_info = opciones_meses_proyeccion(year)
     meses = [item['value'] for item in meses_info]
     registros = ProyeccionPrecio.query.filter(ProyeccionPrecio.mes.in_(meses)).order_by(
@@ -9649,7 +9688,7 @@ def api_guardar_suma_fija():
 @edicion_si_mutacion_requerida
 def api_personal_distribucion():
     if request.method == 'GET':
-        year = int(request.args.get('year') or datetime.utcnow().year)
+        year = int(request.args.get('year') or anio_operativo())
         filas = PersonalDistribucionHoras.query.filter_by(year=year).order_by(
             PersonalDistribucionHoras.mes,
             PersonalDistribucionHoras.servicio,
@@ -9685,7 +9724,7 @@ def api_personal_distribucion():
 
     data = request.get_json(silent=True) or {}
     try:
-        year = int(data.get('year') or datetime.utcnow().year)
+        year = int(data.get('year') or anio_operativo())
     except (TypeError, ValueError):
         return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
     entradas = data.get('distribuciones') if isinstance(data.get('distribuciones'), list) else []
@@ -9943,7 +9982,7 @@ def api_edicion_masiva_proyecciones_plp():
 def api_carga_datos_personal():
     """Datos PLP del año para la pantalla de carga específica de Personal."""
     try:
-        year = int(request.args.get('year') or datetime.utcnow().year)
+        year = int(request.args.get('year') or anio_operativo())
     except (TypeError, ValueError):
         return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
     if not 2020 <= year <= 2100:
@@ -11965,7 +12004,7 @@ def api_guardar_carga_datos_personal():
 @main_bp.route('/api/proyecciones-plp/template', methods=['GET'])
 @login_requerido
 def api_template_proyecciones_plp():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     meses = [item['value'] for item in opciones_meses_proyeccion(year)]
     registros = ProyeccionMatriz.query.filter(
         ProyeccionMatriz.mes.in_(meses),
@@ -12047,7 +12086,7 @@ def api_importar_proyecciones_plp():
     if not archivo or not archivo.filename:
         return jsonify({'success': False, 'errores': ['Seleccione el archivo anual de PLP']}), 400
     try:
-        year = int(request.form.get('year') or datetime.utcnow().year)
+        year = int(request.form.get('year') or anio_operativo())
     except (TypeError, ValueError):
         return jsonify({'success': False, 'errores': ['El año no es válido']}), 400
     nombre = archivo.filename.lower()
@@ -12196,6 +12235,64 @@ def api_importar_proyecciones_plp():
     })
 
 
+@main_bp.route('/api/matriz-proyecciones/revision', methods=['POST'])
+@edicion_requerida
+def api_revisar_matriz_proyeccion():
+    """Describe el impacto usando el cálculo vigente sobre objetos sin persistir."""
+    data = request.get_json(silent=True) or {}
+    if data.get('modo') == 'plp':
+        try:
+            year = int(data.get('year'))
+        except (TypeError, ValueError):
+            year = 0
+        if not 2020 <= year <= 2100:
+            return jsonify({'success': False, 'errores': ['El año debe estar entre 2020 y 2100']}), 400
+        registros = ProyeccionMatriz.query.filter_by(year=year).filter(
+            ProyeccionMatriz.tipo_plp.isnot(None), ProyeccionMatriz.tipo_plp != ''
+        ).all()
+        entradas = data.get('filas') or []
+        if not isinstance(entradas, list) or len(entradas) > 500 or any(not isinstance(item, dict) for item in entradas):
+            return jsonify({'success': False, 'errores': ['La revisión admite hasta 500 filas PLP']}), 400
+        coincidencias = []
+        for entrada in entradas:
+            actual = buscar_proyeccion_plp(entrada.get('tipo_plp'), entrada.get('campania'), entrada.get('mes'))
+            coincidencias.append(actual.id if actual else None)
+        return jsonify({'success': True, 'proyecciones': [item.to_dict() for item in registros], 'coincidencias': coincidencias})
+    normalizado = payload_proyeccion(data)
+    if normalizado['errores']:
+        return jsonify({'success': False, 'errores': normalizado['errores']}), 400
+    valores = normalizado['valores']
+    if data.get('id'):
+        actual = ProyeccionMatriz.query.get_or_404(data['id'])
+        if (actual.cliente, actual.campania, actual.mes) != (
+            valores['cliente'], valores['campania'], valores['mes']
+        ):
+            return jsonify({'success': False, 'errores': [
+                'Para cambiar cliente, campaña o mes, iniciá una proyección nueva.'
+            ]}), 400
+    meses_revision = [valores['mes']] if valores.get('horas_carga_manual') else meses_proyeccion_desde(valores['mes'])
+    feriados = fechas_feriadas_activas(valores['year'])
+    filas = []
+    for mes in meses_revision:
+        actual = (buscar_proyeccion_plp(valores['tipo_plp'], valores['campania'], mes)
+                  if valores.get('tipo_plp') else ProyeccionMatriz.query.filter_by(
+                      cliente=valores['cliente'], campania=valores['campania'], mes=mes
+                  ).first())
+        # This transient object and its jornadas are never added to the session.
+        propuesta = aplicar_calculo_proyeccion(ProyeccionMatriz(), valores, mes, feriados)
+        filas.append({
+            'mes': mes, 'mes_label': etiqueta_mes_proyeccion(mes),
+            'accion': 'Actualizar' if actual else 'Crear',
+            'horas_actuales': round(actual.horas_proyectadas, 2) if actual else None,
+            'horas_propuestas': round(propuesta.horas_proyectadas, 2),
+            'dias_objetivo': propuesta.dias_objetivo,
+        })
+    return jsonify({
+        'success': True, 'cliente': valores['cliente'], 'campania': valores['campania'],
+        'tipo_plp': valores.get('tipo_plp'), 'filas': filas,
+    })
+
+
 @main_bp.route('/api/matriz-proyecciones', methods=['POST'])
 @edicion_requerida
 def api_guardar_matriz_proyeccion():
@@ -12280,7 +12377,7 @@ def api_eliminar_matriz_proyeccion(proyeccion_id):
 def api_eliminar_todas_matriz_proyecciones():
     data = request.get_json(silent=True) or {}
     try:
-        year = int(data.get('year') or datetime.utcnow().year)
+        year = int(data.get('year') or anio_operativo())
     except (TypeError, ValueError):
         return jsonify({'success': False, 'errores': ['El año no es valido']}), 400
 
@@ -12337,7 +12434,7 @@ def api_deshacer_ultima_proyeccion():
 @main_bp.route('/api/matriz-proyecciones/template', methods=['GET'])
 @login_requerido
 def api_template_matriz_proyecciones():
-    year = int(request.args.get('year') or datetime.utcnow().year)
+    year = int(request.args.get('year') or anio_operativo())
     meses = [item['value'] for item in opciones_meses_proyeccion(year)]
     registros = ProyeccionMatriz.query.filter(ProyeccionMatriz.mes.in_(meses)).order_by(
         ProyeccionMatriz.cliente,
@@ -12602,20 +12699,24 @@ def api_alertas():
         alertas.append({
             'tipo': 'danger',
             'titulo': 'Cumplimiento bajo',
+            'cumplimiento': resumen['porcentaje_cumplimiento'],
             'detalle': f"El cumplimiento general es {resumen['porcentaje_cumplimiento']}%."
         })
     elif resumen['porcentaje_cumplimiento'] < 100:
         alertas.append({
             'tipo': 'warning',
             'titulo': 'Cumplimiento debajo del objetivo',
+            'cumplimiento': resumen['porcentaje_cumplimiento'],
             'detalle': f"El cumplimiento general esta en {resumen['porcentaje_cumplimiento']}%."
         })
 
-    if resumen['desvio'] < 0:
+    desvio_dashboard = resumen_dashboard(registros)['desvio']
+    if desvio_dashboard < 0:
         alertas.append({
             'tipo': 'danger',
             'titulo': 'Desvio negativo',
-            'detalle': f"El desvio acumulado es {round(resumen['desvio'], 2)}."
+            'importe': desvio_dashboard,
+            'detalle': f"El desvio acumulado es {desvio_dashboard}."
         })
 
     exceso_horas = [r for r in registros if r.horas_facturadas > r.horas_objetivo]
@@ -12629,17 +12730,12 @@ def api_alertas():
     grupos = {}
     for registro in registros:
         grupos.setdefault(registro.cliente, []).append(registro)
-    clientes_en_riesgo = []
-    for cliente, registros_cliente in grupos.items():
-        resumen_cliente = resumen_registros(registros_cliente)
-        if resumen_cliente['porcentaje_cumplimiento'] < 95:
-            clientes_en_riesgo.append({'cliente': cliente, **resumen_cliente})
-    if clientes_en_riesgo:
-        nombres = ', '.join(item['cliente'] for item in clientes_en_riesgo[:3])
+    if any(abs(resumen_dashboard(items)['desvio']) >= 0.005 for items in grupos.values()):
         alertas.append({
             'tipo': 'danger',
-            'titulo': 'Clientes en riesgo',
-            'detalle': f"{nombres} por debajo de 95% de cumplimiento."
+            'titulo': 'Alertas',
+            'apertura': 'desvio',
+            'detalle': 'Ranking de clientes por desvío acumulado. Primero las mayores pérdidas; al final, las compensaciones positivas.'
         })
 
     if not alertas:
@@ -12650,6 +12746,18 @@ def api_alertas():
         })
 
     return jsonify({'success': True, 'alertas': alertas})
+
+
+@main_bp.route('/api/alertas/apertura', methods=['GET'])
+@login_requerido
+def api_apertura_alerta():
+    from .alertas_dashboard import TIPOS_APERTURA, apertura_alerta
+    tipo = request.args.get('alerta','')
+    if tipo not in TIPOS_APERTURA:
+        return jsonify(success=False, errores=['La alerta no es válida.']), 400
+    registros = registros_filtrados()
+    asignaciones = asignaciones_maestras_filtradas(filtros_request()) if tipo == 'sin_facturacion' and not registros else ()
+    return jsonify(apertura_alerta(registros,tipo,asignaciones))
 
 
 @main_bp.route('/api/exportar_excel', methods=['GET'])

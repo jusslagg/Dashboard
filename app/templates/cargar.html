@@ -3,6 +3,7 @@
 {% block title %}Cargar Datos - Facturacion{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='workspace.css') }}">
 <div class="mb-6">
     <h1 class="text-3xl font-bold text-gray-800">Cargar Datos de Facturacion</h1>
     <p class="text-gray-600 mt-2">Ingrese los datos del registro</p>
@@ -34,14 +35,14 @@
             </span>
         </div>
         <form id="formImportar" class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2">
-            <input type="file" id="archivoImportar" name="archivo" accept=".xls,.xlsx,.csv" required
+            <input type="file" id="archivoImportar" name="archivo" aria-label="Archivo de datos para importar" accept=".xls,.xlsx,.csv" required
                 class="min-w-0 w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
             <button id="btnImportar" type="submit" class="inline-flex min-h-10 items-center justify-center whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium">
                 <i class="fas fa-upload mr-2"></i>Subir datos
             </button>
         </form>
     </div>
-    <div id="mensajeImportar" class="mt-4 hidden"></div>
+    <div id="mensajeImportar" class="mt-4 hidden" role="status" aria-live="polite"></div>
     <div id="panelResolucionMaestros" class="hidden fixed inset-3 z-[100] overflow-auto rounded-xl border border-amber-300 bg-amber-50 p-6 shadow-2xl ring-[9999px] ring-slate-950/60 sm:inset-6 lg:inset-10">
         <div class="mb-3">
             <h3 class="text-2xl font-bold text-amber-950">Resolver servicios individualmente</h3>
@@ -62,8 +63,10 @@
 </div>
 
 <div class="bg-white rounded-lg shadow p-5">
+    <script defer src="{{ url_for('static', filename='workspace.js') }}"></script>
     <form id="formCargar" onsubmit="guardarDatos(event)">
-        <div id="mensaje" class="mb-4 hidden" role="status" aria-live="polite"></div>
+        <p id="estadoFormulario" class="workspace-hint" role="status">Complete los campos obligatorios (*) y revise los cálculos antes de guardar.</p>
+        <div id="mensaje" tabindex="-1" class="mb-4 hidden" role="status" aria-live="polite"></div>
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
             <label class="flex items-center justify-between rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
                 <span><strong class="block text-sm text-cyan-950">¿Es NextGen?</strong><span class="text-xs text-cyan-700">Activá para una carga rápida</span></span>
@@ -424,7 +427,7 @@
             </div>
         </div>
 
-        <div class="mt-5 flex flex-col sm:flex-row sm:justify-end gap-3">
+        <div class="form-actions mt-5 flex flex-col sm:flex-row sm:justify-end gap-3">
             <button type="button" onclick="limpiarFormulario()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded font-medium">
                 <i class="fas fa-trash mr-2"></i>Limpiar
             </button>
@@ -1479,12 +1482,11 @@ function mostrarMensaje(mensaje, tipo) {
     div.textContent = mensaje;
     div.classList.remove('hidden');
 
-    setTimeout(() => {
-        div.classList.add('hidden');
-    }, 5000);
+    div.focus({ preventScroll: true });
+    div.scrollIntoView({ block: "nearest" });
 }
 
-function mostrarMensajeImportar(mensaje, tipo, autoOcultar = true) {
+function mostrarMensajeImportar(mensaje, tipo, autoOcultar = false) {
     const div = document.getElementById('mensajeImportar');
     const estilos = {
         success: 'bg-green-100 text-green-700',

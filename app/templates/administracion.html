@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}Centro de administración{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='administracion.css') }}">
+<div class="ad-heading"><h1>Centro de administración</h1><p>Gestioná la operación desde la aplicación. Elegí la tarea que necesitás resolver.</p></div>
+<div class="ad-grid">
+    <section class="ad-card"><h2>Año de apertura</h2><p>Define el año que se propone al abrir las vistas. No cambia registros, precios ni fórmulas, y no crea un año de proyecciones.</p>
+        <form id="adSettings"><label class="ad-calendar"><input id="adCalendar" type="checkbox"> Avanzar automáticamente con el año calendario</label><label>Año predeterminado<input id="adYear" name="anio" type="number" min="2020" max="2100" step="1" value="{{ anio_actual }}" required></label><label>Tu contraseña para confirmar<input id="adPassword" name="password_confirmacion" type="password" autocomplete="current-password" required></label><button id="adSave" type="submit" disabled>Guardar año de apertura</button></form>
+        <p id="adSettingsStatus" class="ad-status" role="status" aria-live="polite">Consultando configuración…</p><button type="button" id="adReload" class="ad-link">Actualizar configuración</button>
+    </section>
+    <section class="ad-card"><h2>Revisiones de configuración</h2><p>Comprobaciones de lectura para detectar cargas pendientes. Abrí la tarea correspondiente para resolverlas.</p>
+        <div class="ad-check-toolbar"><label>Año a revisar<input id="adReviewYear" type="number" min="2020" max="2100" value="{{ anio_actual }}"></label><button type="button" id="adReview">Actualizar revisiones</button></div><p id="adReviewStatus" class="ad-status" role="status" aria-live="polite"></p><div id="adChecks"></div>
+    </section>
+</div>
+<section class="ad-card ad-tasks"><h2>¿Qué necesitás hacer?</h2><div class="ad-task-grid">
+    <a href="/catalogos"><strong>Clientes, campañas y responsables</strong><span>Crear asociaciones, indicar su segmento y cambiar responsables con vigencia.</span></a>
+    <a href="/catalogos#configuracionValorHora"><strong>Modalidades y excepciones</strong><span>Configurar valor hora y reglas disponibles para cada campaña.</span></a>
+    <a href="/usuarios"><strong>Usuarios y permisos</strong><span>Dar de alta usuarios, ajustar accesos y gestionar sus perfiles.</span></a>
+    {% if usuario_actual.puede_ver_proyecciones %}
+    <a href="/matriz-proyecciones"><strong>Proyecciones y nuevo año</strong><span>Cargar horas y dotaciones, revisar cambios o abrir el año siguiente desde la matriz.</span></a>
+    <a href="/matriz-precios"><strong>Precios e inflación</strong><span>Actualizar precios, importes fijos y ajustes desde su matriz.</span></a>
+    <a href="/calendario-operativo"><strong>Feriados y calendario</strong><span>Administrar días especiales y revisar su efecto en las proyecciones.</span></a>
+    <a href="/variable"><strong>Variables y adicionales</strong><span>Cargar porcentajes, tarifación y Next Gen.</span></a>
+    {% endif %}
+    {% if usuario_actual.puede_ver_facturacion %}<a href="/cargar"><strong>Facturación e importación</strong><span>Cargar registros o importar una planilla desde la aplicación.</span></a>{% endif %}
+    {% if usuario_actual.puede_ver_directorio %}<a href="/dashboard-operativo"><strong>Indicadores e históricos</strong><span>Importar el libro operativo y completar datos de los períodos.</span></a>{% endif %}
+    {% if usuario_actual.puede_eliminar %}<a href="/historial"><strong>Historial de cambios</strong><span>Consultar modificaciones y las opciones disponibles para deshacerlas.</span></a>{% endif %}
+    <a href="/guia-usuario"><strong>Guía de usuario</strong><span>Recorridos de carga, actualización e importación paso a paso.</span></a>
+</div></section>
+<p class="ad-boundary">La instalación, HTTPS, los respaldos y las actualizaciones del sistema los coordina Tecnología. Los cambios de fórmulas o nuevos formatos de integración requieren una actualización revisada.</p>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='administracion.js') }}"></script>{% endblock %}

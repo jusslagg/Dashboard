@@ -11,6 +11,8 @@ La herramienta centraliza datos reales y proyectados para responder, de forma r�
 
 ## Documentación disponible
 
+Los administradores cuentan con un [Centro de administración](/administracion) para acceder a tareas habituales, revisar configuraciones pendientes y cambiar el año de apertura sin editar el servidor. El alcance y las dependencias pendientes están en [Autonomía operativa](docs/AUTONOMIA_OPERATIVA.md).
+
 Este repositorio separa la documentación según su público:
 
 | Documento | Destinatario | Contenido |
@@ -64,6 +66,8 @@ Dashboard/
 ```
 
 ## Requisitos
+
+Para ejecutar o entregar el sistema en contenedores, ver [la guía de Docker](docs/DOCKER.md). Incluye construcción, configuración, persistencia de datos, traslado de la base existente y publicación en un registro de la empresa.
 
 - Python 3.11 o superior.
 - pip.

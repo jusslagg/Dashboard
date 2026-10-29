@@ -1,0 +1,29 @@
+# Allow only the runtime and operational documentation into the build context.
+**
+!requirements.txt
+!run.py
+!README.md
+!app/
+!app/**
+!config/
+!config/**
+!docs/
+!docs/**
+!scripts/
+!scripts/database_contract.py
+!scripts/migrar_base_datos.py
+!scripts/docker_healthcheck.py
+
+# Apply even inside allowed folders: never package credentials or databases.
+**/__pycache__
+**/__pycache__/**
+**/*.pyc
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite3
+**/.env*
+**/*.log
+**/*.pem
+**/*.key
+**/*.pfx

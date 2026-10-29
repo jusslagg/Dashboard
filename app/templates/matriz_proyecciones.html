@@ -3,13 +3,16 @@
 {% block title %}Matriz de Proyecciones - Facturación{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='proyecciones-ux.css') }}">
+<div id="proyeccionesWorkspace">
 <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
     <div>
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Planificacion</p>
         <h1 class="text-3xl font-bold text-gray-900">Matriz de proyecciones</h1>
+        <p class="mt-1 text-sm text-slate-600">Consultá las horas por servicio y período. Abrí el formulario cuando necesites cargar o editar.</p>
     </div>
-    <div class="flex flex-col gap-2 sm:flex-row">
-        <select id="yearFiltro" onchange="cargarProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
+    <div class="px-main-actions flex flex-col gap-2 sm:flex-row">
+        <select id="yearFiltro" aria-label="Año de proyecciones" onchange="ProyeccionesUX.cambiarAnio()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm">
             {% for year in anios_disponibles %}<option value="{{ year }}"{% if year == anio_actual %} selected{% endif %}>{{ year }}</option>{% endfor %}
             <option value="2027">2027</option>
             <option value="2028">2028</option>
@@ -26,6 +29,9 @@
             <i class="fas fa-upload"></i>
             Importar
         </button>
+        <details class="px-more-actions">
+        <summary class="px-button">Otras acciones</summary>
+        <div>
         <button type="button" onclick="deshacerUltimaProyeccion()" class="inline-flex h-10 items-center justify-center gap-2 rounded bg-rose-600 px-4 text-sm font-medium text-white hover:bg-rose-700">
             <i class="fas fa-rotate-left"></i>
             Deshacer
@@ -38,8 +44,27 @@
             <i class="fas fa-plus"></i>
             Nuevo
         </button>
+        </div>
+        </details>
     </div>
 </div>
+
+<div class="px-workbar">
+    <div class="px-tabs" role="group" aria-label="Vista de proyecciones">
+        <button id="tabTodas" type="button" onclick="cambiarPestania('todas')" aria-pressed="true">Proyecciones generales</button>
+        <button id="tabPersonal" type="button" onclick="cambiarPestania('personal')" aria-pressed="false">Personal · PLP</button>
+    </div>
+    <button id="abrirEditorProyeccion" type="button" class="px-button px-primary" onclick="ProyeccionesUX.abrirEditor()" aria-expanded="false" aria-controls="editorProyeccion">Cargar / editar proyección</button>
+    <button id="actualizarProyeccionesBtn" type="button" class="px-button" onclick="ProyeccionesUX.actualizar()">Actualizar datos</button>
+</div>
+<p id="estadoCargaProyecciones" class="px-status" role="status" aria-live="polite">Preparando información…</p>
+<p id="estadoCambiosProyecciones" class="px-pending" role="status" aria-live="polite" hidden></p>
+<nav id="atajosPLP" class="px-workbar" aria-label="Secciones de Personal PLP" hidden>
+    <a class="px-button" href="#panelResumenPLP">Resumen mensual</a>
+    <a class="px-button" href="#panelEditorPLP">Editar campañas PLP</a>
+    <a class="px-button" href="#panelDistribucionPersonal">Distribución diurna/nocturna</a>
+    <a class="px-button" href="#listadoProyecciones">Ver proyecciones</a>
+</nav>
 
 <section id="panelDistribucionPersonal" class="mb-5 hidden rounded-lg border border-indigo-200 bg-white shadow">
     <div class="flex flex-col gap-3 border-b border-indigo-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -74,7 +99,7 @@
                 <select multiple id="filtroMesEditorPLP" onchange="renderEditorPLP(); renderResumenPLP()" class="h-8 min-w-32 rounded border border-amber-300 bg-white px-2 font-normal"></select>
             </label>
             <button type="button" onclick="agregarFilaEditorPLP()" class="inline-flex h-10 items-center gap-2 rounded bg-white px-4 text-sm font-semibold text-amber-900 ring-1 ring-amber-300 hover:bg-amber-50"><i class="fas fa-plus"></i> Agregar fila</button>
-            <button type="button" onclick="guardarEditorPLP()" class="inline-flex h-10 items-center gap-2 rounded bg-amber-600 px-4 text-sm font-semibold text-white hover:bg-amber-700"><i class="fas fa-save"></i> Guardar cambios</button>
+            <button id="guardarEditorPLPBtn" type="button" onclick="guardarEditorPLP()" class="inline-flex h-10 items-center gap-2 rounded bg-amber-600 px-4 text-sm font-semibold text-white hover:bg-amber-700"><i class="fas fa-save"></i> Revisar y guardar cambios</button>
         </div>
     </div>
     <div class="border-b border-amber-100 bg-amber-50/40 p-4">
@@ -133,14 +158,15 @@
     </div>
 </section>
 
-<div class="grid grid-cols-1 gap-5 xl:grid-cols-[430px_minmax(0,1fr)]">
-    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+<div class="px-layout">
+    <section id="editorProyeccion" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm" hidden>
         <div class="mb-4 flex items-start justify-between gap-3">
             <div>
                 <h2 id="tituloFormulario" class="text-lg font-bold text-gray-950">Nueva proyección</h2>
                 <p id="subtituloFormulario" class="mt-1 text-sm text-gray-500">Completá los datos de arriba hacia abajo.</p>
             </div>
             <span id="badgeEditando" class="hidden rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Editando</span>
+            <button type="button" class="px-button" onclick="ProyeccionesUX.cerrarEditor()" aria-label="Ocultar formulario de proyección">Ocultar</button>
         </div>
 
         <form id="formProyeccion" class="space-y-4">
@@ -277,34 +303,34 @@
                 <div id="horasProyectadasPreview" class="text-3xl font-black tabular-nums">0</div>
             </div>
             </div>
-            <div id="mensajeProyeccion" class="hidden rounded px-3 py-2 text-sm"></div>
+            <div id="mensajeProyeccion" role="status" aria-live="polite" tabindex="-1" class="hidden rounded px-3 py-2 text-sm"></div>
+            <p id="alcanceGuardadoProyeccion" class="px-save-scope">Al guardar una proyección general se aplican estos parámetros desde el mes seleccionado hasta diciembre. Los días se calculan para cada mes.</p>
             <button id="guardarProyeccionBtn" type="submit" class="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
                 <i class="fas fa-save"></i>
-                Guardar proyección
+                Revisar y guardar proyección
             </button>
+            <button type="button" class="px-button" onclick="ProyeccionesUX.nueva()">Nueva proyección / limpiar formulario</button>
         </form>
     </section>
 
-    <section class="rounded-lg bg-white shadow">
+    <section id="listadoProyecciones" class="rounded-lg bg-white shadow">
         <div class="border-b border-gray-200 px-4 py-3">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <h2 class="font-semibold text-gray-900">Proyecciones cargadas</h2>
                     <p id="contadorProyecciones" class="mt-1 text-xs text-gray-500">Cargando...</p>
                 </div>
-                <div class="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1">
-                    <button id="tabTodas" type="button" onclick="cambiarPestania('todas')" class="rounded px-3 py-2 text-sm font-semibold">Todas</button>
-                    <button id="tabPersonal" type="button" onclick="cambiarPestania('personal')" class="rounded px-3 py-2 text-sm font-semibold">PLP</button>
-                </div>
-                <div class="grid grid-cols-1 gap-2 sm:grid-cols-4">
-                    <input id="buscarProyeccion" type="search" oninput="renderProyecciones()" placeholder="Buscar..." class="h-10 rounded border border-gray-300 px-3 text-sm">
-                    <select multiple id="filtroCliente" onchange="actualizarFiltroCampania(); renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
-                    <select multiple id="filtroCampania" onchange="renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
-                    <select multiple id="filtroMes" onchange="renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select>
+                <div class="px-filters" data-filter-scope>
+                    <label for="buscarProyeccion">Buscar servicio<input id="buscarProyeccion" type="search" oninput="ProyeccionesUX.buscar()" placeholder="Cliente, campaña o mes" class="h-10 rounded border border-gray-300 px-3 text-sm"></label>
+                    <label for="filtroCliente">Cliente<select multiple id="filtroCliente" onchange="actualizarFiltroCampania(); renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select></label>
+                    <label for="filtroCampania">Campaña<select multiple id="filtroCampania" onchange="renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select></label>
+                    <label for="filtroMes">Mes<select multiple id="filtroMes" onchange="renderProyecciones()" class="h-10 rounded border border-gray-300 bg-white px-3 text-sm"></select></label>
+                    <button type="button" class="px-button" onclick="ProyeccionesUX.limpiarFiltros()">Limpiar filtros</button>
                 </div>
             </div>
+            <p class="px-hint">Las proyecciones generales excluyen las aperturas PLP. La descarga incluye todo el año, sin estos filtros.</p>
         </div>
-        <div class="overflow-auto">
+        <div id="tablaProyeccionesScroll" class="overflow-auto px-table-scroll" tabindex="0" role="region" aria-label="Proyecciones; tabla con desplazamiento horizontal y vertical">
             <table class="w-full min-w-[1180px] border-collapse text-sm">
                 <thead class="bg-slate-100 text-slate-900">
                     <tr>
@@ -329,11 +355,34 @@
                 </tbody>
             </table>
         </div>
+        <div id="paginacionProyecciones" class="px-pagination">
+            <label for="tamanoPaginaProyecciones">Servicios por página <select id="tamanoPaginaProyecciones" onchange="ProyeccionesUX.cambiarTamano()"><option value="25">25</option><option value="50" selected>50</option><option value="100">100</option></select></label>
+            <span id="rangoProyecciones" role="status" aria-live="polite"></span>
+            <button id="paginaAnteriorProyecciones" type="button" class="px-button" onclick="ProyeccionesUX.pagina(-1)">Anterior</button>
+            <button id="paginaSiguienteProyecciones" type="button" class="px-button" onclick="ProyeccionesUX.pagina(1)">Siguiente</button>
+        </div>
     </section>
 </div>
+</div>
+<dialog id="revisionProyecciones" aria-labelledby="revisionProyeccionesTitulo" aria-describedby="revisionProyeccionesDescripcion">
+    <div class="px-review-header">
+        <div><p class="px-hint">Revisión antes de guardar</p><h2 id="revisionProyeccionesTitulo">Revisá el alcance de los cambios</h2></div>
+        <button id="cancelarRevisionArriba" type="button" class="px-button" aria-label="Cerrar revisión y volver a editar">Cerrar</button>
+    </div>
+    <p id="revisionProyeccionesDescripcion"></p>
+    <p id="revisionProyeccionesResumen" class="px-save-scope"></p>
+    <div class="px-review-table" tabindex="0" role="region" aria-label="Detalle de cambios a guardar"><table><thead id="revisionProyeccionesCabecera"></thead><tbody id="revisionProyeccionesFilas"></tbody></table></div>
+    <p id="revisionProyeccionesNota" class="px-hint"></p>
+    <div class="px-review-actions">
+        <button id="cancelarRevisionProyecciones" type="button" class="px-button" autofocus>Volver a editar</button>
+        <button id="confirmarRevisionProyecciones" type="button" class="px-button px-primary">Confirmar y guardar</button>
+    </div>
+</dialog>
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='proyecciones-ux.js') }}"></script>
+<script src="{{ url_for('static', filename='proyecciones-review.js') }}"></script>
 <script>
 let asociaciones = [];
 let meses = [];
@@ -507,17 +556,20 @@ async function importarTemplateProyecciones() {
     }
 }
 
-async function cargarProyecciones() {
+async function cargarProyecciones(descartarEdiciones = false) {
+    const solicitud = ++ProyeccionesUX.state.request;
     const year = document.getElementById('yearFiltro').value;
-    document.getElementById('year').value = year;
+    const boton = document.getElementById('actualizarProyeccionesBtn');
+    boton.disabled = true;
+    ProyeccionesUX.status(`Cargando proyecciones de ${year}…`);
+    try {
     const response = await fetch(`/api/matriz-proyecciones?year=${encodeURIComponent(year)}&_=${Date.now()}`, {
         cache: 'no-store',
     });
     const data = await response.json();
-    if (!data.success) {
-        mostrarMensaje('No se pudieron cargar las proyecciones', 'error');
-        return;
-    }
+    if (!response.ok || !data.success) throw new Error('No se pudieron cargar las proyecciones.');
+    if (solicitud !== ProyeccionesUX.state.request) return;
+    document.getElementById('year').value = year;
     asociaciones = data.asociaciones || [];
     meses = data.meses || [];
     proyecciones = data.proyecciones || [];
@@ -527,9 +579,27 @@ async function cargarProyecciones() {
     popularFiltros();
     sincronizarMesesFormulario();
     if (!document.querySelectorAll('.jornada-row').length) agregarJornada();
+    if (descartarEdiciones) {
+        limpiarFormulario();
+        document.getElementById('tablaPegadaPLP').value = '';
+        document.getElementById('resumenTablaPegadaPLP').classList.add('hidden');
+        document.getElementById('tbodyEditorPLP').replaceChildren();
+        mesesReemplazoPLP = [];
+    }
     renderProyecciones();
     renderResumenPLP();
-    await cargarDistribucionPersonal();
+    if (pestaniaActual === 'personal' && (descartarEdiciones || !ProyeccionesUX.plpDirty())) renderEditorPLP(true);
+    await cargarDistribucionPersonal(descartarEdiciones, solicitud);
+    if (solicitud !== ProyeccionesUX.state.request) return;
+    ProyeccionesUX.state.loadedYear = year;
+    ProyeccionesUX.updatePending();
+    ProyeccionesUX.status(`Año ${year} · Información actualizada a las ${new Date().toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit'})}.`);
+    } catch (error) {
+        if (solicitud !== ProyeccionesUX.state.request) return;
+        ProyeccionesUX.status(`${error.message} Los valores visibles pueden corresponder a la consulta anterior. Podés reintentar con Actualizar datos.`, 'error');
+    } finally {
+        if (solicitud === ProyeccionesUX.state.request) boton.disabled = false;
+    }
 }
 
 function popularClientes() {
@@ -568,9 +638,17 @@ function actualizarAvisoPersonal() {
     document.getElementById('bloqueNocturnidad').classList.toggle('hidden', !esCampaniaPersonal());
 }
 
-function cambiarPestania(pestania) {
+function cambiarPestania(pestania, desdeEdicion = false) {
+    if (pestania !== pestaniaActual && ProyeccionesUX.state.formDirty && !desdeEdicion) {
+        if (!confirm('El formulario tiene cambios sin guardar. ¿Descartarlos para cambiar de vista?')) return;
+        limpiarFormulario();
+    }
     pestaniaActual = pestania;
+    document.getElementById('atajosPLP').hidden = pestania !== 'personal';
     const esPersonal = pestania === 'personal';
+    document.getElementById('alcanceGuardadoProyeccion').textContent = esPersonal
+        ? 'La carga PLP se guarda para la campaña y el mes seleccionados.'
+        : 'Al guardar una proyección general se aplican estos parámetros desde el mes seleccionado hasta diciembre. Los días se calculan para cada mes.';
     document.getElementById('panelDistribucionPersonal').classList.toggle('hidden', pestania !== 'personal');
     document.getElementById('panelResumenPLP').classList.toggle('hidden', pestania !== 'personal');
     document.getElementById('panelEditorPLP').classList.toggle('hidden', pestania !== 'personal');
@@ -616,7 +694,16 @@ function filaEditorPLP(item = {}) {
     </tr>`;
 }
 
-function renderEditorPLP() {
+function renderEditorPLP(forzar = false) {
+    const seleccion = AppFilters.valores('filtroMesEditorPLP');
+    if (!forzar && ProyeccionesUX.plpDirty()) {
+        if (JSON.stringify(seleccion) === JSON.stringify(ProyeccionesUX.state.editorMonths)) return;
+        if (!confirm('Hay campañas PLP sin guardar. ¿Descartarlas para cambiar de mes?')) {
+            AppFilters.seleccionar('filtroMesEditorPLP', ProyeccionesUX.state.editorMonths);
+            return;
+        }
+    }
+    ProyeccionesUX.state.editorMonths = seleccion;
     mesesReemplazoPLP = [];
     const tbody = document.getElementById('tbodyEditorPLP');
     if (!tbody) return;
@@ -628,11 +715,13 @@ function renderEditorPLP() {
     tbody.innerHTML = filas.length
         ? filas.map(filaEditorPLP).join('')
         : '<tr><td colspan="8" class="border border-slate-200 px-4 py-8 text-center text-slate-500">No hay campañas PLP para el mes seleccionado. Usá “Agregar fila” para crear una.</td></tr>';
+    ProyeccionesUX.updatePending();
 }
 
 function marcarFilaPLP(control) {
     control.closest('tr').dataset.plpDirty = '1';
     control.classList.add('border-amber-500', 'bg-amber-50');
+    if (control.closest('tr').dataset.plpValidated === '1') ProyeccionesReview.validarPLP(false);
 }
 
 function alternarEliminarFilaPLP(button) {
@@ -722,6 +811,7 @@ function horasPLPPegadas(valor) {
 }
 
 function prepararTablaPegadaPLP() {
+    if (ProyeccionesUX.plpDirty() && !confirm('¿Reemplazar las ediciones PLP pendientes por las filas pegadas?')) return;
     const texto = document.getElementById('tablaPegadaPLP').value;
     const year = Number(document.getElementById('yearFiltro').value);
     const errores = [];
@@ -764,7 +854,7 @@ function prepararTablaPegadaPLP() {
     if (errores.length || !filas.length) {
         resumen.className = 'mt-3 rounded border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800';
         resumen.innerHTML = errores.length
-            ? `<div class="font-bold">Revisá la tabla:</div><div class="mt-1">${errores.slice(0, 15).map(escapeHtml).join('<br>')}</div>`
+            ? `<div class="font-bold">Revisá la tabla. Seleccioná un error para corregir su línea:</div><ul class="px-paste-errors">${errores.map(error => `<li><button type="button" class="px-button" data-plp-line="${Number(error.match(/Línea (\d+)/)?.[1] || 1)}">${escapeHtml(error)}</button></li>`).join('')}</ul>`
             : 'No se encontraron filas con horas para preparar.';
         return;
     }
@@ -798,7 +888,7 @@ function prepararTablaPegadaPLP() {
     resumen.innerHTML = `<div class="font-bold">${preparadas.length} filas preparadas · ${formatNumber(totalGeneral)} horas en total${omitidasSinHoras ? ` · ${omitidasSinHoras} sin horas omitida(s)` : ''}</div>
         <div class="mt-2 flex flex-wrap gap-2">${Object.entries(totales).map(([tipo, total]) => `<span class="rounded bg-white px-2 py-1 ring-1 ring-emerald-200"><strong>${escapeHtml(tipo)}:</strong> ${formatNumber(total)} h</span>`).join('')}</div>
         <div class="mt-2 rounded bg-amber-50 px-2 py-1.5 font-semibold text-amber-900 ring-1 ring-amber-200">Al guardar se reemplazará todo ${escapeHtml(nombresMeses)}. Las campañas anteriores que no estén en esta tabla se eliminarán.</div>
-        <div class="mt-2 text-emerald-800">Revisá las filas y presioná <strong>Guardar cambios</strong> para contabilizarlas.</div>`;
+        <div class="mt-2 text-emerald-800">Revisá las filas y presioná <strong>Revisar y guardar cambios</strong> para comprobar el impacto antes de confirmar.</div>`;
     tbody.closest('.overflow-x-auto').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -809,6 +899,9 @@ function limpiarTablaPegadaPLP() {
 }
 
 async function guardarEditorPLP() {
+    const boton = document.getElementById('guardarEditorPLPBtn');
+    if (boton.disabled) return;
+    if (!ProyeccionesReview.validarPLP()) return;
     const filas = [...document.querySelectorAll('#tbodyEditorPLP tr[data-plp-dirty="1"]')].map(fila => ({
         id: fila.dataset.plpId || null,
         eliminar: fila.dataset.plpDeleted === '1',
@@ -821,6 +914,13 @@ async function guardarEditorPLP() {
         porcentaje_cumplimiento: fila.querySelector('[data-plp="cumplimiento"]').value,
     }));
     if (!filas.length) return mostrarMensaje('No hay cambios PLP para guardar', 'info');
+    const textoOriginal = boton.innerHTML;
+    boton.disabled = true;
+    boton.textContent = 'Revisando cambios…';
+    document.getElementById('proyeccionesWorkspace').inert = true;
+    try {
+    if (!await ProyeccionesReview.revisarPLP(filas, [...mesesReemplazoPLP])) return;
+    boton.textContent = 'Guardando cambios…';
     const response = await fetch('/api/proyecciones-plp/edicion-masiva', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -835,12 +935,20 @@ async function guardarEditorPLP() {
     if (!response.ok || !data.success) {
         const mensaje = (data.errores || ['No se pudieron guardar los cambios PLP']).join(' | ');
         mostrarMensaje(mensaje, 'error');
-        return alert(mensaje);
+        return;
     }
     mostrarMensaje(data.mensaje, 'success');
-    alert(`Guardado confirmado\n\n${data.mensaje}`);
     mesesReemplazoPLP = [];
+    document.querySelectorAll('#tbodyEditorPLP [data-plp]').forEach(control => control.closest('tr').dataset.plpDirty = '0');
+    document.getElementById('tablaPegadaPLP').value = '';
     await cargarProyecciones();
+    } catch (error) {
+        mostrarMensaje(error.message || 'No se pudo confirmar el guardado. Tus cambios siguen en la planilla; revisá el estado antes de reintentar.', 'error');
+    } finally {
+        document.getElementById('proyeccionesWorkspace').inert = false;
+        boton.disabled = false;
+        boton.innerHTML = textoOriginal;
+    }
 }
 
 function renderResumenPLP() {
@@ -896,14 +1004,15 @@ function actualizarClientePLP() {
     document.getElementById('bloqueNocturnidad').classList.toggle('hidden', !tipo);
 }
 
-async function cargarDistribucionPersonal() {
+async function cargarDistribucionPersonal(descartarEdiciones = false, solicitud = ProyeccionesUX.state.request) {
     const year = document.getElementById('yearFiltro').value;
     const response = await fetch(`/api/personal-distribucion?year=${encodeURIComponent(year)}`);
     const data = await response.json();
-    if (!data.success) return;
+    if (!response.ok || !data.success) throw new Error('No se pudo actualizar la distribución de Personal.');
+    if (solicitud !== ProyeccionesUX.state.request) return;
     serviciosPersonal = data.servicios || [];
     distribucionesPersonal = data.distribuciones || [];
-    renderDistribucionPersonal();
+    if (descartarEdiciones || !ProyeccionesUX.personalDirty()) renderDistribucionPersonal();
 }
 
 function descargarTemplatePLP() {
@@ -987,6 +1096,7 @@ async function guardarDistribucionPersonal() {
         return;
     }
     mostrarMensaje(data.mensaje, 'success');
+    document.querySelectorAll('[data-personal-dirty="1"]').forEach(input => { input.dataset.personalDirty = '0'; });
     await cargarProyecciones();
 }
 
@@ -1186,6 +1296,7 @@ function calcularDiasObjetivo(carga) {
 
 async function guardarProyeccion(event) {
     event.preventDefault();
+    if (document.getElementById('guardarProyeccionBtn').disabled) return;
     const jornadas = obtenerJornadasFormulario();
     if (pestaniaActual !== 'personal' && !jornadas.length) {
         mostrarMensaje('Agregá al menos una jornada con dotación y horas diarias mayores a cero.', 'error');
@@ -1215,8 +1326,11 @@ async function guardarProyeccion(event) {
     const boton = document.getElementById('guardarProyeccionBtn');
     const textoOriginal = boton.innerHTML;
     boton.disabled = true;
-    boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Revisando...';
+    document.getElementById('proyeccionesWorkspace').inert = true;
     try {
+        if (!await ProyeccionesReview.revisarIndividual(payload)) return;
+        boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
         const response = await fetch('/api/matriz-proyecciones', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -1237,6 +1351,7 @@ async function guardarProyeccion(event) {
         mostrarMensaje(error.message || 'No se pudo guardar la proyección.', 'error');
         document.getElementById('mensajeProyeccion').scrollIntoView({ behavior: 'smooth', block: 'center' });
     } finally {
+        document.getElementById('proyeccionesWorkspace').inert = false;
         boton.disabled = false;
         boton.innerHTML = textoOriginal;
     }
@@ -1245,8 +1360,10 @@ async function guardarProyeccion(event) {
 function editarProyeccion(id) {
     const item = proyecciones.find(proyeccion => Number(proyeccion.id) === Number(id));
     if (!item) return;
+    if (ProyeccionesUX.state.formDirty && !confirm('¿Descartar los cambios del formulario y editar esta proyección?')) return;
+    ProyeccionesUX.state.formDirty = false;
     document.getElementById('proyeccionId').value = item.id;
-    cambiarPestania(item.tipo_plp ? 'personal' : 'todas');
+    cambiarPestania(item.tipo_plp ? 'personal' : 'todas', true);
     document.getElementById('cliente').value = item.cliente;
     actualizarCampanias();
     document.getElementById('campania').value = item.campania;
@@ -1279,7 +1396,8 @@ function editarProyeccion(id) {
     document.getElementById('subtituloFormulario').textContent = `${item.cliente} / ${item.campania} / ${item.mes_label}`;
     document.getElementById('badgeEditando').classList.remove('hidden');
     actualizarProyectadas();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    ProyeccionesUX.abrirEditor();
+    document.getElementById('mes').focus({preventScroll: true});
 }
 
 async function eliminarProyeccion(id) {
@@ -1309,16 +1427,23 @@ function renderProyecciones() {
     });
     document.getElementById('tabTodas').className = pestaniaActual === 'todas' ? 'rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm' : 'rounded px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white';
     document.getElementById('tabPersonal').className = pestaniaActual === 'personal' ? 'rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm' : 'rounded px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white';
-    document.getElementById('contadorProyecciones').textContent = `${filtradas.length} de ${proyecciones.length} proyección(es)`;
-    if (!filtradas.length) {
-        tbody.innerHTML = '<tr><td colspan="12" class="px-4 py-8 text-center text-gray-500">No hay proyecciones cargadas</td></tr>';
+    const visibles = pestaniaActual === 'personal' ? filtradas : filtradas.filter(item => !item.tipo_plp);
+    const totalVista = proyecciones.filter(item => pestaniaActual === 'personal' ? item.tipo_plp : !item.tipo_plp).length;
+    document.getElementById('tabTodas').setAttribute('aria-pressed', String(pestaniaActual === 'todas'));
+    document.getElementById('tabPersonal').setAttribute('aria-pressed', String(pestaniaActual === 'personal'));
+    document.getElementById('contadorProyecciones').textContent = `${visibles.length} de ${totalVista} servicio(s) · ${document.getElementById('yearFiltro').value}`;
+    document.getElementById('paginacionProyecciones').hidden = pestaniaActual === 'personal';
+    if (!visibles.length) {
+        ProyeccionesUX.pageItems([], 'vacio');
+        document.getElementById('paginacionProyecciones').hidden = pestaniaActual === 'personal';
+        tbody.innerHTML = '<tr><td colspan="12" class="px-4 py-8 text-center text-gray-500">No hay servicios para esta vista y estos filtros. Probá limpiar los filtros o cargar una proyección.</td></tr>';
         return;
     }
     if (pestaniaActual === 'personal') {
         renderProyeccionesPLPAgrupadas(filtradas);
         return;
     }
-    const detalles = pestaniaActual === 'todas' ? filtradas.filter(item => !item.tipo_plp) : filtradas;
+    const detalles = ProyeccionesUX.pageItems(visibles, JSON.stringify([pestaniaActual, texto, cliente, campania, mes]));
     tbody.innerHTML = detalles.flatMap(item => filasVisualesProyeccion(item).map(apertura => `
         <tr class="hover:bg-slate-50">
             <td class="border border-gray-200 px-3 py-2 font-medium text-gray-900">${escapeHtml(item.cliente)}</td>
@@ -1333,8 +1458,8 @@ function renderProyecciones() {
             <td class="border border-gray-200 bg-blue-50 px-3 py-2 text-right font-semibold text-blue-900">${formatNumber(apertura.horas_proyectadas)}${item.tiene_nocturnidad ? `<div class="mt-1 text-xs font-normal text-indigo-700">${formatPercent(apertura.porcentaje)}</div>` : ''}</td>
             <td class="border border-gray-200 px-3 py-2 text-right">${formatPercent(item.porcentaje_cumplimiento)}</td>
             <td class="border border-gray-200 px-3 py-2 text-center">
-                <button type="button" onclick="editarProyeccion(${item.id})" class="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"><i class="fas fa-pen"></i></button>
-                <button type="button" onclick="eliminarProyeccion(${item.id})" class="ml-1 rounded bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-700"><i class="fas fa-trash"></i></button>
+                <button type="button" onclick="editarProyeccion(${item.id})" aria-label="Editar ${escapeHtml(item.campania)} ${escapeHtml(item.mes_label)}" class="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"><i class="fas fa-pen" aria-hidden="true"></i> Editar</button>
+                <button type="button" onclick="eliminarProyeccion(${item.id})" aria-label="Eliminar ${escapeHtml(item.campania)} ${escapeHtml(item.mes_label)}" class="ml-1 rounded bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-700"><i class="fas fa-trash" aria-hidden="true"></i></button>
             </td>
         </tr>
     `)).join('');
@@ -1419,6 +1544,7 @@ function editarAcumuladoPLP(tipo, mes) {
     actualizarClientePLP();
     renderProyecciones();
     document.getElementById('bloqueCargaPLP').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    ProyeccionesUX.abrirEditor();
 }
 
 function filasVisualesProyeccion(item) {
@@ -1476,6 +1602,7 @@ function mostrarMensaje(mensaje, tipo) {
     const contenedor = document.getElementById('mensajeProyeccion');
     contenedor.className = `rounded px-3 py-2 text-sm ${tipo === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`;
     contenedor.textContent = mensaje;
+    ProyeccionesUX.status(mensaje, tipo === 'error' ? 'error' : 'info');
 }
 
 function numero(value) {

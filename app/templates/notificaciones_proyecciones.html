@@ -3,11 +3,13 @@
 {% block title %}Notificaciones de proyecciones - Facturación{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='notificaciones-ux.css') }}">
+<div id="notificacionesWorkspace">
 <div class="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
     <div>
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Proyectados</p>
         <h1 class="text-3xl font-bold text-gray-950">Notificaciones de cambios</h1>
-        <p class="mt-1 max-w-3xl text-sm text-slate-500">Comparación mensual por campaña centrada en dotación y precio. Las horas se normalizan para excluir el efecto de la cantidad de días laborables.</p>
+        <p class="mt-1 max-w-3xl text-sm text-slate-600">Qué cambió entre un mes y el anterior, cuánto subió o bajó el importe y qué servicios explican el movimiento.</p>
     </div>
     <div class="flex flex-wrap gap-2">
         <select id="yearFiltro" onchange="cargarNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm">
@@ -24,81 +26,98 @@
     </div>
 </div>
 
+<div class="nt-info">
+    <p><strong>Comparación con el mes anterior, sin el efecto del calendario.</strong> Las horas y los importes son comparables; pueden diferir de los totales mensuales de Proyecciones.</p>
+    <details><summary class="cursor-pointer font-semibold">Cómo interpretar las subas y bajas</summary>
+    <p><strong>Cómo leer esta comparación:</strong> cada fila compara el mes indicado con el mes anterior. “Subió” y “bajó” describen el importe proyectado; no califican si el cambio es bueno o malo para el negocio.</p>
+    <p><strong>Horas e importes comparables:</strong> se mantienen las horas por persona del mes anterior para excluir el efecto de los días laborables. Pueden diferir de los totales mensuales de Proyecciones.</p>
+    <p>Para saber quién editó un registro y cuándo, consultá el <a href="/historial" class="font-semibold underline">Historial</a>.</p>
+    </details>
+</div>
 <section class="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
     <article class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Cambios positivos</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Subió el importe</p>
         <p id="kpiPositivas" class="mt-2 text-2xl font-black text-emerald-800">0</p>
     </article>
     <article class="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-wide text-rose-700">Cambios negativos</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-rose-700">Bajó el importe</p>
         <p id="kpiNegativas" class="mt-2 text-2xl font-black text-rose-800">0</p>
     </article>
     <article class="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Cambios mixtos</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Sin impacto neto relevante</p>
         <p id="kpiMixtas" class="mt-2 text-2xl font-black text-amber-800">0</p>
     </article>
     <article class="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Impacto neto</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Impacto neto comparable</p>
         <p id="kpiImpacto" class="mt-2 text-2xl font-black text-blue-900">$ 0,00</p>
     </article>
 </section>
 
 <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
     <div class="border-b border-slate-200 p-4">
-        <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
-            <input id="buscarFiltro" type="search" oninput="renderNotificaciones()" placeholder="Buscar site, cliente, campaña o detalle..." class="h-10 rounded-md border border-slate-300 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
-            <select multiple id="mesFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm"><option value="">Todos los meses</option></select>
-            <select multiple id="estadoFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm">
-                <option value="">Todos los estados</option>
-                <option value="positiva">Positivos</option>
-                <option value="negativa">Negativos</option>
-                <option value="mixta">Mixtos</option>
-            </select>
-            <select multiple id="metricaFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm"><option value="">Todas las métricas</option></select>
+        <div class="nt-filters" data-filter-scope>
+            <label for="buscarFiltro">Buscar<input id="buscarFiltro" type="search" oninput="renderNotificaciones()" placeholder="Cliente, campaña, site o detalle" class="h-10 rounded-md border border-slate-300 px-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></label>
+            <label for="mesFiltro">Mes comparado<select multiple id="mesFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm"><option value="">Todos los meses</option></select></label>
+            <label for="estadoFiltro">Dirección del importe<select multiple id="estadoFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm">
+                <option value="">Todas las direcciones</option>
+                <option value="sube">Subió el importe</option>
+                <option value="baja">Bajó el importe</option>
+                <option value="sin_impacto">Sin impacto neto relevante</option>
+            </select></label>
+            <label for="metricaFiltro">Qué cambió<select multiple id="metricaFiltro" onchange="renderNotificaciones()" class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm"><option value="">Todas las métricas</option></select></label>
             <button type="button" onclick="limpiarFiltros()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 <i class="fas fa-circle-xmark"></i>Limpiar
             </button>
         </div>
-        <p id="contador" class="mt-3 text-xs text-slate-500">Cargando cambios...</p>
-        <p class="mt-1 text-xs font-medium text-blue-700"><i class="fas fa-circle-info mr-1"></i>El impacto usa las horas por persona del mes anterior; los días laborables del mes no generan notificaciones.</p>
+        <p id="contador" role="status" aria-live="polite" class="mt-3 text-xs text-slate-500">Cargando cambios...</p>
+        <p class="mt-1 text-xs font-medium text-blue-700">Los indicadores resumen las comparaciones visibles. Un cliente puede tener servicios que suben y otros que bajan, aunque el neto muestre una sola dirección.</p>
     </div>
-    <div class="overflow-x-auto">
+    <div class="overflow-x-auto nt-table" role="region" aria-label="Comparaciones mensuales de clientes y servicios" tabindex="0">
         <table class="w-full min-w-[1320px] border-collapse text-sm">
             <thead class="bg-slate-100 text-slate-700">
                 <tr>
-                    <th class="px-3 py-3 text-left">Mes</th>
+                    <th class="px-3 py-3 text-left">Comparación</th>
                     <th class="px-3 py-3 text-left">Cliente</th>
-                    <th class="px-3 py-3 text-right">Cambio de dotación</th>
-                    <th class="px-3 py-3 text-right">Cambio de horas</th>
-                    <th class="px-3 py-3 text-right">Cambio de precio</th>
-                    <th class="px-3 py-3 text-right">Cambio total $</th>
-                    <th class="px-3 py-3 text-left">Lectura</th>
+                    <th class="px-3 py-3 text-right">Impacto neto comparable</th>
+                    <th class="px-3 py-3 text-left">Qué cambió</th>
+                    <th class="px-3 py-3 text-right">Dotación</th>
+                    <th class="px-3 py-3 text-right">Horas comparables</th>
+                    <th class="px-3 py-3 text-right">Precio promedio ponderado</th>
                 </tr>
             </thead>
             <tbody id="tbodyNotificaciones"><tr><td colspan="7" class="px-4 py-10 text-center text-slate-500">Cargando datos...</td></tr></tbody>
         </table>
     </div>
 </section>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='notificaciones-ux.js') }}"></script>
 <script>
 let datosNotificaciones = { notificaciones: [], meses: [], metricas: [] };
 let filtrosInicializados = false;
+let ultimaConsultaNotificaciones = 0;
 
 document.addEventListener('DOMContentLoaded', cargarNotificaciones);
 
 async function cargarNotificaciones() {
+    const consulta = ++ultimaConsultaNotificaciones;
     document.getElementById('contador').textContent = 'Cargando cambios...';
     document.getElementById('tbodyNotificaciones').innerHTML = '<tr><td colspan="7" class="px-4 py-10 text-center text-slate-500">Cargando datos...</td></tr>';
     try {
         const year = document.getElementById('yearFiltro').value;
         const response = await fetch(`/api/notificaciones-proyecciones?year=${encodeURIComponent(year)}&_=${Date.now()}`, { cache: 'no-store' });
-        datosNotificaciones = await response.json();
-        if (!response.ok || !datosNotificaciones.success) throw new Error('No se pudieron cargar las notificaciones');
+        const data = await response.json();
+        if (consulta !== ultimaConsultaNotificaciones) return;
+        if (!response.ok || !data.success) throw new Error('No se pudieron cargar las notificaciones. Usá Actualizar para reintentar.');
+        datosNotificaciones = data;
         popularFiltros();
         renderNotificaciones();
     } catch (error) {
+        if (consulta !== ultimaConsultaNotificaciones) return;
+        datosNotificaciones = { notificaciones: [], meses: [], metricas: [] };
+        ['kpiPositivas', 'kpiNegativas', 'kpiMixtas', 'kpiImpacto'].forEach(id => document.getElementById(id).textContent = '—');
         document.getElementById('contador').textContent = error.message;
         document.getElementById('tbodyNotificaciones').innerHTML = '<tr><td colspan="7" class="px-4 py-10 text-center text-rose-600">No se pudieron cargar los cambios.</td></tr>';
     }
@@ -111,7 +130,7 @@ function popularFiltros() {
         `<option value="${escapeHtml(mes.value)}" ${mesActual.includes(String(mes.value)) ? 'selected' : ''}>${escapeHtml(mes.label)}</option>`
     ).join('');
     document.getElementById('metricaFiltro').innerHTML = '<option value="">Todas las métricas</option>' + (datosNotificaciones.metricas || []).map(metrica =>
-        `<option value="${escapeHtml(metrica.value)}" ${metricaActual.includes(String(metrica.value)) ? 'selected' : ''}>${escapeHtml(metrica.label)}</option>`
+        `<option value="${escapeHtml(metrica.value)}" ${metricaActual.includes(String(metrica.value)) ? 'selected' : ''}>${escapeHtml(({horas_proyectadas: 'Horas comparables', total_proyectado: 'Importe proyectado comparable'})[metrica.value] || metrica.label)}</option>`
     ).join('');
     if (!filtrosInicializados) {
         const numeroMes = String(new Date().getMonth() + 1).padStart(2, '0');
@@ -132,29 +151,32 @@ function notificacionesVisibles() {
         const texto = normalizar(`${item.site} ${item.cliente} ${item.campania} ${item.detalle}`);
         return (!buscar || texto.includes(buscar))
             && (AppFilters.coincide(mes, item.mes))
-            && (AppFilters.coincide(estado, item.estado))
+            && (AppFilters.coincide(estado, NotificacionesUX.direction(item.impacto_facturacion)))
             && (!metrica.length || metrica.some(valor => (item.metricas_cambiadas || []).includes(valor)));
     }).sort((a, b) => b.mes.localeCompare(a.mes) || Math.abs(b.impacto_facturacion) - Math.abs(a.impacto_facturacion));
 }
 
 function renderNotificaciones() {
     const items = notificacionesVisibles();
-    document.getElementById('kpiPositivas').textContent = items.filter(item => item.estado === 'positiva').length.toLocaleString('es-AR');
-    document.getElementById('kpiNegativas').textContent = items.filter(item => item.estado === 'negativa').length.toLocaleString('es-AR');
-    document.getElementById('kpiMixtas').textContent = items.filter(item => item.estado === 'mixta').length.toLocaleString('es-AR');
+    document.getElementById('kpiPositivas').textContent = items.filter(item => NotificacionesUX.direction(item.impacto_facturacion) === 'sube').length.toLocaleString('es-AR');
+    document.getElementById('kpiNegativas').textContent = items.filter(item => NotificacionesUX.direction(item.impacto_facturacion) === 'baja').length.toLocaleString('es-AR');
+    document.getElementById('kpiMixtas').textContent = items.filter(item => NotificacionesUX.direction(item.impacto_facturacion) === 'sin_impacto').length.toLocaleString('es-AR');
     const impacto = items.reduce((total, item) => total + Number(item.impacto_facturacion || 0), 0);
     const kpiImpacto = document.getElementById('kpiImpacto');
-    kpiImpacto.textContent = moneda(impacto);
+    kpiImpacto.textContent = monedaFirmada(impacto);
     kpiImpacto.className = `mt-2 text-2xl font-black ${impacto < 0 ? 'text-rose-700' : impacto > 0 ? 'text-emerald-700' : 'text-blue-900'}`;
-    document.getElementById('contador').textContent = `${items.length.toLocaleString('es-AR')} cliente(s) con cambios · desplegá cada fila para ver los servicios que explican el desvío.`;
+    document.getElementById('contador').textContent = `${items.length.toLocaleString('es-AR')} comparación(es) cliente/mes · cada mes se compara con su mes anterior. Desplegá el detalle para ver cada servicio.`;
     document.getElementById('tbodyNotificaciones').innerHTML = items.map(filaNotificacion).join('')
         || '<tr><td colspan="7" class="px-4 py-10 text-center text-slate-500">No hay cambios para los filtros seleccionados.</td></tr>';
 }
 
 function filaNotificacion(item) {
-    const tono = item.estado === 'positiva'
+    const direccion = NotificacionesUX.direction(item.impacto_facturacion);
+    const tono = direccion === 'sube'
         ? 'bg-emerald-100 text-emerald-800'
-        : item.estado === 'negativa' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800';
+        : direccion === 'baja' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800';
+    const conteo = NotificacionesUX.serviceCounts(item);
+    const otrosCambios = NotificacionesUX.otherChanges(item);
     const detalleServicios = (item.servicios || []).map(servicio => `
         <tr class="border-t border-slate-200 align-top">
             <td class="py-2 pr-3"><strong class="block text-slate-900">${escapeHtml(servicio.campania)}</strong><span class="text-[11px] text-slate-500">${escapeHtml(servicio.site)}</span></td>
@@ -162,24 +184,27 @@ function filaNotificacion(item) {
             <td class="px-2 py-2 text-right">${resumenCambio(servicio, 'horas_proyectadas', 'numero', ' h')}</td>
             <td class="px-2 py-2 text-right">${resumenCambio(servicio, 'precio_final', 'moneda', '/h')}</td>
             <td class="px-2 py-2 text-right font-bold ${servicio.impacto_facturacion < 0 ? 'text-rose-700' : 'text-emerald-700'}">${impactoServicio(servicio)}</td>
-            <td class="py-2 pl-3 text-slate-700">${escapeHtml(servicio.lectura)}</td>
+            <td class="py-2 pl-3 text-slate-700"><strong class="block">${escapeHtml(NotificacionesUX.labels[NotificacionesUX.direction(servicio.impacto_facturacion)])}</strong>${servicio.movimiento === 'alta' ? 'Alta de campaña respecto del mes anterior. ' : servicio.movimiento === 'baja' ? 'Baja de campaña respecto del mes anterior. ' : ''}${escapeHtml(NotificacionesUX.metricChanges(servicio))}${NotificacionesUX.otherChanges(servicio) ? `<p class="nt-metric-note">También cambió: ${escapeHtml(NotificacionesUX.otherChanges(servicio))}.</p>` : ''}</td>
         </tr>`).join('');
     return `
         <tr class="border-t border-slate-200 align-top hover:bg-slate-50">
             <td class="px-3 py-4"><strong class="block text-slate-900">${escapeHtml(item.mes_label)}</strong><span class="text-xs text-slate-500">vs. ${escapeHtml(item.mes_anterior_label)}</span></td>
             <td class="px-3 py-4"><strong class="block text-base text-slate-950">${escapeHtml(item.cliente)}</strong><span class="mt-1 block text-xs text-slate-500">${item.cantidad_servicios} ${item.cantidad_servicios === 1 ? 'servicio con cambio' : 'servicios con cambios'}</span></td>
+            <td class="px-3 py-4 text-right"><span class="nt-direction ${tono}">${escapeHtml(NotificacionesUX.labels[direccion])}</span><strong class="block whitespace-nowrap text-lg">${monedaCompacta(item.impacto_facturacion)}</strong><span class="nt-label">Anterior: ${moneda(item.facturacion_anterior)}</span><span class="nt-label">Actual: ${moneda(item.facturacion_actual)}</span></td>
+            <td class="nt-reading px-3 py-4">
+                <p class="leading-5 text-slate-800">${escapeHtml(NotificacionesUX.reading(item))}</p>
+                <span class="nt-service-counts">${escapeHtml(NotificacionesUX.serviceSummary(item))}</span>
+                ${conteo.sube && conteo.baja ? '<p class="nt-opposing">Movimientos opuestos: revisá las subas y bajas de los servicios; el neto puede compensarlas.</p>' : ''}
+                <p class="nt-metric-note">${escapeHtml(NotificacionesUX.metricChanges(item))}</p>
+                ${otrosCambios ? `<p class="nt-metric-note">También cambió: ${escapeHtml(otrosCambios)}.</p>` : ''}
+            </td>
             <td class="px-3 py-4 text-right tabular-nums">${resumenCambio(item, 'dotacion_requerida', 'numero')}</td>
             <td class="px-3 py-4 text-right tabular-nums">${resumenCambio(item, 'horas_proyectadas', 'numero', ' h')}</td>
             <td class="px-3 py-4 text-right tabular-nums">${resumenCambio(item, 'precio_final', 'moneda', '/h')}</td>
-            <td class="px-3 py-4 text-right"><span class="inline-flex items-center gap-2 whitespace-nowrap text-lg"><span class="h-4 w-4 rounded-full ${item.impacto_facturacion < 0 ? 'bg-rose-500' : item.impacto_facturacion > 0 ? 'bg-emerald-400' : 'bg-slate-300'}" aria-hidden="true"></span><strong class="tabular-nums ${item.impacto_facturacion < 0 ? 'text-rose-700' : item.impacto_facturacion > 0 ? 'text-emerald-700' : 'text-slate-600'}">${monedaCompacta(item.impacto_facturacion)}</strong></span><span class="mt-1 block text-xs text-slate-500">${moneda(item.facturacion_anterior)} → ${moneda(item.facturacion_actual)}</span></td>
-            <td class="max-w-[390px] px-3 py-4">
-                <span class="mb-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${tono}">${escapeHtml(item.estado)}</span>
-                <p class="leading-5 text-slate-800">${escapeHtml(item.lectura)}</p>
-            </td>
         </tr>
         <tr class="border-t border-slate-100 bg-slate-50/60">
             <td colspan="7" class="px-4 py-2">
-                <details><summary class="cursor-pointer py-1 text-xs font-semibold text-blue-700">Ver detalle de ${item.cantidad_servicios} ${item.cantidad_servicios === 1 ? 'servicio' : 'servicios'} de ${escapeHtml(item.cliente)}</summary><div class="mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white p-3"><table class="w-full min-w-[1000px] text-xs"><thead><tr class="text-slate-500"><th class="pb-2 text-left">Servicio</th><th class="px-2 pb-2 text-right">Dotación</th><th class="px-2 pb-2 text-right">Horas</th><th class="px-2 pb-2 text-right">Precio</th><th class="px-2 pb-2 text-right">Impacto</th><th class="pb-2 pl-3 text-left">Lectura</th></tr></thead><tbody>${detalleServicios}</tbody></table></div></details>
+                <details><summary class="cursor-pointer py-1 text-xs font-semibold text-blue-700">Ver qué subió o bajó en ${escapeHtml(item.cliente)} · ${item.cantidad_servicios} servicio(s)</summary><div class="mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white p-3"><table class="w-full min-w-[1000px] text-xs"><thead><tr class="text-slate-500"><th class="pb-2 text-left">Servicio</th><th class="px-2 pb-2 text-right">Dotación</th><th class="px-2 pb-2 text-right">Horas comparables</th><th class="px-2 pb-2 text-right">Precio</th><th class="px-2 pb-2 text-right">Impacto comparable</th><th class="pb-2 pl-3 text-left">Qué cambió</th></tr></thead><tbody>${detalleServicios}</tbody></table></div></details>
             </td>
         </tr>`;
 }
@@ -190,7 +215,8 @@ function resumenCambio(item, metrica, tipo, sufijo = '') {
         return `<span class="block text-xs text-slate-500">Sin cambio</span><strong class="text-slate-800">${formatoMetrica(valores.actual, tipo)}${sufijo}</strong>`;
     }
     const color = valores.diferencia < 0 ? 'text-rose-700' : 'text-emerald-700';
-    return `<span class="block whitespace-nowrap text-slate-800">${formatoMetrica(valores.anterior, tipo)} → ${formatoMetrica(valores.actual, tipo)}${sufijo}</span><strong class="mt-1 block ${color}">${formatoMetrica(valores.diferencia, tipo, true)}${sufijo}</strong>`;
+    const porcentaje = Math.abs(Number(valores.anterior)) > .005 ? `${numero(Number(valores.diferencia) / Math.abs(Number(valores.anterior)) * 100, true)}%` : 'Sin base porcentual';
+    return `<span class="nt-label">Anterior: ${formatoMetrica(valores.anterior, tipo)}${sufijo}</span><span class="block whitespace-nowrap text-slate-800">Actual: ${formatoMetrica(valores.actual, tipo)}${sufijo}</span><strong class="mt-1 block ${color}">${valores.diferencia > 0 ? '↑ Subió' : '↓ Bajó'} ${formatoMetrica(valores.diferencia, tipo, true)}${sufijo}</strong><span class="nt-label">${porcentaje}</span>`;
 }
 
 function impactoServicio(servicio) {
@@ -206,13 +232,14 @@ function impactoServicio(servicio) {
 
 function exportarReporte() {
     const params = new URLSearchParams({ year: document.getElementById('yearFiltro').value });
-    const filtros = { mes: 'mesFiltro', estado: 'estadoFiltro', metrica: 'metricaFiltro', buscar: 'buscarFiltro' };
+    const filtros = { mes: 'mesFiltro', direccion_importe: 'estadoFiltro', metrica: 'metricaFiltro', buscar: 'buscarFiltro' };
     Object.entries(filtros).forEach(([clave, id]) => { const control = document.getElementById(id); if (control.matches('select')) AppFilters.agregar(params, clave, AppFilters.valores(control)); else if (control.value.trim()) params.set(clave, control.value.trim()); });
     window.location.href = `/api/notificaciones-proyecciones/exportar?${params.toString()}`;
 }
 
 function limpiarFiltros() {
-    ['buscarFiltro', 'mesFiltro', 'estadoFiltro', 'metricaFiltro'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('buscarFiltro').value = '';
+    ['mesFiltro', 'estadoFiltro', 'metricaFiltro'].forEach(id => AppFilters.seleccionar(id, []));
     renderNotificaciones();
 }
 

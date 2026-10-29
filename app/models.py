@@ -173,6 +173,14 @@ def redondear_moneda(valor):
     return float(Decimal(str(valor or 0)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
 
 
+class ConfiguracionOperativa(db.Model):
+    """Business UI preferences; deployment secrets remain outside the database."""
+    __tablename__ = 'configuracion_operativa'
+    clave = db.Column(db.String(60), primary_key=True)
+    valor = db.Column(db.String(200), nullable=False)
+    version = db.Column(db.Integer, default=1, nullable=False)
+
+
 class Usuario(db.Model):
     __tablename__ = 'usuarios'
 

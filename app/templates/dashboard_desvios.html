@@ -1,0 +1,42 @@
+<section class="dv-cards" aria-label="Explorar desvíos de facturación">
+    <button type="button" class="dv-card dv-positive" data-open-desvios="positivo" disabled>
+        <span>Clientes con desvío positivo <span aria-hidden="true">↗</span></span>
+        <strong id="dvPositiveCount">—</strong><span id="dvPositiveAmount">Esperando datos</span><small>Ver clientes y filtrar →</small>
+    </button>
+    <button type="button" class="dv-card dv-negative" data-open-desvios="negativo" disabled>
+        <span>Clientes con desvío negativo <span aria-hidden="true">↘</span></span>
+        <strong id="dvNegativeCount">—</strong><span id="dvNegativeAmount">Esperando datos</span><small>Ver clientes y filtrar →</small>
+    </button>
+    <button type="button" class="dv-card" data-open-desvios="mensual" disabled>
+        <span>¿Qué explica el desvío?</span><strong class="dv-card-title">Apertura mensual</strong>
+        <span>Horas, variable, penalizaciones y cumplimiento</span><small>Explorar por cliente y mes →</small>
+    </button>
+</section>
+<dialog id="dashboardDesviosDialog" class="dv-dialog" aria-labelledby="dvTitle">
+    <div class="dv-shell">
+        <header class="dv-header"><div><h2 id="dvTitle">Desvíos de facturación</h2><p>Explorá los clientes y abrí su detalle. Se conserva la selección del dashboard.</p></div><button type="button" data-dv-close class="dv-close" aria-label="Cerrar y volver al dashboard">×</button></header>
+        <div class="dv-tabs" role="tablist" aria-label="Vista de desvíos">
+            <button id="dvTabClientes" type="button" role="tab" data-dv-tab="clientes" aria-controls="dvPanel" aria-selected="true">Clientes</button>
+            <button id="dvTabMensual" type="button" role="tab" data-dv-tab="mensual" aria-controls="dvPanel" aria-selected="false">Explicación mensual</button>
+            <button id="dvTabCampanias" type="button" role="tab" data-dv-tab="campanias" aria-controls="dvPanel" aria-selected="false">Campañas</button>
+        </div>
+        <div id="dvCampaignContext" class="dv-campaign-context" hidden></div>
+        <form id="dvFilters" class="dv-filters">
+            <label>Cliente<select id="dvClient" data-dv-filter="cliente_grupo" data-app-filter-native="true"></select></label>
+            <label>Mes<select id="dvMonth" data-dv-filter="mes" data-app-filter-native="true"></select></label>
+            <label><span id="dvDirectionLabel">Desvío</span><select id="dvDirection" data-dv-filter="direccion" data-app-filter-native="true"><option value="">Todos</option><option value="positivo">Positivo</option><option value="negativo">Negativo</option><option value="sin_desvio">Sin desvío</option></select></label>
+            <details id="dvAdvanced" class="dv-advanced"><summary>Más filtros <span id="dvFilterCount"></span></summary><div class="dv-advanced-fields">
+            <label>Año<select id="dvYear" data-dv-filter="year" data-app-filter-native="true"></select></label>
+            <label>Gerente<select id="dvManager" data-dv-filter="gerente" data-app-filter-native="true"></select></label>
+            <label>Jefe de site<select id="dvSite" data-dv-filter="jefe_site" data-app-filter-native="true"></select></label>
+            <label>Campaña<select id="dvCampaign" data-dv-filter="campania" data-app-filter-native="true"></select></label>
+            <label>Buscar cliente<input id="dvSearch" type="search" placeholder="Nombre del cliente" autocomplete="off"></label>
+            </div></details>
+            <button type="button" id="dvReset">Limpiar filtros del cuadro</button>
+        </form>
+        <div class="dv-summary"><p id="dvStatus" role="status" aria-live="polite"></p><label hidden><input id="dvDetail" type="checkbox"> Ver todos los indicadores</label><button type="button" id="dvRetry" hidden>Reintentar</button></div>
+        <p id="dvScrollHint" class="dv-scroll-hint" hidden>Deslizá hacia los lados para recorrer los meses. El total del período aparece al final.</p>
+        <div id="dvPanel" class="dv-panel" role="tabpanel" aria-labelledby="dvTabClientes" tabindex="0"></div>
+        <footer class="dv-footer"><details><summary>¿Cómo se calcula? · Ayuda</summary><p id="dvCriteria"></p><p>Positivo: por encima del objetivo; negativo: por debajo. Desvío % = (facturado comparable / objetivo − 1) × 100. Cumplimiento = real / objetivo × 100; 100% indica objetivo alcanzado. Horas netas / ADH descuenta las horas penalizadas. Valor hora y bonos usan los mismos indicadores de Facturación.</p><p>— indica un mes sin registros o un porcentaje sin objetivo de referencia. El total del período se calcula con los importes y horas acumulados. Los ajustes muestran diferencias entre el objetivo importado y sus componentes; el redondeo permite conciliar los centavos.</p></details><p>Cerrá con ×, Escape o un clic afuera para volver al dashboard.</p></footer>
+    </div>
+</dialog>

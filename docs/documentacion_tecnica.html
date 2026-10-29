@@ -132,6 +132,7 @@
 <li>qué cambios se hicieron y cómo deshacerlos desde el historial.</li>
 </ul>
 <h2 id="documentacion-disponible">Documentación disponible<a class="anchor" href="#documentacion-disponible" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Los administradores cuentan con un <a href="/administracion">Centro de administración</a> para acceder a tareas habituales, revisar configuraciones pendientes y cambiar el año de apertura sin editar el servidor. El alcance y las dependencias pendientes están en <a href="docs/AUTONOMIA_OPERATIVA.md">Autonomía operativa</a>.</p>
 <p class="">Este repositorio separa la documentación según su público:</p>
 <div class="table-wrap"><table><thead><tr>
 <th>Documento</th>
@@ -189,6 +190,7 @@
 ├─ .env.example                # Variables de entorno sugeridas
 └─ README.md</code></pre>
 <h2 id="requisitos">Requisitos<a class="anchor" href="#requisitos" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Para ejecutar o entregar el sistema en contenedores, ver <a href="docs/DOCKER.md">la guía de Docker</a>. Incluye construcción, configuración, persistencia de datos, traslado de la base existente y publicación en un registro de la empresa.</p>
 <ul>
 <li>Python 3.11 o superior.</li>
 <li>pip.</li>
@@ -1910,6 +1912,8 @@ python scripts\generar_documentacion_tecnica.py</code></pre>
 <h2 id="exportaciones">Exportaciones<a class="anchor" href="#exportaciones" aria-label="Enlace a esta sección">#</a></h2>
 <p class="">La aplicación permite exportar información a Excel desde módulos de control y análisis.</p>
 <p class="">Las exportaciones respetan filtros activos cuando el endpoint lo contempla. La descarga completa de <strong>Directorio</strong> genera un libro de Excel con una hoja por solapa o vista disponible. Los valores se exportan como datos editables, con títulos y estructura legible. El reloj también puede descargarse como imagen desde su propia pantalla.</p>
+<p class="">Los filtros de clientes, campañas, gerencias, sites, meses, conceptos y estados admiten selección múltiple en todas las pantallas que los ofrecen. Abrí el filtro, marcá las opciones y pulsá <strong>Aplicar filtro</strong>. <strong>Cancelar</strong> conserva la selección anterior; <strong>Quitar selección</strong> seguido de <strong>Aplicar filtro</strong> vuelve a mostrar todos los valores. Los valores de un mismo filtro se combinan y los filtros distintos se aplican juntos. Los selectores de año de las vistas anuales, extremos de un rango, vista, orden y campos de carga conservan una única opción. En Personal, la publicación al dashboard sigue requiriendo un único período explícito.</p>
+<p class="">Para verificar los filtros sobre una copia aislada de la base local: <code>.venv\Scripts\python.exe scripts/verificar_seleccion_multiple.py</code>. Para la prueba en navegador, iniciá el mismo comando con <code>--serve</code> y ejecutá <code>node scripts/verificar_seleccion_multiple.mjs</code> en otra terminal (requiere Chrome y el paquete <code>playwright-core</code> instalados).</p>
 <p class="">El <strong>Reloj</strong> y la columna <strong>% Alcance Hs.</strong> de <code>TOTAL CAT</code> en <strong>Resumen de horas</strong> comparten la función <code>horas_resumen_por_mes</code>. Para cada mes cerrado usan <code>horas_realizadas / horas_requeridas</code> de <code>historico_clientes_mensuales</code>; si Facturación ya contiene un mes posterior que todavía no ingresó al histórico, incorporan esa carga parcial desde <code>facturacion_anio</code>, excluyendo las filas exclusivas de Next Gen. El Reloj toma inicialmente todos los meses disponibles y permite elegir meses <strong>Desde</strong> y <strong>Hasta</strong>, inclusive, para controlar cualquier período; se actualiza automáticamente cada minuto. Esta fuente única evita que ambas pantallas informen porcentajes diferentes y permite seguir el mes en curso sin reemplazar los cierres anteriores.</p>
 <p class="">Los números visibles siguen la convención argentina: punto para miles y coma para decimales. Los archivos tabulares usan valores numéricos o representaciones compatibles con Excel según el formato de descarga.</p>
 <h2 id="proyectado-vs-facturado-y-normalizacion-de-nombres">Proyectado vs Facturado y normalización de nombres<a class="anchor" href="#proyectado-vs-facturado-y-normalizacion-de-nombres" aria-label="Enlace a esta sección">#</a></h2>
@@ -2916,6 +2920,16 @@ CREATE TABLE campanias (
 );
 
 -- ============================================================
+-- TABLA: configuracion_operativa
+-- ============================================================
+CREATE TABLE configuracion_operativa (
+	clave VARCHAR(60) NOT NULL,
+	valor VARCHAR(200) NOT NULL,
+	version INTEGER NOT NULL,
+	PRIMARY KEY (clave)
+);
+
+-- ============================================================
 -- TABLA: dashboard_operativo
 -- ============================================================
 CREATE TABLE dashboard_operativo (
@@ -3491,6 +3505,16 @@ CREATE TABLE campanias (
 	creado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 	PRIMARY KEY (id),
 	CONSTRAINT uq_campanias_cliente_nombre UNIQUE (cliente, nombre)
+);
+
+-- ============================================================
+-- TABLA: configuracion_operativa
+-- ============================================================
+CREATE TABLE configuracion_operativa (
+	clave VARCHAR(60) NOT NULL,
+	valor VARCHAR(200) NOT NULL,
+	version INTEGER NOT NULL,
+	PRIMARY KEY (clave)
 );
 
 -- ============================================================

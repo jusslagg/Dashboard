@@ -55,6 +55,8 @@ def create_app():
     
     from app.routes import main_bp
     app.register_blueprint(main_bp)
+    from app.administracion import administracion_bp
+    app.register_blueprint(administracion_bp)
 
     @app.before_request
     def enforce_browser_request_boundaries():
@@ -131,13 +133,15 @@ def create_app():
     @app.context_processor
     def inject_usuario_actual():
         from app.models import Usuario
+        from app.operacion import anio_operativo
+        year = anio_operativo()
         usuario_id = session.get('usuario_id')
         usuario = Usuario.query.get(usuario_id) if usuario_id else None
         return {
             'usuario_actual': usuario,
             'csrf_token': get_csrf_token(),
-            'anio_actual': app.config['DEFAULT_YEAR'],
-            'anios_disponibles': range(2020, max(datetime.now().year, app.config['DEFAULT_YEAR']) + 3),
+            'anio_actual': year,
+            'anios_disponibles': range(2020, max(datetime.now().year, year) + 3),
         }
     
     with app.app_context():

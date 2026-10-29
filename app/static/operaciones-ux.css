@@ -1,0 +1,18 @@
+.ops-status { margin: .75rem 0; padding: .65rem .85rem; color: #334155; font-size: .875rem; line-height: 1.6; border-radius: .5rem; background: #f1f5f9; }
+.ops-status[data-state=error] { color: #991b1b; background: #fff1f2; }
+.ops-feedback { position: sticky; top: .5rem; z-index: 40; }
+.ops-pager { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; padding: 1rem; border-top: 1px solid #e2e8f0; background: white; font-size: .8125rem; }
+.ops-pager label { margin-right: auto; }
+.ops-pager button, .ops-pager select { padding: .5rem .75rem; border: 1px solid #cbd5e1; border-radius: .4rem; background: white; min-height: 40px; }
+.ops-pager button:disabled { opacity: .45; cursor: default; }
+#tablaControlScroll { max-height: 68vh; overscroll-behavior: contain; }
+#tablaControlScroll thead { position: sticky; top: 0; z-index: 25; }
+#tablaControlScroll table { font-variant-numeric: tabular-nums; }
+#tablaControlScroll td.text-right { white-space: nowrap; }
+#modalEditar { width: min(960px, calc(100vw - 2rem)); max-height: 90dvh; border: 0; border-radius: .75rem; padding: 0; }
+#modalEditar::backdrop { background: #0f172a99; }
+#modalEditar input, #modalEditar select, #modalEditar button { min-height: 40px; }
+#modalEditar :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+.ops-form-actions { position: sticky; bottom: -1.5rem; background: white; padding: 1rem 0; z-index: 5; border-top: 1px solid #e2e8f0; }
+#estadoEdicionControl, #errorEdicionControl { grid-column: 1 / -1; }
+#errorEdicionControl { color: #991b1b; background: #fff1f2; border: 1px solid #fda4af; padding: .75rem; border-radius: .5rem; }

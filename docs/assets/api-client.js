@@ -3,7 +3,7 @@
   const localHosts = ['localhost', '127.0.0.1', '::1'];
   const isLocalFrontend = localHosts.includes(window.location.hostname);
   const configuredBase = (window.API_BASE || '').replace(/\/$/, '');
-  const apiBase = configuredBase || (isLocalFrontend && window.location.port !== '5000' ? 'http://127.0.0.1:5000' : '');
+  const apiBase = configuredBase || (isLocalFrontend && window.location.port !== '8009' ? 'http://127.0.0.1:8009' : '');
 
   window.apiUrl = function (path) {
     if (typeof path !== 'string') return path;

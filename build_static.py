@@ -1,4 +1,5 @@
 from pathlib import Path
+from shutil import copyfile
 
 from app import create_app
 
@@ -21,6 +22,12 @@ def rewrite_links(html):
         'href="/comparativo"': 'href="./comparativo.html"',
         'href="/matriz"': 'href="./matriz.html"',
         'href="/control"': 'href="./control.html"',
+        'href="/static/workspace.css"': 'href="./assets/workspace.css"',
+        'src="/static/workspace.js"': 'src="./assets/workspace.js"',
+        'href="/static/dashboard-desvios.css"': 'href="./assets/dashboard-desvios.css"',
+        'src="/static/dashboard-desvios.js"': 'src="./assets/dashboard-desvios.js"',
+        'href="/static/dashboard-alertas.css"': 'href="./assets/dashboard-alertas.css"',
+        'src="/static/dashboard-alertas.js"': 'src="./assets/dashboard-alertas.js"',
         'href="/api/template_carga"': 'href="#" onclick="window.location.href = window.apiUrl(\'/api/template_carga\'); return false;"',
         "window.location.href = '/api/exportar_excel' + buildQuery();": "window.location.href = window.apiUrl('/api/exportar_excel' + buildQuery());",
         "window.location.href = '/api/exportar_excel' + (query ? `?${query}` : '');": "window.location.href = window.apiUrl('/api/exportar_excel' + (query ? `?${query}` : ''));",
@@ -36,10 +43,10 @@ def render_page(app, route, filename, output_dir):
         html = app.view_functions[endpoint]()
     html = rewrite_links(html)
     html = html.replace(
-        "    <script>\n        async function cargarSeed()",
+        "</head>",
         '    <script src="./assets/config.js"></script>\n'
         '    <script src="./assets/api-client.js"></script>\n'
-        "    <script>\n        async function cargarSeed()",
+        "</head>",
         1,
     )
     (output_dir / filename).write_text(html, encoding="utf-8")
@@ -49,11 +56,13 @@ def main():
     output_dir = Path("docs")
     assets_dir = output_dir / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
+    for filename in ("workspace.css", "workspace.js", "dashboard-desvios.css", "dashboard-desvios.js", "dashboard-alertas.css", "dashboard-alertas.js"):
+        copyfile(Path("app/static") / filename, assets_dir / filename)
 
     (assets_dir / "config.js").write_text(
         "// URL publica del backend Flask en Render para GitHub Pages.\n"
         "// Ejemplo: window.API_BASE = 'https://tu-dashboard.onrender.com';\n"
-        "// En Live Server se usa automaticamente http://127.0.0.1:5000.\n"
+        "// En Live Server se usa automaticamente http://127.0.0.1:8009.\n"
         "window.API_BASE = window.API_BASE || '';\n",
         encoding="utf-8",
     )
@@ -63,7 +72,7 @@ def main():
         "  const localHosts = ['localhost', '127.0.0.1', '::1'];\n"
         "  const isLocalFrontend = localHosts.includes(window.location.hostname);\n"
         "  const configuredBase = (window.API_BASE || '').replace(/\\/$/, '');\n"
-        "  const apiBase = configuredBase || (isLocalFrontend && window.location.port !== '5000' ? 'http://127.0.0.1:5000' : '');\n"
+        "  const apiBase = configuredBase || (isLocalFrontend && window.location.port !== '8009' ? 'http://127.0.0.1:8009' : '');\n"
         "\n"
         "  window.apiUrl = function (path) {\n"
         "    if (typeof path !== 'string') return path;\n"

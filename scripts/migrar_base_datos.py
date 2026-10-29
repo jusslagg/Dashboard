@@ -13,6 +13,7 @@ evitar mezclas o duplicados; el script no borra datos existentes.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 
 from sqlalchemy import func, inspect, select, text
@@ -25,6 +26,9 @@ from database_contract import (
     model_metadata,
     safe_url,
 )
+
+# Added after the original billing handoff. Older sources have no UI preferences.
+OPTIONAL_NEW_TABLES = {'configuracion_operativa'}
 
 
 def ensure_empty(connection, metadata) -> None:
@@ -70,7 +74,7 @@ def reset_postgresql_sequences(connection, metadata) -> None:
 def copy_database(source_engine, target_engine, chunk_size: int = 500) -> None:
     metadata = model_metadata()
     source_tables = set(inspect(source_engine).get_table_names())
-    missing = [table.name for table in metadata.sorted_tables if table.name not in source_tables]
+    missing = [table.name for table in metadata.sorted_tables if table.name not in source_tables and table.name not in OPTIONAL_NEW_TABLES]
     if missing:
         raise RuntimeError(f"La base origen no cumple el contrato; faltan: {', '.join(missing)}")
 
@@ -80,6 +84,9 @@ def copy_database(source_engine, target_engine, chunk_size: int = 500) -> None:
             target.execute(text("PRAGMA foreign_keys=ON"))
         ensure_empty(target, metadata)
         for table in metadata.sorted_tables:
+            if table.name not in source_tables and table.name in OPTIONAL_NEW_TABLES:
+                print(f'{table.name}: tabla nueva vacía; se conservará el año de configuración inicial.')
+                continue
             rows = []
             copied = 0
             for row in source.execute(select(table)).mappings():
@@ -117,6 +124,10 @@ def main() -> int:
     try:
         copy_database(source_engine, target_engine, args.chunk_size)
         source_manifest = database_manifest(source_engine)
+        # Normalize only the known upgrade addition, not other missing tables.
+        for table in OPTIONAL_NEW_TABLES.intersection(source_manifest['missing_tables']):
+            source_manifest['missing_tables'].remove(table)
+            source_manifest['tables'][table] = {'rows':0, 'sha256':hashlib.sha256().hexdigest()}
         target_manifest = database_manifest(target_engine)
         differences = manifest_differences(source_manifest, target_manifest)
         if differences:

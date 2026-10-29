@@ -17,6 +17,16 @@ CREATE TABLE campanias (
 );
 
 -- ============================================================
+-- TABLA: configuracion_operativa
+-- ============================================================
+CREATE TABLE configuracion_operativa (
+	clave VARCHAR(60) NOT NULL,
+	valor VARCHAR(200) NOT NULL,
+	version INTEGER NOT NULL,
+	PRIMARY KEY (clave)
+);
+
+-- ============================================================
 -- TABLA: dashboard_operativo
 -- ============================================================
 CREATE TABLE dashboard_operativo (

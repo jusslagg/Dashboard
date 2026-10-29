@@ -1,0 +1,26 @@
+#notificacionesWorkspace { color: #1e293b; }
+#notificacionesWorkspace .nt-info { padding: 1rem; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: .75rem; font-size: .875rem; line-height: 1.6; margin-bottom: 1rem; }
+#notificacionesWorkspace .nt-info p + p { margin-top: .4rem; }
+#notificacionesWorkspace .nt-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: .75rem; align-items: end; }
+#notificacionesWorkspace .nt-filters label { display: flex; flex-direction: column; gap: .35rem; font-size: .8125rem; font-weight: 600; }
+#notificacionesWorkspace .nt-filters input { min-width: 0; width: 100%; }
+#notificacionesWorkspace button, #notificacionesWorkspace select { min-height: 40px; }
+#notificacionesWorkspace button:disabled { opacity: .55; cursor: wait; }
+#notificacionesWorkspace :focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+#notificacionesWorkspace .nt-table { overflow: auto; max-height: 72vh; overscroll-behavior: contain; }
+#notificacionesWorkspace .nt-table > table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+#notificacionesWorkspace .nt-table > table > thead { position: sticky; top: 0; z-index: 2; background: #f1f5f9; box-shadow: 0 1px 0 #cbd5e1; }
+.nt-label { display: block; font-size: .6875rem; color: #64748b; margin-top: .25rem; }
+.nt-direction { display: inline-flex; font-size: .75rem; font-weight: 700; margin-bottom: .35rem; padding: .25rem .4rem; border-radius: .4rem; }
+#notificacionesWorkspace section > article { min-width: 0; }
+#notificacionesWorkspace #kpiImpacto { font-size: clamp(1rem, 2vw, 1.5rem); overflow-wrap: anywhere; }
+#notificacionesWorkspace .nt-table > table > tbody > tr > td:nth-child(1) { min-width: 100px; }
+#notificacionesWorkspace .nt-table > table > tbody > tr > td:nth-child(2) { min-width: 150px; }
+.nt-reading { min-width: 270px; max-width: 380px; line-height: 1.6; }
+.nt-opposing { padding: .5rem .65rem; border-radius: .4rem; background: #fffbeb; color: #92400e; font-size: .75rem; margin: .5rem 0; }
+.nt-metric-note { font-size: .75rem; color: #475569; margin-top: .5rem; }
+.nt-service-counts { display: block; font-size: .75rem; line-height: 1.5; margin-top: .5rem; color: #475569; }
+#notificacionesWorkspace .nt-table details > summary { min-height: 40px; display: flex; align-items: center; cursor: pointer; }
+#notificacionesWorkspace .nt-table details[open] > summary { color: #1e40af; }
+@media (max-width: 1050px) { #notificacionesWorkspace .nt-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { #notificacionesWorkspace .nt-filters { grid-template-columns: minmax(0, 1fr); } }
