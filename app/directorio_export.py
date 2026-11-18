@@ -134,9 +134,8 @@ def _spec(title, data, year):
                     _col('proyectado', 'Proyectado', 'money'),
                     _col('facturado', 'Facturado', 'money')],
                     chart=('bar', 'mes', ('teorico', 'proyectado', 'facturado'))),
-                 _table('Detalle por servicio', data.get('filas', []), [
-                    _col('mes', 'Mes', 'text'), _col('site', 'Site', 'text'),
-                    _col('cliente', 'Cliente', 'text'), _col('servicio', 'Servicio', 'text'),
+                 _table('Detalle por cliente', data.get('filas', []), [
+                    _col('mes', 'Mes', 'text'), _col('cliente', 'Cliente', 'text'),
                     _col('teorico', 'Teórico', 'money'),
                     _col('proyectado', 'Proyectado', 'money'),
                     _col('facturado', 'Facturado', 'money')])])
@@ -262,6 +261,21 @@ def _spec(title, data, year):
                  _table('Detalle mensual', data.get('filas', []), [
                     _col('cliente', 'Cliente', 'text'), _col('mes', 'Mes', 'text'),
                     _col('horas_requeridas'), _col('horas_realizadas')])])
+    if title == 'Apertura desvíos clientes':
+        columnas = [_col('cliente', 'Cuenta', 'text'), _col('mes', 'Mes', 'text'),
+            _col('cumplimiento_horas', '% Cumplimiento horas', 'percent'),
+            _col('valor_hora', '% Valor hora', 'percent'),
+            _col('cumplimiento_facturacion', '% Cumplimiento facturación', 'percent'),
+            _col('horas', 'Desvío horas', 'money'), _col('variable', 'Desvío variable', 'money'),
+            _col('bonos_penalizaciones', 'Penalizaciones / Bonos', 'money'),
+            _col('porcentaje_desvio', '% Desvío facturación', 'percent'), _col('total', 'Total', 'money')]
+        filas = [{**fila, 'origen_dato': 'Recuperación parcial de tabla dinámica' if fila.get('fuente_parcial') else 'Base de facturación'}
+                 for fila in data.get('filas', [])]
+        columnas.append(_col('origen_dato', 'Origen', 'text'))
+        nota = (' Assurant agosto incluye un porcentaje parcial recuperado de una tabla dinámica guardada; '
+                'no está incluido en el total general y falta el valor hora objetivo.' if data.get('recuperaciones') else '')
+        return ('Apertura mensual de desvíos por cuenta.' + nota, [('Año', year, 'integer')],
+                [_table('Apertura mensual', filas, columnas)])
     if title == 'Cumplimiento facturación':
         money_keys = ('horas', 'variable', 'penalizaciones_bonos', 'total')
         cols = [_col('cliente', 'Cliente', 'text')]

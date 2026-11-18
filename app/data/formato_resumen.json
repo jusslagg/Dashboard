@@ -1,0 +1,5610 @@
+{
+  "sheet": "RESUMEN",
+  "filas": [
+    {
+      "fila": 6,
+      "site": "Lucas Caamaño",
+      "concepto": "Horas",
+      "campania": "Personal CX",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 33,
+          "cliente": "Personal CX",
+          "operativa": "Personal CX",
+          "servicio": null
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 52,
+          "cliente": "Personal CX",
+          "operativa": "Personal CX Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 7,
+      "site": "Lucas Caamaño",
+      "concepto": "Variable Productividad",
+      "campania": "Personal CX",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 33,
+          "cliente": "Personal CX",
+          "operativa": "Personal CX",
+          "servicio": null
+        },
+        {
+          "tabla": "Variable",
+          "fila": 52,
+          "cliente": "Personal CX",
+          "operativa": "Personal CX Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 8,
+      "site": "Lucas Caamaño",
+      "concepto": "Next Gen",
+      "campania": "Personal CX",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 33,
+          "cliente": "Personal CX",
+          "operativa": "Personal CX",
+          "servicio": null
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 52,
+          "cliente": "Personal CX",
+          "operativa": "Personal CX Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 9,
+      "site": "Lucas Caamaño",
+      "concepto": "Tarifacion + otros",
+      "campania": "Personal CX",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 33,
+          "cliente": "Personal CX",
+          "operativa": "Personal CX",
+          "servicio": null
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 52,
+          "cliente": "Personal CX",
+          "operativa": "Personal CX Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 10,
+      "site": "Lucas Caamaño",
+      "concepto": "Total",
+      "campania": "Personal CX",
+      "referencias": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 11,
+      "site": "Lucas Caamaño",
+      "concepto": "Horas",
+      "campania": "Personal Soporte",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 53,
+          "cliente": "Personal Soporte",
+          "operativa": "Personal Soporte",
+          "servicio": null
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 54,
+          "cliente": "Personal Soporte",
+          "operativa": "Personal Soporte Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 12,
+      "site": "Lucas Caamaño",
+      "concepto": "Variable Productividad",
+      "campania": "Personal Soporte",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 53,
+          "cliente": "Personal Soporte",
+          "operativa": "Personal Soporte",
+          "servicio": null
+        },
+        {
+          "tabla": "Variable",
+          "fila": 54,
+          "cliente": "Personal Soporte",
+          "operativa": "Personal Soporte Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 13,
+      "site": "Lucas Caamaño",
+      "concepto": "Next Gen",
+      "campania": "Personal Soporte",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 53,
+          "cliente": "Personal Soporte",
+          "operativa": "Personal Soporte",
+          "servicio": null
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 54,
+          "cliente": "Personal Soporte",
+          "operativa": "Personal Soporte Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 14,
+      "site": "Lucas Caamaño",
+      "concepto": "Tarifacion + otros",
+      "campania": "Personal Soporte",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 53,
+          "cliente": "Personal Soporte",
+          "operativa": "Personal Soporte",
+          "servicio": null
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 54,
+          "cliente": "Personal Soporte",
+          "operativa": "Personal Soporte Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 15,
+      "site": "Lucas Caamaño",
+      "concepto": "Total",
+      "campania": "Personal Soporte",
+      "referencias": [
+        11,
+        12,
+        13,
+        14
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 16,
+      "site": "Lucas Caamaño",
+      "concepto": "Horas",
+      "campania": "Personal",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 32,
+          "cliente": "Personal",
+          "operativa": "Personal",
+          "servicio": null
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 51,
+          "cliente": "Personal",
+          "operativa": "Personal Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 17,
+      "site": "Lucas Caamaño",
+      "concepto": "Variable Productividad",
+      "campania": "Personal",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 32,
+          "cliente": "Personal",
+          "operativa": "Personal",
+          "servicio": null
+        },
+        {
+          "tabla": "Variable",
+          "fila": 51,
+          "cliente": "Personal",
+          "operativa": "Personal Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 18,
+      "site": "Lucas Caamaño",
+      "concepto": "Next Gen",
+      "campania": "Personal",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 32,
+          "cliente": "Personal",
+          "operativa": "Personal",
+          "servicio": null
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 51,
+          "cliente": "Personal",
+          "operativa": "Personal Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 19,
+      "site": "Lucas Caamaño",
+      "concepto": "Tarifacion + otros",
+      "campania": "Personal",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 32,
+          "cliente": "Personal",
+          "operativa": "Personal",
+          "servicio": null
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 51,
+          "cliente": "Personal",
+          "operativa": "Personal Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 20,
+      "site": "Lucas Caamaño",
+      "concepto": "Total",
+      "campania": "Personal",
+      "referencias": [
+        16,
+        17,
+        18,
+        19
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 21,
+      "site": "Lucas Caamaño",
+      "concepto": "Horas",
+      "campania": "Personal SMB",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 34,
+          "cliente": "Personal SMB",
+          "operativa": "Personal SMB",
+          "servicio": null
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 73,
+          "cliente": "Personal SMB",
+          "operativa": "Personal SMB Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 22,
+      "site": "Lucas Caamaño",
+      "concepto": "Variable Productividad",
+      "campania": "Personal SMB",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 34,
+          "cliente": "Personal SMB",
+          "operativa": "Personal SMB",
+          "servicio": null
+        },
+        {
+          "tabla": "Variable",
+          "fila": 73,
+          "cliente": "Personal SMB",
+          "operativa": "Personal SMB Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 23,
+      "site": "Lucas Caamaño",
+      "concepto": "Next Gen",
+      "campania": "Personal SMB",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 34,
+          "cliente": "Personal SMB",
+          "operativa": "Personal SMB",
+          "servicio": null
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 73,
+          "cliente": "Personal SMB",
+          "operativa": "Personal SMB Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 24,
+      "site": "Lucas Caamaño",
+      "concepto": "Tarifacion + otros",
+      "campania": "Personal SMB",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 34,
+          "cliente": "Personal SMB",
+          "operativa": "Personal SMB",
+          "servicio": null
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 73,
+          "cliente": "Personal SMB",
+          "operativa": "Personal SMB Nocturnos",
+          "servicio": null
+        }
+      ]
+    },
+    {
+      "fila": 25,
+      "site": "Lucas Caamaño",
+      "concepto": "Total",
+      "campania": "Personal SMB",
+      "referencias": [
+        21,
+        22,
+        23,
+        24
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 26,
+      "site": null,
+      "concepto": null,
+      "campania": "TOTAL GRUPO PERSONAL",
+      "referencias": [
+        25,
+        20,
+        10,
+        15
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 27,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "ASSURANT",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 5,
+          "cliente": "ASSURANT",
+          "operativa": "ASSURANT",
+          "servicio": "ASSURANT"
+        }
+      ]
+    },
+    {
+      "fila": 28,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "ASSURANT",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 5,
+          "cliente": "ASSURANT",
+          "operativa": "ASSURANT",
+          "servicio": "ASSURANT"
+        }
+      ]
+    },
+    {
+      "fila": 29,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "ASSURANT",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 5,
+          "cliente": "ASSURANT",
+          "operativa": "ASSURANT",
+          "servicio": "ASSURANT"
+        }
+      ]
+    },
+    {
+      "fila": 30,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "ASSURANT",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 5,
+          "cliente": "ASSURANT",
+          "operativa": "ASSURANT",
+          "servicio": "ASSURANT"
+        }
+      ]
+    },
+    {
+      "fila": 31,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "ASSURANT",
+      "referencias": [
+        27,
+        28,
+        29,
+        30
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 32,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "CARREFOUR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 11,
+          "cliente": "BSF",
+          "operativa": "CARREFOUR",
+          "servicio": "BSF CARREFOUR"
+        }
+      ]
+    },
+    {
+      "fila": 33,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "CARREFOUR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 11,
+          "cliente": "BSF",
+          "operativa": "CARREFOUR",
+          "servicio": "BSF CARREFOUR"
+        }
+      ]
+    },
+    {
+      "fila": 34,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "CARREFOUR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 11,
+          "cliente": "BSF",
+          "operativa": "CARREFOUR",
+          "servicio": "BSF CARREFOUR"
+        }
+      ]
+    },
+    {
+      "fila": 35,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "CARREFOUR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 11,
+          "cliente": "BSF",
+          "operativa": "CARREFOUR",
+          "servicio": "BSF CARREFOUR"
+        }
+      ]
+    },
+    {
+      "fila": 36,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "CARREFOUR",
+      "referencias": [
+        32,
+        33,
+        34,
+        35
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 37,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "SUPERVIELLE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 30,
+          "cliente": "SUPERVIELLE",
+          "operativa": "SUPERVIELLE",
+          "servicio": "OUTBOUND"
+        }
+      ]
+    },
+    {
+      "fila": 38,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "SUPERVIELLE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 30,
+          "cliente": "SUPERVIELLE",
+          "operativa": "SUPERVIELLE",
+          "servicio": "OUTBOUND"
+        }
+      ]
+    },
+    {
+      "fila": 39,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "SUPERVIELLE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 30,
+          "cliente": "SUPERVIELLE",
+          "operativa": "SUPERVIELLE",
+          "servicio": "OUTBOUND"
+        }
+      ]
+    },
+    {
+      "fila": 40,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "SUPERVIELLE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 30,
+          "cliente": "SUPERVIELLE",
+          "operativa": "SUPERVIELLE",
+          "servicio": "OUTBOUND"
+        }
+      ]
+    },
+    {
+      "fila": 41,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "SUPERVIELLE",
+      "referencias": [
+        37,
+        38,
+        39,
+        40
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 42,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "MIRGOR BBTI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 37,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR BBTI",
+          "servicio": 0
+        }
+      ]
+    },
+    {
+      "fila": 43,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "MIRGOR BBTI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 37,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR BBTI",
+          "servicio": "TRADE IN"
+        }
+      ]
+    },
+    {
+      "fila": 44,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "MIRGOR BBTI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 37,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR BBTI",
+          "servicio": "TRADE IN"
+        }
+      ]
+    },
+    {
+      "fila": 45,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "MIRGOR BBTI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 37,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR BBTI",
+          "servicio": "TRADE IN"
+        }
+      ]
+    },
+    {
+      "fila": 46,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "MIRGOR BBTI",
+      "referencias": [
+        42,
+        43,
+        44,
+        45
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 47,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "MIRGOR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 18,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR",
+          "servicio": "MIRGOR"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 19,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR TL",
+          "servicio": "MIRGOR"
+        }
+      ]
+    },
+    {
+      "fila": 48,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "MIRGOR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 18,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR",
+          "servicio": "MIRGOR"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 19,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR TL",
+          "servicio": "MIRGOR"
+        }
+      ]
+    },
+    {
+      "fila": 49,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "MIRGOR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 18,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR",
+          "servicio": "MIRGOR"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 19,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR TL",
+          "servicio": "MIRGOR"
+        }
+      ]
+    },
+    {
+      "fila": 50,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "MIRGOR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 18,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR",
+          "servicio": "MIRGOR"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 19,
+          "cliente": "MIRGOR",
+          "operativa": "MIRGOR TL",
+          "servicio": "MIRGOR"
+        }
+      ]
+    },
+    {
+      "fila": 51,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "MIRGOR",
+      "referencias": [
+        47,
+        48,
+        49,
+        50
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 52,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "CACHAMAI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 10,
+          "cliente": "CACHAMAI",
+          "operativa": "CACHAMAI",
+          "servicio": "CACHAMAI"
+        }
+      ]
+    },
+    {
+      "fila": 53,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "CACHAMAI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 10,
+          "cliente": "CACHAMAI",
+          "operativa": "CACHAMAI",
+          "servicio": "CACHAMAI"
+        }
+      ]
+    },
+    {
+      "fila": 54,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "CACHAMAI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 10,
+          "cliente": "CACHAMAI",
+          "operativa": "CACHAMAI",
+          "servicio": "CACHAMAI"
+        }
+      ]
+    },
+    {
+      "fila": 55,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "CACHAMAI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 10,
+          "cliente": "CACHAMAI",
+          "operativa": "CACHAMAI",
+          "servicio": "CACHAMAI"
+        }
+      ]
+    },
+    {
+      "fila": 56,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "CACHAMAI",
+      "referencias": [
+        52,
+        53,
+        54,
+        55
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 57,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "BIBANK",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 8,
+          "cliente": "BIBANK",
+          "operativa": "BI BANK",
+          "servicio": "BIBANK"
+        }
+      ]
+    },
+    {
+      "fila": 58,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "BIBANK",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 8,
+          "cliente": "BIBANK",
+          "operativa": "BI BANK",
+          "servicio": "BIBANK"
+        }
+      ]
+    },
+    {
+      "fila": 59,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "BIBANK",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 8,
+          "cliente": "BIBANK",
+          "operativa": "BI BANK",
+          "servicio": "BIBANK"
+        }
+      ]
+    },
+    {
+      "fila": 60,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "BIBANK",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 8,
+          "cliente": "BIBANK",
+          "operativa": "BI BANK",
+          "servicio": "BIBANK"
+        }
+      ]
+    },
+    {
+      "fila": 61,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "BIBANK",
+      "referencias": [
+        57,
+        58,
+        59,
+        60
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 62,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "BICE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 9,
+          "cliente": "BANCO BICE",
+          "operativa": "BICE",
+          "servicio": "BANCO BICE"
+        }
+      ]
+    },
+    {
+      "fila": 63,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "BICE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 9,
+          "cliente": "BANCO BICE",
+          "operativa": "BICE",
+          "servicio": "BANCO BICE"
+        }
+      ]
+    },
+    {
+      "fila": 64,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "BICE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 9,
+          "cliente": "BANCO BICE",
+          "operativa": "BICE",
+          "servicio": "BANCO BICE"
+        }
+      ]
+    },
+    {
+      "fila": 65,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "BICE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 9,
+          "cliente": "BANCO BICE",
+          "operativa": "BICE",
+          "servicio": "BANCO BICE"
+        }
+      ]
+    },
+    {
+      "fila": 66,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "BICE",
+      "referencias": [
+        62,
+        63,
+        64,
+        65
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 67,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "OPENPAY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 17,
+          "cliente": "BBVA OPENPAY",
+          "operativa": "OPENPAY",
+          "servicio": "OPENPAY"
+        }
+      ]
+    },
+    {
+      "fila": 68,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "OPENPAY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 17,
+          "cliente": "BBVA OPENPAY",
+          "operativa": "OPENPAY",
+          "servicio": "OPENPAY"
+        }
+      ]
+    },
+    {
+      "fila": 69,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "OPENPAY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 17,
+          "cliente": "BBVA OPENPAY",
+          "operativa": "OPENPAY",
+          "servicio": "OPENPAY"
+        }
+      ]
+    },
+    {
+      "fila": 70,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "OPENPAY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 17,
+          "cliente": "BBVA OPENPAY",
+          "operativa": "OPENPAY",
+          "servicio": "OPENPAY"
+        }
+      ]
+    },
+    {
+      "fila": 71,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "OPENPAY",
+      "referencias": [
+        67,
+        68,
+        69,
+        70
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 72,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "UNICEF",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 35,
+          "cliente": "UNICEF",
+          "operativa": "UNICEF",
+          "servicio": "UNICEF MK"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 40,
+          "cliente": "UNICEF",
+          "operativa": "UNICEF ACTIVOS+LEADS",
+          "servicio": "UNICEF MK"
+        }
+      ]
+    },
+    {
+      "fila": 73,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "UNICEF",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 35,
+          "cliente": "UNICEF",
+          "operativa": "UNICEF",
+          "servicio": "UNICEF MK"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 40,
+          "cliente": "UNICEF",
+          "operativa": "UNICEF ACTIVOS+LEADS",
+          "servicio": "UNICEF MK"
+        }
+      ]
+    },
+    {
+      "fila": 74,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "UNICEF",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 35,
+          "cliente": "UNICEF",
+          "operativa": "UNICEF",
+          "servicio": "UNICEF MK"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 40,
+          "cliente": "UNICEF",
+          "operativa": "UNICEF ACTIVOS+LEADS",
+          "servicio": "UNICEF MK"
+        }
+      ]
+    },
+    {
+      "fila": 75,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "UNICEF",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 35,
+          "cliente": "UNICEF",
+          "operativa": "UNICEF",
+          "servicio": "UNICEF MK"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 40,
+          "cliente": "UNICEF",
+          "operativa": "UNICEF ACTIVOS+LEADS",
+          "servicio": "UNICEF MK"
+        }
+      ]
+    },
+    {
+      "fila": 76,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "UNICEF",
+      "referencias": [
+        72,
+        73,
+        74,
+        75
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 77,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "BBVA SEGUROS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 7,
+          "cliente": "BBVA",
+          "operativa": "BBVA SEGUROS",
+          "servicio": "BBVA SEGUROS"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 57,
+          "cliente": "BBVA",
+          "operativa": "BBVA SEGUROS AUTOS",
+          "servicio": "BBVA SEGUROS"
+        }
+      ]
+    },
+    {
+      "fila": 78,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "BBVA SEGUROS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 7,
+          "cliente": "BBVA",
+          "operativa": "BBVA SEGUROS",
+          "servicio": "BBVA SEGUROS"
+        }
+      ]
+    },
+    {
+      "fila": 79,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "BBVA SEGUROS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 7,
+          "cliente": "BBVA",
+          "operativa": "BBVA SEGUROS",
+          "servicio": "BBVA SEGUROS"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 57,
+          "cliente": "BBVA",
+          "operativa": "BBVA SEGUROS AUTOS",
+          "servicio": "BBVA SEGUROS"
+        }
+      ]
+    },
+    {
+      "fila": 80,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "BBVA SEGUROS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 7,
+          "cliente": "BBVA",
+          "operativa": "BBVA SEGUROS",
+          "servicio": "BBVA SEGUROS"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 57,
+          "cliente": "BBVA",
+          "operativa": "BBVA SEGUROS AUTOS",
+          "servicio": "BBVA SEGUROS"
+        }
+      ]
+    },
+    {
+      "fila": 81,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "BBVA SEGUROS",
+      "referencias": [
+        77,
+        78,
+        79,
+        80
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 82,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "GIRE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 12,
+          "cliente": "GIRE",
+          "operativa": "GIRE",
+          "servicio": "GIRE"
+        }
+      ]
+    },
+    {
+      "fila": 83,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "GIRE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 12,
+          "cliente": "GIRE",
+          "operativa": "GIRE",
+          "servicio": "GIRE"
+        }
+      ]
+    },
+    {
+      "fila": 84,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "GIRE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 12,
+          "cliente": "GIRE",
+          "operativa": "GIRE",
+          "servicio": "GIRE"
+        }
+      ]
+    },
+    {
+      "fila": 85,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "GIRE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 12,
+          "cliente": "GIRE",
+          "operativa": "GIRE",
+          "servicio": "GIRE"
+        }
+      ]
+    },
+    {
+      "fila": 86,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "GIRE",
+      "referencias": [
+        82,
+        83,
+        84,
+        85
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 87,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "JOHNSON & JOHNSON",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 13,
+          "cliente": "JONHSON & JONHSON",
+          "operativa": "JOHNSON & JOHNSON",
+          "servicio": "J&J"
+        }
+      ]
+    },
+    {
+      "fila": 88,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "JOHNSON & JOHNSON",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 13,
+          "cliente": "JONHSON & JONHSON",
+          "operativa": "JOHNSON & JOHNSON",
+          "servicio": "J&J"
+        }
+      ]
+    },
+    {
+      "fila": 89,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "JOHNSON & JOHNSON",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 13,
+          "cliente": "JONHSON & JONHSON",
+          "operativa": "JOHNSON & JOHNSON",
+          "servicio": "J&J"
+        }
+      ]
+    },
+    {
+      "fila": 90,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "JOHNSON & JOHNSON",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 13,
+          "cliente": "JONHSON & JONHSON",
+          "operativa": "JOHNSON & JOHNSON",
+          "servicio": "J&J"
+        }
+      ]
+    },
+    {
+      "fila": 91,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "JOHNSON & JOHNSON",
+      "referencias": [
+        87,
+        88,
+        89,
+        90
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 92,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "METROGAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 14,
+          "cliente": "METROGAS",
+          "operativa": "METROGAS",
+          "servicio": "METROGAS"
+        }
+      ]
+    },
+    {
+      "fila": 93,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "METROGAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 14,
+          "cliente": "METROGAS",
+          "operativa": "METROGAS",
+          "servicio": "METROGAS"
+        }
+      ]
+    },
+    {
+      "fila": 94,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "METROGAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 14,
+          "cliente": "METROGAS",
+          "operativa": "METROGAS",
+          "servicio": "METROGAS"
+        }
+      ]
+    },
+    {
+      "fila": 95,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "METROGAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 14,
+          "cliente": "METROGAS",
+          "operativa": "METROGAS",
+          "servicio": "METROGAS"
+        }
+      ]
+    },
+    {
+      "fila": 96,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "METROGAS",
+      "referencias": [
+        92,
+        93,
+        94,
+        95
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 97,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "BANCO PIANO",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 6,
+          "cliente": "BANCO PIANO",
+          "operativa": "BANCO PIANO",
+          "servicio": "BANCO PIANO"
+        }
+      ]
+    },
+    {
+      "fila": 98,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "BANCO PIANO",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 6,
+          "cliente": "BANCO PIANO",
+          "operativa": "BANCO PIANO",
+          "servicio": "BANCO PIANO"
+        }
+      ]
+    },
+    {
+      "fila": 99,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "BANCO PIANO",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 6,
+          "cliente": "BANCO PIANO",
+          "operativa": "BANCO PIANO",
+          "servicio": "BANCO PIANO"
+        }
+      ]
+    },
+    {
+      "fila": 100,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "BANCO PIANO",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 6,
+          "cliente": "BANCO PIANO",
+          "operativa": "BANCO PIANO",
+          "servicio": "BANCO PIANO"
+        }
+      ]
+    },
+    {
+      "fila": 101,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "BANCO PIANO",
+      "referencias": [
+        97,
+        98,
+        99,
+        100
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 102,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "YAMAHA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 36,
+          "cliente": "YAMAHA",
+          "operativa": "YAMAHA",
+          "servicio": "YAMAHA"
+        }
+      ]
+    },
+    {
+      "fila": 103,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "YAMAHA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 36,
+          "cliente": "YAMAHA",
+          "operativa": "YAMAHA",
+          "servicio": "YAMAHA"
+        }
+      ]
+    },
+    {
+      "fila": 104,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "YAMAHA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 36,
+          "cliente": "YAMAHA",
+          "operativa": "YAMAHA",
+          "servicio": "YAMAHA"
+        }
+      ]
+    },
+    {
+      "fila": 105,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "YAMAHA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 36,
+          "cliente": "YAMAHA",
+          "operativa": "YAMAHA",
+          "servicio": "YAMAHA"
+        }
+      ]
+    },
+    {
+      "fila": 106,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "YAMAHA",
+      "referencias": [
+        102,
+        103,
+        104,
+        105
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 107,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "SANTANDER CONSUMER",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 20,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER CONSUMER",
+          "servicio": "CONSUMER"
+        }
+      ]
+    },
+    {
+      "fila": 108,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "SANTANDER CONSUMER",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 20,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER CONSUMER",
+          "servicio": "CONSUMER"
+        }
+      ]
+    },
+    {
+      "fila": 109,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "SANTANDER CONSUMER",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 20,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER CONSUMER",
+          "servicio": "CONSUMER"
+        }
+      ]
+    },
+    {
+      "fila": 110,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "SANTANDER CONSUMER",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 20,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER CONSUMER",
+          "servicio": "CONSUMER"
+        }
+      ]
+    },
+    {
+      "fila": 111,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "SANTANDER CONSUMER",
+      "referencias": [
+        107,
+        108,
+        109,
+        110
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 112,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "SANTANDER GETNET",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 21,
+          "cliente": "SANTANDER GETNET",
+          "operativa": "SANTANDER GETNET",
+          "servicio": "SANTANDER GETNET"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 89,
+          "cliente": "SANTANDER GETNET",
+          "operativa": "SANTANDER GETNET SUPERVISOR EXCLUSIVO",
+          "servicio": "SANTANDER GETNET"
+        }
+      ]
+    },
+    {
+      "fila": 113,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "SANTANDER GETNET",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 21,
+          "cliente": "SANTANDER GETNET",
+          "operativa": "SANTANDER GETNET",
+          "servicio": "SANTANDER GETNET"
+        }
+      ]
+    },
+    {
+      "fila": 114,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "SANTANDER GETNET",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 21,
+          "cliente": "SANTANDER GETNET",
+          "operativa": "SANTANDER GETNET",
+          "servicio": "SANTANDER GETNET"
+        }
+      ]
+    },
+    {
+      "fila": 115,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "SANTANDER GETNET",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 21,
+          "cliente": "SANTANDER GETNET",
+          "operativa": "SANTANDER GETNET",
+          "servicio": "SANTANDER GETNET"
+        }
+      ]
+    },
+    {
+      "fila": 116,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "SANTANDER GETNET",
+      "referencias": [
+        112,
+        113,
+        114,
+        115
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 117,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "SANTANDER GETNET ONBOARDING",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 22,
+          "cliente": "SANTANDER GETNET",
+          "operativa": "SANTANDER GETNET ONBOARDING",
+          "servicio": "GETNET ONBOARDING"
+        }
+      ]
+    },
+    {
+      "fila": 118,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "SANTANDER GETNET ONBOARDING",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 22,
+          "cliente": "SANTANDER GETNET",
+          "operativa": "SANTANDER GETNET ONBOARDING",
+          "servicio": "GETNET ONBOARDING"
+        }
+      ]
+    },
+    {
+      "fila": 119,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "SANTANDER GETNET ONBOARDING",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 22,
+          "cliente": "SANTANDER GETNET",
+          "operativa": "SANTANDER GETNET ONBOARDING",
+          "servicio": "GETNET ONBOARDING"
+        }
+      ]
+    },
+    {
+      "fila": 120,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "SANTANDER GETNET ONBOARDING",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 22,
+          "cliente": "SANTANDER GETNET",
+          "operativa": "SANTANDER GETNET ONBOARDING",
+          "servicio": "GETNET ONBOARDING"
+        }
+      ]
+    },
+    {
+      "fila": 121,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "SANTANDER GETNET ONBOARDING",
+      "referencias": [
+        117,
+        118,
+        119,
+        120
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 122,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "SANTANDER LEADS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Unificado",
+          "fila": 24,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER LEADS",
+          "servicio": "LEADS"
+        }
+      ]
+    },
+    {
+      "fila": 123,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "SANTANDER CCE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 23,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER ISLA PREVENCION DE FRAUDES",
+          "servicio": "ISLA DE PREVENCIÓN"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 25,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO BA",
+          "servicio": "SANTANDER MIXTO BA"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 26,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO GETNET",
+          "servicio": "MIXTO GETNET"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 27,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO SL",
+          "servicio": "SANTANDER MIXTO SL"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 29,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER SEGUROS",
+          "servicio": "SANTANDER SEGUROS"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 39,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER CHAT",
+          "servicio": "SANTANDER CHAT"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 46,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER RETENCIONES",
+          "servicio": "SANTANDER RETENCION"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 56,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER RETENCION MIXTO SL",
+          "servicio": "SANTANDER RETENCION MIX"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 71,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO ESTABLES",
+          "servicio": "MIXTO CAT ESTABLES"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 72,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO INGRESOS",
+          "servicio": "MIXTO CAT INGRESOS"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 88,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO COBRANZAS",
+          "servicio": "MIXTO COBRANZAS"
+        }
+      ]
+    },
+    {
+      "fila": 124,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "SANTANDER CCE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 23,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER ISLA PREVENCION DE FRAUDES",
+          "servicio": "ISLA DE PREVENCIÓN"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 25,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO BA",
+          "servicio": "SANTANDER MIXTO BA"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 26,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO GETNET",
+          "servicio": "MIXTO GETNET"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 27,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO SL",
+          "servicio": "SANTANDER MIXTO SL"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 29,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER SEGUROS",
+          "servicio": "SANTANDER SEGUROS"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 39,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER CHAT",
+          "servicio": "SANTANDER CHAT"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 46,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER RETENCIONES",
+          "servicio": "SANTANDER RETENCION"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 56,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER RETENCION MIXTO SL",
+          "servicio": "SANTANDER RETENCION MIX"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 71,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO ESTABLES",
+          "servicio": "MIXTO CAT ESTABLES"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 72,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO INGRESOS",
+          "servicio": "MIXTO CAT INGRESOS"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 88,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO COBRANZAS",
+          "servicio": "MIXTO COBRANZAS"
+        }
+      ]
+    },
+    {
+      "fila": 125,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "SANTANDER CCE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 23,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER ISLA PREVENCION DE FRAUDES",
+          "servicio": "ISLA DE PREVENCIÓN"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 25,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO BA",
+          "servicio": "SANTANDER MIXTO BA"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 26,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO GETNET",
+          "servicio": "MIXTO GETNET"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 27,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO SL",
+          "servicio": "SANTANDER MIXTO SL"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 29,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER SEGUROS",
+          "servicio": "SANTANDER SEGUROS"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 39,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER CHAT",
+          "servicio": "SANTANDER CHAT"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 46,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER RETENCIONES",
+          "servicio": "SANTANDER RETENCION"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 56,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER RETENCION MIXTO SL",
+          "servicio": "SANTANDER RETENCION MIX"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 71,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO ESTABLES",
+          "servicio": "MIXTO CAT ESTABLES"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 72,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO INGRESOS",
+          "servicio": "MIXTO CAT INGRESOS"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 88,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO COBRANZAS",
+          "servicio": "MIXTO COBRANZAS"
+        }
+      ]
+    },
+    {
+      "fila": 126,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "SANTANDER CCE",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 23,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER ISLA PREVENCION DE FRAUDES",
+          "servicio": "ISLA DE PREVENCIÓN"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 25,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO BA",
+          "servicio": "SANTANDER MIXTO BA"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 26,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO GETNET",
+          "servicio": "MIXTO GETNET"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 27,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO SL",
+          "servicio": "SANTANDER MIXTO SL"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 29,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER SEGUROS",
+          "servicio": "SANTANDER SEGUROS"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 39,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER CHAT",
+          "servicio": "SANTANDER CHAT"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 46,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER RETENCIONES",
+          "servicio": "SANTANDER RETENCION"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 56,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER RETENCION MIXTO SL",
+          "servicio": "SANTANDER RETENCION MIX"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 71,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO ESTABLES",
+          "servicio": "MIXTO CAT ESTABLES"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 72,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO INGRESOS",
+          "servicio": "MIXTO CAT INGRESOS"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 88,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO COBRANZAS",
+          "servicio": "MIXTO COBRANZAS"
+        }
+      ]
+    },
+    {
+      "fila": 127,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "SANTANDER CCE",
+      "referencias": [
+        123,
+        124,
+        125,
+        126
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 128,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "SUPERVIELLE SEGUROS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 31,
+          "cliente": "SUPERVIELLE SEGUROS",
+          "operativa": "SUPERVIELLE SEGUROS",
+          "servicio": "SUPERVIELLE SEGUROS"
+        }
+      ]
+    },
+    {
+      "fila": 129,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "SUPERVIELLE SEGUROS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 31,
+          "cliente": "SUPERVIELLE SEGUROS",
+          "operativa": "SUPERVIELLE SEGUROS",
+          "servicio": "SUPERVIELLE SEGUROS"
+        }
+      ]
+    },
+    {
+      "fila": 130,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "SUPERVIELLE SEGUROS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 31,
+          "cliente": "SUPERVIELLE SEGUROS",
+          "operativa": "SUPERVIELLE SEGUROS",
+          "servicio": "SUPERVIELLE SEGUROS"
+        }
+      ]
+    },
+    {
+      "fila": 131,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "SUPERVIELLE SEGUROS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 31,
+          "cliente": "SUPERVIELLE SEGUROS",
+          "operativa": "SUPERVIELLE SEGUROS",
+          "servicio": "SUPERVIELLE SEGUROS"
+        }
+      ]
+    },
+    {
+      "fila": 132,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "SUPERVIELLE SEGUROS",
+      "referencias": [
+        128,
+        129,
+        130,
+        131
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 133,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "NATURGY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 15,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN COMERCIAL",
+          "servicio": "NATURGY BAN COMERCIAL"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 16,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY COMERCIAL TL",
+          "servicio": "NATURGY BAN COMERCIAL TL"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 44,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN",
+          "servicio": "NATURGY BAN COMERCIAL"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 45,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS",
+          "servicio": "NATURGY BAN CAU"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 61,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN COMERCIAL TL",
+          "servicio": "NATURGY BAN COMERCIAL TL"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 62,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS TL",
+          "servicio": "NATURGY BAN CAU"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 69,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BO",
+          "servicio": "NATURGY BO"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 70,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY QUIERO GAS",
+          "servicio": "NATURGY VENTAS"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 76,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS NOCTURNAS",
+          "servicio": "NATURGY BAN CAU"
+        }
+      ]
+    },
+    {
+      "fila": 134,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "NATURGY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 15,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN COMERCIAL",
+          "servicio": "NATURGY BAN COMERCIAL"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 16,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY COMERCIAL TL",
+          "servicio": "NATURGY BAN COMERCIAL TL"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 44,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN",
+          "servicio": "NATURGY BAN COMERCIAL"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 45,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS",
+          "servicio": "NATURGY BAN CAU"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 58,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN TL",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 59,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA TL",
+          "servicio": "NATURGY NOA COMERCIAL"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 60,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS TL",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 61,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN COMERCIAL TL",
+          "servicio": "NATURGY BAN COMERCIAL TL"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 62,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS TL",
+          "servicio": "NATURGY BAN CAU"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 69,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BO",
+          "servicio": "NATURGY BO"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 70,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY QUIERO GAS",
+          "servicio": "NATURGY VENTAS"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 76,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS NOCTURNAS",
+          "servicio": "NATURGY BAN CAU"
+        }
+      ]
+    },
+    {
+      "fila": 135,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "NATURGY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 15,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN COMERCIAL",
+          "servicio": "NATURGY BAN COMERCIAL"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 16,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY COMERCIAL TL",
+          "servicio": "NATURGY BAN COMERCIAL TL"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 44,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN",
+          "servicio": "NATURGY BAN COMERCIAL"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 45,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS",
+          "servicio": "NATURGY BAN CAU"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 61,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN COMERCIAL TL",
+          "servicio": "NATURGY BAN COMERCIAL TL"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 62,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS TL",
+          "servicio": "NATURGY BAN CAU"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 69,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BO",
+          "servicio": "NATURGY BO"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 70,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY QUIERO GAS",
+          "servicio": "NATURGY VENTAS"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 76,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS NOCTURNAS",
+          "servicio": "NATURGY BAN CAU"
+        }
+      ]
+    },
+    {
+      "fila": 136,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "NATURGY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 15,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN COMERCIAL",
+          "servicio": "NATURGY BAN COMERCIAL"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 16,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY COMERCIAL TL",
+          "servicio": "NATURGY BAN COMERCIAL TL"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 44,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN",
+          "servicio": "NATURGY BAN COMERCIAL"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 45,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS",
+          "servicio": "NATURGY BAN CAU"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 61,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN COMERCIAL TL",
+          "servicio": "NATURGY BAN COMERCIAL TL"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 62,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS TL",
+          "servicio": "NATURGY BAN CAU"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 69,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BO",
+          "servicio": "NATURGY BO"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 70,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY QUIERO GAS",
+          "servicio": "NATURGY VENTAS"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 76,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY BAN URGENCIAS NOCTURNAS",
+          "servicio": "NATURGY BAN CAU"
+        }
+      ]
+    },
+    {
+      "fila": 137,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "NATURGY",
+      "referencias": [
+        133,
+        134,
+        135,
+        136
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 138,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "GASNOR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 42,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA",
+          "servicio": "NATURGY NOA COMERCIAL"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 43,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 59,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA TL",
+          "servicio": "NATURGY NOA COMERCIAL"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 60,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS TL",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 74,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA BO",
+          "servicio": "NATURGY BO NOA"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 78,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS NOCTURNAS",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 79,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA BO TL",
+          "servicio": "NATURGY BO NOA"
+        }
+      ]
+    },
+    {
+      "fila": 139,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "GASNOR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 42,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA",
+          "servicio": "NATURGY NOA COMERCIAL"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 43,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 74,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA BO",
+          "servicio": "NATURGY BO NOA"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 78,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS NOCTURNAS",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 79,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA BO TL",
+          "servicio": "NATURGY BO NOA"
+        }
+      ]
+    },
+    {
+      "fila": 140,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "GASNOR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 42,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA",
+          "servicio": "NATURGY NOA COMERCIAL"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 43,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 59,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA TL",
+          "servicio": "NATURGY NOA COMERCIAL"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 60,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS TL",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 74,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA BO",
+          "servicio": "NATURGY BO NOA"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 78,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS NOCTURNAS",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 79,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA BO TL",
+          "servicio": "NATURGY BO NOA"
+        }
+      ]
+    },
+    {
+      "fila": 141,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "GASNOR",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 42,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA",
+          "servicio": "NATURGY NOA COMERCIAL"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 43,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 59,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA TL",
+          "servicio": "NATURGY NOA COMERCIAL"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 60,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS TL",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 74,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA BO",
+          "servicio": "NATURGY BO NOA"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 78,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA URGENCIAS NOCTURNAS",
+          "servicio": "NATURGY NOA CAU"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 79,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY NOA BO TL",
+          "servicio": "NATURGY BO NOA"
+        }
+      ]
+    },
+    {
+      "fila": 142,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "GASNOR",
+      "referencias": [
+        138,
+        139,
+        140,
+        141
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 143,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "ENERGIA SAN JUAN",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 41,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 58,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN TL",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 75,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN BO",
+          "servicio": "NATURGY BO SAN JUAN"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 77,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN NOCTURNAS",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 80,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN BO TL",
+          "servicio": "NATURGY BO SAN JUAN"
+        }
+      ]
+    },
+    {
+      "fila": 144,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "ENERGIA SAN JUAN",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 41,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 75,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN BO",
+          "servicio": "NATURGY BO SAN JUAN"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 77,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN NOCTURNAS",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 80,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN BO TL",
+          "servicio": "NATURGY BO SAN JUAN"
+        }
+      ]
+    },
+    {
+      "fila": 145,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "ENERGIA SAN JUAN",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 41,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 58,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN TL",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 75,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN BO",
+          "servicio": "NATURGY BO SAN JUAN"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 77,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN NOCTURNAS",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 80,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN BO TL",
+          "servicio": "NATURGY BO SAN JUAN"
+        }
+      ]
+    },
+    {
+      "fila": 146,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "ENERGIA SAN JUAN",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 41,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 58,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN TL",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 75,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN BO",
+          "servicio": "NATURGY BO SAN JUAN"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 77,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN NOCTURNAS",
+          "servicio": "NATURGY ENERGIA SAN JUAN"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 80,
+          "cliente": "NATURGY",
+          "operativa": "NATURGY ENERGIA SAN JUAN BO TL",
+          "servicio": "NATURGY BO SAN JUAN"
+        }
+      ]
+    },
+    {
+      "fila": 147,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "ENERGIA SAN JUAN",
+      "referencias": [
+        143,
+        144,
+        145,
+        146
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 148,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "SPAZIOS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 38,
+          "cliente": "SPAZIOS",
+          "operativa": "SPAZIOS",
+          "servicio": "SPAZIOS"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 50,
+          "cliente": "SPAZIOS",
+          "operativa": "SPAZIOS TL",
+          "servicio": "SPAZIOS"
+        }
+      ]
+    },
+    {
+      "fila": 149,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "SPAZIOS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 38,
+          "cliente": "SPAZIOS",
+          "operativa": "SPAZIOS",
+          "servicio": "SPAZIOS"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 50,
+          "cliente": "SPAZIOS",
+          "operativa": "SPAZIOS TL",
+          "servicio": "SPAZIOS"
+        }
+      ]
+    },
+    {
+      "fila": 150,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "SPAZIOS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 38,
+          "cliente": "SPAZIOS",
+          "operativa": "SPAZIOS",
+          "servicio": "SPAZIOS"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 50,
+          "cliente": "SPAZIOS",
+          "operativa": "SPAZIOS TL",
+          "servicio": "SPAZIOS"
+        }
+      ]
+    },
+    {
+      "fila": 151,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "SPAZIOS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 38,
+          "cliente": "SPAZIOS",
+          "operativa": "SPAZIOS",
+          "servicio": "SPAZIOS"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 50,
+          "cliente": "SPAZIOS",
+          "operativa": "SPAZIOS TL",
+          "servicio": "SPAZIOS"
+        }
+      ]
+    },
+    {
+      "fila": 152,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "SPAZIOS",
+      "referencias": [
+        148,
+        149,
+        150,
+        151
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 153,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "FARMAPAY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 47,
+          "cliente": "FARMAPAY",
+          "operativa": "FARMAPAY",
+          "servicio": "FARMAPAY"
+        }
+      ]
+    },
+    {
+      "fila": 154,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "FARMAPAY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 47,
+          "cliente": "FARMAPAY",
+          "operativa": "FARMAPAY",
+          "servicio": "FARMAPAY"
+        }
+      ]
+    },
+    {
+      "fila": 155,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "FARMAPAY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 47,
+          "cliente": "FARMAPAY",
+          "operativa": "FARMAPAY",
+          "servicio": "FARMAPAY"
+        }
+      ]
+    },
+    {
+      "fila": 156,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "FARMAPAY",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 47,
+          "cliente": "FARMAPAY",
+          "operativa": "FARMAPAY",
+          "servicio": "FARMAPAY"
+        }
+      ]
+    },
+    {
+      "fila": 157,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "FARMAPAY",
+      "referencias": [
+        153,
+        154,
+        155,
+        156
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 158,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "LEIVA JOYAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 48,
+          "cliente": "LEIVA JOYAS",
+          "operativa": "LEIVA JOYAS",
+          "servicio": "LEIVA JOYAS"
+        }
+      ]
+    },
+    {
+      "fila": 159,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "LEIVA JOYAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 48,
+          "cliente": "LEIVA JOYAS",
+          "operativa": "LEIVA JOYAS",
+          "servicio": "LEIVA JOYAS"
+        }
+      ]
+    },
+    {
+      "fila": 160,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "LEIVA JOYAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 48,
+          "cliente": "LEIVA JOYAS",
+          "operativa": "LEIVA JOYAS",
+          "servicio": "LEIVA JOYAS"
+        }
+      ]
+    },
+    {
+      "fila": 161,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "LEIVA JOYAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 48,
+          "cliente": "LEIVA JOYAS",
+          "operativa": "LEIVA JOYAS",
+          "servicio": "LEIVA JOYAS"
+        }
+      ]
+    },
+    {
+      "fila": 162,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "LEIVA JOYAS",
+      "referencias": [
+        158,
+        159,
+        160,
+        161
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 163,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "QUALIA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 49,
+          "cliente": "QUALIA",
+          "operativa": "QUALIA",
+          "servicio": "QUALIA VENTAS"
+        },
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 67,
+          "cliente": "QUALIA",
+          "operativa": "QUALIA CENCOSUD",
+          "servicio": "QUALIA CENCOSUD"
+        }
+      ]
+    },
+    {
+      "fila": 164,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "QUALIA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 49,
+          "cliente": "QUALIA",
+          "operativa": "QUALIA",
+          "servicio": "QUALIA VENTAS"
+        },
+        {
+          "tabla": "Variable",
+          "fila": 67,
+          "cliente": "QUALIA",
+          "operativa": "QUALIA CENCOSUD",
+          "servicio": "QUALIA CENCOSUD"
+        }
+      ]
+    },
+    {
+      "fila": 165,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "QUALIA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 49,
+          "cliente": "QUALIA",
+          "operativa": "QUALIA",
+          "servicio": "QUALIA VENTAS"
+        },
+        {
+          "tabla": "Next Gen",
+          "fila": 67,
+          "cliente": "QUALIA",
+          "operativa": "QUALIA CENCOSUD",
+          "servicio": "QUALIA CENCOSUD"
+        }
+      ]
+    },
+    {
+      "fila": 166,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "QUALIA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 49,
+          "cliente": "QUALIA",
+          "operativa": "QUALIA",
+          "servicio": "QUALIA VENTAS"
+        },
+        {
+          "tabla": "Tarifacion",
+          "fila": 67,
+          "cliente": "QUALIA",
+          "operativa": "QUALIA CENCOSUD",
+          "servicio": "QUALIA CENCOSUD"
+        }
+      ]
+    },
+    {
+      "fila": 167,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "QUALIA",
+      "referencias": [
+        163,
+        164,
+        165,
+        166
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 168,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "BANCO COMAFI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 55,
+          "cliente": "BANCO COMAFI",
+          "operativa": "BANCO COMAFI",
+          "servicio": "AT AL CLIENTE"
+        }
+      ]
+    },
+    {
+      "fila": 169,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "BANCO COMAFI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 55,
+          "cliente": "BANCO COMAFI",
+          "operativa": "BANCO COMAFI",
+          "servicio": "AT AL CLIENTE"
+        }
+      ]
+    },
+    {
+      "fila": 170,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "BANCO COMAFI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 55,
+          "cliente": "BANCO COMAFI",
+          "operativa": "BANCO COMAFI",
+          "servicio": "AT AL CLIENTE"
+        }
+      ]
+    },
+    {
+      "fila": 171,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "BANCO COMAFI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 55,
+          "cliente": "BANCO COMAFI",
+          "operativa": "BANCO COMAFI",
+          "servicio": "AT AL CLIENTE"
+        }
+      ]
+    },
+    {
+      "fila": 172,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "BANCO COMAFI",
+      "referencias": [
+        168,
+        169,
+        170,
+        171
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 173,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "OMINT",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 63,
+          "cliente": "OMINT",
+          "operativa": "OMINT",
+          "servicio": "OMINT"
+        }
+      ]
+    },
+    {
+      "fila": 174,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "OMINT",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 63,
+          "cliente": "OMINT",
+          "operativa": "OMINT",
+          "servicio": "OMINT"
+        }
+      ]
+    },
+    {
+      "fila": 175,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "OMINT",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 63,
+          "cliente": "OMINT",
+          "operativa": "OMINT",
+          "servicio": "OMINT"
+        }
+      ]
+    },
+    {
+      "fila": 176,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "OMINT",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 63,
+          "cliente": "OMINT",
+          "operativa": "OMINT",
+          "servicio": "OMINT"
+        }
+      ]
+    },
+    {
+      "fila": 177,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "OMINT",
+      "referencias": [
+        173,
+        174,
+        175,
+        176
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 178,
+      "site": "N/A",
+      "concepto": "Horas",
+      "campania": "APM - TERMINAL 4",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 64,
+          "cliente": "APM - TERMINAL 4",
+          "operativa": "APM - TERMINAL 4",
+          "servicio": "APM - TERMINAL 4"
+        }
+      ]
+    },
+    {
+      "fila": 179,
+      "site": "N/A",
+      "concepto": "Variable Productividad",
+      "campania": "APM - TERMINAL 4",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 64,
+          "cliente": "APM - TERMINAL 4",
+          "operativa": "APM - TERMINAL 4",
+          "servicio": "APM - TERMINAL 4"
+        }
+      ]
+    },
+    {
+      "fila": 180,
+      "site": "N/A",
+      "concepto": "Next Gen",
+      "campania": "APM - TERMINAL 4",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Unificado",
+          "fila": 64,
+          "cliente": "APM - TERMINAL 4",
+          "operativa": "APM - TERMINAL 4",
+          "servicio": "APM - TERMINAL 4"
+        }
+      ]
+    },
+    {
+      "fila": 181,
+      "site": "N/A",
+      "concepto": "Tarifacion + otros",
+      "campania": "APM - TERMINAL 4",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 64,
+          "cliente": "APM - TERMINAL 4",
+          "operativa": "APM - TERMINAL 4",
+          "servicio": "APM - TERMINAL 4"
+        }
+      ]
+    },
+    {
+      "fila": 182,
+      "site": "N/A",
+      "concepto": "Total",
+      "campania": "APM - TERMINAL 4",
+      "referencias": [
+        180,
+        181
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 183,
+      "site": "N/A",
+      "concepto": "Horas",
+      "campania": "BANCO CREDICOOP",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 65,
+          "cliente": "BANCO CREDICOOP",
+          "operativa": "BANCO CREDICOOP",
+          "servicio": "BANCO CREDICOOP"
+        }
+      ]
+    },
+    {
+      "fila": 184,
+      "site": "N/A",
+      "concepto": "Variable Productividad",
+      "campania": "BANCO CREDICOOP",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 65,
+          "cliente": "BANCO CREDICOOP",
+          "operativa": "BANCO CREDICOOP",
+          "servicio": "BANCO CREDICOOP"
+        }
+      ]
+    },
+    {
+      "fila": 185,
+      "site": "N/A",
+      "concepto": "Next Gen",
+      "campania": "BANCO CREDICOOP",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Unificado",
+          "fila": 65,
+          "cliente": "BANCO CREDICOOP",
+          "operativa": "BANCO CREDICOOP",
+          "servicio": "BANCO CREDICOOP"
+        }
+      ]
+    },
+    {
+      "fila": 186,
+      "site": "N/A",
+      "concepto": "Tarifacion + otros",
+      "campania": "BANCO CREDICOOP",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 65,
+          "cliente": "BANCO CREDICOOP",
+          "operativa": "BANCO CREDICOOP",
+          "servicio": "BANCO CREDICOOP"
+        }
+      ]
+    },
+    {
+      "fila": 187,
+      "site": "N/A",
+      "concepto": "Total",
+      "campania": "BANCO CREDICOOP",
+      "referencias": [
+        185,
+        186
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 188,
+      "site": "N/A",
+      "concepto": "Horas",
+      "campania": "ALMUNDO",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 66,
+          "cliente": "ALMUNDO",
+          "operativa": "ALMUNDO",
+          "servicio": "ALMUNDO"
+        }
+      ]
+    },
+    {
+      "fila": 189,
+      "site": "N/A",
+      "concepto": "Variable Productividad",
+      "campania": "ALMUNDO",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 66,
+          "cliente": "ALMUNDO",
+          "operativa": "ALMUNDO",
+          "servicio": "ALMUNDO"
+        }
+      ]
+    },
+    {
+      "fila": 190,
+      "site": "N/A",
+      "concepto": "Next Gen",
+      "campania": "ALMUNDO",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Unificado",
+          "fila": 66,
+          "cliente": "ALMUNDO",
+          "operativa": "ALMUNDO",
+          "servicio": "ALMUNDO"
+        }
+      ]
+    },
+    {
+      "fila": 191,
+      "site": "N/A",
+      "concepto": "Tarifacion + otros",
+      "campania": "ALMUNDO",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 66,
+          "cliente": "ALMUNDO",
+          "operativa": "ALMUNDO",
+          "servicio": "ALMUNDO"
+        }
+      ]
+    },
+    {
+      "fila": 192,
+      "site": "N/A",
+      "concepto": "Total",
+      "campania": "ALMUNDO",
+      "referencias": [
+        190,
+        191
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 193,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "RIVER",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 68,
+          "cliente": "RIVER PLATE",
+          "operativa": "RIVER",
+          "servicio": "RIVER PLATE ATENCION AL SOCIO"
+        }
+      ]
+    },
+    {
+      "fila": 194,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "RIVER",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Variable",
+          "fila": 68,
+          "cliente": "RIVER PLATE",
+          "operativa": "RIVER",
+          "servicio": "RIVER PLATE ATENCION AL SOCIO"
+        }
+      ]
+    },
+    {
+      "fila": 195,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "RIVER",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 68,
+          "cliente": "RIVER PLATE",
+          "operativa": "RIVER",
+          "servicio": "RIVER PLATE ATENCION AL SOCIO"
+        }
+      ]
+    },
+    {
+      "fila": 196,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "RIVER",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 68,
+          "cliente": "RIVER PLATE",
+          "operativa": "RIVER",
+          "servicio": "RIVER PLATE ATENCION AL SOCIO"
+        }
+      ]
+    },
+    {
+      "fila": 197,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "RIVER",
+      "referencias": [
+        193,
+        194,
+        195,
+        196
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 198,
+      "site": "Mariano Quesada",
+      "concepto": "HORAS - BACKOFFICE",
+      "campania": "GALICIA SEGUROS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 81,
+          "cliente": "GALICIA SEGUROS",
+          "operativa": "GALICIA SEGUROS",
+          "servicio": "GALICIA SEGUROS - BACKOFFICE"
+        }
+      ]
+    },
+    {
+      "fila": 199,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "GALICIA SEGUROS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 200,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "GALICIA SEGUROS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 201,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "GALICIA SEGUROS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 202,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "GALICIA SEGUROS",
+      "referencias": [
+        198,
+        199,
+        200,
+        201,
+        247,
+        252
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 203,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "SANTANDER COBRANZAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 82,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER COBRANZAS",
+          "servicio": "TELECOBRANZAS"
+        }
+      ]
+    },
+    {
+      "fila": 204,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "SANTANDER COBRANZAS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 205,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "SANTANDER COBRANZAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 82,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER COBRANZAS",
+          "servicio": "TELECOBRANZAS"
+        }
+      ]
+    },
+    {
+      "fila": 206,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "SANTANDER COBRANZAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 82,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER COBRANZAS",
+          "servicio": "TELECOBRANZAS"
+        }
+      ]
+    },
+    {
+      "fila": 207,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "SANTANDER COBRANZAS",
+      "referencias": [
+        203,
+        204,
+        205,
+        206
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 208,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Horas",
+      "campania": "PIANO REFERIDOS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 83,
+          "cliente": "BANCO PIANO",
+          "operativa": "PIANO REFERIDOS",
+          "servicio": "BANCO PIANO ACCION REFERIDOS"
+        }
+      ]
+    },
+    {
+      "fila": 209,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Variable Productividad",
+      "campania": "PIANO REFERIDOS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 210,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Next Gen",
+      "campania": "PIANO REFERIDOS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 83,
+          "cliente": "BANCO PIANO",
+          "operativa": "PIANO REFERIDOS",
+          "servicio": "BANCO PIANO ACCION REFERIDOS"
+        }
+      ]
+    },
+    {
+      "fila": 211,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Tarifacion + otros",
+      "campania": "PIANO REFERIDOS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 83,
+          "cliente": "BANCO PIANO",
+          "operativa": "PIANO REFERIDOS",
+          "servicio": "BANCO PIANO ACCION REFERIDOS"
+        }
+      ]
+    },
+    {
+      "fila": 212,
+      "site": "Gerencia Multicampaña",
+      "concepto": "Total",
+      "campania": "PIANO REFERIDOS",
+      "referencias": [
+        208,
+        209,
+        210,
+        211
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 213,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "SANTANDER PRESTAMOS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 84,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER PRESTAMOS",
+          "servicio": "SANTANDER PRESTAMOS"
+        }
+      ]
+    },
+    {
+      "fila": 214,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "SANTANDER PRESTAMOS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 215,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "SANTANDER PRESTAMOS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 84,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER PRESTAMOS",
+          "servicio": "SANTANDER PRESTAMOS"
+        }
+      ]
+    },
+    {
+      "fila": 216,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "SANTANDER PRESTAMOS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 84,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER PRESTAMOS",
+          "servicio": "SANTANDER PRESTAMOS"
+        }
+      ]
+    },
+    {
+      "fila": 217,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "SANTANDER PRESTAMOS",
+      "referencias": [
+        213,
+        214,
+        215,
+        216
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 218,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "BNA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 85,
+          "cliente": "BNA",
+          "operativa": "BNA",
+          "servicio": "BNA - ATENCION AL CLIENTE"
+        }
+      ]
+    },
+    {
+      "fila": 219,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "BNA",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 220,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "BNA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 85,
+          "cliente": "BNA",
+          "operativa": "BNA",
+          "servicio": "BNA - ATENCION AL CLIENTE"
+        }
+      ]
+    },
+    {
+      "fila": 221,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "BNA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 85,
+          "cliente": "BNA",
+          "operativa": "BNA",
+          "servicio": "BNA - ATENCION AL CLIENTE"
+        }
+      ]
+    },
+    {
+      "fila": 222,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "BNA",
+      "referencias": [
+        218,
+        219,
+        220,
+        221
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 223,
+      "site": "N/A",
+      "concepto": "Horas",
+      "campania": "BAPRO",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 224,
+      "site": "N/A",
+      "concepto": "Variable Productividad",
+      "campania": "BAPRO",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 225,
+      "site": "N/A",
+      "concepto": "Next Gen",
+      "campania": "BAPRO",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 86,
+          "cliente": "BAPRO",
+          "operativa": "BAPRO",
+          "servicio": "BAPRO"
+        }
+      ]
+    },
+    {
+      "fila": 226,
+      "site": "N/A",
+      "concepto": "Tarifacion + otros",
+      "campania": "BAPRO",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 227,
+      "site": "N/A",
+      "concepto": "Total",
+      "campania": "BAPRO",
+      "referencias": [
+        225,
+        226
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 228,
+      "site": "N/A",
+      "concepto": "Horas",
+      "campania": "ANDREANI",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 229,
+      "site": "N/A",
+      "concepto": "Variable Productividad",
+      "campania": "ANDREANI",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 230,
+      "site": "N/A",
+      "concepto": "Next Gen",
+      "campania": "ANDREANI",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Unificado",
+          "fila": 87,
+          "cliente": "ANDREANI",
+          "operativa": "ANDREANI",
+          "servicio": "ANDREANI"
+        }
+      ]
+    },
+    {
+      "fila": 231,
+      "site": "N/A",
+      "concepto": "Tarifacion + otros",
+      "campania": "ANDREANI",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 232,
+      "site": "N/A",
+      "concepto": "Total",
+      "campania": "ANDREANI",
+      "referencias": [
+        230,
+        231
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 233,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "SANTANDER MIXTO COBRANZAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 88,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO COBRANZAS",
+          "servicio": "MIXTO COBRANZAS"
+        }
+      ]
+    },
+    {
+      "fila": 234,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "SANTANDER MIXTO COBRANZAS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 235,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "SANTANDER MIXTO COBRANZAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 88,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO COBRANZAS",
+          "servicio": "MIXTO COBRANZAS"
+        }
+      ]
+    },
+    {
+      "fila": 236,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "SANTANDER MIXTO COBRANZAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Tarifacion",
+          "fila": 88,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MIXTO COBRANZAS",
+          "servicio": "MIXTO COBRANZAS"
+        }
+      ]
+    },
+    {
+      "fila": 237,
+      "site": "Mariano Quesada",
+      "concepto": "SUBTOTAL CCE (INCLUIDO)",
+      "campania": "SANTANDER MIXTO COBRANZAS",
+      "referencias": [
+        233,
+        234,
+        235,
+        236
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 238,
+      "site": "N/A",
+      "concepto": "Horas",
+      "campania": "CLIC CLAC",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 239,
+      "site": "N/A",
+      "concepto": "Variable Productividad",
+      "campania": "CLIC CLAC",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 240,
+      "site": "N/A",
+      "concepto": "Next Gen",
+      "campania": "CLIC CLAC",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Next Gen",
+          "fila": 90,
+          "cliente": "CLIC CLAC",
+          "operativa": "CLIC CLAC",
+          "servicio": "CLIC CLAC"
+        }
+      ]
+    },
+    {
+      "fila": 241,
+      "site": "N/A",
+      "concepto": "Tarifacion + otros",
+      "campania": "CLIC CLAC",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 242,
+      "site": "N/A",
+      "concepto": "Total",
+      "campania": "CLIC CLAC",
+      "referencias": [
+        240,
+        241
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 243,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "GALICIA SEGUROS - LITIGIOS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 91,
+          "cliente": "GALICIA SEGUROS",
+          "operativa": "GALICIA SEGUROS - LITIGIOS",
+          "servicio": "GALICIA SEGUROS - LITIGIOS"
+        }
+      ]
+    },
+    {
+      "fila": 244,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "GALICIA SEGUROS - LITIGIOS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 245,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "GALICIA SEGUROS - LITIGIOS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 246,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "GALICIA SEGUROS - LITIGIOS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 247,
+      "site": "Mariano Quesada",
+      "concepto": "DETALLE GALICIA (INCLUIDO)",
+      "campania": "GALICIA SEGUROS - LITIGIOS",
+      "referencias": [
+        243,
+        244,
+        245,
+        246
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 248,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "GALICIA SEGUROS - COBRANZAS",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 92,
+          "cliente": "GALICIA SEGUROS",
+          "operativa": "GALICIA SEGUROS - COBRANZAS",
+          "servicio": "GALICIA SEGUROS - COBRANZAS"
+        }
+      ]
+    },
+    {
+      "fila": 249,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "GALICIA SEGUROS - COBRANZAS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 250,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "GALICIA SEGUROS - COBRANZAS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 251,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "GALICIA SEGUROS - COBRANZAS",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 252,
+      "site": "Mariano Quesada",
+      "concepto": "DETALLE GALICIA (INCLUIDO)",
+      "campania": "GALICIA SEGUROS - COBRANZAS",
+      "referencias": [
+        248,
+        249,
+        250,
+        251
+      ],
+      "fuentes": []
+    },
+    {
+      "fila": 253,
+      "site": "Mariano Quesada",
+      "concepto": "Horas",
+      "campania": "MORA TARDÍA",
+      "referencias": [],
+      "fuentes": [
+        {
+          "tabla": "Facturacion Horas",
+          "fila": 93,
+          "cliente": "SANTANDER",
+          "operativa": "SANTANDER MORA TARDÍA",
+          "servicio": "MORA TARDIA"
+        }
+      ]
+    },
+    {
+      "fila": 254,
+      "site": "Mariano Quesada",
+      "concepto": "Variable Productividad",
+      "campania": "MORA TARDÍA",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 255,
+      "site": "Mariano Quesada",
+      "concepto": "Next Gen",
+      "campania": "MORA TARDÍA",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 256,
+      "site": "Mariano Quesada",
+      "concepto": "Tarifacion + otros",
+      "campania": "MORA TARDÍA",
+      "referencias": [],
+      "fuentes": []
+    },
+    {
+      "fila": 257,
+      "site": "Mariano Quesada",
+      "concepto": "Total",
+      "campania": "MORA TARDÍA",
+      "referencias": [
+        253,
+        254,
+        255,
+        256
+      ],
+      "fuentes": []
+    }
+  ],
+  "operativas_conocidas": [
+    "ALMUNDO",
+    "ANDREANI",
+    "APM - TERMINAL 4",
+    "ASSURANT",
+    "BANCO COMAFI",
+    "BANCO CREDICOOP",
+    "BANCO PIANO",
+    "BAPRO",
+    "BBVA SEGUROS",
+    "BBVA SEGUROS AUTOS",
+    "BI BANK",
+    "BICE",
+    "BNA",
+    "CACHAMAI",
+    "CARREFOUR",
+    "CLAVE OPERATIVA",
+    "CLIC CLAC",
+    "FARMAPAY",
+    "GALICIA SEGUROS",
+    "GALICIA SEGUROS - COBRANZAS",
+    "GALICIA SEGUROS - LITIGIOS",
+    "GIRE",
+    "JOHNSON & JOHNSON",
+    "LEIVA JOYAS",
+    "METROGAS",
+    "MIRGOR",
+    "MIRGOR BBTI",
+    "MIRGOR TL",
+    "NATURGY BAN",
+    "NATURGY BAN COMERCIAL",
+    "NATURGY BAN COMERCIAL TL",
+    "NATURGY BAN URGENCIAS",
+    "NATURGY BAN URGENCIAS NOCTURNAS",
+    "NATURGY BAN URGENCIAS TL",
+    "NATURGY BO",
+    "NATURGY COMERCIAL TL",
+    "NATURGY ENERGIA SAN JUAN",
+    "NATURGY ENERGIA SAN JUAN BO",
+    "NATURGY ENERGIA SAN JUAN BO TL",
+    "NATURGY ENERGIA SAN JUAN NOCTURNAS",
+    "NATURGY ENERGIA SAN JUAN TL",
+    "NATURGY NOA",
+    "NATURGY NOA BO",
+    "NATURGY NOA BO TL",
+    "NATURGY NOA TL",
+    "NATURGY NOA URGENCIAS",
+    "NATURGY NOA URGENCIAS NOCTURNAS",
+    "NATURGY NOA URGENCIAS TL",
+    "NATURGY QUIERO GAS",
+    "OMINT",
+    "OPENPAY",
+    "PIANO REFERIDOS",
+    "Personal",
+    "Personal CX",
+    "Personal CX Nocturnos",
+    "Personal Nocturnos",
+    "Personal SMB",
+    "Personal SMB Nocturnos",
+    "Personal Soporte",
+    "Personal Soporte Nocturnos",
+    "QUALIA",
+    "QUALIA CENCOSUD",
+    "RIVER",
+    "SANTANDER CHAT",
+    "SANTANDER COBRANZAS",
+    "SANTANDER CONSUMER",
+    "SANTANDER GETNET",
+    "SANTANDER GETNET ONBOARDING",
+    "SANTANDER GETNET SUPERVISOR EXCLUSIVO",
+    "SANTANDER ISLA PREVENCION DE FRAUDES",
+    "SANTANDER LEADS",
+    "SANTANDER MIXTO BA",
+    "SANTANDER MIXTO COBRANZAS",
+    "SANTANDER MIXTO ESTABLES",
+    "SANTANDER MIXTO GETNET",
+    "SANTANDER MIXTO INGRESOS",
+    "SANTANDER MIXTO SL",
+    "SANTANDER MORA TARDÍA",
+    "SANTANDER PRESTAMOS",
+    "SANTANDER PRÉSTAMOS",
+    "SANTANDER RETENCION MIXTO SL",
+    "SANTANDER RETENCIONES",
+    "SANTANDER SEGUROS",
+    "SPAZIOS",
+    "SPAZIOS TL",
+    "SUPERVIELLE",
+    "SUPERVIELLE SEGUROS",
+    "Subtotales",
+    "Totales",
+    "UNICEF",
+    "UNICEF ACTIVOS+LEADS",
+    "YAMAHA"
+  ],
+  "pares_conocidos": [
+    [
+      "ALMUNDO",
+      "ALMUNDO"
+    ],
+    [
+      "ANDREANI",
+      "ANDREANI"
+    ],
+    [
+      "APM - TERMINAL 4",
+      "APM - TERMINAL 4"
+    ],
+    [
+      "ASSURANT",
+      "ASSURANT"
+    ],
+    [
+      "ASSURANT",
+      "Assurant"
+    ],
+    [
+      "BANCO BICE",
+      "BICE"
+    ],
+    [
+      "BANCO BICE",
+      "Bice"
+    ],
+    [
+      "BANCO COMAFI",
+      "BANCO COMAFI"
+    ],
+    [
+      "BANCO COMAFI",
+      "Banco Comafi"
+    ],
+    [
+      "BANCO CREDICOOP",
+      "BANCO CREDICOOP"
+    ],
+    [
+      "BANCO PIANO",
+      "BANCO PIANO"
+    ],
+    [
+      "BANCO PIANO",
+      "Banco Piano"
+    ],
+    [
+      "BANCO PIANO",
+      "PIANO REFERIDOS"
+    ],
+    [
+      "BANCO PIANO",
+      "Piano Referidos"
+    ],
+    [
+      "BAPRO",
+      "BAPRO"
+    ],
+    [
+      "BBVA",
+      "BBVA SEGUROS"
+    ],
+    [
+      "BBVA",
+      "BBVA SEGUROS AUTOS"
+    ],
+    [
+      "BBVA",
+      "BBVA Seguros"
+    ],
+    [
+      "BBVA",
+      "BBVA Seguros Autos"
+    ],
+    [
+      "BBVA OPENPAY",
+      "OPENPAY"
+    ],
+    [
+      "BBVA OPENPAY",
+      "Openpay"
+    ],
+    [
+      "BIBANK",
+      "BI BANK"
+    ],
+    [
+      "BIBANK",
+      "Bi Bank"
+    ],
+    [
+      "BNA",
+      "BNA"
+    ],
+    [
+      "BSF",
+      "CARREFOUR"
+    ],
+    [
+      "BSF",
+      "Carrefour"
+    ],
+    [
+      "CACHAMAI",
+      "CACHAMAI"
+    ],
+    [
+      "CACHAMAI",
+      "Cachamai"
+    ],
+    [
+      "CLIC CLAC",
+      "CLIC CLAC"
+    ],
+    [
+      "CUENTA (CLIENTE)",
+      "CLAVE OPERATIVA"
+    ],
+    [
+      "FARMAPAY",
+      "FARMAPAY"
+    ],
+    [
+      "FARMAPAY",
+      "FarmaPay"
+    ],
+    [
+      "GALICIA SEGUROS",
+      "GALICIA SEGUROS"
+    ],
+    [
+      "GALICIA SEGUROS",
+      "GALICIA SEGUROS - COBRANZAS"
+    ],
+    [
+      "GALICIA SEGUROS",
+      "GALICIA SEGUROS - LITIGIOS"
+    ],
+    [
+      "GALICIA SEGUROS",
+      "Galicia Seguros"
+    ],
+    [
+      "GIRE",
+      "GIRE"
+    ],
+    [
+      "GIRE",
+      "Gire"
+    ],
+    [
+      "JONHSON & JONHSON",
+      "JOHNSON & JOHNSON"
+    ],
+    [
+      "JONHSON & JONHSON",
+      "Johnson & Johnson"
+    ],
+    [
+      "LEIVA JOYAS",
+      "LEIVA JOYAS"
+    ],
+    [
+      "LEIVA JOYAS",
+      "Leiva Joyas"
+    ],
+    [
+      "METROGAS",
+      "METROGAS"
+    ],
+    [
+      "METROGAS",
+      "Metrogas"
+    ],
+    [
+      "MIRGOR",
+      "MIRGOR"
+    ],
+    [
+      "MIRGOR",
+      "MIRGOR BBTI"
+    ],
+    [
+      "MIRGOR",
+      "MIRGOR TL"
+    ],
+    [
+      "MIRGOR",
+      "Mirgor"
+    ],
+    [
+      "MIRGOR",
+      "Mirgor BBTI"
+    ],
+    [
+      "NATURGY",
+      "NATURGY BAN"
+    ],
+    [
+      "NATURGY",
+      "NATURGY BAN COMERCIAL"
+    ],
+    [
+      "NATURGY",
+      "NATURGY BAN COMERCIAL TL"
+    ],
+    [
+      "NATURGY",
+      "NATURGY BAN URGENCIAS"
+    ],
+    [
+      "NATURGY",
+      "NATURGY BAN URGENCIAS NOCTURNAS"
+    ],
+    [
+      "NATURGY",
+      "NATURGY BAN URGENCIAS TL"
+    ],
+    [
+      "NATURGY",
+      "NATURGY BO"
+    ],
+    [
+      "NATURGY",
+      "NATURGY COMERCIAL TL"
+    ],
+    [
+      "NATURGY",
+      "NATURGY ENERGIA SAN JUAN"
+    ],
+    [
+      "NATURGY",
+      "NATURGY ENERGIA SAN JUAN BO"
+    ],
+    [
+      "NATURGY",
+      "NATURGY ENERGIA SAN JUAN BO TL"
+    ],
+    [
+      "NATURGY",
+      "NATURGY ENERGIA SAN JUAN NOCTURNAS"
+    ],
+    [
+      "NATURGY",
+      "NATURGY ENERGIA SAN JUAN TL"
+    ],
+    [
+      "NATURGY",
+      "NATURGY NOA"
+    ],
+    [
+      "NATURGY",
+      "NATURGY NOA BO"
+    ],
+    [
+      "NATURGY",
+      "NATURGY NOA BO TL"
+    ],
+    [
+      "NATURGY",
+      "NATURGY NOA TL"
+    ],
+    [
+      "NATURGY",
+      "NATURGY NOA URGENCIAS"
+    ],
+    [
+      "NATURGY",
+      "NATURGY NOA URGENCIAS NOCTURNAS"
+    ],
+    [
+      "NATURGY",
+      "NATURGY NOA URGENCIAS TL"
+    ],
+    [
+      "NATURGY",
+      "NATURGY QUIERO GAS"
+    ],
+    [
+      "NATURGY",
+      "Naturgy BAN COMERCIAL"
+    ],
+    [
+      "NATURGY",
+      "Naturgy BAN COMERCIAL TL"
+    ],
+    [
+      "NATURGY",
+      "Naturgy BAN Urgencias"
+    ],
+    [
+      "NATURGY",
+      "Naturgy BAN Urgencias Nocturnas"
+    ],
+    [
+      "NATURGY",
+      "Naturgy BAN Urgencias TL"
+    ],
+    [
+      "NATURGY",
+      "Naturgy Comercial TL"
+    ],
+    [
+      "NATURGY",
+      "Naturgy Energia San Juan"
+    ],
+    [
+      "NATURGY",
+      "Naturgy Energia San Juan BO"
+    ],
+    [
+      "NATURGY",
+      "Naturgy Energia San Juan BO TL"
+    ],
+    [
+      "NATURGY",
+      "Naturgy Energia San Juan Nocturnas"
+    ],
+    [
+      "NATURGY",
+      "Naturgy Energia San Juan TL"
+    ],
+    [
+      "NATURGY",
+      "Naturgy NOA"
+    ],
+    [
+      "NATURGY",
+      "Naturgy NOA BO"
+    ],
+    [
+      "NATURGY",
+      "Naturgy NOA BO TL"
+    ],
+    [
+      "NATURGY",
+      "Naturgy NOA TL"
+    ],
+    [
+      "NATURGY",
+      "Naturgy NOA Urgencias"
+    ],
+    [
+      "NATURGY",
+      "Naturgy NOA Urgencias Nocturnas"
+    ],
+    [
+      "NATURGY",
+      "Naturgy NOA Urgencias TL"
+    ],
+    [
+      "NATURGY",
+      "Naturgy Quiero Gas"
+    ],
+    [
+      "OMINT",
+      "OMINT"
+    ],
+    [
+      "OMINT",
+      "Omint"
+    ],
+    [
+      "Personal",
+      "Personal"
+    ],
+    [
+      "Personal",
+      "Personal CX"
+    ],
+    [
+      "Personal",
+      "Personal CX Nocturnos"
+    ],
+    [
+      "Personal",
+      "Personal Nocturnos"
+    ],
+    [
+      "Personal",
+      "Personal SMB"
+    ],
+    [
+      "Personal",
+      "Personal SMB Nocturnos"
+    ],
+    [
+      "Personal",
+      "Personal SOPORTE"
+    ],
+    [
+      "Personal",
+      "Personal SOPORTE NOCTURNOS"
+    ],
+    [
+      "Personal CX",
+      "Personal CX"
+    ],
+    [
+      "Personal CX",
+      "Personal CX Nocturnos"
+    ],
+    [
+      "Personal SMB",
+      "Personal SMB"
+    ],
+    [
+      "Personal SMB",
+      "Personal SMB Nocturnos"
+    ],
+    [
+      "Personal Soporte",
+      "Personal Soporte"
+    ],
+    [
+      "Personal Soporte",
+      "Personal Soporte Nocturnos"
+    ],
+    [
+      "QUALIA",
+      "QUALIA"
+    ],
+    [
+      "QUALIA",
+      "QUALIA CENCOSUD"
+    ],
+    [
+      "QUALIA",
+      "QUALIA Cencosud"
+    ],
+    [
+      "RIVER PLATE",
+      "RIVER"
+    ],
+    [
+      "RIVER PLATE",
+      "River"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER CHAT"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER COBRANZAS"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER CONSUMER"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER ISLA PREVENCION DE FRAUDES"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER LEADS"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER MIXTO BA"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER MIXTO COBRANZAS"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER MIXTO ESTABLES"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER MIXTO GETNET"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER MIXTO INGRESOS"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER MIXTO SL"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER MORA TARDÍA"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER PRESTAMOS"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER PRÉSTAMOS"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER RETENCION MIXTO SL"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER RETENCIONES"
+    ],
+    [
+      "SANTANDER",
+      "SANTANDER SEGUROS"
+    ],
+    [
+      "SANTANDER",
+      "Santander Chat"
+    ],
+    [
+      "SANTANDER",
+      "Santander Cobranzas"
+    ],
+    [
+      "SANTANDER",
+      "Santander Consumer"
+    ],
+    [
+      "SANTANDER",
+      "Santander Isla Prevencion de Fraudes"
+    ],
+    [
+      "SANTANDER",
+      "Santander Leads"
+    ],
+    [
+      "SANTANDER",
+      "Santander Mixto BA"
+    ],
+    [
+      "SANTANDER",
+      "Santander Mixto Cobranzas"
+    ],
+    [
+      "SANTANDER",
+      "Santander Mixto Estables"
+    ],
+    [
+      "SANTANDER",
+      "Santander Mixto Getnet"
+    ],
+    [
+      "SANTANDER",
+      "Santander Mixto Ingresos"
+    ],
+    [
+      "SANTANDER",
+      "Santander Mixto SL"
+    ],
+    [
+      "SANTANDER",
+      "Santander Mora Tardía"
+    ],
+    [
+      "SANTANDER",
+      "Santander Prestamos"
+    ],
+    [
+      "SANTANDER",
+      "Santander Retencion Mixto SL"
+    ],
+    [
+      "SANTANDER",
+      "Santander Retenciones"
+    ],
+    [
+      "SANTANDER",
+      "Santander Seguros"
+    ],
+    [
+      "SANTANDER GETNET",
+      "SANTANDER GETNET"
+    ],
+    [
+      "SANTANDER GETNET",
+      "SANTANDER GETNET ONBOARDING"
+    ],
+    [
+      "SANTANDER GETNET",
+      "SANTANDER GETNET SUPERVISOR EXCLUSIVO"
+    ],
+    [
+      "SANTANDER GETNET",
+      "Santander Getnet"
+    ],
+    [
+      "SANTANDER GETNET",
+      "Santander Getnet Onboarding"
+    ],
+    [
+      "SANTANDER GETNET",
+      "Santander Getnet Supervisor exclusivo"
+    ],
+    [
+      "SPAZIOS",
+      "SPAZIOS"
+    ],
+    [
+      "SPAZIOS",
+      "SPAZIOS TL"
+    ],
+    [
+      "SPAZIOS",
+      "Spazios"
+    ],
+    [
+      "SPAZIOS",
+      "Spazios TL"
+    ],
+    [
+      "SUPERVIELLE",
+      "SUPERVIELLE"
+    ],
+    [
+      "SUPERVIELLE",
+      "Supervielle"
+    ],
+    [
+      "SUPERVIELLE SEGUROS",
+      "SUPERVIELLE SEGUROS"
+    ],
+    [
+      "SUPERVIELLE SEGUROS",
+      "Supervielle Seguros"
+    ],
+    [
+      "UNICEF",
+      "UNICEF"
+    ],
+    [
+      "UNICEF",
+      "UNICEF ACTIVOS+LEADS"
+    ],
+    [
+      "UNICEF",
+      "Unicef"
+    ],
+    [
+      "UNICEF",
+      "Unicef Activos+Leads"
+    ],
+    [
+      "YAMAHA",
+      "YAMAHA"
+    ],
+    [
+      "YAMAHA",
+      "Yamaha"
+    ]
+  ],
+  "anotaciones": {
+    "10": "Personal - Mitre 3P",
+    "15": "Cablevisión",
+    "20": "Cablevisión",
+    "25": "Cablevisión",
+    "31": "Assurant",
+    "36": "BSF - Carrefour",
+    "41": "Bco. Supervielle",
+    "46": "Mirgor",
+    "51": "Mirgor",
+    "56": "Cachamai",
+    "61": "BiBank",
+    "66": "Bice",
+    "71": "Open Pay",
+    "76": "Unicef",
+    "81": "BBVA",
+    "86": "GIRE",
+    "91": "J & J",
+    "96": "Metrogas",
+    "101": "Bco. Piano",
+    "106": "Yamaha",
+    "111": "Santander Río",
+    "116": "Santander Río",
+    "121": "Santander Río",
+    "122": "Santander Río",
+    "127": "Santander Río",
+    "132": "Supervielle Seguros",
+    "137": "Gas Natural",
+    "172": "Cablevisión",
+    "177": "Cablevisión",
+    "182": "Cablevisión",
+    "187": "Cablevisión",
+    "192": "Cablevisión",
+    "197": "Cablevisión",
+    "227": "Cablevisión",
+    "237": "INCLUIDO EN SANTANDER CCE. SUBTOTAL INFORMATIVO: NO SUMAR OTRA VEZ."
+  },
+  "comentarios": {
+    "122": "CAMPAÑA 100% VARIABLE",
+    "123": "Mixto BA+SL+Mix Get+Isla+Chat+Rten"
+  },
+  "apoyo": [
+    {
+      "fila": 5,
+      "valores": [
+        "CCE",
+        "CUENTA (CLIENTE)",
+        "CAMPAÑA OFICIAL",
+        "CLAVE OPERATIVA"
+      ]
+    },
+    {
+      "fila": 6,
+      "valores": [
+        "SANTANDER CCE",
+        "SANTANDER",
+        "ISLA DE PREVENCIÓN",
+        "SANTANDER ISLA PREVENCION DE FRAUDES"
+      ]
+    },
+    {
+      "fila": 7,
+      "valores": [
+        "SANTANDER CCE",
+        "SANTANDER",
+        "SANTANDER MIXTO BA",
+        "SANTANDER MIXTO BA"
+      ]
+    },
+    {
+      "fila": 8,
+      "valores": [
+        "SANTANDER CCE",
+        "SANTANDER",
+        "MIXTO GETNET",
+        "SANTANDER MIXTO GETNET"
+      ]
+    },
+    {
+      "fila": 9,
+      "valores": [
+        "SANTANDER CCE",
+        "SANTANDER",
+        "SANTANDER MIXTO SL",
+        "SANTANDER MIXTO SL"
+      ]
+    },
+    {
+      "fila": 10,
+      "valores": [
+        "SANTANDER CCE",
+        "SANTANDER",
+        "SANTANDER SEGUROS",
+        "SANTANDER SEGUROS"
+      ]
+    },
+    {
+      "fila": 11,
+      "valores": [
+        "SANTANDER CCE",
+        "SANTANDER",
+        "SANTANDER CHAT",
+        "SANTANDER CHAT"
+      ]
+    },
+    {
+      "fila": 12,
+      "valores": [
+        "SANTANDER CCE",
+        "SANTANDER",
+        "SANTANDER RETENCION",
+        "SANTANDER RETENCIONES"
+      ]
+    },
+    {
+      "fila": 13,
+      "valores": [
+        "SANTANDER CCE",
+        "SANTANDER",
+        "SANTANDER RETENCION MIX",
+        "SANTANDER RETENCION MIXTO SL"
+      ]
+    },
+    {
+      "fila": 14,
+      "valores": [
+        "SANTANDER CCE",
+        "SANTANDER",
+        "MIXTO CAT ESTABLES",
+        "SANTANDER MIXTO ESTABLES"
+      ]
+    },
+    {
+      "fila": 15,
+      "valores": [
+        "SANTANDER CCE",
+        "SANTANDER",
+        "MIXTO CAT INGRESOS",
+        "SANTANDER MIXTO INGRESOS"
+      ]
+    },
+    {
+      "fila": 16,
+      "valores": [
+        "SANTANDER CCE",
+        "SANTANDER",
+        "MIXTO COBRANZAS",
+        "SANTANDER MIXTO COBRANZAS"
+      ]
+    },
+    {
+      "fila": 17,
+      "valores": [
+        null,
+        null,
+        null,
+        "TOTAL CCE"
+      ]
+    }
+  ]
+}

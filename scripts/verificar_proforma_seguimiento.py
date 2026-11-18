@@ -128,6 +128,17 @@ with app.app_context(), app.test_client() as client:
 
     first = upload('Masivo', 'MASIVO', 'Campaña M', 10, bono=250)
     check_sheets(1)
+    previo_soporte = Facturacion2026(fecha=date(2026, 8, 1), mes='2026-08', cliente='Personal',
+        campania='Anterior soporte', tipo_negocio='Personal Soporte', tipo_jornada='Diurnas',
+        horas_objetivo=2, horas_facturadas=2, valor_hora=10, es_next_gen=False)
+    db.session.add(previo_soporte)
+    db.session.commit()
+    preview = client.get(f'/api/seguimiento-personal/hoja?importacion_id={config.id}&hoja=base_objetivo_masivo').get_json()
+    impacto = preview['impacto_dashboard']['202608']
+    assert impacto['filas_actuales'] == 0 and impacto['filas_nuevas'] == 1
+    assert impacto['estados'] == ['Proyectada'] and 'Personal Soporte' in impacto['grupos_ausentes']
+    db.session.delete(previo_soporte)
+    db.session.commit()
     assert publish()['creadas'] == 1
     assert dashboard_hours() == [10]
     fila_bono = query_reemplazo_personal_mes({'mes': '2026-08'}).one()
@@ -179,6 +190,30 @@ with app.app_context(), app.test_client() as client:
     assert dashboard_hours() == [12]
     upload('Masivo', 'MASIVO', 'Campaña M', 12, 'Definitiva')
     assert {item.estado_proforma for item in ProformaPersonal.query.all()} == {'Definitiva'}
+    definitiva_antes = [item.to_dict() for item in ProformaPersonal.query.all()]
+    rechazo = client.post('/api/proforma-personal/importar', headers=headers, data={
+        'tipo_proforma': 'Masivo', 'estado_proforma': 'Proyectada',
+        'archivo': (workbook('MASIVO', 'Campaña M', 99), 'proyectada_tardia.xlsx'),
+    })
+    assert rechazo.status_code == 400
+    assert 'no puede reemplazar una definitiva' in rechazo.get_json()['diagnostico']['correccion']
+    assert [item.to_dict() for item in ProformaPersonal.query.all()] == definitiva_antes
+    mixto = Workbook()
+    hoja_mixta = mixto.active
+    hoja_mixta.append(list(ENCABEZADOS_PROFORMA_PERSONAL))
+    for periodo in (202608, 202609):
+        hoja_mixta.append(['FDV', periodo, 'MASIVO', 'CAT', 'Campaña M', '', 'NORMAL', 10,
+                           100, 1000, 0, 0, 0, 0, 0, 1000])
+    archivo_mixto = io.BytesIO()
+    mixto.save(archivo_mixto)
+    archivo_mixto.seek(0)
+    rechazo_mixto = client.post('/api/proforma-personal/importar', headers=headers, data={
+        'tipo_proforma': 'Masivo', 'estado_proforma': 'Proyectada',
+        'archivo': (archivo_mixto, 'proyectada_dos_meses.xlsx'),
+    })
+    assert rechazo_mixto.status_code == 400
+    assert not ProformaPersonal.query.filter_by(periodo='202609').first()
+    assert [item.to_dict() for item in ProformaPersonal.query.all()] == definitiva_antes
     respuesta_sin_cierre = client.post(
         '/api/seguimiento-personal/dashboard', headers=headers,
         json={'importacion_id': config.id, 'periodo': '202608'},

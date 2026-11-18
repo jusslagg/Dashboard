@@ -1,0 +1,142 @@
+{% extends "layout.html" %}
+{% block title %}Apertura de desvíos por cliente | Directorio{% endblock %}
+{% block content %}
+<style>
+  .apertura-card { background:#fff; border:1px solid #dfe7ef; border-radius:14px; box-shadow:0 2px 12px rgba(15,23,42,.035); overflow:hidden; }
+  .apertura-scroll { overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:thin; }
+  .apertura-grid { display:grid; grid-template-columns:220px repeat(12,165px); width:2200px; align-items:stretch; }
+  .apertura-grid.apertura-mes { grid-template-columns:minmax(220px,1fr) minmax(150px,220px); width:100%; min-width:370px; }
+  .apertura-grid > div { box-sizing:border-box; min-width:0; padding:11px 12px; display:flex; align-items:center; }
+  .apertura-col-label { position:sticky; left:0; z-index:2; background:#fff; border-right:1px solid #e8eef4; }
+  .apertura-heading .apertura-col-label { background:#f4f7fb; }
+  .apertura-heading { background:#f4f7fb; border-bottom:1px solid #e7edf4; }
+  .apertura-heading > div { color:#61758b; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+  .apertura-row { border-bottom:1px solid #f0f4f8; }
+  .apertura-val { justify-content:flex-end; text-align:right; font-size:13px; font-weight:500; font-variant-numeric:tabular-nums; white-space:nowrap; color:#31445c; }
+  .apertura-label { color:#425971; font-size:13px; font-weight:500; }
+  .apertura-total { background:#eef5fc; border-top:1px solid #d9e7f5; font-weight:700; }
+  .apertura-total .apertura-col-label { background:#eef5fc; }
+  .apertura-total .apertura-label, .apertura-total .apertura-val { font-weight:700; }
+  .apertura-neg { color:#ae302b; }
+  .apertura-empty { color:#8a9caf; font-size:11px; font-weight:400; }
+  @media (max-width:600px) { .apertura-grid { grid-template-columns:190px repeat(12,155px); width:2050px; } .apertura-grid.apertura-mes { grid-template-columns:190px minmax(150px,1fr); min-width:340px; width:100%; } .apertura-grid > div { padding:10px 12px; } }
+</style>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="mb-1 text-xs font-bold uppercase tracking-widest text-blue-600">Directorio / Facturación</p>
+    <h1 class="text-3xl font-bold tracking-tight text-slate-950">Apertura de desvíos</h1>
+    <p class="mt-2 text-sm text-slate-500">Cumplimiento y composición del desvío por cliente y mes.</p>
+  </div>
+  <a id="descargar" href="#" class="inline-flex h-11 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
+    <i class="fas fa-file-excel" aria-hidden="true"></i> Descargar Excel
+  </a>
+</div>
+
+<section class="apertura-card mb-5 p-5" aria-label="Filtros de apertura">
+  <div class="mb-4 flex items-center justify-between gap-3">
+    <div><h2 class="text-sm font-bold text-slate-900">Elegí qué querés ver</h2><p class="mt-1 text-xs text-slate-500">La descarga respeta estos filtros.</p></div>
+    <button type="button" id="limpiar" class="text-xs font-semibold text-blue-700 hover:text-blue-900">Limpiar filtros</button>
+  </div>
+  <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <label class="text-xs font-semibold text-slate-600">Año
+      <select id="year" class="mt-1.5 block h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900">{% for anio in anios_disponibles %}<option value="{{ anio }}" {% if anio == anio_actual %}selected{% endif %}>{{ anio }}</option>{% endfor %}</select>
+    </label>
+    <label class="text-xs font-semibold text-slate-600">Cliente
+      <select id="cliente" class="mt-1.5 block h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900"><option value="">Todos los clientes</option></select>
+    </label>
+    <label class="text-xs font-semibold text-slate-600">Campaña
+      <select id="campania" class="mt-1.5 block h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900"><option value="">Todas las campañas</option></select>
+    </label>
+    <label class="text-xs font-semibold text-slate-600">Mes
+      <select id="mes" class="mt-1.5 block h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal text-slate-900"><option value="">Todos los meses</option>{% for nombre in ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'] %}<option value="{{ '%02d'|format(loop.index) }}">{{ nombre }}</option>{% endfor %}</select>
+    </label>
+  </div>
+</section>
+<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+  <p id="estado" role="status" class="text-sm font-medium text-slate-600">Cargando apertura...</p>
+  <p id="ayudaPeriodo" class="text-xs text-slate-500">Deslizá horizontalmente para ver todos los meses. “Sin datos” indica que no hay registros.</p>
+</div>
+<div id="aperturas" class="space-y-4" aria-live="polite"></div>
+
+<script>
+let datosApertura = null;
+const mesesApertura = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const conceptosApertura = [['cumplimiento_horas','% Cumplimiento horas',true],['valor_hora','% Valor hora',true],['cumplimiento_facturacion','% Cumplimiento facturación',true],['horas','Horas',false],['variable','Variable',false],['bonos_penalizaciones','Penalizaciones / Bonos',false],['porcentaje_desvio','% Desvío facturación',true],['total','TOTAL',false]];
+const $ap = id => document.getElementById(id);
+const escaparApertura = s => String(s ?? '').replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const claveApertura = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const formatoApertura = (v,p,existe) => v == null ? (existe ? 'No calculable' : 'Sin datos') : new Intl.NumberFormat('es-AR',{style:p?'percent':'decimal',minimumFractionDigits:p?1:2,maximumFractionDigits:p?1:2}).format(v);
+const nombreMes = m => mesesApertura[Number(m)-1];
+
+function opciones(selector, nombres, etiqueta) {
+  const actual = selector.value;
+  selector.innerHTML = `<option value="">${etiqueta}</option>` + nombres.map(n => `<option value="${escaparApertura(n)}">${escaparApertura(n)}</option>`).join('');
+  selector.value = nombres.includes(actual) ? actual : '';
+}
+function ordenarClientes(nombres) {
+  const orden = new Map((datosApertura.orden_clientes || []).map((n,i) => [claveApertura(n),i]));
+  return nombres.sort((a,b) => (orden.get(claveApertura(a)) ?? 999) - (orden.get(claveApertura(b)) ?? 999) || a.localeCompare(b,'es'));
+}
+function actualizarCampanias() {
+  const cliente = $ap('cliente').value;
+  const nombres = [...new Set(datosApertura.campanias.filter(f => !cliente || claveApertura(f.cliente) === claveApertura(cliente)).map(f => f.campania).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
+  opciones($ap('campania'), nombres, 'Todas las campañas');
+}
+function actualizarDescarga() {
+  const params = new URLSearchParams({year:$ap('year').value});
+  for (const campo of ['cliente','campania','mes']) if ($ap(campo).value) params.set(campo,$ap(campo).value);
+  $ap('descargar').href = '/api/apertura-desvios-clientes/exportar?' + params;
+}
+async function cargar() {
+  $ap('estado').textContent = 'Cargando apertura...';
+  $ap('aperturas').innerHTML = '';
+  try {
+    const respuesta = await fetch('/api/apertura-desvios-clientes?year=' + encodeURIComponent($ap('year').value), {credentials:'same-origin'});
+    const data = await respuesta.json();
+    if (!respuesta.ok || !data.success) throw Error('No se pudo cargar la apertura.');
+    datosApertura = data;
+    const clientes = ordenarClientes([...new Set(data.filas.map(f => f.cliente).filter(n => n !== 'TOTAL GENERAL'))]);
+    opciones($ap('cliente'), clientes, 'Todos los clientes');
+    actualizarCampanias();
+    render();
+  } catch (error) { datosApertura = null; $ap('estado').textContent = error.message; }
+}
+function render() {
+  if (!datosApertura) return;
+  const cliente = $ap('cliente').value, campania = $ap('campania').value, mes = $ap('mes').value;
+  const origen = campania ? datosApertura.campanias : datosApertura.filas;
+  const cuentas = new Map();
+  for (const fila of origen) {
+    if (cliente && claveApertura(fila.cliente) !== claveApertura(cliente)) continue;
+    if (campania && claveApertura(fila.campania) !== claveApertura(campania)) continue;
+    if (!cuentas.has(fila.cliente)) cuentas.set(fila.cliente, {});
+    cuentas.get(fila.cliente)[fila.mes.slice(-2)] = fila;
+  }
+  if (mes && !cliente) for (const [nombre, valores] of cuentas) if (!valores[mes]) cuentas.delete(nombre);
+  const nombres = ordenarClientes([...cuentas.keys()].filter(n => n !== 'TOTAL GENERAL'));
+  if (cuentas.has('TOTAL GENERAL')) nombres.push('TOTAL GENERAL');
+  const columnas = mes ? [mes] : mesesApertura.map((_,i) => String(i+1).padStart(2,'0'));
+  const claseMes = mes ? 'apertura-mes' : '';
+  const cantidad = nombres.filter(n => n !== 'TOTAL GENERAL').length;
+  $ap('estado').textContent = nombres.length ? `${cantidad} ${cantidad === 1 ? 'cliente' : 'clientes'} · ${mes ? nombreMes(mes) : 'Año completo'} ${$ap('year').value}` : 'Sin datos para los filtros seleccionados.';
+  $ap('ayudaPeriodo').textContent = mes ? '“Sin datos” indica que no hay registros para ese período.' : 'Deslizá horizontalmente para ver todos los meses. “Sin datos” indica que no hay registros.';
+  $ap('aperturas').innerHTML = nombres.map(nombre => {
+    const valores = cuentas.get(nombre), sinDatos = mes && !valores[mes];
+    const parcial = columnas.map(m => valores[m]?.fuente_parcial).find(Boolean);
+    const faltanteTotal = nombre === 'TOTAL GENERAL' && !campania && columnas.includes('08') && (datosApertura.recuperaciones || []).length;
+    const notaParcial = parcial ? `<div class="border-b border-amber-100 bg-amber-50 px-5 py-3 text-xs leading-relaxed text-amber-900"><strong>Agosto · dato parcial recuperado de una tabla dinámica guardada.</strong> ${escaparApertura(formatoApertura(parcial.horas_objetivo,false,true))} horas objetivo, ${escaparApertura(formatoApertura(parcial.horas_facturadas,false,true))} horas facturadas y $ ${escaparApertura(formatoApertura(parcial.total_facturado,false,true))} registrados. La hoja base actual no incluye el registro; falta el valor hora objetivo para calcular los desvíos. Este dato no integra el total general.</div>` : '';
+    const notaTotal = faltanteTotal ? '<div class="border-b border-amber-100 bg-amber-50 px-5 py-3 text-xs leading-relaxed text-amber-900">El total general de agosto no incluye el dato parcial recuperado de Assurant, porque no figura en la base de facturación actual.</div>' : '';
+    const encabezado = columnas.map(m => `<div class="apertura-val" role="columnheader">${escaparApertura(nombreMes(m).slice(0,3))}</div>`).join('');
+    const detalle = conceptosApertura.map(([campo,etiqueta,pct]) => `<div role="row" class="apertura-grid apertura-row ${claseMes} ${campo === 'total' ? 'apertura-total' : ''}"><div role="rowheader" class="apertura-label apertura-col-label">${escaparApertura(etiqueta)}</div>${columnas.map(m => {const valor=valores[m]?.[campo];return `<div role="cell" class="apertura-val ${valor != null && valor < 0 ? 'apertura-neg' : ''} ${valor == null ? 'apertura-empty' : ''}">${escaparApertura(formatoApertura(valor,pct,Boolean(valores[m])))}</div>`}).join('')}</div>`).join('');
+    return `<article class="apertura-card"><header class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4"><div><h2 class="font-bold text-slate-900">${escaparApertura(nombre)}</h2><p class="mt-1 text-xs text-slate-500">${campania ? escaparApertura(campania) : 'Todas las campañas'}</p></div>${parcial ? '<span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">Dato parcial recuperado</span>' : sinDatos ? '<span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">Sin registros en este mes</span>' : '<span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Apertura mensual</span>'}</header>${notaParcial}${notaTotal}<div class="apertura-scroll" role="table" aria-label="Apertura mensual de ${escaparApertura(nombre)}"><div role="row" class="apertura-grid apertura-heading ${claseMes}"><div role="columnheader" class="apertura-col-label">Concepto</div>${encabezado}</div>${detalle}</div></article>`;
+  }).join('');
+  actualizarDescarga();
+}
+$ap('year').addEventListener('change', cargar);
+$ap('cliente').addEventListener('change', () => {actualizarCampanias();render()});
+$ap('campania').addEventListener('change', render);
+$ap('mes').addEventListener('change', render);
+$ap('limpiar').addEventListener('click', () => {$ap('cliente').value='';$ap('mes').value='';actualizarCampanias();$ap('campania').value='';render()});
+document.addEventListener('DOMContentLoaded', cargar);
+</script>
+{% endblock %}

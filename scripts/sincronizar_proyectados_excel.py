@@ -26,8 +26,7 @@ from app.models import (
     _canonizar_campania,
     _canonizar_cliente,
 )
-from app.routes import (aplicar_calculo_proyeccion, calcular_dias_objetivo, fechas_feriadas_activas,
-                        normalizar_header, registrar_historial, site_original_next_gen, snapshot_proyeccion)
+from app.routes import normalizar_header, registrar_historial, site_original_next_gen, snapshot_proyeccion
 
 
 YEAR = int(os.getenv("APP_DEFAULT_YEAR", datetime.now().year))
@@ -35,8 +34,8 @@ YEAR = int(os.getenv("APP_DEFAULT_YEAR", datetime.now().year))
 # El libro publica estas aperturas con precio, pero su hoja Facturacion Horas
 # las deja expresamente en cero antes del primer mes con dotacion propia.
 SALIDAS_SIN_HERENCIA = {
-    ("piano referidos", f"{YEAR}-01"),
-    ("santander getnet supervisor exclusivo", f"{YEAR}-06"),
+    ("piano referidos", "2026-01"),
+    ("santander getnet supervisor exclusivo", "2026-06"),
 }
 
 
@@ -63,13 +62,23 @@ def identidad_canonica(cliente, campania):
     return cliente, _canonizar_campania(cliente, texto(campania))
 
 
-def claves_horas_auxiliares(workbook):
+def identidad_matriz(fila):
+    # Horas!SUMIFS cruza Matriz por BA (clave operativa), no por la columna D.
+    # Una misma campaña visible puede contener varias claves con precios propios.
+    operativa = fila[52] if len(fila) > 52 else None
+    return identidad_canonica(fila[2], operativa or fila[3])
+
+
+def claves_horas_auxiliares(workbook, workbook_valores=None):
     """Claves cuya K no es días × carga horaria × dotación."""
     if workbook is None:
         return set()
     claves = set()
+    filas_valores = (workbook_valores["Matriz"].iter_rows(min_row=3, values_only=True)
+                     if workbook_valores is not None else None)
     for row in workbook["Matriz"].iter_rows(min_row=3):
-        cliente, campania = identidad_canonica(row[2].value, row[3].value)
+        valores = next(filas_valores) if filas_valores is not None else [cell.value for cell in row]
+        cliente, campania = identidad_matriz(valores)
         clave_mes = mes(row[5].value)
         if not cliente or not campania or not clave_mes or not clave_mes.startswith(str(YEAR)):
             continue
@@ -139,12 +148,12 @@ def guardar_historial(entidad, clave, resumen, antes, despues):
     )
 
 
-def sincronizar_matriz(workbook, workbook_formulas=None):
+def sincronizar_matriz(workbook, workbook_formulas=None, reemplazar=False):
     sheet = workbook["Matriz"]
     grupos = defaultdict(list)
     nombres = {}
     for row in sheet.iter_rows(min_row=3, values_only=True):
-        cliente, campania = identidad_canonica(row[2], row[3])
+        cliente, campania = identidad_matriz(row)
         year, fecha = row[4], row[5]
         clave_mes = mes(fecha)
         # El período de la fila manda sobre la columna Año. El libro incluye,
@@ -160,13 +169,19 @@ def sincronizar_matriz(workbook, workbook_formulas=None):
         (normalizar_header(r.cliente), normalizar_header(r.campania), r.mes): r
         for r in ProyeccionMatriz.query.filter_by(year=YEAR).all()
     }
-    # La hoja Matriz no reemplaza las aperturas PLP mantenidas por la app.
-    # Se actualizan las claves presentes en el libro y se preservan las demás.
+    # Las aperturas PLP se mantienen por separado. En reemplazo integral se
+    # retiran las filas regulares que ya no aparecen en el libro del año.
     claves = sorted(set(grupos))
-    horas_auxiliares = claves_horas_auxiliares(workbook_formulas)
+    horas_auxiliares = claves_horas_auxiliares(workbook_formulas, workbook)
     fuentes_naturgy = jornadas_naturgy_auxiliares(workbook)
-    feriados = fechas_feriadas_activas(YEAR)
     antes, despues = [], []
+    if reemplazar:
+        for clave, registro in existentes.items():
+            if clave not in grupos and not registro.tipo_plp:
+                antes.append(snapshot_proyeccion(registro))
+                db.session.delete(registro)
+                despues.append(None)
+        db.session.flush()
     for clave in claves:
         registro = existentes.get(clave)
         filas = grupos.get(clave)
@@ -215,24 +230,10 @@ def sincronizar_matriz(workbook, workbook_formulas=None):
         ]
         for jornada in jornadas_origen:
             registro.jornadas.append(ProyeccionMatrizJornada(**jornada))
-        if registro.horas_carga_manual:
-            aplicar_calculo_proyeccion(registro, {
-                'cliente': cliente, 'campania': campania,
-                'horas_carga_manual': True,
-                'horas_requeridas_manual': total_requeridas,
-                'carga_semanal_plp': registro.carga_semanal,
-                'carga_horaria_plp': registro.carga_horaria,
-                'porcentaje_cumplimiento': registro.porcentaje_cumplimiento,
-            }, clave_mes, feriados)
-        elif jornadas_naturgy or any(
-            calcular_dias_objetivo(YEAR, int(clave_mes[-2:]), jornada.carga_semanal, feriados) != jornada.dias_objetivo
-            for jornada in registro.jornadas
-        ):
-            aplicar_calculo_proyeccion(registro, {
-                'cliente': cliente, 'campania': campania,
-                'jornadas': [jornada.to_dict() for jornada in registro.jornadas],
-                'porcentaje_cumplimiento': registro.porcentaje_cumplimiento,
-            }, clave_mes, feriados)
+        # Durante la importación el libro es la fuente de horas y cumplimiento.
+        # El calendario local puede tener feriados diferentes y no debe cambiar
+        # silenciosamente el resultado ya calculado en el archivo. Las jornadas
+        # se conservan para los recálculos posteriores solicitados por el usuario.
         db.session.flush()
         despues.append(snapshot_proyeccion(registro))
     guardar_historial("proyeccion_matriz", str(YEAR), f"Actualización integral Matriz {YEAR}: {len(grupos)} registros", antes, despues)
@@ -242,9 +243,14 @@ def sincronizar_matriz(workbook, workbook_formulas=None):
 def datos_tabla_mensual(sheet, fila_inicio=5):
     headers = list(next(sheet.iter_rows(min_row=4, max_row=4, values_only=True)))
     columnas = [(i, mes(v)) for i, v in enumerate(headers) if mes(v)]
+    # El libro vigente desplaza Site y Clave operativa en Precios. Localizar
+    # las columnas por encabezado evita interpretar Site como campaña.
+    nombres = [normalizar_header(valor) for valor in headers]
+    indice_site = nombres.index('site') if 'site' in nombres else 3
+    indice_campania = nombres.index('clave operativa') if 'clave operativa' in nombres else 4
     for row in sheet.iter_rows(min_row=fila_inicio, values_only=True):
-        cuenta, campania = identidad_canonica(row[2], row[4])
-        site = texto(row[3])
+        cuenta, campania = identidad_canonica(row[2], row[indice_campania])
+        site = texto(row[indice_site])
         if not cuenta or not campania:
             continue
         yield cuenta, site, campania, row, columnas
@@ -256,6 +262,33 @@ def sincronizar_precios_y_fijos(workbook):
         for index, clave_mes in columnas:
             if clave_mes.startswith(str(YEAR)) and row[index] not in (None, ""):
                 deseados[(cliente, campania, clave_mes)] = {"site": site, "precio": numero(row[index]), "fijo": 0}
+
+    # El libro enlaza la campaña de Matriz (G en Facturacion Horas) con una
+    # clave operativa de precio (E). Conservar esa relación evita aplicar a
+    # todas las campañas el primer precio encontrado para la cuenta.
+    aperturas = defaultdict(set)
+    for fila in workbook['Facturacion Horas'].iter_rows(min_row=5, values_only=True):
+        cuenta, operativa = identidad_canonica(fila[2], fila[4])
+        _, servicio = identidad_canonica(cuenta, fila[6])
+        if cuenta and operativa and servicio:
+            aperturas[(normalizar_header(cuenta), normalizar_header(servicio))].add(normalizar_header(operativa))
+    matriz = set()
+    for fila in workbook['Matriz'].iter_rows(min_row=3, values_only=True):
+        cliente, servicio = identidad_matriz(fila)
+        clave_mes = mes(fila[5])
+        if cliente and servicio and clave_mes and clave_mes.startswith(str(YEAR)):
+            matriz.add((cliente, servicio, clave_mes))
+    precios_originales = dict(deseados)
+    por_clave = {(normalizar_header(c), normalizar_header(s), m): data
+                 for (c, s, m), data in precios_originales.items()}
+    for cliente, servicio, clave_mes in matriz:
+        clave = (cliente, servicio, clave_mes)
+        operaciones = aperturas.get((normalizar_header(cliente), normalizar_header(servicio)), set())
+        if clave in deseados or len(operaciones) != 1:
+            continue
+        fuente = por_clave.get((normalizar_header(cliente), next(iter(operaciones)), clave_mes))
+        if fuente is not None:
+            deseados[clave] = {**fuente, 'fijo': 0}
 
     precios_por_campania = defaultdict(list)
     precios_por_cliente = defaultdict(list)
@@ -320,6 +353,16 @@ def sincronizar_identidades(workbook):
     canonicas = defaultdict(set)
     for cuenta, site, campania, _row, _columnas in datos_tabla_mensual(workbook["Precios"]):
         canonicas[normalizar_header(campania)].add((cuenta, site))
+    # La salida del libro también publica la correspondencia explícita entre
+    # campaña (G) y cuenta (C), aunque la clave operativa de Precios sea otra.
+    por_cuenta = defaultdict(set)
+    for row in workbook["Facturacion Horas"].iter_rows(min_row=5, values_only=True):
+        cuenta, campania = identidad_canonica(row[2], row[6])
+        site = texto(row[3])
+        if cuenta:
+            por_cuenta[normalizar_header(cuenta)].add((cuenta, site))
+        if cuenta and campania:
+            canonicas[normalizar_header(campania)].add((cuenta, site))
 
     existentes = {
         (normalizar_header(r.cliente), normalizar_header(r.campania)): r
@@ -330,13 +373,16 @@ def sincronizar_identidades(workbook):
     proyecciones = ProyeccionMatriz.query.filter(
         ProyeccionMatriz.year == YEAR,
         db.or_(ProyeccionMatriz.tipo_plp.is_(None), ProyeccionMatriz.tipo_plp == ""),
-    ).all()
+    ).all() + ProyeccionPrecio.query.filter_by(year=YEAR).all()
     for proyeccion in proyecciones:
         destinos = canonicas.get(normalizar_header(proyeccion.campania), set())
+        if not destinos:
+            destinos = por_cuenta.get(normalizar_header(proyeccion.cliente), set())
         if len(destinos) != 1:
             continue
         cuenta, site = next(iter(destinos))
-        if normalizar_header(proyeccion.cliente) == normalizar_header(cuenta):
+        if (normalizar_header(proyeccion.cliente) == normalizar_header(cuenta)
+                and normalizar_header(proyeccion.campania) == normalizar_header(cuenta)):
             continue
         clave = (normalizar_header(proyeccion.cliente), normalizar_header(proyeccion.campania))
         if clave in procesadas:
@@ -428,7 +474,9 @@ def sincronizar_next_gen(workbook):
     salida = workbook["Next Gen"]
     activos = set()
     for row in salida.iter_rows(min_row=5, values_only=True):
-        campania = texto(row[2])
+        # Valores Next Gen se cruza por la clave operativa (columna E), no
+        # por la cuenta visible (columna C), que puede tener otra grafía.
+        _, campania = identidad_canonica(row[4], row[4])
         if not campania:
             continue
         for indice_mes, clave_mes in enumerate((f"{YEAR}-{m:02d}" for m in range(1, 13)), start=7):
@@ -441,21 +489,16 @@ def sincronizar_next_gen(workbook):
         # sin clave allí son auxiliares y no participan, aunque E tenga nombre.
         if not campania or not producto:
             continue
-        cliente = campania
+        cliente, campania = identidad_canonica(campania, campania)
         for index, clave_mes in columnas:
             if (normalizar_header(campania), clave_mes) in activos and row[index] not in (None, ""):
                 productos_crudos.setdefault((cliente, campania, producto, clave_mes), numero(row[index]))
     existentes_p = {(r.cliente, r.campania, r.producto, r.mes): r for r in NextGenProducto.query.filter_by(year=YEAR).all()}
-    existentes_por_producto = {
-        (normalizar_header(r.producto), r.mes): (r.cliente, r.campania, r.producto, r.mes)
-        for r in existentes_p.values()
-    }
     productos = {}
     for clave, valor in productos_crudos.items():
-        clave_existente = existentes_por_producto.get((normalizar_header(clave[2]), clave[3]))
         # Replica la primera coincidencia de VLOOKUP cuando el producto aparece
         # duplicado (caso CONSUMER SANTANDER).
-        productos.setdefault(clave_existente or clave, valor)
+        productos.setdefault(clave, valor)
     importes_resumen = defaultdict(float)
     resumen = workbook["RESUMEN"]
     for row in resumen.iter_rows(min_row=5, values_only=True):
@@ -506,6 +549,7 @@ def main():
     parser.add_argument("archivo")
     parser.add_argument("--year", type=int, default=int(os.getenv("APP_DEFAULT_YEAR", datetime.now().year)))
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--replace-matriz", action="store_true", help="Reemplaza las aperturas regulares del año con las del libro")
     parser.add_argument(
         "--section",
         choices=("all", "matriz", "precios", "identidades", "variables", "tarifacion", "next_gen"),
@@ -514,15 +558,15 @@ def main():
     args = parser.parse_args()
     YEAR = args.year
     SALIDAS_SIN_HERENCIA = {
-        ("piano referidos", f"{YEAR}-01"),
-        ("santander getnet supervisor exclusivo", f"{YEAR}-06"),
+        ("piano referidos", "2026-01"),
+        ("santander getnet supervisor exclusivo", "2026-06"),
     }
     workbook = openpyxl.load_workbook(args.archivo, data_only=True, read_only=True)
     workbook_formulas = openpyxl.load_workbook(args.archivo, data_only=False, read_only=True)
     app = create_app()
     with app.test_request_context("/sincronizacion-proyectados"):
         tareas = {
-            "matriz": lambda libro: sincronizar_matriz(libro, workbook_formulas),
+            "matriz": lambda libro: sincronizar_matriz(libro, workbook_formulas, reemplazar=args.replace_matriz),
             "precios": sincronizar_precios_y_fijos,
             "identidades": sincronizar_identidades,
             "variables": sincronizar_variables,

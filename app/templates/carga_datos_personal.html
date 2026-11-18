@@ -28,6 +28,7 @@
         <section class="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-950">
             <div class="font-bold"><i class="fas fa-circle-info mr-2"></i>Formato de Proforma</div>
             <p class="mt-1">Se importan las 16 columnas originales, desde <strong>FDV</strong> hasta <strong>TOTAL_PROYECCION</strong>. Los valores cero son válidos. K y M se respetan como porcentajes separados y <strong>BONO TOTAL (K + M)</strong> los suma: por ejemplo, 5% + 0,5% = 5,5%. Después de cargar la configuración inicial, cada Proforma actualiza automáticamente las otras cinco pestañas.</p>
+            <p class="mt-2">La Definitiva reemplaza la Proyectada del mismo <strong>tipo y período</strong>. Una Proyectada no puede reemplazar una Definitiva. En cada carga incluí todas las filas que deban conservarse para ese lote.</p>
         </section>
 
         <section class="rounded-xl border border-indigo-200 bg-white shadow-sm">
@@ -104,10 +105,11 @@
                 <div class="max-w-3xl">
                     <p class="text-xs font-bold uppercase tracking-wide text-emerald-700">Proforma definitiva</p>
                     <h2 class="mt-1 text-xl font-bold text-emerald-950">Importar cierre de tráfico</h2>
-                    <p class="mt-1 text-sm text-emerald-800">Puede cargar el cierre antes o después de la Proforma. Queda guardado por período y, cuando importe la Proforma como Definitiva, se cruzan automáticamente campaña y tipo de hora. Una nueva carga del mismo período reemplaza la anterior.</p>
+                    <p class="mt-1 text-sm text-emerald-800">Puede cargar el cierre antes o después de la Proforma. Se cruza automáticamente por campaña y tipo de hora. Una nueva carga reemplaza el cierre del mismo período y tipo, y conserva los demás grupos.</p>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <select id="versionCierreTraficoPersonal" onchange="cargarCierresTraficoPersonal()" class="h-10 min-w-[220px] rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Sin configuración</option></select>
+                    <select id="tipoCierreTraficoPersonal" aria-label="Tipo de proforma del cierre" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Seleccione tipo</option><option value="Masivo">Masivo</option><option value="Personal Pay">Personal Pay</option><option value="Soporte">Soporte</option></select>
                     <input id="archivoCierreTraficoPersonal" type="file" accept=".xlsx" class="block max-w-sm rounded border border-slate-300 bg-white text-sm file:mr-3 file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:font-semibold file:text-emerald-800">
                     <button id="importarCierreTraficoBtn" type="button" onclick="importarCierreTraficoPersonal()" class="h-10 whitespace-nowrap rounded bg-emerald-600 px-5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"><i class="fas fa-file-circle-check mr-2"></i>Cargar cierre</button>
                 </div>
@@ -211,7 +213,7 @@
             <div class="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4">
                 <span id="estadoPasoSeguimiento" class="text-sm text-slate-600"></span>
                 <label id="periodoFinalSeguimiento" class="hidden px-3 text-sm">Período a publicar
-                    <select id="periodoPublicacionPersonal" onchange="periodoTrabajoSeguimiento = this.value" class="ml-2 rounded border border-slate-300 bg-white px-3 py-2"></select>
+                    <select id="periodoPublicacionPersonal" onchange="periodoTrabajoSeguimiento = this.value; actualizarImpactoFinalPersonal()" class="ml-2 rounded border border-slate-300 bg-white px-3 py-2"></select>
                 </label>
                 <button id="siguientePasoSeguimiento" type="button" onclick="irSiguientePasoSeguimiento()" class="rounded bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-indigo-700">Continuar</button>
             </div>
@@ -309,6 +311,7 @@ let periodosProformaSeguimiento = [];
 let periodosDefinitivosAuxiliarSeguimiento = [];
 let cierresAuxiliarSeguimiento = [];
 let validacionesDashboardSeguimiento = {};
+let impactoDashboardSeguimiento = {};
 const cambiosHorasAuxiliarSeguimiento = new Map();
 const cambiosAuxNormalizacionSeguimiento = new Map();
 let paginaHojaSeguimiento = 1;
@@ -436,7 +439,7 @@ function seleccionarPestanaCargaPersonal(clave) {
 
 function mostrarMensajeSeguimiento(texto, tipo = 'error') {
     const mensaje = document.getElementById('mensajeSeguimientoPersonal');
-    mensaje.className = `mx-5 mb-5 rounded-lg border p-3 text-sm ${tipo === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`;
+    mensaje.className = `mx-5 mb-5 rounded-lg border p-3 text-sm ${tipo === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : tipo === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-rose-200 bg-rose-50 text-rose-800'}`;
     mensaje.textContent = texto;
 }
 
@@ -450,7 +453,9 @@ function mostrarMensajeCierreTrafico(texto, tipo = 'error') {
 async function importarCierreTraficoPersonal() {
     const input = document.getElementById('archivoCierreTraficoPersonal');
     const importacionId = document.getElementById('versionCierreTraficoPersonal').value;
+    const tipoProforma = document.getElementById('tipoCierreTraficoPersonal').value;
     if (!importacionId) return mostrarMensajeCierreTrafico('Primero cargue o seleccione la configuración de seguimiento Personal.');
+    if (!tipoProforma) return mostrarMensajeCierreTrafico('Seleccione el tipo de Proforma al que corresponde el cierre.');
     if (!input.files.length) return mostrarMensajeCierreTrafico('Seleccione el archivo Excel de cierre de tráfico.');
     const boton = document.getElementById('importarCierreTraficoBtn');
     const contenidoAnterior = boton.innerHTML;
@@ -459,6 +464,7 @@ async function importarCierreTraficoPersonal() {
     try {
         const formulario = new FormData();
         formulario.append('importacion_id', importacionId);
+        formulario.append('tipo_proforma', tipoProforma);
         formulario.append('archivo', input.files[0]);
         const response = await fetch('/api/seguimiento-personal/cierre-trafico/importar', {
             method: 'POST', credentials: 'same-origin', body: formulario,
@@ -576,6 +582,7 @@ async function cargarHojaSeguimiento() {
         periodosDefinitivosAuxiliarSeguimiento = data.periodos_definitivos_auxiliar || [];
         cierresAuxiliarSeguimiento = data.cierres_auxiliar || [];
         validacionesDashboardSeguimiento = data.validaciones_dashboard || {};
+        impactoDashboardSeguimiento = data.impacto_dashboard || {};
         paginaHojaSeguimiento = 1;
         const detalle = document.getElementById('detalleHojaSeguimiento');
         const alertas = document.getElementById('alertasHojaSeguimiento');
@@ -1114,14 +1121,30 @@ function renderHojaSeguimiento() {
         selector.value = periodos.includes(periodoTrabajoSeguimiento) ? periodoTrabajoSeguimiento : '';
     }
     document.getElementById('estadoPasoSeguimiento').textContent = esUltimoPaso
-        ? 'Al finalizar se guardan los cambios y se publica el mes completo de Personal, reemplazando su versión anterior en el dashboard.'
+        ? 'Al finalizar se guardan los cambios y se publican los tipos de Proforma cargados para el mes, conservando los demás grupos.'
         : 'Revisá los totales filtrados antes de continuar.';
+    if (esUltimoPaso) actualizarImpactoFinalPersonal();
     boton.textContent = esUltimoPaso ? 'Finalizar y pasar al dashboard' : `Continuar a ${configuracionHojasSeguimiento[config.siguiente].nombre}`;
     boton.disabled = publicandoDashboardPersonal;
     boton.classList.toggle('hidden', !config.siguiente);
     actualizarBotonCambiosHorasAuxiliar();
     actualizarBotonCambiosAuxNormalizacion();
     actualizarPanelPublicacionDashboardPersonal(filas);
+}
+
+function textoImpactoDashboardPersonal(periodo) {
+    const impacto = impactoDashboardSeguimiento[String(periodo || '').replace(/\D/g, '')];
+    if (!impacto) return '';
+    const estados = impacto.estados.length ? ` (${impacto.estados.join(' / ')})` : '';
+    const faltantes = impacto.grupos_ausentes.length
+        ? ` Se conservan los demás grupos: ${impacto.grupos_ausentes.join(', ')}.` : '';
+    return `Se publicarán ${impacto.filas_nuevas} filas${estados} y se reemplazarán ${impacto.filas_actuales} filas actuales de los tipos cargados.${faltantes}`;
+}
+
+function actualizarImpactoFinalPersonal() {
+    const periodo = document.getElementById('periodoPublicacionPersonal')?.value;
+    const impacto = textoImpactoDashboardPersonal(periodo);
+    if (impacto) document.getElementById('estadoPasoSeguimiento').textContent = impacto;
 }
 
 function actualizarPanelPublicacionDashboardPersonal(filas = []) {
@@ -1137,15 +1160,14 @@ function actualizarPanelPublicacionDashboardPersonal(filas = []) {
     const errores = periodo ? (validacionesDashboardSeguimiento[periodo.replace('-', '')] || []) : [];
     boton.disabled = !periodo || !filas.length || errores.length > 0;
     if (!periodo) {
-        detalle.textContent = 'Seleccione un período para publicar exactamente los totales previsualizados.';
+        detalle.textContent = 'Seleccione un período para ver el impacto. Se publica todo el mes, aunque haya filtros activos.';
         return;
     }
     if (errores.length) {
         detalle.textContent = `${formatoVistaSeguimiento(periodo, 'fecha')}: faltan ${errores.length} campaña(s) por completar en el Auxiliar. ${errores[0]}`;
         return;
     }
-    const estados = [...new Set(filas.map(fila => String(fila.valores[4] || '')).filter(Boolean))];
-    detalle.textContent = `${formatoVistaSeguimiento(periodo, 'fecha')}: ${filas.length.toLocaleString('es-AR')} filas ${estados.length ? `(${estados.join(' / ')})` : ''}. Al publicar, este mes completo de Personal reemplaza la versión anterior.`;
+    detalle.textContent = `${formatoVistaSeguimiento(periodo, 'fecha')}: ${textoImpactoDashboardPersonal(periodo)} Los filtros no limitan la publicación.`;
 }
 
 async function publicarSeguimientoPersonalDashboard(periodoElegido) {
@@ -1263,7 +1285,7 @@ function actualizarAvisoTipoProforma() {
     const estado = document.getElementById('estadoProformaPersonal').value;
     const aviso = document.getElementById('avisoTipoProforma');
     aviso.innerHTML = tipo && estado
-        ? `<strong>${escaparPersonal(tipo)} · ${escaparPersonal(estado)}:</strong> el mismo tipo y período se reemplazará completo. ${estado === 'Definitiva' ? 'Después podrá cargar el cierre de tráfico; si ya existía uno del mismo período, podrá reemplazarlo.' : 'Esta versión no utilizará datos del cierre de tráfico.'}`
+        ? `<strong>${escaparPersonal(tipo)} · ${escaparPersonal(estado)}:</strong> el mismo tipo y período se reemplazará completo. ${estado === 'Definitiva' ? 'El dashboard se actualizará automáticamente cuando el cierre y los datos necesarios estén completos; los demás grupos se conservan.' : 'Esta versión no utilizará datos del cierre de tráfico.'}`
         : 'Seleccione el tipo y el estado de la Proforma para identificar el lote que se cargará.';
 }
 
@@ -1367,7 +1389,7 @@ async function importarProformaPersonal() {
             mostrarDiagnosticoProforma(data, response.status);
             return;
         }
-        mostrarMensajeProforma(data.mensaje, 'success');
+        mostrarMensajeProforma(data.mensaje, (data.dashboard || []).some(item => item.estado === 'pendiente') ? 'warning' : 'success');
         input.value = '';
         await cargarProformaPersonal();
         if (data.periodos?.length === 1) {

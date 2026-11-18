@@ -15,7 +15,7 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 from app import create_app  # noqa: E402
-from app.models import ProyeccionMatriz  # noqa: E402
+from app.models import ProyeccionMatriz, _clave_nombre  # noqa: E402
 from app.routes import (  # noqa: E402
     construir_resumen_proyeccion_data,
     normalizar_header,
@@ -34,6 +34,9 @@ def clave_cuenta(valor: object) -> str:
     clave = normalizar_nombre_variable(valor)
     if clave.endswith(" nocturnidad"):
         clave = clave[: -len(" nocturnidad")]
+    # El propio libro vincula la cuenta BIBANK con la clave operativa BI BANK.
+    if clave in ('bi bank', 'bibank'):
+        return 'bibank'
     return clave
 
 
@@ -93,7 +96,7 @@ def datos_personal_app(year: int):
         ProyeccionMatriz.tipo_plp != "",
     ).all()
     for fila in filas:
-        clave = (normalizar_header(fila.tipo_plp), normalizar_header(fila.campania), fila.mes)
+        clave = (normalizar_header(fila.tipo_plp), _clave_nombre(str(fila.campania or '')), fila.mes)
         salida[clave] += float(fila.horas_requeridas or 0)
     return salida
 
@@ -107,13 +110,13 @@ def datos_personal_excel(workbook, year: int):
             continue
         if not isinstance(horas, (int, float)):
             continue
-        clave = (normalizar_header(tipo), normalizar_header(campania), fecha.strftime("%Y-%m"))
+        clave = (normalizar_header(tipo), _clave_nombre(str(campania)), fecha.strftime("%Y-%m"))
         salida[clave] += float(horas)
     return salida
 
 
 def formula_bi_bank_ausente(workbook, componente, cuenta, mes, app, excel) -> bool:
-    if componente != "Next Gen" or cuenta != "bi bank" or mes < "2026-03" or not app or excel:
+    if componente != "Next Gen" or cuenta not in ("bi bank", "bibank") or not mes.startswith("2026-") or mes < "2026-03" or not app or excel:
         return False
     columna = int(mes[-2:]) + 7  # enero H=8
     return workbook["Next Gen"].cell(8, columna).value in (None, "")

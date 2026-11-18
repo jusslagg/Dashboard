@@ -97,6 +97,21 @@ with app.app_context(), app.test_client() as client:
     )
     assert respuesta_pendiente.status_code == 200
     assert respuesta_pendiente.get_json()['aplicado'] is False
+    otro_libro = Workbook()
+    otra_hoja = otro_libro.active
+    otra_hoja.append(list(ENCABEZADOS_PROFORMA_PERSONAL))
+    otra_hoja.append(['FDV', 202608, 'MASIVO', 'CAT', 'Ventas', '', 'Diurnas',
+                      50, 1, 50, 0, 0, 0, 0, 0, 50])
+    otro_archivo = io.BytesIO()
+    otro_libro.save(otro_archivo)
+    otro_archivo.seek(0)
+    otro_tipo = client.post('/api/proforma-personal/importar', headers=headers, data={
+        'tipo_proforma': 'Masivo', 'estado_proforma': 'Definitiva',
+        'archivo': (otro_archivo, 'masivo_definitivo.xlsx'),
+    })
+    assert otro_tipo.status_code == 200, otro_tipo.get_data(as_text=True)
+    paquete_pendiente = json.loads(zlib.decompress(configuracion.contenido_hojas))
+    assert paquete_pendiente['cierres_trafico_importados'][0]['estado'] == 'Pendiente de Proforma definitiva'
     respuesta = client.post(
         '/api/proforma-personal/importar', headers=headers,
         data={'tipo_proforma': 'Soporte', 'estado_proforma': 'Definitiva',

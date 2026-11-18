@@ -157,7 +157,7 @@ def crear_exportacion_proyectados(year):
                 for cell in row:
                     out = target.cell(cell.row, cell.column, cell.value)
                     if isinstance(cell.value, str):
-                        out.data_type = 's'
+                        out.data_type = cell.data_type
                     if cell.has_style:
                         out.font = copy(cell.font)
                         out.fill = copy(cell.fill)
@@ -174,7 +174,12 @@ def crear_exportacion_proyectados(year):
             target.freeze_panes = original.freeze_panes
             target.auto_filter = copy(original.auto_filter)
 
-    append_sheets(existing_export(r.exportar_resumen_proyeccion), ['Facturación horas'])
+    resumen_exportado = existing_export(r.exportar_resumen_proyeccion)
+    append_sheets(resumen_exportado, ['Facturación horas'])
+    # Mantiene disponible también el nombre de hoja del archivo de origen para
+    # controles externos que referencian explícitamente «RESUMEN».
+    append_sheets(resumen_exportado, ['RESUMEN'])
+    append_sheets(existing_export(r.exportar_unificado), ['Unificado'])
     variables = data(r.api_variables)['filas']
     for estimation in (False, True):
         rows = []

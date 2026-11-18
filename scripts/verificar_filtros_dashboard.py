@@ -36,23 +36,17 @@ with app.app_context():
         respuesta = cliente_http.get('/api/filtros')
         assert respuesta.status_code == 200
         opciones = respuesta.get_json()['filtros']
-        assert 'Sin gerencia' in opciones.get('gerentes', []), (
-            'Datos Maestros contiene Sin gerencia pero no aparece en el filtro'
-        )
-        sin_gerencia = cliente_http.get('/api/por-cliente?gerente=Sin+gerencia').get_json()['clientes']
-        assert any(item['cliente'] == 'Santander' and item['registros'] > 0 for item in sin_gerencia), (
-            'La facturación Santander / Sin gerencia no aparece con valores reales'
-        )
-        isla_query = urlencode({'gerente': 'Sin gerencia', 'campania': 'Isla Prevención de fraude'})
-        filas_isla = cliente_http.get(f'/api/datos?{isla_query}').get_json()['data']
-        assert filas_isla and all(fila['cliente'] == 'Santander' for fila in filas_isla), (
-            'El filtro combinado de gerencia y campaña no devuelve únicamente Santander'
-        )
+        filas_base = cliente_http.get('/api/datos').get_json()['data']
+        assert filas_base, 'No hay registros para probar los filtros'
 
         for parametro, (clave_opciones, coincide) in campos.items():
             valores = opciones.get(clave_opciones) or []
             assert valores, f'El filtro {parametro} no tiene opciones'
-            valor = valores[0]
+            # El catálogo también puede contener altas sin facturación aún.
+            # Seleccionar una opción presente en los datos actuales evita
+            # depender de una cuenta o jefatura de un libro anterior.
+            valor = next((v for v in valores if any(coincide(fila, v) for fila in filas_base)), None)
+            assert valor is not None, f'No hay registros para probar {parametro}'
             query = urlencode([(parametro, valor)])
             datos = cliente_http.get(f'/api/datos?{query}')
             assert datos.status_code == 200

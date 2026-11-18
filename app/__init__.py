@@ -515,6 +515,7 @@ def ensure_schema():
     columns = {column['name'] for column in inspector.get_columns('facturacion_anio')}
     missing_columns = {
         'gerente': 'ALTER TABLE facturacion_anio ADD COLUMN gerente VARCHAR(100)',
+        'mes_apertura_origen': 'ALTER TABLE facturacion_anio ADD COLUMN mes_apertura_origen VARCHAR(7)',
         'jefe_site': 'ALTER TABLE facturacion_anio ADD COLUMN jefe_site VARCHAR(100)',
         'campania': 'ALTER TABLE facturacion_anio ADD COLUMN campania VARCHAR(100)',
         'subcampania': 'ALTER TABLE facturacion_anio ADD COLUMN subcampania VARCHAR(100)',
@@ -530,6 +531,7 @@ def ensure_schema():
         'control_penalizaciones_bonos': 'ALTER TABLE facturacion_anio ADD COLUMN control_penalizaciones_bonos NUMERIC(18,2)',
         'control_total_facturado': 'ALTER TABLE facturacion_anio ADD COLUMN control_total_facturado NUMERIC(18,2)',
         'control_objetivo_total': 'ALTER TABLE facturacion_anio ADD COLUMN control_objetivo_total NUMERIC(18,2)',
+        'control_objetivo_horas': 'ALTER TABLE facturacion_anio ADD COLUMN control_objetivo_horas NUMERIC(24,10)',
         'importe_fijo': 'ALTER TABLE facturacion_anio ADD COLUMN importe_fijo NUMERIC(18,2)',
         'variable_objetivo': 'ALTER TABLE facturacion_anio ADD COLUMN variable_objetivo NUMERIC(18,2) DEFAULT 0',
         'variable_productivo': 'ALTER TABLE facturacion_anio ADD COLUMN variable_productivo NUMERIC(18,2) DEFAULT 0',

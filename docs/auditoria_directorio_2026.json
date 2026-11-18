@@ -1,0 +1,224 @@
+{
+  "archivo": "2026 Facturacion V2 (2).xlsx",
+  "apertura_valores_comparados": 2240,
+  "apertura_diferencias": 0,
+  "registros_con_mes_distinto": [
+    {
+      "fila_excel": 837,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "MIXTO CAT ESTABLES"
+    },
+    {
+      "fila_excel": 838,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "MIXTO CAT ESTABLES"
+    },
+    {
+      "fila_excel": 839,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "MIXTO CAT INGRESOS"
+    },
+    {
+      "fila_excel": 840,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "MIXTO CAT INGRESOS"
+    },
+    {
+      "fila_excel": 841,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "MIXTO CAT INGRESOS"
+    },
+    {
+      "fila_excel": 842,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER MIXTO GETNET"
+    },
+    {
+      "fila_excel": 843,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER MIXTO GETNET"
+    },
+    {
+      "fila_excel": 844,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER CHAT"
+    },
+    {
+      "fila_excel": 845,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER CHAT REDES"
+    },
+    {
+      "fila_excel": 846,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER CHAT REDES"
+    },
+    {
+      "fila_excel": 847,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER RETENCIONES"
+    },
+    {
+      "fila_excel": 848,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER RETENCIONES"
+    },
+    {
+      "fila_excel": 849,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER RETENCIONES MIXTO SL"
+    },
+    {
+      "fila_excel": 850,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER RETENCIONES MIXTO SL"
+    },
+    {
+      "fila_excel": 851,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER ISLA PREVENCION DE FRAUDES"
+    },
+    {
+      "fila_excel": 852,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER ISLA PREVENCION DE FRAUDES"
+    },
+    {
+      "fila_excel": 853,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER ISLA PREVENCION DE FRAUDES"
+    },
+    {
+      "fila_excel": 854,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER CONSUMER"
+    },
+    {
+      "fila_excel": 855,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "AGRUPADOR ONBOARDING"
+    },
+    {
+      "fila_excel": 856,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "ADQUIRENCIA ONBOARDING"
+    },
+    {
+      "fila_excel": 857,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "GOLD ANALISTA VIP"
+    },
+    {
+      "fila_excel": 858,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "ESTANDAR"
+    },
+    {
+      "fila_excel": 859,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "ESTANDAR"
+    },
+    {
+      "fila_excel": 860,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "ESTANDAR"
+    },
+    {
+      "fila_excel": 861,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "ADQUIRENCIA GOLD"
+    },
+    {
+      "fila_excel": 862,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "ADQUIRENCIA GOLD"
+    },
+    {
+      "fila_excel": 863,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "ADQUIRENCIA GOLD"
+    },
+    {
+      "fila_excel": 864,
+      "mes_texto": "Marzo",
+      "mes_fecha": "2026-04",
+      "cliente": "SANTANDER",
+      "servicio": "SANTANDER SEGUROS"
+    },
+    {
+      "fila_excel": 1605,
+      "mes_texto": "Agosto",
+      "mes_fecha": "2026-07",
+      "cliente": "SANTANDER",
+      "servicio": "SUPERVISOR EXCLUSIVO"
+    }
+  ],
+  "dashboard_operativo": {
+    "claves_archivo_2026": 913,
+    "claves_base_2026": 726,
+    "claves_compartidas": 698,
+    "solo_archivo": 215,
+    "solo_base": 28
+  },
+  "historico": {
+    "claves_archivo_2026": 308,
+    "claves_base_2026": 246,
+    "claves_compartidas": 246,
+    "solo_archivo": 62,
+    "horas_requeridas_diferentes_en_compartidas": 7
+  }
+}

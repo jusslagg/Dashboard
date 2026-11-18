@@ -154,9 +154,10 @@
             <thead class="sticky top-0 z-20 bg-slate-100 text-slate-900">
                 <tr id="theadTotalCat" class="bg-slate-700 font-bold text-white"></tr>
                 <tr>
-                    <th class="sticky left-0 z-30 w-[220px] min-w-[220px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-right font-semibold">Concepto</th>
-                    <th class="sticky left-[220px] z-30 w-[260px] min-w-[260px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-center font-semibold">Campaña</th>
-                    <th class="w-[150px] min-w-[150px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3 text-right font-semibold">Total anual</th>
+                    <th class="min-w-[210px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-left font-semibold">Gerencia</th>
+                    <th class="min-w-[220px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-right font-semibold">Concepto</th>
+                    <th class="min-w-[260px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-center font-semibold">Campaña</th>
+                    <th id="colYearResumen" class="w-[150px] min-w-[150px] border-b border-r border-blue-200 bg-blue-100 px-3 py-3 text-right font-semibold">{{ anio_actual }}</th>
                     <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Enero</th>
                     <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Febrero</th>
                     <th class="w-[135px] min-w-[135px] border-b border-r border-slate-200 px-3 py-3 text-right font-semibold">Marzo</th>
@@ -173,7 +174,7 @@
             </thead>
             <tbody id="tbodyResumen">
                 <tr>
-                    <td colspan="15" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                    <td colspan="16" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
                 </tr>
             </tbody>
         </table>
@@ -207,7 +208,8 @@ async function cargarResumen() {
     }
     meses = data.meses || [];
     filas = data.filas_resumen || [];
-    totalGeneral = data.total_general || { meses: {}, total: 0 };
+    totalGeneral = filas.find(item => item.tipo === 'total_cat') || data.total_general || { meses: {}, total: 0 };
+    document.getElementById('colYearResumen').textContent = year;
     gruposFiltro = data.grupos_filtro || [];
     if (!gruposFiltro.some(grupo => grupo.nombre === grupoSeleccionado)) grupoSeleccionado = '';
     popularFiltros();
@@ -223,7 +225,7 @@ function descargarResumen() {
 function setLoadingState() {
     document.getElementById('contadorResumen').textContent = 'Cargando...';
     document.getElementById('subtituloTabla').textContent = 'Cargando datos...';
-    document.getElementById('tbodyResumen').innerHTML = '<tr><td colspan="17" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td></tr>';
+    document.getElementById('tbodyResumen').innerHTML = '<tr><td colspan="16" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td></tr>';
     document.getElementById('monthlyEvolution').innerHTML = '<div class="flex h-full items-center justify-center text-sm text-slate-500">Cargando evolución...</div>';
     document.getElementById('insightCards').innerHTML = '';
 }
@@ -377,7 +379,13 @@ function colorGrupo(indice) {
 }
 
 function calcularTotal(filasBase) {
-    const componentes = filasBase.filter(item => item.tipo === 'concepto');
+    const cce = filasBase.some(item => item.campania === 'SANTANDER CCE');
+    const componentes = filasBase.filter(item => item.tipo === 'concepto' &&
+        !(item.incluido && item.fila_excel >= 233 && item.fila_excel <= 237 && cce));
+    // El libro contiene una campaña de solo total (SANTANDER LEADS).
+    const totalesSinDetalle = filasBase.filter(item => item.tipo === 'total_campania' &&
+        !filasBase.some(fila => fila.tipo === 'concepto' && fila.campania === item.campania));
+    componentes.push(...totalesSinDetalle);
     return {
         total: componentes.reduce((sum, item) => sum + Number(item.total || 0), 0),
         meses: Object.fromEntries(meses.map(mes => [
@@ -392,7 +400,7 @@ function renderResumen() {
     const filtradas = obtenerFilasFiltradas();
     const filaCat = filas.find(item => item.tipo === 'total_cat');
     document.getElementById('theadTotalCat').innerHTML = filaCat ? `
-        <th></th><th class="px-3 py-1 text-center">TOTAL CAT</th>
+        <th></th><th></th><th class="px-3 py-1 text-center">TOTAL CAT</th>
         <th class="px-3 py-1 text-right">${formatCurrency(filaCat.total)}</th>
         ${meses.map(mes => `<th class="px-3 py-1 text-right">${formatCurrency(filaCat.meses[mes.value])}</th>`).join('')}
     ` : '';
@@ -417,7 +425,7 @@ function renderResumen() {
     renderInsights(totalFiltrado, stats, detallesFiltrados.length);
 
     if (!filtradas.length) {
-        tbody.innerHTML = '<tr><td colspan="15" class="px-4 py-8 text-center text-gray-500">No hay datos para el resumen</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="px-4 py-8 text-center text-gray-500">No hay datos para el resumen</td></tr>';
         crearIconos();
         return;
     }
@@ -527,14 +535,15 @@ function insightCard(title, subtitle, value, icon, tone) {
 }
 
 function renderFila(item, index) {
-    const esTotal = ['total_campania', 'total_grupo', 'total_cat'].includes(item.tipo);
+    const esTotal = ['total_campania', 'total_grupo', 'total_cat', 'total_detalle'].includes(item.tipo);
     const esCat = item.tipo === 'total_cat';
     const rowClass = esCat ? 'bg-slate-700 font-bold text-white' : (esTotal ? 'bg-blue-100 font-bold text-slate-950' : 'bg-white');
     const stickyClass = esCat ? 'bg-slate-700' : (esTotal ? 'bg-blue-100' : 'bg-white');
     return `
         <tr class="${rowClass}">
-            <td class="sticky left-0 z-10 min-w-[220px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2 text-right">${escapeHtml(item.concepto || '')}</td>
-            <td class="sticky left-[220px] z-10 min-w-[260px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2 text-center font-semibold">${escapeHtml(item.campania)}</td>
+            <td class="min-w-[210px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2 text-left">${escapeHtml(item.site || '')}</td>
+            <td class="min-w-[220px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2 text-right">${escapeHtml(item.concepto || '')}</td>
+            <td class="min-w-[260px] border-b border-r border-slate-200 ${stickyClass} px-3 py-2 text-center font-semibold">${escapeHtml(item.campania)}</td>
             <td class="min-w-[150px] border-b border-r border-slate-200 px-3 py-2 text-right font-semibold tabular-nums">${formatCurrency(item.total)}</td>
             ${meses.map(mes => `<td class="min-w-[135px] border-b border-r border-slate-200 px-3 py-2.5 text-right tabular-nums">${formatCurrency(item.meses[mes.value])}</td>`).join('')}
         </tr>

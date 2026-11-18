@@ -359,6 +359,7 @@ class FacturacionAnio(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.Date, nullable=False)
     mes = db.Column(db.String(20), nullable=False)
+    mes_apertura_origen = db.Column(db.String(7), nullable=True)
     cliente = db.Column(db.String(100), nullable=False)
     gerente = db.Column(db.String(100), nullable=True)
     jefe_site = db.Column(db.String(100), nullable=True)
@@ -380,6 +381,7 @@ class FacturacionAnio(db.Model):
     control_penalizaciones_bonos = db.Column(DINERO, nullable=True)
     control_total_facturado = db.Column(DINERO, nullable=True)
     control_objetivo_total = db.Column(DINERO, nullable=True)
+    control_objetivo_horas = db.Column(db.Numeric(24, 10, asdecimal=False), nullable=True)
     tarifacion = db.Column(DINERO, nullable=True)
     importe_fijo = db.Column(DINERO, nullable=True)
     variable_objetivo = db.Column(DINERO, default=0)
@@ -422,6 +424,8 @@ class FacturacionAnio(db.Model):
 
     @property
     def objetivo_facturacion_horas(self):
+        if self.control_objetivo_horas is not None:
+            return self.control_objetivo_horas
         if self.objetivo_es_importe_fijo:
             return self.importe_fijo
         if self.objetivo_separar_ajuste_vh:
@@ -579,6 +583,7 @@ class FacturacionAnio(db.Model):
             'id': self.id,
             'fecha': self.fecha.isoformat() if self.fecha else None,
             'mes': self.mes,
+            'mes_apertura_origen': self.mes_apertura_origen,
             'cliente': self.cliente,
             'gerente': self.gerente,
             'jefe_site': self.jefe_site,
@@ -601,6 +606,7 @@ class FacturacionAnio(db.Model):
             'control_penalizaciones_bonos': self.control_penalizaciones_bonos,
             'control_total_facturado': self.control_total_facturado,
             'control_objetivo_total': self.control_objetivo_total,
+            'control_objetivo_horas': self.control_objetivo_horas,
             'tarifacion': self.tarifacion,
             'importe_fijo': self.importe_fijo,
             'variable_objetivo': self.variable_objetivo,

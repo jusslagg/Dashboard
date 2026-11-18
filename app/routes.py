@@ -124,6 +124,8 @@ ALIAS_IMPORTACION = {
     'bono objetivo': 'variable_objetivo',
     'objetivo facturacion bono': 'variable_objetivo',
     'objetivo facturación bono': 'variable_objetivo',
+    'objetivo facturacion horas': 'control_objetivo_horas',
+    'objetivo facturación horas': 'control_objetivo_horas',
     'facturacion objetivo': 'control_objetivo_total',
     'facturación objetivo': 'control_objetivo_total',
     'variable productivo': 'variable_productivo',
@@ -415,21 +417,21 @@ RUTAS_DIRECTORIO = (
     '/reloj', '/indicadores', '/dotaciones', '/graficos-dotaciones',
     '/graficos-evolutivo-dotaciones', '/variacion-anual', '/variacion-horas-clientes',
     '/dashboard-operativo', '/historico-clientes', '/cumplimiento-horas-clientes',
-    '/cumplimiento-facturacion-clientes', '/comparativo-interanual',
+    '/cumplimiento-facturacion-clientes', '/apertura-desvios-clientes', '/comparativo-interanual',
     '/comparativo-anual-clientes', '/ratio-eli', '/ratio-eli-ii', '/share',
     '/api/reloj', '/api/indicadores', '/api/dotaciones', '/api/graficos-dotaciones',
     '/api/graficos-evolutivo-dotaciones', '/api/variacion-anual',
     '/api/variacion-horas-clientes', '/api/dashboard-operativo',
-    '/api/historico-clientes', '/api/cumplimiento-', '/api/comparativo-interanual',
+    '/api/historico-clientes', '/api/cumplimiento-', '/api/apertura-desvios-clientes', '/api/comparativo-interanual',
     '/api/comparativo-anual-clientes', '/api/ratio-eli', '/api/ratio-eli-ii', '/api/share',
 )
 RUTAS_PROYECCIONES = (
     '/proyectados/exportar.xlsx',
-    '/matriz-proyecciones', '/matriz-precios', '/suma-fija', '/resumen', '/variable',
+    '/matriz-proyecciones', '/matriz-precios', '/suma-fija', '/resumen', '/unificado', '/variable',
     '/control-proyecciones', '/notificaciones-proyecciones', '/calendario-operativo', '/api/proyeccion',
     '/api/matriz-proyecciones', '/api/precios', '/api/suma-fija', '/api/variable',
     '/api/control-proyecciones', '/api/notificaciones-proyecciones', '/api/calendario-operativo', '/api/feriados',
-    '/api/matriz-precios', '/api/resumen-proyeccion', '/api/sites-proyeccion',
+    '/api/matriz-precios', '/api/resumen-proyeccion', '/api/unificado', '/api/sites-proyeccion',
     '/api/tarifaciones', '/api/next-gen', '/api/personal-distribucion',
 )
 RUTAS_PUBLICAS_AUTENTICADAS = (
@@ -797,10 +799,10 @@ def jefe_personal_por_servicio(*valores):
     texto = normalizar_header(' '.join(str(valor or '') for valor in valores))
     if 'soporte' in texto or 'smb' in texto:
         return 'Walter Canalini'
-    if 'ventas' in texto:
-        return 'Pablo Chanampa'
     if 'retencion' in texto:
         return 'Alejandro Del Soto'
+    if 'ventas' in texto or re.search(r'\bgcr\b', texto):
+        return 'Pablo Chanampa'
     return 'Micaela Antelo'
 
 
@@ -817,7 +819,7 @@ def segmento_personal_por_servicio(*valores):
         return 'Retención'
     if 'soporte' in texto or 'rrss' in texto or 'provision digital' in texto or 'especializada movil' in texto:
         return 'Soporte'
-    if 'ventas' in texto or 'cobranzas' in texto:
+    if 'ventas' in texto or 'cobranzas' in texto or re.search(r'\bgcr\b', texto):
         return 'Ventas'
     if 'whatsapp' in texto or texto.startswith('ws '):
         return 'Customer Digital'
@@ -1093,6 +1095,7 @@ def crear_registro_facturacion(data, exigir_configuracion_valor_hora=True, prese
         control_penalizaciones_bonos=parse_numero(data.get('control_penalizaciones_bonos')) if data.get('control_penalizaciones_bonos') not in (None, '') else None,
         control_total_facturado=parse_numero(data.get('control_total_facturado')) if data.get('control_total_facturado') not in (None, '') else None,
         control_objetivo_total=parse_numero(data.get('control_objetivo_total')) if data.get('control_objetivo_total') not in (None, '') else None,
+        control_objetivo_horas=parse_numero(data.get('control_objetivo_horas')) if data.get('control_objetivo_horas') not in (None, '') else None,
         tarifacion=parse_numero(data.get('tarifacion')) if data.get('tarifacion') not in (None, '') else None,
         importe_fijo=parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None,
         variable_objetivo=parse_numero(data.get('variable_objetivo')),
@@ -1143,6 +1146,8 @@ def actualizar_registro_facturacion(registro, data, exigir_configuracion_valor_h
     registro.control_penalizaciones_bonos = parse_numero(data.get('control_penalizaciones_bonos')) if data.get('control_penalizaciones_bonos') not in (None, '') else None
     registro.control_total_facturado = parse_numero(data.get('control_total_facturado')) if data.get('control_total_facturado') not in (None, '') else None
     registro.control_objetivo_total = parse_numero(data.get('control_objetivo_total')) if data.get('control_objetivo_total') not in (None, '') else None
+    registro.control_objetivo_horas = parse_numero(data.get('control_objetivo_horas')) if data.get('control_objetivo_horas') not in (None, '') else None
+    registro.mes_apertura_origen = None
     registro.tarifacion = parse_numero(data.get('tarifacion')) if data.get('tarifacion') not in (None, '') else None
     registro.importe_fijo = parse_numero(data.get('importe_fijo')) if data.get('importe_fijo') not in (None, '') else None
     registro.variable_objetivo = parse_numero(data.get('variable_objetivo'))
@@ -1345,6 +1350,7 @@ def detalle_conflicto_personal_mes(indice, item, existentes):
 
 def resolver_asignacion_importacion(item):
     """Completa gerente y jefe desde Datos Maestros, sin confiar en el archivo."""
+    from app.models import _clave_nombre
     normalizar_identidad_campania(item)
     cliente = str(item.get('cliente') or '').strip()
     campania = str(item.get('campania') or '').strip()
@@ -1355,11 +1361,11 @@ def resolver_asignacion_importacion(item):
     subcampania_clave = normalizar_header(subcampania)
     campania_clave = normalizar_header(campania)
     tipo_clave = normalizar_header(tipo_negocio)
-    compactar = lambda valor: normalizar_header(valor).replace(' ', '')
+    compactar = _clave_nombre
     cuenta_compacta = compactar(cliente)
     subcampania_partes = [parte.strip() for parte in re.split(r'\s*/\s*', subcampania) if parte.strip()]
     subclaves = {normalizar_header(subcampania), *(normalizar_header(p) for p in subcampania_partes)}
-    subcompactas = {clave.replace(' ', '') for clave in subclaves}
+    subcompactas = {compactar(clave) for clave in subclaves}
 
     coincidencias_cuenta = []
     coincidencias_subcampania = []
@@ -1371,29 +1377,43 @@ def resolver_asignacion_importacion(item):
         sub_maestra = normalizar_header(asignacion.subcampania)
         cuenta_coincide_servicio = (
             cliente_clave in (campania_maestra, sub_maestra)
-            or cuenta_compacta in (campania_maestra.replace(' ', ''), sub_maestra.replace(' ', ''))
+            or cuenta_compacta in (compactar(campania_maestra), compactar(sub_maestra))
         )
         cuenta_coincide_cliente = (
-            cliente_clave == cliente_maestro or cuenta_compacta == cliente_maestro.replace(' ', '')
+            cliente_clave == cliente_maestro or cuenta_compacta == compactar(cliente_maestro)
         )
         sub_coincide = (
             campania_maestra in subclaves or sub_maestra in subclaves
-            or campania_maestra.replace(' ', '') in subcompactas
-            or sub_maestra.replace(' ', '') in subcompactas
+            or compactar(campania_maestra) in subcompactas
+            or compactar(sub_maestra) in subcompactas
         )
         if not (cuenta_coincide_servicio or sub_coincide or (cuenta_coincide_cliente and sub_coincide)):
             continue
-        if campania_clave and campania_maestra != campania_clave:
+        if campania_clave and campania_maestra != campania_clave and compactar(campania_maestra) != compactar(campania_clave):
             continue
         if tipo_clave and normalizar_header(asignacion.tipo_negocio) != tipo_clave:
             continue
         if sub_coincide:
             coincidencias_subcampania.append(asignacion)
-        if sub_maestra == subcampania_clave or sub_maestra.replace(' ', '') == subcampania_clave.replace(' ', ''):
+        if sub_maestra == subcampania_clave or compactar(sub_maestra) == compactar(subcampania_clave):
             coincidencias_sub_exacta.append(asignacion)
         if cuenta_coincide_servicio:
             coincidencias_cuenta.append(asignacion)
     coincidencias = coincidencias_sub_exacta or coincidencias_subcampania or coincidencias_cuenta
+    # Un mismo nombre de campaña puede pertenecer a distintos clientes. Si el
+    # cliente informado existe entre los candidatos, no mezclar otras cuentas.
+    del_cliente = [asignacion for asignacion in coincidencias
+                   if compactar(asignacion.cliente) == cuenta_compacta]
+    if del_cliente:
+        coincidencias = del_cliente
+    elif any(compactar(asignacion.cliente) == cuenta_compacta for asignacion in maestras_activas):
+        # Una cuenta conocida no puede tomar por error la campaña de otra.
+        coincidencias = []
+    if '_es_next_gen_sin_horas' in item:
+        mismo_circuito = [asignacion for asignacion in coincidencias
+                          if bool(asignacion.es_next_gen) == bool(item['_es_next_gen_sin_horas'])]
+        if mismo_circuito:
+            coincidencias = mismo_circuito
     mes_objetivo = mes_valido(item.get('mes'))
     if mes_objetivo and coincidencias:
         vigentes = [
@@ -1405,8 +1425,8 @@ def resolver_asignacion_importacion(item):
         # maestros antiguos sin fechas se conserva cuando todavía no hay ninguno.
         if vigentes:
             coincidencias = vigentes
-    if not coincidencias_subcampania and len(coincidencias_cuenta) > 1:
-        opciones = ', '.join(dict.fromkeys(a.subcampania for a in coincidencias_cuenta))
+    if not coincidencias_subcampania and len(coincidencias) > 1:
+        opciones = ', '.join(dict.fromkeys(a.subcampania for a in coincidencias))
         return None, (
             f'no existe en Datos Maestros la Sub campaña {subcampania} para {cliente}. '
             f'Opciones disponibles: {opciones}'
@@ -1522,6 +1542,19 @@ def resolver_personal_importacion_directa(item):
             )
         ]
     if exactas:
+        # Un servicio puede existir en más de un grupo de Personal, por ejemplo
+        # Capacitaciones en CX y Soporte. No elegir la primera alta al azar.
+        tipo_archivo = normalizar_header(item.get('tipo_negocio') or '')
+        if not tipo_archivo and cliente_clave in ('personal soporte', 'personal smb', 'personal cx'):
+            tipo_archivo = cliente_clave
+        if tipo_archivo:
+            por_tipo = [a for a in exactas if normalizar_header(a.tipo_negocio) == tipo_archivo]
+            if not por_tipo:
+                return None, f'El servicio {subcampania_archivo} no tiene un alta en el grupo {item.get("tipo_negocio") or cliente_archivo}'
+            exactas = por_tipo
+        identidades = {(normalizar_header(a.tipo_negocio), normalizar_header(a.jefe_site)) for a in exactas}
+        if len(identidades) > 1:
+            return None, f'El servicio {subcampania_archivo} existe en varios grupos de Personal; informe el tipo de negocio'
         asignacion = exactas[0]
         if not asignacion.segmento:
             asignacion.segmento = segmento_inferido_asignacion(
@@ -3105,6 +3138,12 @@ def resumen():
     return render_template('resumen.html')
 
 
+@main_bp.route('/unificado')
+@login_requerido
+def unificado():
+    return render_template('unificado.html')
+
+
 @main_bp.route('/variable')
 @login_requerido
 def variable():
@@ -3140,60 +3179,65 @@ def reloj():
 
 
 def construir_proyectado_vs_facturado_data(year):
-    """Concilia el presupuesto proyectado con los objetivos y cierres mensuales."""
+    """Compara las fuentes por cliente y mes, conservando todos los importes."""
     proyeccion = consolidar_resumen_proyeccion(construir_resumen_proyeccion_data(year))
     detalles = [fila for fila in proyeccion['filas'] if fila.get('tipo') == 'detalle']
-    servicios_proyectados = {}
-    for fila in detalles:
-        clave = (normalizar_header(fila['cliente']), normalizar_nombre_variable(fila['campania']))
-        servicios_proyectados[clave] = fila
-    normalizaciones = {}
-    for relacion in NormalizacionNombreProyectado.query.join(Campania).all():
-        destino = relacion.campania_facturacion
-        normalizaciones[(normalizar_header(destino.cliente), normalizar_nombre_variable(destino.nombre))] = (
-            normalizar_header(relacion.cliente_proyectado),
-            normalizar_nombre_variable(relacion.servicio_proyectado),
-        )
+    registros = facturacion_por_anio(Facturacion2026.query, year).all()
+    clientes_facturacion = {}
+    for registro in registros:
+        cliente = str(registro.cliente or 'Sin cliente').strip()
+        clientes_facturacion.setdefault(normalizar_header(cliente), cliente)
+
+    # Equivalencias entre el nombre de cuenta en el libro de Proyectados y el
+    # cliente de Facturación. La identidad exacta tiene prioridad: si en otro
+    # ejercicio ambos existen como clientes, permanecen independientes.
+    equivalencias = {
+        'banco bice': 'bice',
+        'bsf': 'bsf carrefour',
+        'banco credicoop': 'credicoop',
+        'galicia seguros': 'galicia',
+        'jonhson & jonhson': 'johnson & johnson',
+        'bbva openpay': 'openpay',
+        'apm - terminal 4': 'terminal 4',
+        'santander getnet': 'santander',
+        'personal cx': 'personal',
+        'personal smb': 'personal',
+        'personal soporte': 'personal',
+    }
+    nombres_equivalentes = {
+        'bice': 'BICE', 'bsf carrefour': 'BSF Carrefour', 'credicoop': 'Credicoop',
+        'galicia': 'Galicia', 'johnson & johnson': 'Johnson & Johnson',
+        'openpay': 'Openpay', 'terminal 4': 'TERMINAL 4', 'santander': 'Santander',
+        'personal': 'Personal',
+    }
+
+    def cliente_proyectado(nombre):
+        nombre = str(nombre or 'Sin cliente').strip()
+        clave = normalizar_header(nombre)
+        destino = clave if clave in clientes_facturacion else equivalencias.get(clave, clave)
+        return clientes_facturacion.get(destino, nombres_equivalentes.get(destino, nombre))
 
     filas = {}
 
-    def acumular(mes, cliente, servicio, site, campo, importe):
-        clave = (mes, normalizar_header(cliente), normalizar_nombre_variable(servicio), normalizar_header(site))
+    def acumular(mes, cliente, campo, importe):
+        clave = (mes, normalizar_header(cliente))
         fila = filas.setdefault(clave, {
-            'mes': mes, 'site': site or 'Sin site', 'cliente': cliente,
-            'servicio': servicio, 'teorico': 0, 'proyectado': 0, 'facturado': 0,
+            'mes': mes, 'cliente': cliente, 'teorico': 0, 'proyectado': 0, 'facturado': 0,
         })
         fila[campo] += numero_seguro(importe)
 
     for detalle in detalles:
+        cliente = cliente_proyectado(detalle['cliente'])
         for mes, importe in detalle.get('meses', {}).items():
             if importe:
-                acumular(mes, detalle['cliente'], detalle['campania'], detalle['site'], 'proyectado', importe)
+                acumular(mes, cliente, 'proyectado', importe)
 
-    registros = facturacion_por_anio(Facturacion2026.query, year).all()
     for registro in registros:
         cliente = str(registro.cliente or 'Sin cliente').strip()
-        servicio_original = nombre_campania_canonico(registro.campania or registro.subcampania or cliente,
-                                                       registro.subcampania)
-        clave_cliente = normalizar_header(cliente)
-        destino_normalizado = (
-            normalizaciones.get((clave_cliente, normalizar_nombre_variable(servicio_original)))
-            or normalizaciones.get((clave_cliente, normalizar_nombre_variable(registro.subcampania)))
-        )
-        detalle = servicios_proyectados.get(destino_normalizado) if destino_normalizado else None
-        if detalle is None:
-            detalle = servicios_proyectados.get((clave_cliente, normalizar_nombre_variable(servicio_original)))
-        if detalle is None:
-            # Una campaña proyectada solo a nivel cuenta incluye sus aperturas reales.
-            detalle = servicios_proyectados.get((clave_cliente, normalizar_nombre_variable(cliente)))
-        servicio = detalle['campania'] if detalle else servicio_original
-        site = detalle['site'] if detalle else normalizar_site(registro.gerente or 'Sin site')
-        cliente_destino = detalle['cliente'] if detalle else cliente
-        acumular(registro.mes, cliente_destino, servicio, site, 'teorico', registro.total_teorico)
-        acumular(registro.mes, cliente_destino, servicio, site, 'facturado', registro.total_dashboard)
+        acumular(registro.mes, cliente, 'teorico', registro.total_teorico)
+        acumular(registro.mes, cliente, 'facturado', registro.total_dashboard)
 
-    resultado = sorted(filas.values(), key=lambda fila: (fila['mes'], normalizar_header(fila['cliente']),
-                                                          normalizar_header(fila['servicio'])))
+    resultado = sorted(filas.values(), key=lambda fila: (fila['mes'], normalizar_header(fila['cliente'])))
     for fila in resultado:
         for campo in ('teorico', 'proyectado', 'facturado'):
             fila[campo] = round(fila[campo], 6)
@@ -3212,7 +3256,8 @@ def proyectado_vs_facturado():
             if mes and str(mes)[:4].isdigit():
                 years.add(int(str(mes)[:4]))
     years.add(anio_operativo())
-    return render_template('proyectado_vs_facturado.html', anios_disponibles=sorted(years, reverse=True))
+    return render_template('proyectado_vs_facturado.html', anios_disponibles=sorted(years, reverse=True),
+                           anio_actual=anio_operativo())
 
 
 @main_bp.route('/api/proyectado-vs-facturado', methods=['GET'])
@@ -3294,7 +3339,7 @@ def api_normalizaciones_proyectados():
             guardadas.append(relacion)
         db.session.commit()
         return jsonify({'success': True,
-                        'mensaje': f'{len(guardadas)} correspondencias guardadas. Los comparativos ya usan este nombre.',
+                        'mensaje': f'{len(guardadas)} correspondencias guardadas como referencia.',
                         'normalizaciones': [item.to_dict() for item in guardadas],
                         'normalizacion': guardadas[0].to_dict()})
 
@@ -3422,6 +3467,7 @@ def exportar_directorio():
         ('Histórico clientes', historico_actual),
         ('Cumplimiento horas', datos(api_cumplimiento_horas_clientes, year=year)),
         ('Cumplimiento facturación', datos(api_cumplimiento_facturacion_clientes, year=year)),
+        ('Apertura desvíos clientes', construir_apertura_desvios_clientes(year)),
         ('Comparativo interanual', datos(api_comparativo_interanual, year=year)),
         ('Comparativo anual clientes', comparativo_clientes_desde_fuentes(
             historico_anterior, historico_actual, dotaciones_anterior, dotaciones_actual, year)),
@@ -3677,6 +3723,12 @@ def cumplimiento_horas_clientes():
 @login_requerido
 def cumplimiento_facturacion_clientes():
     return render_template('cumplimiento_facturacion_clientes.html')
+
+
+@main_bp.route('/apertura-desvios-clientes')
+@login_requerido
+def apertura_desvios_clientes():
+    return render_template('apertura_desvios_clientes.html')
 
 
 @main_bp.route('/comparativo-interanual')
@@ -4285,6 +4337,10 @@ def deshacer_item_historial(item):
         if not mes:
             return {'success': False, 'errores': ['No se pudo identificar el mes publicado']}, 400
         actuales = query_reemplazo_personal_mes({'mes': mes}).all()
+        tipos_publicados = despues.get('tipos_proforma')
+        if tipos_publicados:
+            grupos = set(despues.get('grupos_dashboard') or set().union(*(grupos_dashboard_tipo_proforma(tipo) for tipo in tipos_publicados)))
+            actuales = [fila for fila in actuales if normalizar_tipo_negocio_personal(fila.cliente, fila.tipo_negocio, fila.campania) in grupos]
         for registro in actuales:
             db.session.delete(registro)
         db.session.flush()
@@ -4330,6 +4386,28 @@ def deshacer_item_historial(item):
         return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho: correspondencias de Aux restauradas'}, 200
 
     if item.entidad == 'seguimiento_personal_cierre':
+        try:
+            restaurado = restaurar_dashboard_asociado_historial(item.id)
+        except ValueError as error:
+            db.session.rollback()
+            return {'success': False, 'errores': [str(error)]}, 400
+        if not restaurado:
+            cierres_movimiento = despues.get('cierres_trafico_importados') or []
+            alcances_cierre = {(str(cierre.get('periodo') or ''), cierre.get('tipo_proforma'))
+                               for cierre in cierres_movimiento}
+            for posterior in HistorialCambio.query.filter(
+                HistorialCambio.entidad == 'seguimiento_personal_dashboard',
+                HistorialCambio.accion == 'sincronizacion', HistorialCambio.id > item.id,
+            ).all():
+                datos_posteriores = posterior._json(posterior.despues) or {}
+                tipo = datos_posteriores.get('tipo_proforma')
+                periodo = str(posterior.entidad_id or '').replace('-', '')
+                origen = datos_posteriores.get('origen_historial_id')
+                if ((periodo, tipo) in alcances_cierre or (periodo, None) in alcances_cierre) and (
+                    not origen or not historial_movimiento_deshace(origen)
+                ):
+                    db.session.rollback()
+                    return {'success': False, 'errores': ['Este cierre se utilizó después para actualizar el dashboard. Deshaga primero esa Proforma o actualización posterior.']}, 400
         importacion_id = antes.get('importacion_id') or despues.get('importacion_id') or item.entidad_id
         importacion = db.session.get(SeguimientoPersonalImportacion, int(importacion_id)) if str(importacion_id or '').isdigit() else None
         if not importacion:
@@ -4379,6 +4457,12 @@ def deshacer_item_historial(item):
         return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho: importación eliminada'}, 200
 
     if item.entidad == 'proforma_personal':
+        try:
+            dashboard_restaurado = restaurar_dashboard_asociado_historial(item.id)
+        except ValueError as error:
+            db.session.rollback()
+            return {'success': False, 'errores': [str(error)]}, 400
+        era_definitiva = any(snapshot and snapshot.get('estado_proforma') == 'Definitiva' for snapshot in despues_snapshots)
         periodos_afectados = {
             snapshot['periodo'] for snapshot in antes_snapshots + despues_snapshots
             if snapshot and snapshot.get('periodo')
@@ -4389,6 +4473,12 @@ def deshacer_item_historial(item):
                 (snapshot.get('tipo_proforma') or 'Masivo', snapshot.get('periodo'))
                 for snapshot in snapshots_con_tipo if snapshot.get('periodo')
             }
+            if not era_definitiva and any(
+                ProformaPersonal.query.filter_by(tipo_proforma=tipo, periodo=periodo, estado_proforma='Definitiva').first()
+                for tipo, periodo in alcances
+            ):
+                db.session.rollback()
+                return {'success': False, 'errores': ['Primero deshaga la Proforma definitiva vigente de ese tipo y período.']}, 400
             for tipo_proforma, periodo in alcances:
                 ProformaPersonal.query.filter_by(
                     tipo_proforma=tipo_proforma, periodo=periodo,
@@ -4403,7 +4493,8 @@ def deshacer_item_historial(item):
             db.session.flush()
             limpiar_seguimiento_al_deshacer_proforma(antes_snapshots + despues_snapshots)
             try:
-                sincronizar_dashboard_al_deshacer_proforma(periodos_afectados)
+                if not dashboard_restaurado and not era_definitiva:
+                    sincronizar_dashboard_al_deshacer_proforma(periodos_afectados, alcances)
             except ValueError as error:
                 db.session.rollback()
                 return {'success': False, 'errores': [str(error)]}, 400
@@ -4435,7 +4526,8 @@ def deshacer_item_historial(item):
         db.session.flush()
         limpiar_seguimiento_al_deshacer_proforma(antes_snapshots + despues_snapshots)
         try:
-            sincronizar_dashboard_al_deshacer_proforma(periodos_afectados)
+            if not dashboard_restaurado and not era_definitiva:
+                sincronizar_dashboard_al_deshacer_proforma(periodos_afectados)
         except ValueError as error:
             db.session.rollback()
             return {'success': False, 'errores': [str(error)]}, 400
@@ -4850,6 +4942,14 @@ def api_actualizar_dato(registro_id):
         registro.penalizaciones = normalizar_importe_ajuste('penalizaciones', data.get('penalizaciones'))
         registro.netx_gen = float(data.get('netx_gen', 0) or 0)
         registro.otros = float(data.get('otros', 0) or 0)
+        # Los controles del libro son una fotografía. Al editar una fila,
+        # las vistas deben recalcular con los componentes que eligió el usuario.
+        registro.control_objetivo_horas = None
+        registro.mes_apertura_origen = None
+        registro.control_facturado_horas = None
+        registro.control_variable_productivo = None
+        registro.control_penalizaciones_bonos = None
+        registro.control_objetivo_total = None
         guardar_justificaciones(registro, data)
         # Control edita los componentes del total. Los totales manuales traídos
         # por una importación anterior no deben congelar ni ocultar el cambio.
@@ -6276,6 +6376,12 @@ def construir_resumen_proyeccion_data(year):
     total_general = {mes: 0 for mes in meses}
     totales_por_site = {}
 
+    def registrar_orden_alta(fila, registro):
+        creado = getattr(registro, 'creado_en', None)
+        if creado:
+            orden = creado.isoformat()
+            fila['orden_alta'] = min(fila.get('orden_alta', orden), orden)
+
     for proyeccion in proyecciones:
         clave = (proyeccion.cliente, proyeccion.campania)
         precio = (
@@ -6319,6 +6425,7 @@ def construir_resumen_proyeccion_data(year):
                     'total': 0,
                 }
                 filas.append(fila)
+            registrar_orden_alta(fila, proyeccion)
             fila['meses'][proyeccion.mes] += valor
             fila['total'] += valor
             total_general[proyeccion.mes] += valor
@@ -6368,6 +6475,7 @@ def construir_resumen_proyeccion_data(year):
                 'concepto': 'Horas', 'meses': {mes: 0 for mes in meses}, 'total': 0,
             }
             filas.append(fila)
+        registrar_orden_alta(fila, precio)
         fila['meses'][precio.mes] += valor
         fila['total'] += valor
         total_general[precio.mes] += valor
@@ -6401,6 +6509,7 @@ def construir_resumen_proyeccion_data(year):
                 'total': 0,
             }
             filas.append(fila)
+        registrar_orden_alta(fila, precio)
         fila['meses'][precio.mes] += valor
         fila['total'] += valor
         total_general[precio.mes] += valor
@@ -6441,6 +6550,8 @@ def construir_resumen_proyeccion_data(year):
                     'meses': {item: 0 for item in meses}, 'total': 0,
                 }
                 filas.append(fila)
+            if base.get('orden_alta'):
+                fila['orden_alta'] = min(fila.get('orden_alta', base['orden_alta']), base['orden_alta'])
             fila['meses'][mes] += valor
             fila['total'] += valor
             total_general[mes] += valor
@@ -6472,9 +6583,11 @@ def construir_resumen_proyeccion_data(year):
                 'clave': fila_clave, 'site': site, 'cliente': cliente,
                 'campania': campania, 'concepto': concepto,
                 'campania_facturacion': base_coincidente.get('campania_facturacion') if base_coincidente else tarifacion.campania,
+                'cuenta_tarifacion': tarifacion.cliente,
                 'meses': {mes: 0 for mes in meses}, 'total': 0,
             }
             filas.append(fila)
+        registrar_orden_alta(fila, tarifacion)
         fila['meses'][tarifacion.mes] += valor
         fila['total'] += valor
         total_general[tarifacion.mes] += valor
@@ -6510,10 +6623,11 @@ def construir_resumen_proyeccion_data(year):
             fila = {
                 'clave': fila_clave, 'site': site, 'cliente': cliente,
                 'campania': campania, 'concepto': 'Next Gen',
-                'campania_facturacion': base_coincidente.get('campania_facturacion') if base_coincidente else producto.campania,
+                'campania_facturacion': producto.campania,
                 'meses': {mes: 0 for mes in meses}, 'total': 0,
             }
             filas.append(fila)
+        registrar_orden_alta(fila, producto)
         if producto.mes in fila['meses']:
             fila['meses'][producto.mes] += valor
             fila['total'] += valor
@@ -6550,12 +6664,14 @@ def construir_resumen_proyeccion_data(year):
                 'cliente': ((regularizacion(fila.get('cliente'), fila.get('campania')).cliente_destino
                              if regularizacion(fila.get('cliente'), fila.get('campania')) else None)
                             or fila.get('cliente') or ''),
-                'campania': ((regularizacion(fila.get('cliente'), fila.get('campania')).campania_destino
+                'campania': (fila.get('cuenta_tarifacion') or (fila.get('campania_facturacion') if fila.get('concepto') == 'Next Gen' else
+                            ((regularizacion(fila.get('cliente'), fila.get('campania')).campania_destino
                               if regularizacion(fila.get('cliente'), fila.get('campania')) else None)
-                             or fila.get('campania_facturacion') or fila['campania']),
+                             or fila.get('campania_facturacion') or fila['campania']))),
                 'origenes': ([{'cliente': fila.get('cliente') or '', 'campania': fila.get('campania') or ''}]
                              if fila.get('tipo', 'detalle') == 'detalle' else []),
                 'concepto': fila['concepto'],
+                'orden_alta': fila.get('orden_alta'),
                 'tipo': fila.get('tipo', 'detalle'),
                 # Se conserva precisión interna hasta consolidar la Cuenta.
                 'meses': {mes: round(fila['meses'].get(mes, 0), 10) for mes in meses},
@@ -6606,80 +6722,33 @@ CONCEPTOS_RESUMEN = ('Horas', 'Variable Productividad', 'Next Gen', 'Tarifacion 
 
 def construir_filas_resumen_excel(data):
     """Replica la topología de RESUMEN: concepto, campaña, total y meses."""
-    meses = [item['value'] for item in data.get('meses', [])]
-    orden_personal = {'personal cx': 0, 'personal soporte': 1, 'personal': 2, 'personal smb': 3}
-    grupos = {}
-    for fila in data.get('filas', []):
-        if fila.get('tipo') == 'total_site':
-            continue
-        campania = str(fila.get('campania') or '').strip()
-        clave_campania = normalizar_nombre_variable(campania)
-        if clave_campania.endswith(' nocturnidad'):
-            clave_campania = clave_campania[:-len(' nocturnidad')]
-            campania = campania[:-len(' nocturnidad')].strip()
-        concepto_origen = fila.get('concepto')
-        if concepto_origen in ('Horas', 'Fijo mensual'):
-            concepto = 'Horas'
-        elif concepto_origen == 'Variable':
-            concepto = 'Variable Productividad'
-        elif concepto_origen == 'Next Gen':
-            concepto = 'Next Gen'
-        else:
-            concepto = 'Tarifacion + otros'
-        cliente_clave = 'personal' if clave_campania in orden_personal else normalizar_header(fila.get('cliente'))
-        clave = (cliente_clave, clave_campania)
-        grupo = grupos.setdefault(clave, {
-            'site': fila.get('site') or '', 'cliente': fila.get('cliente') or '',
-            'campania': campania, 'conceptos': {
-                nombre: {mes: 0 for mes in meses} for nombre in CONCEPTOS_RESUMEN
-            },
-        })
-        for mes in meses:
-            grupo['conceptos'][concepto][mes] += numero_seguro(fila.get('meses', {}).get(mes))
+    from app.resumen_layout import construir_formato_resumen
+    return construir_formato_resumen(data)
 
-    ordenados = sorted(grupos.values(), key=lambda item: (
-        0 if normalizar_nombre_variable(item['campania']) in orden_personal else 1,
-        orden_personal.get(normalizar_nombre_variable(item['campania']), 99),
-        normalizar_header(item['site']), normalizar_header(item['campania']),
-    ))
-    salida = []
-    total_personal = {mes: 0 for mes in meses}
-    for grupo in ordenados:
-        valores_total = {mes: 0 for mes in meses}
-        for concepto in CONCEPTOS_RESUMEN:
-            valores = grupo['conceptos'][concepto]
-            for mes in meses:
-                valores_total[mes] += valores[mes]
-            salida.append({
-                'site': grupo['site'], 'cliente': grupo['cliente'],
-                'concepto': concepto, 'campania': grupo['campania'], 'tipo': 'concepto',
-                'meses': {mes: redondear_moneda(valores[mes]) for mes in meses},
-                'total': redondear_moneda(sum(valores.values())),
-            })
-        es_personal = normalizar_nombre_variable(grupo['campania']) in orden_personal
-        if es_personal:
-            for mes in meses:
-                total_personal[mes] += valores_total[mes]
-        salida.append({
-            'site': grupo['site'], 'cliente': grupo['cliente'], 'concepto': 'Total',
-            'campania': grupo['campania'], 'tipo': 'total_campania',
-            'meses': {mes: redondear_moneda(valores_total[mes]) for mes in meses},
-            'total': redondear_moneda(sum(valores_total.values())),
-        })
-        if es_personal and normalizar_nombre_variable(grupo['campania']) == 'personal smb':
-            salida.append({
-                'site': grupo['site'], 'cliente': 'Personal', 'concepto': '',
-                'campania': 'TOTAL GRUPO PERSONAL', 'tipo': 'total_grupo',
-                'meses': {mes: redondear_moneda(total_personal[mes]) for mes in meses},
-                'total': redondear_moneda(sum(total_personal.values())),
-            })
-    total = data.get('total_general', {})
-    salida.insert(0, {
-        'site': '', 'cliente': '', 'concepto': '', 'campania': 'TOTAL CAT', 'tipo': 'total_cat',
-        'meses': {mes: redondear_moneda(total.get('meses', {}).get(mes, 0)) for mes in meses},
-        'total': redondear_moneda(total.get('total', 0)),
-    })
-    return salida
+
+@main_bp.route('/api/unificado')
+@login_requerido
+def api_unificado():
+    from app.unificado import construir_unificado
+    year = int(request.args.get('year') or anio_operativo())
+    return jsonify(construir_unificado(construir_resumen_proyeccion_data(year)))
+
+
+@main_bp.route('/api/unificado/exportar')
+@login_requerido
+def exportar_unificado():
+    from openpyxl import Workbook
+    from app.unificado import agregar_hoja_unificado, construir_unificado
+    year = int(request.args.get('year') or anio_operativo())
+    datos = construir_unificado(construir_resumen_proyeccion_data(year))
+    libro = Workbook()
+    libro.remove(libro.active)
+    agregar_hoja_unificado(libro, datos)
+    salida = io.BytesIO()
+    libro.save(salida)
+    salida.seek(0)
+    return send_file(salida, as_attachment=True, download_name=f'Unificado_{year}.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 @main_bp.route('/api/resumen-proyeccion/exportar', methods=['GET'])
@@ -6689,6 +6758,7 @@ def exportar_resumen_proyeccion():
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
+    from app.resumen_layout import construir_apoyo_resumen, formato
 
     year = int(request.args.get('year') or anio_operativo())
     data = construir_resumen_proyeccion_data(year)
@@ -6697,27 +6767,61 @@ def exportar_resumen_proyeccion():
     wb = Workbook(); ws = wb.active; ws.title = 'RESUMEN'
     nombres_meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-    encabezados = ['Concepto', 'Campaña', str(year)] + nombres_meses
     azul = PatternFill('solid', fgColor='D9E5F6'); oscuro = PatternFill('solid', fgColor='40536D')
     borde = Border(bottom=Side(style='thin', color='B7C5D8'))
     fila_cat = next(fila for fila in filas if fila['tipo'] == 'total_cat')
-    ws.append(['', fila_cat['campania'], fila_cat['total']] + [fila_cat['meses'][m['value']] for m in meses])
-    ws.append(encabezados)
-    for celda in ws[1]: celda.fill = oscuro; celda.font = Font(bold=True, color='FFFFFF')
-    for celda in ws[2]:
+    # Celdas y posiciones coinciden con RESUMEN: cabecera en fila 5,
+    # Gerencia C, concepto D, campaña E, año F y meses G:R.
+    ws['C2'] = 'TOTAL GENERAL'
+    ws['G3'] = sum(fila_cat['meses'][m['value']] for m in meses[:6])
+    ws['E4'] = fila_cat['campania']; ws['F4'] = fila_cat['total']
+    for indice, mes_info in enumerate(meses, 7):
+        ws.cell(4, indice, fila_cat['meses'][mes_info['value']])
+    for columna, valor in enumerate(['Comentario', None, 'Gerencia', None, 'Campaña ', year] + nombres_meses, 1):
+        ws.cell(5, columna, valor)
+    for celda in ws[4][:18]:
+        celda.fill = oscuro; celda.font = Font(bold=True, color='FFFFFF')
+    for celda in ws[5][:18]:
         celda.font = Font(bold=True); celda.fill = azul; celda.alignment = Alignment(horizontal='center')
     for fila in (item for item in filas if item['tipo'] != 'total_cat'):
-        ws.append([fila['concepto'], fila['campania'], fila['total']] + [fila['meses'][m['value']] for m in meses])
-        numero_fila = ws.max_row
-        if fila['tipo'] in ('total_campania', 'total_grupo'):
-            for celda in ws[numero_fila]: celda.fill = azul; celda.font = Font(bold=True)
-        for celda in ws[numero_fila]: celda.border = borde
-        for columna in range(3, 16):
+        numero_fila = fila['fila_excel']
+        for columna, valor in ((3, fila['site']), (4, fila['concepto']),
+                               (5, fila['campania']), (6, fila['total'])):
+            ws.cell(numero_fila, columna, valor or None if columna in (3, 4, 5) else valor)
+        for columna, mes_info in enumerate(meses, 7):
+            ws.cell(numero_fila, columna, fila['meses'][mes_info['value']])
+        if fila['tipo'] in ('total_campania', 'total_grupo', 'total_detalle'):
+            for celda in ws[numero_fila][:18]: celda.fill = azul; celda.font = Font(bold=True)
+        for celda in ws[numero_fila][:18]: celda.border = borde
+        for columna in range(6, 19):
             ws.cell(numero_fila, columna).number_format = '$ #,##0;[Red]-$ #,##0;$ 0'
-    for columna in range(3, 16): ws.cell(1, columna).number_format = '$ #,##0;[Red]-$ #,##0;$ 0'
-    ws.freeze_panes = 'C3'; ws.auto_filter.ref = f'A2:{get_column_letter(ws.max_column)}2'
-    ws.column_dimensions['A'].width = 24; ws.column_dimensions['B'].width = 30
-    for columna in range(3, 16): ws.column_dimensions[get_column_letter(columna)].width = 17
+    for numero, texto in formato().get('anotaciones', {}).items():
+        ws.cell(int(numero), 19, 'BIBANK' if normalizar_header(texto) == 'bibank' else texto)
+    for numero, texto in formato().get('comentarios', {}).items():
+        ws.cell(int(numero), 1, texto)
+    apoyo = construir_apoyo_resumen(data)
+    for item in formato().get('apoyo', []):
+        for columna, valor in enumerate(item['valores'], 21):
+            ws.cell(item['fila'], columna, valor)
+        if item['fila'] in apoyo:
+            ws.cell(item['fila'], 25, apoyo[item['fila']])
+    ws['Y5'] = 'ANUAL (FÓRMULA)'; ws['Y17'] = sum(apoyo.values())
+    ws['S2'] = 0
+    ws['S3'] = fila_cat['total'] - float(data['total_general'].get('total', 0) or 0)
+    ws['T2'] = '#DIV/0!'; ws['T2'].data_type = 'e'
+    for numero, titulo, valores_control in ((260, 'RESUMEN', fila_cat['meses']),
+                                              (261, 'UNIFICADO', data['total_general']['meses'])):
+        ws.cell(numero, 5, titulo)
+        ws.cell(numero, 6, sum(float(valores_control.get(m['value'], 0) or 0) for m in meses))
+        for columna, mes_info in enumerate(meses, 7):
+            ws.cell(numero, columna, valores_control.get(mes_info['value'], 0))
+    ws['F262'] = ws['F260'].value - ws['F261'].value
+    for columna in range(7, 19):
+        ws.cell(262, columna, ws.cell(260, columna).value - ws.cell(261, columna).value)
+    ws.freeze_panes = 'G6'; ws.auto_filter.ref = 'A5:T257'
+    for columna, ancho in {'A': 20, 'B': 4, 'C': 24, 'D': 28, 'E': 32, 'F': 20, 'S': 34, 'U': 22, 'V': 24, 'W': 30, 'X': 34, 'Y': 22}.items():
+        ws.column_dimensions[columna].width = ancho
+    for columna in range(7, 19): ws.column_dimensions[get_column_letter(columna)].width = 17
     salida = BytesIO(); wb.save(salida); salida.seek(0)
     return send_file(salida, as_attachment=True,
                      download_name=f'Facturacion_horas_RESUMEN_{year}.xlsx',
@@ -9161,6 +9265,100 @@ def api_cumplimiento_horas_clientes():
     return jsonify({'success': True, 'year': year, 'filas': filas})
 
 
+def construir_apertura_desvios_clientes(year):
+    """Replica la apertura mensual del libro, desde la facturación vigente."""
+    grupos = {}
+    grupos_campania = {}
+
+    def acumular(destino, clave, nombre, mes, registro, campania=None):
+        item = destino.setdefault(clave, {'cliente': nombre, 'mes': mes, 'campania': campania,
+            'horas_objetivo': 0.0, 'horas_facturadas': 0.0, 'objetivo_horas': 0.0,
+            'objetivo_variable': 0.0, 'facturado_horas': 0.0, 'facturado_variable': 0.0,
+            'bonos_penalizaciones': 0.0, 'control_objetivo': 0.0, 'control_facturado': 0.0})
+        item['horas_objetivo'] += float(registro.horas_objetivo or 0)
+        item['horas_facturadas'] += float(registro.horas_facturadas or 0)
+        item['objetivo_horas'] += float(registro.objetivo_facturacion_horas or 0)
+        item['objetivo_variable'] += float(registro.variable_objetivo or 0)
+        item['facturado_horas'] += float(registro.facturado_horas_control or 0)
+        item['facturado_variable'] += float(registro.variable_productivo_control or 0)
+        item['bonos_penalizaciones'] += float(registro.penalizaciones_bonos_control or 0)
+        item['control_objetivo'] += float(registro.control_objetivo_total or 0)
+        item['control_facturado'] += float(registro.control_total_facturado or 0)
+
+    for registro in facturacion_por_anio(Facturacion2026.query, year).all():
+        mes_apertura = registro.mes_apertura_origen or registro.mes
+        for nombre in (registro.cliente, 'TOTAL GENERAL'):
+            clave = (normalizar_header(nombre), mes_apertura)
+            acumular(grupos, clave, nombre, mes_apertura, registro)
+        campania = (registro.campania or '').strip() or 'Sin campaña'
+        clave_campania = (normalizar_header(registro.cliente), normalizar_header(campania), mes_apertura)
+        acumular(grupos_campania, clave_campania, registro.cliente, mes_apertura, registro, campania)
+    ultimo_mes_con_datos = max((item['mes'] for item in grupos.values()
+        if item['control_objetivo'] or item['control_facturado'] or item['objetivo_horas']
+        or item['objetivo_variable'] or item['facturado_horas'] or item['facturado_variable']), default='')
+    def calcular(items):
+        filas = []
+        for item in items:
+            objetivo = item['objetivo_horas'] + item['objetivo_variable']
+            alcanzado = item['facturado_horas'] + item['facturado_variable']
+            horas = item['facturado_horas'] - item['objetivo_horas']
+            variable = item['facturado_variable'] - item['objetivo_variable']
+            total = horas + variable + item['bonos_penalizaciones']
+            cumplimiento_horas = item['horas_facturadas'] / item['horas_objetivo'] if item['horas_objetivo'] else None
+            cumplimiento_facturacion = alcanzado / objetivo if objetivo else None
+            # El libro deja vacíos los meses sin objetivo ni facturación de control.
+            if (not item['control_objetivo'] and not item['control_facturado'] and not objetivo and not alcanzado
+                    and item['mes'] >= ultimo_mes_con_datos):
+                continue
+            filas.append({'cliente': item['cliente'], 'campania': item['campania'], 'mes': item['mes'],
+                'cumplimiento_horas': cumplimiento_horas,
+                'valor_hora': cumplimiento_facturacion / cumplimiento_horas if cumplimiento_horas and cumplimiento_facturacion is not None else None,
+                'cumplimiento_facturacion': cumplimiento_facturacion,
+                'horas': horas, 'variable': variable, 'bonos_penalizaciones': item['bonos_penalizaciones'],
+                'porcentaje_desvio': total / objetivo if objetivo else None, 'total': total})
+        filas.sort(key=lambda item: (item['cliente'] == 'TOTAL GENERAL', normalizar_header(item['cliente']),
+                                     normalizar_header(item['campania']), item['mes']))
+        return filas
+    from app.apertura_desvios import incorporar_recuperacion_parcial
+    datos = {'success': True, 'year': year, 'filas': calcular(grupos.values()),
+             'campanias': calcular(grupos_campania.values())}
+    return incorporar_recuperacion_parcial(datos, ((item['cliente'], item['mes']) for item in grupos.values()))
+
+
+@main_bp.route('/api/apertura-desvios-clientes', methods=['GET'])
+@login_requerido
+def api_apertura_desvios_clientes():
+    try:
+        year = int(request.args.get('year') or anio_operativo())
+        if not 2020 <= year <= 2100:
+            raise ValueError
+    except ValueError:
+        return jsonify({'success': False, 'errores': ['Año no válido']}), 400
+    from app.apertura_desvios import ORDEN_ORIGEN
+    data = construir_apertura_desvios_clientes(year)
+    data['orden_clientes'] = list(ORDEN_ORIGEN)
+    return jsonify(data)
+
+
+@main_bp.route('/api/apertura-desvios-clientes/exportar', methods=['GET'])
+@login_requerido
+def exportar_apertura_desvios_clientes():
+    from app.apertura_desvios import exportar_apertura
+    try:
+        year = int(request.args.get('year') or anio_operativo())
+        mes = request.args.get('mes', '')
+        if not 2020 <= year <= 2100 or (mes and mes not in {f'{n:02}' for n in range(1, 13)}):
+            raise ValueError
+    except ValueError:
+        return jsonify({'success': False, 'errores': ['Año o mes no válido']}), 400
+    cliente = request.args.get('cliente', '').strip()
+    campania = request.args.get('campania', '').strip()
+    salida = exportar_apertura(construir_apertura_desvios_clientes(year), cliente, campania, mes)
+    return send_file(salida, as_attachment=True,
+                     download_name=f'Apertura_desvios_{year}.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
 @main_bp.route('/api/cumplimiento-facturacion-clientes', methods=['GET'])
 @login_requerido
 def api_cumplimiento_facturacion_clientes():
@@ -10227,6 +10425,8 @@ def api_importar_proforma_personal():
         from openpyxl import load_workbook
         libro = load_workbook(io.BytesIO(contenido), data_only=True, read_only=False)
         hoja = libro[libro.sheetnames[0]]
+        libro_formulas = load_workbook(io.BytesIO(contenido), data_only=False, read_only=True)
+        hoja_formulas = libro_formulas[libro_formulas.sheetnames[0]]
     except Exception:
         return error_carga_proforma(
             'El archivo no se pudo abrir como un libro de Excel válido.',
@@ -10273,8 +10473,22 @@ def api_importar_proforma_personal():
     errores = []
     entradas = []
     claves_archivo = {}
-    for numero in range(fila_encabezado + 1, hoja.max_row + 1):
+    filas_formulas = hoja_formulas.iter_rows(min_row=fila_encabezado + 1, max_row=hoja.max_row, max_col=16)
+    for numero, celdas_formula in enumerate(filas_formulas, start=fila_encabezado + 1):
         celdas = [hoja.cell(numero, columna) for columna in range(1, 17)]
+        # openpyxl no calcula fórmulas. Si Excel no guardó el resultado, no se
+        # puede interpretar un importe desconocido como un cero válido.
+        formulas_sin_valor = [
+            f'{chr(65 + indice)} ({ENCABEZADOS_PROFORMA_PERSONAL[indice]})'
+            for indice in range(7, 16)
+            if celdas_formula[indice].data_type == 'f' and celdas[indice].value is None
+        ] if any(celda.value not in (None, '') for celda in celdas[:7]) else []
+        if formulas_sin_valor:
+            errores.append(
+                f'Fila {numero}: las fórmulas de {", ".join(formulas_sin_valor)} no tienen un resultado numérico guardado. '
+                'Abra el archivo en Excel, recalcule y guarde; si una fórmula debe quedar vacía, ingrese cero.'
+            )
+            continue
         if not any(celda.value not in (None, '') for celda in celdas):
             continue
         # Las proformas suelen incluir renglones descriptivos o servicios sin
@@ -10348,6 +10562,7 @@ def api_importar_proforma_personal():
             'bono_porcentaje_total': porcentaje_kpi + porcentaje_ac,
             '_fila_excel': numero,
         })
+    libro_formulas.close()
     if errores:
         return error_carga_proforma(
             f'Hay {len(errores)} problema(s) en las filas de la Proforma.',
@@ -10389,7 +10604,25 @@ def api_importar_proforma_personal():
         ProformaPersonal.tipo_proforma == tipo_proforma,
         ProformaPersonal.periodo.in_(periodos),
     ).all()
+    if estado_proforma == 'Proyectada':
+        periodos_definitivos = sorted({registro.periodo for registro in existentes_lote
+                                       if registro.estado_proforma == 'Definitiva'})
+        if periodos_definitivos:
+            return error_carga_proforma(
+                f'Ya existe una Proforma Definitiva de {tipo_proforma} para {", ".join(periodos_definitivos)}.',
+                'La Proforma proyectada no puede reemplazar una definitiva. Para corregirla, cargue el archivo como Definitiva; para recuperar la versión anterior, revise Historial.',
+                [f'Período con Proforma definitiva: {periodo}' for periodo in periodos_definitivos],
+            )
     antes = [registro.to_dict() for registro in existentes_lote]
+    grupos_previos_por_periodo = {}
+    configuracion_previa = SeguimientoPersonalImportacion.query.order_by(
+        SeguimientoPersonalImportacion.creado_en.desc(), SeguimientoPersonalImportacion.id.desc(),
+    ).first()
+    if estado_proforma == 'Definitiva' and configuracion_previa and existentes_lote:
+        contenido_previo = aplicar_proformas_a_seguimiento(contenido_seguimiento_personal(configuracion_previa))
+        for periodo_actual in periodos:
+            filas_previas, _ = filas_dashboard_desde_seguimiento_personal(contenido_previo, periodo_actual, tipo_proforma)
+            grupos_previos_por_periodo[periodo_actual] = sorted({fila['tipo_negocio'] for fila in filas_previas})
     def clave_proforma(registro):
         return tuple(normalizar_header(getattr(registro, campo) or '') for campo in (
             'fdv', 'periodo', 'negocio', 'sitio_proveedor', 'segmento', 'subsitio', 'tipo_hora',
@@ -10428,14 +10661,42 @@ def api_importar_proforma_personal():
                 ).all()
                 for importacion_seguimiento in SeguimientoPersonalImportacion.query.all():
                     contenido_seguimiento = contenido_seguimiento_personal(importacion_seguimiento)
-                    cierre_guardado = next((
+                    cierres_periodo = [
                         item for item in reversed(contenido_seguimiento.get('cierres_trafico_importados') or [])
                         if str(item.get('periodo') or '') == periodo_actual
-                    ), None)
+                        and item.get('tipo_proforma') in (None, '', tipo_proforma)
+                    ]
+                    claves_proforma = {
+                        (normalizar_header(item.segmento), normalizar_header(tipo_hora_seguimiento(item.tipo_hora)))
+                        for item in proformas_definitivas if item.tipo_proforma == tipo_proforma
+                    }
+                    cierre_guardado = next((item for item in cierres_periodo if item.get('tipo_proforma') == tipo_proforma), None)
+                    if not cierre_guardado:
+                        cierre_guardado = next((item for item in cierres_periodo if claves_proforma.intersection({
+                            (normalizar_header(detalle.get('campania')), normalizar_header(detalle.get('tipo_vh')))
+                            for detalle in item.get('detalle') or []
+                        })), None)
                     if not cierre_guardado:
                         continue
+                    tipo_cierre = cierre_guardado.get('tipo_proforma')
+                    if tipo_cierre and tipo_cierre != tipo_proforma:
+                        continue
+                    if not tipo_cierre:
+                        claves_cierre = {
+                            (normalizar_header(item.get('campania')), normalizar_header(item.get('tipo_vh')))
+                            for item in cierre_guardado.get('detalle') or []
+                        }
+                        claves_proforma = {
+                            (normalizar_header(item.segmento), normalizar_header(tipo_hora_seguimiento(item.tipo_hora)))
+                            for item in proformas_definitivas if item.tipo_proforma == tipo_proforma
+                        }
+                        # Un cierre aún sin asociar puede pertenecer a otro tipo.
+                        # Se conserva pendiente hasta encontrar su Proforma.
+                        if not claves_cierre.intersection(claves_proforma):
+                            continue
                     _, posteriores_cierre, _, errores_cierre = aplicar_cierre_guardado_personal(
-                        contenido_seguimiento, cierre_guardado, proformas_definitivas,
+                        contenido_seguimiento, cierre_guardado,
+                        [item for item in proformas_definitivas if item.tipo_proforma == tipo_proforma],
                     )
                     if errores_cierre:
                         db.session.rollback()
@@ -10448,12 +10709,23 @@ def api_importar_proforma_personal():
                         importacion_seguimiento.contenido_hojas = zlib.compress(
                             json.dumps(contenido_seguimiento, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
                         )
-        registrar_historial(
+        movimiento_proforma = registrar_historial(
             'importacion', 'proforma_personal', ','.join(periodos),
             f'Proforma {tipo_proforma} {estado_proforma} “{archivo.filename[:120]}”: {creadas} nueva(s), {actualizadas} actualizada(s), {eliminadas} reemplazada(s)',
             antes={'proformas': antes},
-            despues={'proformas': [registro.to_dict() for registro in guardadas]},
+            despues={'proformas': [registro.to_dict() for registro in guardadas],
+                     'grupos_dashboard_previos': grupos_previos_por_periodo},
         )
+        db.session.flush()
+        actualizaciones_dashboard = []
+        if estado_proforma == 'Definitiva':
+            configuracion = SeguimientoPersonalImportacion.query.order_by(
+                SeguimientoPersonalImportacion.creado_en.desc(), SeguimientoPersonalImportacion.id.desc(),
+            ).first()
+            for periodo_actual in periodos:
+                actualizaciones_dashboard.append(sincronizar_proforma_definitiva_dashboard(
+                    configuracion, periodo_actual, tipo_proforma, movimiento_proforma.id,
+                ))
         db.session.commit()
     except SQLAlchemyError:
         db.session.rollback()
@@ -10469,6 +10741,11 @@ def api_importar_proforma_personal():
             f'Proforma {tipo_proforma} {estado_proforma} importada para {", ".join(periodos)}: '
             f'{creadas} nueva(s), {actualizadas} actualizada(s) y {eliminadas} anterior(es) eliminada(s). '
             + ('Las hojas de seguimiento se recalcularon automáticamente.' if seguimiento_configurado else 'Cargue una vez la configuración inicial del seguimiento para habilitar los cálculos encadenados.')
+            + (' Dashboard: ' + '; '.join(
+                f'{item["periodo"]} actualizado' if item['estado'] == 'actualizado' else
+                f'{item["periodo"]} pendiente: {" | ".join(item["errores"][:3])}'
+                for item in actualizaciones_dashboard
+            ) + '.' if actualizaciones_dashboard else '')
         ),
         'tipo_proforma': tipo_proforma,
         'estado_proforma': estado_proforma,
@@ -10477,6 +10754,7 @@ def api_importar_proforma_personal():
         'eliminadas': eliminadas,
         'seguimiento_actualizado': seguimiento_configurado,
         'periodos': periodos,
+        'dashboard': actualizaciones_dashboard,
         'proformas': [registro.to_dict() for registro in guardadas],
     })
 
@@ -11108,7 +11386,10 @@ def aplicar_proformas_a_seguimiento(contenido):
         estilos = ['auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_text', 'auto_date', 'auto_number', 'auto_number', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_text', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money', 'auto_money']
         formulas = {9: f'=H{numero}*I{numero}', 14: f'=SUM(J{numero}:N{numero})', 17: f'=IFERROR(O{numero}/H{numero},0)', 18: f'=G{numero}*I{numero}', 19: '=0', 20: f'=S{numero}', 21: f'=J{numero}', 22: f'=L{numero}', 23: f'=M{numero}', 24: f'=V{numero}+W{numero}+X{numero}'}
         valores[6] = None  # Objetivo calculado abajo, distinto de un cero manual del Excel.
-        nuevas_base.append([celda_seguimiento_automatica(valor, formulas.get(indice), estilos[indice]) for indice, valor in enumerate(valores)])
+        fila_base = [celda_seguimiento_automatica(valor, formulas.get(indice), estilos[indice]) for indice, valor in enumerate(valores)]
+        # Conserva el origen para publicar únicamente el lote que cambió.
+        fila_base[3]['tipo_proforma'] = item.tipo_proforma
+        nuevas_base.append(fila_base)
     hoja_base['filas'] = prefijo_base + historicas_base + nuevas_base
     recalcular_objetivos(
         hoja_base['filas'], hoja_auxiliar['filas'], reglas_objetivo,
@@ -11122,7 +11403,7 @@ def aplicar_proformas_a_seguimiento(contenido):
     return contenido
 
 
-def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
+def filas_dashboard_desde_seguimiento_personal(contenido, periodo, tipo_proforma=None):
     """Convierte Base objetivo Masivo en filas válidas del dashboard."""
     periodo_compacto = periodo_valor_seguimiento(periodo)
     if not periodo_compacto:
@@ -11162,7 +11443,10 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
 
     errores = []
     ajustes_auxiliar = contenido.get('ajustes_auxiliar_horas') or {}
-    proformas_periodo = ProformaPersonal.query.filter_by(periodo=periodo_compacto).all()
+    consulta_proformas = ProformaPersonal.query.filter_by(periodo=periodo_compacto)
+    if tipo_proforma:
+        consulta_proformas = consulta_proformas.filter_by(tipo_proforma=tipo_proforma)
+    proformas_periodo = consulta_proformas.all()
     filas_con_bono_adicional = {
         (normalizar_header(item.segmento), normalizar_header(tipo_hora_seguimiento(item.tipo_hora)))
         for item in proformas_periodo
@@ -11196,6 +11480,8 @@ def filas_dashboard_desde_seguimiento_personal(contenido, periodo):
     filas_dashboard = []
     for fila in hoja_base.get('filas', [])[2:]:
         if periodo_valor_seguimiento(valor_fila_seguimiento(fila, 5)) != periodo_compacto:
+            continue
+        if tipo_proforma and (len(fila) <= 3 or not isinstance(fila[3], dict) or fila[3].get('tipo_proforma') != tipo_proforma):
             continue
         tipo_negocio = str(valor_fila_seguimiento(fila, 0) or '').strip()
         cliente = str(valor_fila_seguimiento(fila, 2) or '').strip()
@@ -11291,14 +11577,27 @@ def api_publicar_seguimiento_personal_dashboard():
     if errores:
         return jsonify({'success': False, 'errores': errores[:30]}), 400
 
-    resultado = reemplazar_dashboard_personal(mes, filas, importacion_id=importacion.id)
+    tipos = sorted({item.tipo_proforma for item in ProformaPersonal.query.filter_by(periodo=periodo_compacto).all()})
+    try:
+        resultado = reemplazar_dashboard_personal(mes, filas, importacion_id=importacion.id, tipos_proforma=tipos,
+                                                  grupos_alcance={fila['tipo_negocio'] for fila in filas})
+    except ValueError as error:
+        db.session.rollback()
+        return jsonify({'success': False, 'errores': [str(error)]}), 400
     db.session.commit()
     return jsonify(resultado)
 
 
-def reemplazar_dashboard_personal(mes, filas, sincronizacion=False, importacion_id=None):
+def reemplazar_dashboard_personal(mes, filas, sincronizacion=False, importacion_id=None, tipo_proforma=None, origen_historial_id=None, tipos_proforma=None, grupos_alcance=None):
     """Publica el mes calculado dentro de la transacción del llamador."""
     existentes = query_reemplazo_personal_mes({'mes': mes}).all()
+    tipos_alcance = tipos_proforma or ([tipo_proforma] if tipo_proforma else [])
+    if tipos_alcance:
+        grupos_permitidos = set().union(*(grupos_dashboard_tipo_proforma(tipo) for tipo in tipos_alcance))
+        grupos = set(grupos_alcance) if grupos_alcance is not None else grupos_permitidos
+        if not grupos.issubset(grupos_permitidos) or any(fila['tipo_negocio'] not in grupos for fila in filas):
+            raise ValueError('La clasificación de las filas no coincide con los tipos de Proforma seleccionados.')
+        existentes = [item for item in existentes if normalizar_tipo_negocio_personal(item.cliente, item.tipo_negocio, item.campania) in grupos]
     antes = [snapshot_modelo(registro) for registro in existentes]
     for registro in existentes:
         db.session.delete(registro)
@@ -11318,9 +11617,11 @@ def reemplazar_dashboard_personal(mes, filas, sincronizacion=False, importacion_
         'sincronizacion' if sincronizacion else ('edicion' if existentes else 'importacion'), 'seguimiento_personal_dashboard', mes,
         f'Personal {mes}: {len(filas)} fila(s) pasadas al dashboard ({" / ".join(estados)})',
         antes={'filas': antes},
-        despues={'filas': [snapshot_modelo(registro) for registro in nuevos], 'importacion_id': importacion_id},
+        despues={'filas': [snapshot_modelo(registro) for registro in nuevos], 'importacion_id': importacion_id,
+                 'tipo_proforma': tipo_proforma, 'tipos_proforma': tipos_alcance,
+                 'grupos_dashboard': sorted(grupos) if tipos_alcance else [], 'origen_historial_id': origen_historial_id},
         detalle=(
-            f'El mes completo de Personal fue reemplazado: {len(existentes)} fila(s) anteriores '
+            f'{"Los tipos " + ", ".join(tipos_alcance) if tipos_alcance else "El mes completo de Personal"} fueron reemplazados: {len(existentes)} fila(s) anteriores '
             f'por {len(nuevos)} fila(s) vigentes. La definitiva M-2 sustituye a la proyectada.'
         ),
     )
@@ -11337,7 +11638,89 @@ def reemplazar_dashboard_personal(mes, filas, sincronizacion=False, importacion_
     }
 
 
-def sincronizar_dashboard_al_deshacer_proforma(periodos):
+def grupos_dashboard_tipo_proforma(tipo_proforma):
+    return {'Masivo': {'Personal CX', 'Personal SMB'}, 'Soporte': {'Personal Soporte'},
+            'Personal Pay': {'Personal PPAY'}}[tipo_proforma]
+
+
+def restaurar_dashboard_asociado_historial(origen_historial_id):
+    """Restaura sólo las filas reemplazadas por ese movimiento, si siguen vigentes."""
+    movimientos = [item for item in HistorialCambio.query.filter_by(
+        entidad='seguimiento_personal_dashboard', accion='sincronizacion',
+    ).order_by(HistorialCambio.id.desc()).all()
+        if (item._json(item.despues) or {}).get('origen_historial_id') == origen_historial_id]
+    for movimiento in movimientos:
+        despues = movimiento._json(movimiento.despues) or {}
+        tipo = despues.get('tipo_proforma')
+        if not tipo:
+            continue
+        grupos = set(despues.get('grupos_dashboard') or grupos_dashboard_tipo_proforma(tipo))
+        actuales = [fila for fila in query_reemplazo_personal_mes({'mes': movimiento.entidad_id}).all()
+                    if normalizar_tipo_negocio_personal(fila.cliente, fila.tipo_negocio, fila.campania) in grupos]
+        def ordenadas(filas):
+            return sorted(filas, key=lambda fila: fila.get('id') or 0)
+        if ordenadas([snapshot_modelo(fila) for fila in actuales]) != ordenadas(despues.get('filas') or []):
+            raise ValueError('El dashboard de este grupo cambió después de esta carga. Deshaga primero los cambios posteriores para conservar los datos.')
+        for fila in actuales:
+            db.session.delete(fila)
+        db.session.flush()
+        for snapshot in (movimiento._json(movimiento.antes) or {}).get('filas') or []:
+            columnas = {columna.name for columna in Facturacion2026.__table__.columns}
+            datos = {clave: valor for clave, valor in snapshot.items() if clave in columnas}
+            if datos.get('id') and db.session.get(Facturacion2026, datos['id']):
+                datos.pop('id')
+            datos['fecha'] = parse_fecha(datos['fecha'])
+            registro = Facturacion2026(**datos)
+            db.session.add(registro)
+            guardar_justificaciones(registro, snapshot)
+        db.session.flush()
+    return bool(movimientos)
+
+
+def sincronizar_proforma_definitiva_dashboard(importacion, periodo, tipo_proforma, origen_historial_id=None):
+    """Publica un lote completo sólo cuando sus datos están listos para calcularlo."""
+    if not importacion:
+        return {'estado': 'pendiente', 'periodo': periodo, 'errores': ['Falta la configuración del seguimiento Personal.']}
+    contenido = aplicar_proformas_a_seguimiento(contenido_seguimiento_personal(importacion))
+    filas, errores = filas_dashboard_desde_seguimiento_personal(contenido, periodo, tipo_proforma)
+    grupos = grupos_dashboard_tipo_proforma(tipo_proforma)
+    for movimiento in HistorialCambio.query.filter_by(entidad='proforma_personal', accion='importacion').order_by(HistorialCambio.id.desc()).all():
+        datos = movimiento._json(movimiento.despues) or {}
+        if any(fila.get('periodo') == periodo and fila.get('tipo_proforma') == tipo_proforma
+               for fila in datos.get('proformas') or []):
+            anteriores = set((datos.get('grupos_dashboard_previos') or {}).get(periodo) or [])
+            faltantes = anteriores - {fila['tipo_negocio'] for fila in filas}
+            if faltantes:
+                errores.append('La definitiva no contiene grupos del lote anterior: ' + ', '.join(sorted(faltantes)) + '. Revise el archivo antes de actualizar el dashboard.')
+            break
+    grupos_incorrectos = sorted({fila['tipo_negocio'] for fila in filas if fila['tipo_negocio'] not in grupos})
+    if grupos_incorrectos:
+        errores.append('Revise la clasificación de Aux/Datos Maestros: ' + ', '.join(grupos_incorrectos))
+    if errores:
+        return {'estado': 'pendiente', 'periodo': periodo, 'errores': errores}
+    mes = f'{periodo[:4]}-{periodo[4:]}'
+    resultado = reemplazar_dashboard_personal(mes, filas, sincronizacion=True, importacion_id=importacion.id,
+                                               tipo_proforma=tipo_proforma, origen_historial_id=origen_historial_id,
+                                               grupos_alcance={fila['tipo_negocio'] for fila in filas})
+    return {'estado': 'actualizado', 'periodo': periodo, 'creadas': resultado['creadas'], 'reemplazadas': resultado['reemplazadas']}
+
+
+def sincronizar_definitivas_por_ajustes(importacion, entradas):
+    alcances = set()
+    for entrada in entradas:
+        periodo = periodo_valor_seguimiento(entrada.get('periodo'))
+        if not periodo:
+            continue
+        for item in ProformaPersonal.query.filter_by(periodo=periodo, estado_proforma='Definitiva').all():
+            if (normalizar_header(item.negocio) == normalizar_header(entrada.get('grupo'))
+                    and normalizar_header(item.segmento) == normalizar_header(entrada.get('campania'))
+                    and normalizar_header(tipo_hora_seguimiento(item.tipo_hora)) == normalizar_header(entrada.get('tipo_vh'))):
+                alcances.add((periodo, item.tipo_proforma))
+    return [sincronizar_proforma_definitiva_dashboard(importacion, periodo, tipo)
+            for periodo, tipo in sorted(alcances)]
+
+
+def sincronizar_dashboard_al_deshacer_proforma(periodos, alcances=None):
     """Reconstruye sólo meses que ya se habían publicado desde Personal."""
     db.session.flush()
     ultima_importacion = SeguimientoPersonalImportacion.query.order_by(
@@ -11352,6 +11735,21 @@ def sincronizar_dashboard_al_deshacer_proforma(periodos):
             continue
         importacion_id = (publicacion._json(publicacion.despues) or {}).get('importacion_id')
         importacion = db.session.get(SeguimientoPersonalImportacion, importacion_id) if importacion_id else ultima_importacion
+        if alcances:
+            for tipo, periodo_alcance in sorted(alcances):
+                if periodo_alcance != periodo:
+                    continue
+                filas_tipo = []
+                if ProformaPersonal.query.filter_by(periodo=periodo, tipo_proforma=tipo).first():
+                    if importacion is None:
+                        raise ValueError('Restaure la configuración de seguimiento para recalcular el dashboard al deshacer.')
+                    contenido = aplicar_proformas_a_seguimiento(contenido_seguimiento_personal(importacion))
+                    filas_tipo, errores = filas_dashboard_desde_seguimiento_personal(contenido, periodo, tipo)
+                    if errores:
+                        raise ValueError('No se pudo recalcular el dashboard al deshacer: ' + ' | '.join(errores[:10]))
+                reemplazar_dashboard_personal(mes, filas_tipo, sincronizacion=True,
+                    importacion_id=importacion.id if importacion else None, tipo_proforma=tipo)
+            continue
         filas = []
         if ProformaPersonal.query.filter_by(periodo=periodo).first():
             if importacion is None:
@@ -11393,9 +11791,22 @@ def api_hoja_seguimiento_personal():
     proformas = ProformaPersonal.query.order_by(ProformaPersonal.periodo.desc()).all()
     periodos_disponibles = sorted({item.periodo for item in proformas}, reverse=True)
     validaciones_dashboard = {}
+    impacto_dashboard = {}
     for periodo in periodos_disponibles:
-        _, errores_periodo = filas_dashboard_desde_seguimiento_personal(contenido, periodo)
+        filas_periodo, errores_periodo = filas_dashboard_desde_seguimiento_personal(contenido, periodo)
         validaciones_dashboard[periodo] = errores_periodo
+        mes = f'{periodo[:4]}-{periodo[4:]}'
+        existentes = query_reemplazo_personal_mes({'mes': mes}).all()
+        grupos_publicados = {item.get('tipo_negocio') for item in filas_periodo if item.get('tipo_negocio')}
+        existentes_reemplazables = [item for item in existentes if normalizar_tipo_negocio_personal(item.cliente, item.tipo_negocio, item.campania) in grupos_publicados]
+        grupos_actuales = {str(item.tipo_negocio or 'Sin clasificación') for item in existentes}
+        grupos_nuevos = {str(item.get('tipo_negocio') or 'Sin clasificación') for item in filas_periodo}
+        nuevas_claves = {normalizar_header(grupo) for grupo in grupos_publicados}
+        impacto_dashboard[periodo] = {
+            'filas_actuales': len(existentes_reemplazables), 'filas_nuevas': len(filas_periodo),
+            'estados': sorted({item.get('estado_personal') for item in filas_periodo if item.get('estado_personal')}),
+            'grupos_ausentes': sorted(grupo for grupo in grupos_actuales if normalizar_header(grupo) not in nuevas_claves),
+        }
     return jsonify({
         'success': True,
         'importacion': importacion.to_dict(),
@@ -11405,6 +11816,7 @@ def api_hoja_seguimiento_personal():
         'periodos_definitivos_auxiliar': contenido.get('periodos_definitivos_auxiliar') or [],
         'cierres_auxiliar': contenido.get('cierres_auxiliar') or [],
         'validaciones_dashboard': validaciones_dashboard,
+        'impacto_dashboard': impacto_dashboard,
         'planificacion_plp_manual': True,
     })
 
@@ -11630,6 +12042,9 @@ def api_importar_cierre_trafico_personal():
     importacion = db.session.get(SeguimientoPersonalImportacion, int(importacion_id)) if str(importacion_id or '').isdigit() else None
     if not importacion:
         return jsonify({'success': False, 'errores': ['Seleccione primero la configuración de seguimiento Personal.']}), 400
+    tipo_seleccionado = str(request.form.get('tipo_proforma') or '').strip()
+    if tipo_seleccionado and tipo_seleccionado not in TIPOS_PROFORMA_PERSONAL:
+        return jsonify({'success': False, 'errores': ['Seleccione un tipo de Proforma válido.']}), 400
     archivo = request.files.get('archivo')
     if not archivo or not archivo.filename:
         return jsonify({'success': False, 'errores': ['Seleccione el archivo de cierre de tráfico.']}), 400
@@ -11652,28 +12067,47 @@ def api_importar_cierre_trafico_personal():
     contenido = contenido_seguimiento_personal(importacion)
     cierres = contenido.setdefault('cierres_trafico_importados', [])
     cierres_anteriores = list(cierres)
-    cierres[:] = [item for item in cierres if str(item.get('periodo') or '') != periodo]
     cierre_guardado = {
         'archivo': archivo.filename[:255], 'periodo': periodo,
-        'tipo_proforma': None, 'filas': len(cierre),
+        'tipo_proforma': tipo_seleccionado or None, 'filas': len(cierre),
         'hojas': hojas, 'fecha': datetime.utcnow().isoformat(),
         'detalle': detalle_cierre_trafico(cierre),
         'estado': 'Pendiente de Proforma definitiva',
     }
-    cierres.append(cierre_guardado)
     proformas = ProformaPersonal.query.filter_by(periodo=periodo, estado_proforma='Definitiva').order_by(
         ProformaPersonal.tipo_proforma, ProformaPersonal.segmento, ProformaPersonal.tipo_hora,
     ).all()
     anteriores, posteriores, tipo_proforma, errores_match = {}, {}, None, []
-    if proformas:
+    proformas_objetivo = [item for item in proformas if not tipo_seleccionado or item.tipo_proforma == tipo_seleccionado]
+    if not tipo_seleccionado and not any(
+        (normalizar_header(item.segmento), normalizar_header(tipo_hora_seguimiento(item.tipo_hora))) in cierre
+        for item in proformas_objetivo
+    ):
+        proformas_objetivo = []
+    if proformas_objetivo:
         anteriores, posteriores, tipo_proforma, errores_match = aplicar_cierre_guardado_personal(
-            contenido, cierre_guardado, proformas,
+            contenido, cierre_guardado, proformas_objetivo,
         )
+    tipo_proforma = tipo_proforma or tipo_seleccionado or None
+    # Un cierre pendiente sin selección explícita sólo reemplaza otro cierre
+    # cuando tiene exactamente las mismas campañas y jornadas.
+    claves_nuevas = set(cierre)
+    def es_mismo_cierre(item):
+        if str(item.get('periodo') or '') != periodo:
+            return False
+        tipo_anterior = item.get('tipo_proforma')
+        if tipo_proforma and tipo_anterior:
+            return tipo_proforma == tipo_anterior
+        claves_anteriores = {(normalizar_header(fila.get('campania')), normalizar_header(fila.get('tipo_vh')))
+                             for fila in item.get('detalle') or []}
+        return bool(claves_nuevas) and claves_nuevas == claves_anteriores
+    cierres[:] = [item for item in cierres if not es_mismo_cierre(item)]
+    cierres.append(cierre_guardado)
     importacion.contenido_hojas = zlib.compress(
         json.dumps(contenido, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
     )
     aplicado = bool(posteriores) and not errores_match
-    registrar_historial(
+    movimiento_cierre = registrar_historial(
         'importacion', 'seguimiento_personal_cierre', str(importacion.id),
         f'Cierre de tráfico {periodo}: {len(cierre_guardado["detalle"])} fila(s) de control ({"aplicado" if aplicado else "pendiente"})',
         antes={
@@ -11686,12 +12120,18 @@ def api_importar_cierre_trafico_personal():
         },
         detalle=f'Archivo “{archivo.filename[:120]}”. Queda disponible para cruzar con la Proforma definitiva del mismo período.',
     )
+    db.session.flush()
+    resultado_dashboard = None
+    if aplicado:
+        resultado_dashboard = sincronizar_proforma_definitiva_dashboard(importacion, periodo, tipo_proforma, movimiento_cierre.id)
     db.session.commit()
     mes = f'{periodo[4:]}/{periodo[:4]}'
     return jsonify({
         'success': True,
         'mensaje': (
-            f'Cierre cargado para {mes} y aplicado a la Proforma definitiva.' if aplicado else
+            (f'Cierre cargado para {mes} y aplicado a la Proforma definitiva. ' +
+             ('Dashboard actualizado.' if resultado_dashboard['estado'] == 'actualizado' else
+              'Dashboard pendiente: ' + ' | '.join(resultado_dashboard['errores'][:3]))) if aplicado else
             f'Cierre cargado para {mes}. Quedó pendiente y se aplicará automáticamente cuando importe la Proforma como Definitiva.'
         ),
         'periodo': periodo,
@@ -11699,6 +12139,7 @@ def api_importar_cierre_trafico_personal():
         'filas': len(cierre_guardado['detalle']),
         'aplicado': aplicado,
         'advertencias': errores_match,
+        'dashboard': resultado_dashboard,
         'cierre': cierres[-1],
     })
 
@@ -11775,11 +12216,13 @@ def api_guardar_horas_auxiliar_personal():
     importacion.contenido_hojas = zlib.compress(
         json.dumps(contenido, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
     )
+    actualizaciones_dashboard = sincronizar_definitivas_por_ajustes(importacion, [cambios])
     db.session.commit()
     return jsonify({
         'success': True,
-        'mensaje': 'Horas guardadas',
+        'mensaje': 'Horas guardadas' + ('. Dashboard actualizado.' if any(item['estado'] == 'actualizado' for item in actualizaciones_dashboard) else ''),
         'estado': 'Definitiva' if cierre_campania or periodo in periodos_definitivos_seguimiento(contenido) else 'Proyectada',
+        'dashboard': actualizaciones_dashboard,
     })
 
 
@@ -11847,11 +12290,16 @@ def api_guardar_lote_horas_auxiliar_personal():
     importacion.contenido_hojas = zlib.compress(
         json.dumps(contenido, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 9,
     )
+    actualizaciones_dashboard = sincronizar_definitivas_por_ajustes(importacion, entradas)
     db.session.commit()
     return jsonify({
         'success': True,
-        'mensaje': f'{len(entradas)} fila(s) actualizada(s) en una sola carga',
+        'mensaje': f'{len(entradas)} fila(s) actualizada(s) en una sola carga' + (
+            '. Dashboard actualizado.' if any(item['estado'] == 'actualizado' for item in actualizaciones_dashboard) else
+            '. Dashboard pendiente: ' + ' | '.join(actualizaciones_dashboard[0]['errores'][:3]) if actualizaciones_dashboard else ''
+        ),
         'cantidad': len(entradas),
+        'dashboard': actualizaciones_dashboard,
     })
 
 
@@ -13231,6 +13679,11 @@ def api_campanias():
     query = Campania.query
     if solo_activas:
         query = query.filter_by(activa=True)
+    if request.args.get('con_asignacion') == '1':
+        query = query.filter(db.session.query(AsignacionComercial.id).filter(
+            AsignacionComercial.campania_id == Campania.id,
+            AsignacionComercial.activa.is_(True),
+        ).exists())
     campanias = query.order_by(Campania.cliente, Campania.nombre).all()
     return jsonify({
         'success': True,

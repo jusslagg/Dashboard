@@ -12,18 +12,18 @@ from app.models import ProyeccionMatriz
 from app.routes import (aplicar_calculo_proyeccion, fechas_feriadas_activas,
                         normalizar_header, registrar_historial, snapshot_proyeccion)
 from scripts.sincronizar_proyectados_excel import (
-    YEAR, claves_horas_auxiliares, identidad_canonica, mes, numero, texto,
+    YEAR, claves_horas_auxiliares, identidad_matriz, mes, numero, texto,
 )
 
 
 def restaurar(archivo):
     valores = openpyxl.load_workbook(archivo, data_only=True, read_only=True)
     formulas = openpyxl.load_workbook(archivo, data_only=False, read_only=True)
-    claves_auxiliares = claves_horas_auxiliares(formulas)
+    claves_auxiliares = claves_horas_auxiliares(formulas, valores)
     grupos = defaultdict(list)
     nombres = {}
     for fila in valores['Matriz'].iter_rows(min_row=3, values_only=True):
-        cliente, campania = identidad_canonica(fila[2], fila[3])
+        cliente, campania = identidad_matriz(fila)
         clave_mes = mes(fila[5])
         if not cliente or not campania or not clave_mes or not clave_mes.startswith(str(YEAR)):
             continue

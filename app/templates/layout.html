@@ -161,6 +161,9 @@
                         <a href="/resumen" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/resumen' %}active{% endif %}">
                             <i class="fas fa-file-invoice-dollar w-6"></i><span class="sidebar-text">Facturación horas</span>
                         </a>
+                        <a href="/unificado" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/unificado' %}active{% endif %}">
+                            <i class="fas fa-table w-6"></i><span class="sidebar-text">Unificado</span>
+                        </a>
                         <a href="/variable" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path in ['/variable', '/suma-fija'] %}active{% endif %}">
                             <i class="fas fa-percent w-6"></i><span class="sidebar-text">Variable</span>
                         </a>
@@ -219,6 +222,9 @@
                         </a>
                         <a href="/cumplimiento-facturacion-clientes" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/cumplimiento-facturacion-clientes' %}active{% endif %}">
                             <i class="fas fa-file-invoice-dollar w-6"></i><span class="sidebar-text">Cumplimiento fac por cliente</span>
+                        </a>
+                        <a href="/apertura-desvios-clientes" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/apertura-desvios-clientes' %}active{% endif %}">
+                            <i class="fas fa-table-list w-6"></i><span class="sidebar-text">Apertura desvíos por cliente</span>
                         </a>
                         <a href="/comparativo-interanual" class="sidebar-link whitespace-nowrap block py-3 px-4 rounded md:mb-2 {% if request.path == '/comparativo-interanual' %}active{% endif %}">
                             <i class="fas fa-chart-column w-6"></i><span class="sidebar-text">Comparativo interanual</span>

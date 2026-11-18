@@ -1,0 +1,892 @@
+[
+  {
+    "fila_excel": 5,
+    "cliente_proyectado": "ASSURANT",
+    "clave_agrupacion": "ASSURANTGerencia Multicampaña",
+    "cliente": "ASSURANT",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "ASSURANT",
+    "segmento": "",
+    "campania": "ASSURANT"
+  },
+  {
+    "fila_excel": 6,
+    "cliente_proyectado": "BANCO PIANO",
+    "clave_agrupacion": "BANCO PIANOGerencia Multicampaña",
+    "cliente": "BANCO PIANO",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "BANCO PIANO",
+    "segmento": "",
+    "campania": "BANCO PIANO"
+  },
+  {
+    "fila_excel": 7,
+    "cliente_proyectado": "BBVA",
+    "clave_agrupacion": "BBVA SEGUROSGerencia Multicampaña",
+    "cliente": "BBVA",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "BBVA SEGUROS",
+    "segmento": "",
+    "campania": "BBVA SEGUROS"
+  },
+  {
+    "fila_excel": 8,
+    "cliente_proyectado": "BIBANK",
+    "clave_agrupacion": "BIBANKGerencia Multicampaña",
+    "cliente": "BIBANK",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "BIBANK",
+    "segmento": "",
+    "campania": "BIBANK"
+  },
+  {
+    "fila_excel": 9,
+    "cliente_proyectado": "BANCO BICE",
+    "clave_agrupacion": "BICEGerencia Multicampaña",
+    "cliente": "BANCO BICE",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "BICE",
+    "segmento": "",
+    "campania": "BANCO BICE"
+  },
+  {
+    "fila_excel": 10,
+    "cliente_proyectado": "CACHAMAI",
+    "clave_agrupacion": "CACHAMAIGerencia Multicampaña",
+    "cliente": "CACHAMAI",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "CACHAMAI",
+    "segmento": "",
+    "campania": "CACHAMAI"
+  },
+  {
+    "fila_excel": 11,
+    "cliente_proyectado": "BSF",
+    "clave_agrupacion": "CARREFOURGerencia Multicampaña",
+    "cliente": "BSF",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "CARREFOUR",
+    "segmento": "",
+    "campania": "BSF CARREFOUR"
+  },
+  {
+    "fila_excel": 12,
+    "cliente_proyectado": "GIRE",
+    "clave_agrupacion": "GIREGerencia Multicampaña",
+    "cliente": "GIRE",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "GIRE",
+    "segmento": "",
+    "campania": "GIRE"
+  },
+  {
+    "fila_excel": 13,
+    "cliente_proyectado": "JONHSON & JONHSON",
+    "clave_agrupacion": "JOHNSON & JOHNSONGerencia Multicampaña",
+    "cliente": "JONHSON & JONHSON",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "JOHNSON & JOHNSON",
+    "segmento": "",
+    "campania": "J&J"
+  },
+  {
+    "fila_excel": 14,
+    "cliente_proyectado": "METROGAS",
+    "clave_agrupacion": "METROGASGerencia Multicampaña",
+    "cliente": "METROGAS",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "METROGAS",
+    "segmento": "",
+    "campania": "METROGAS"
+  },
+  {
+    "fila_excel": 15,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "NATURGYMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY BAN COMERCIAL",
+    "segmento": "",
+    "campania": "NATURGY BAN COMERCIAL"
+  },
+  {
+    "fila_excel": 16,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "NATURGYMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY COMERCIAL TL",
+    "segmento": "",
+    "campania": "NATURGY BAN COMERCIAL TL"
+  },
+  {
+    "fila_excel": 17,
+    "cliente_proyectado": "BBVA OPENPAY",
+    "clave_agrupacion": "OPENPAYGerencia Multicampaña",
+    "cliente": "BBVA OPENPAY",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "OPENPAY",
+    "segmento": "",
+    "campania": "OPENPAY"
+  },
+  {
+    "fila_excel": 18,
+    "cliente_proyectado": "MIRGOR",
+    "clave_agrupacion": "MIRGORGerencia Multicampaña",
+    "cliente": "MIRGOR",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "MIRGOR",
+    "segmento": "",
+    "campania": "MIRGOR"
+  },
+  {
+    "fila_excel": 19,
+    "cliente_proyectado": "MIRGOR",
+    "clave_agrupacion": "MIRGORGerencia Multicampaña",
+    "cliente": "MIRGOR",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "MIRGOR TL",
+    "segmento": "",
+    "campania": "MIRGOR"
+  },
+  {
+    "fila_excel": 20,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER CONSUMERMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER CONSUMER",
+    "segmento": "",
+    "campania": "CONSUMER"
+  },
+  {
+    "fila_excel": 21,
+    "cliente_proyectado": "SANTANDER GETNET",
+    "clave_agrupacion": "SANTANDER GETNETMariano Quesada",
+    "cliente": "SANTANDER GETNET",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER GETNET",
+    "segmento": "",
+    "campania": "SANTANDER GETNET"
+  },
+  {
+    "fila_excel": 22,
+    "cliente_proyectado": "SANTANDER GETNET",
+    "clave_agrupacion": "SANTANDER GETNET ONBOARDINGMariano Quesada",
+    "cliente": "SANTANDER GETNET",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER GETNET ONBOARDING",
+    "segmento": "",
+    "campania": "GETNET ONBOARDING"
+  },
+  {
+    "fila_excel": 23,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER CCEMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER ISLA PREVENCION DE FRAUDES",
+    "segmento": "",
+    "campania": "ISLA DE PREVENCIÓN"
+  },
+  {
+    "fila_excel": 24,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER SEGUROS/LEADSMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER LEADS",
+    "segmento": "",
+    "campania": "LEADS"
+  },
+  {
+    "fila_excel": 25,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER CCEMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER MIXTO BA",
+    "segmento": "",
+    "campania": "SANTANDER MIXTO BA"
+  },
+  {
+    "fila_excel": 26,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER CCEMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER MIXTO GETNET",
+    "segmento": "",
+    "campania": "MIXTO GETNET"
+  },
+  {
+    "fila_excel": 27,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER CCEMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER MIXTO SL",
+    "segmento": "",
+    "campania": "SANTANDER MIXTO SL"
+  },
+  {
+    "fila_excel": 28,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER PRÉSTAMOSMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER PRÉSTAMOS",
+    "segmento": "",
+    "campania": "SANTANDER PRESTAMOS"
+  },
+  {
+    "fila_excel": 29,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER SEGUROS/LEADSMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER SEGUROS",
+    "segmento": "",
+    "campania": "SANTANDER SEGUROS"
+  },
+  {
+    "fila_excel": 30,
+    "cliente_proyectado": "SUPERVIELLE",
+    "clave_agrupacion": "SUPERVIELLEGerencia Multicampaña",
+    "cliente": "SUPERVIELLE",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "SUPERVIELLE",
+    "segmento": "",
+    "campania": "OUTBOUND"
+  },
+  {
+    "fila_excel": 31,
+    "cliente_proyectado": "SUPERVIELLE SEGUROS",
+    "clave_agrupacion": "SUPERVIELLE SEGUROSMariano Quesada",
+    "cliente": "SUPERVIELLE SEGUROS",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SUPERVIELLE SEGUROS",
+    "segmento": "",
+    "campania": "SUPERVIELLE SEGUROS"
+  },
+  {
+    "fila_excel": 32,
+    "cliente_proyectado": "Personal",
+    "clave_agrupacion": "PersonalLucas Caamaño",
+    "cliente": "Personal",
+    "site": "Lucas Caamaño",
+    "clave_operativa": "Personal",
+    "segmento": "",
+    "campania": ""
+  },
+  {
+    "fila_excel": 33,
+    "cliente_proyectado": "Personal",
+    "clave_agrupacion": "Personal CXLucas Caamaño",
+    "cliente": "Personal CX",
+    "site": "Lucas Caamaño",
+    "clave_operativa": "Personal CX",
+    "segmento": "",
+    "campania": ""
+  },
+  {
+    "fila_excel": 34,
+    "cliente_proyectado": "Personal",
+    "clave_agrupacion": "Personal SMBLucas Caamaño",
+    "cliente": "Personal SMB",
+    "site": "Lucas Caamaño",
+    "clave_operativa": "Personal SMB",
+    "segmento": "",
+    "campania": ""
+  },
+  {
+    "fila_excel": 35,
+    "cliente_proyectado": "UNICEF",
+    "clave_agrupacion": "UNICEFGerencia Multicampaña",
+    "cliente": "UNICEF",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "UNICEF",
+    "segmento": "",
+    "campania": "UNICEF MK"
+  },
+  {
+    "fila_excel": 36,
+    "cliente_proyectado": "YAMAHA",
+    "clave_agrupacion": "YAMAHAGerencia Multicampaña",
+    "cliente": "YAMAHA",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "YAMAHA",
+    "segmento": "",
+    "campania": "YAMAHA"
+  },
+  {
+    "fila_excel": 37,
+    "cliente_proyectado": "MIRGOR",
+    "clave_agrupacion": "MIRGOR BBTIGerencia Multicampaña",
+    "cliente": "MIRGOR",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "MIRGOR BBTI",
+    "segmento": "",
+    "campania": "TRADE IN"
+  },
+  {
+    "fila_excel": 38,
+    "cliente_proyectado": "SPAZIOS",
+    "clave_agrupacion": "SPAZIOSGerencia Multicampaña",
+    "cliente": "SPAZIOS",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "SPAZIOS",
+    "segmento": "",
+    "campania": "SPAZIOS"
+  },
+  {
+    "fila_excel": 39,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER CCEMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER CHAT",
+    "segmento": "",
+    "campania": "SANTANDER CHAT"
+  },
+  {
+    "fila_excel": 40,
+    "cliente_proyectado": "UNICEF",
+    "clave_agrupacion": "UNICEFGerencia Multicampaña",
+    "cliente": "UNICEF",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "UNICEF ACTIVOS+LEADS",
+    "segmento": "",
+    "campania": "UNICEF MK"
+  },
+  {
+    "fila_excel": 41,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "ENERGIA SAN JUANMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY ENERGIA SAN JUAN",
+    "segmento": "",
+    "campania": "NATURGY ENERGIA SAN JUAN"
+  },
+  {
+    "fila_excel": 42,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "GASNORMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY NOA",
+    "segmento": "",
+    "campania": "NATURGY NOA COMERCIAL"
+  },
+  {
+    "fila_excel": 43,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "GASNORMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY NOA URGENCIAS",
+    "segmento": "",
+    "campania": "NATURGY NOA CAU"
+  },
+  {
+    "fila_excel": 44,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "NATURGYMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY BAN",
+    "segmento": "",
+    "campania": "NATURGY BAN COMERCIAL"
+  },
+  {
+    "fila_excel": 45,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "NATURGYMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY BAN URGENCIAS",
+    "segmento": "",
+    "campania": "NATURGY BAN CAU"
+  },
+  {
+    "fila_excel": 46,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER CCEMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER RETENCIONES",
+    "segmento": "",
+    "campania": "SANTANDER RETENCION"
+  },
+  {
+    "fila_excel": 47,
+    "cliente_proyectado": "FARMAPAY",
+    "clave_agrupacion": "FARMAPAYGerencia Multicampaña",
+    "cliente": "FARMAPAY",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "FARMAPAY",
+    "segmento": "",
+    "campania": "FARMAPAY"
+  },
+  {
+    "fila_excel": 48,
+    "cliente_proyectado": "LEIVA JOYAS",
+    "clave_agrupacion": "LEIVA JOYASGerencia Multicampaña",
+    "cliente": "LEIVA JOYAS",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "LEIVA JOYAS",
+    "segmento": "",
+    "campania": "LEIVA JOYAS"
+  },
+  {
+    "fila_excel": 49,
+    "cliente_proyectado": "QUALIA",
+    "clave_agrupacion": "QUALIAGerencia Multicampaña",
+    "cliente": "QUALIA",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "QUALIA",
+    "segmento": "",
+    "campania": "QUALIA VENTAS"
+  },
+  {
+    "fila_excel": 50,
+    "cliente_proyectado": "SPAZIOS",
+    "clave_agrupacion": "SPAZIOSGerencia Multicampaña",
+    "cliente": "SPAZIOS",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "SPAZIOS TL",
+    "segmento": "",
+    "campania": "SPAZIOS"
+  },
+  {
+    "fila_excel": 51,
+    "cliente_proyectado": "Personal",
+    "clave_agrupacion": "PersonalLucas Caamaño",
+    "cliente": "Personal",
+    "site": "Lucas Caamaño",
+    "clave_operativa": "Personal Nocturnos",
+    "segmento": "",
+    "campania": ""
+  },
+  {
+    "fila_excel": 52,
+    "cliente_proyectado": "Personal",
+    "clave_agrupacion": "Personal CXLucas Caamaño",
+    "cliente": "Personal CX",
+    "site": "Lucas Caamaño",
+    "clave_operativa": "Personal CX Nocturnos",
+    "segmento": "",
+    "campania": ""
+  },
+  {
+    "fila_excel": 53,
+    "cliente_proyectado": "Personal",
+    "clave_agrupacion": "Personal SoporteLucas Caamaño",
+    "cliente": "Personal Soporte",
+    "site": "Lucas Caamaño",
+    "clave_operativa": "Personal Soporte",
+    "segmento": "",
+    "campania": ""
+  },
+  {
+    "fila_excel": 54,
+    "cliente_proyectado": "Personal",
+    "clave_agrupacion": "Personal SoporteLucas Caamaño",
+    "cliente": "Personal Soporte",
+    "site": "Lucas Caamaño",
+    "clave_operativa": "Personal Soporte Nocturnos",
+    "segmento": "",
+    "campania": ""
+  },
+  {
+    "fila_excel": 55,
+    "cliente_proyectado": "BANCO COMAFI",
+    "clave_agrupacion": "BANCO COMAFIGerencia Multicampaña",
+    "cliente": "BANCO COMAFI",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "BANCO COMAFI",
+    "segmento": "",
+    "campania": "AT AL CLIENTE"
+  },
+  {
+    "fila_excel": 56,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER CCEMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER RETENCION MIXTO SL",
+    "segmento": "",
+    "campania": "SANTANDER RETENCION MIX"
+  },
+  {
+    "fila_excel": 57,
+    "cliente_proyectado": "BBVA",
+    "clave_agrupacion": "BBVA SEGUROSGerencia Multicampaña",
+    "cliente": "BBVA",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "BBVA SEGUROS AUTOS",
+    "segmento": "",
+    "campania": "BBVA SEGUROS"
+  },
+  {
+    "fila_excel": 58,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "ENERGIA SAN JUANMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY ENERGIA SAN JUAN TL",
+    "segmento": "",
+    "campania": "NATURGY ENERGIA SAN JUAN"
+  },
+  {
+    "fila_excel": 59,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "GASNORMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY NOA TL",
+    "segmento": "",
+    "campania": "NATURGY NOA COMERCIAL"
+  },
+  {
+    "fila_excel": 60,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "GASNORMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY NOA URGENCIAS TL",
+    "segmento": "",
+    "campania": "NATURGY NOA CAU"
+  },
+  {
+    "fila_excel": 61,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "NATURGYMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY BAN COMERCIAL TL",
+    "segmento": "",
+    "campania": "NATURGY BAN COMERCIAL TL"
+  },
+  {
+    "fila_excel": 62,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "NATURGYMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY BAN URGENCIAS TL",
+    "segmento": "",
+    "campania": "NATURGY BAN CAU"
+  },
+  {
+    "fila_excel": 63,
+    "cliente_proyectado": "OMINT",
+    "clave_agrupacion": "OMINTGerencia Multicampaña",
+    "cliente": "OMINT",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "OMINT",
+    "segmento": "",
+    "campania": "OMINT"
+  },
+  {
+    "fila_excel": 64,
+    "cliente_proyectado": "APM - TERMINAL 4",
+    "clave_agrupacion": "APM - TERMINAL 40",
+    "cliente": "APM - TERMINAL 4",
+    "site": "0",
+    "clave_operativa": "APM - TERMINAL 4",
+    "segmento": "NEXT GEN",
+    "campania": "APM - TERMINAL 4"
+  },
+  {
+    "fila_excel": 65,
+    "cliente_proyectado": "BANCO CREDICOOP",
+    "clave_agrupacion": "BANCO CREDICOOP0",
+    "cliente": "BANCO CREDICOOP",
+    "site": "0",
+    "clave_operativa": "BANCO CREDICOOP",
+    "segmento": "NEXT GEN",
+    "campania": "BANCO CREDICOOP"
+  },
+  {
+    "fila_excel": 66,
+    "cliente_proyectado": "ALMUNDO",
+    "clave_agrupacion": "ALMUNDO0",
+    "cliente": "ALMUNDO",
+    "site": "0",
+    "clave_operativa": "ALMUNDO",
+    "segmento": "NEXT GEN",
+    "campania": "ALMUNDO"
+  },
+  {
+    "fila_excel": 67,
+    "cliente_proyectado": "QUALIA",
+    "clave_agrupacion": "QUALIAGerencia Multicampaña",
+    "cliente": "QUALIA",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "QUALIA CENCOSUD",
+    "segmento": "",
+    "campania": "QUALIA CENCOSUD"
+  },
+  {
+    "fila_excel": 68,
+    "cliente_proyectado": "RIVER PLATE",
+    "clave_agrupacion": "RIVERMariano Quesada",
+    "cliente": "RIVER PLATE",
+    "site": "Mariano Quesada",
+    "clave_operativa": "RIVER",
+    "segmento": "",
+    "campania": "RIVER PLATE ATENCION AL SOCIO"
+  },
+  {
+    "fila_excel": 69,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "NATURGYMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY BO",
+    "segmento": "",
+    "campania": "NATURGY BO"
+  },
+  {
+    "fila_excel": 70,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "NATURGYMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY QUIERO GAS",
+    "segmento": "",
+    "campania": "NATURGY VENTAS"
+  },
+  {
+    "fila_excel": 71,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER CCEMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER MIXTO ESTABLES",
+    "segmento": "",
+    "campania": "MIXTO CAT ESTABLES"
+  },
+  {
+    "fila_excel": 72,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER CCEMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER MIXTO INGRESOS",
+    "segmento": "",
+    "campania": "MIXTO CAT INGRESOS"
+  },
+  {
+    "fila_excel": 73,
+    "cliente_proyectado": "Personal",
+    "clave_agrupacion": "Personal SMBLucas Caamaño",
+    "cliente": "Personal SMB",
+    "site": "Lucas Caamaño",
+    "clave_operativa": "Personal SMB Nocturnos",
+    "segmento": "",
+    "campania": ""
+  },
+  {
+    "fila_excel": 74,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "GASNORMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY NOA BO",
+    "segmento": "",
+    "campania": "NATURGY BO NOA"
+  },
+  {
+    "fila_excel": 75,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "ENERGIA SAN JUANMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY ENERGIA SAN JUAN BO",
+    "segmento": "",
+    "campania": "NATURGY BO SAN JUAN"
+  },
+  {
+    "fila_excel": 76,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "NATURGYMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY BAN URGENCIAS NOCTURNAS",
+    "segmento": "",
+    "campania": "NATURGY BAN CAU"
+  },
+  {
+    "fila_excel": 77,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "ENERGIA SAN JUANMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY ENERGIA SAN JUAN NOCTURNAS",
+    "segmento": "",
+    "campania": "NATURGY ENERGIA SAN JUAN"
+  },
+  {
+    "fila_excel": 78,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "GASNORMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY NOA URGENCIAS NOCTURNAS",
+    "segmento": "",
+    "campania": "NATURGY NOA CAU"
+  },
+  {
+    "fila_excel": 79,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "GASNORMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY NOA BO TL",
+    "segmento": "",
+    "campania": "NATURGY BO NOA"
+  },
+  {
+    "fila_excel": 80,
+    "cliente_proyectado": "NATURGY",
+    "clave_agrupacion": "ENERGIA SAN JUANMariano Quesada",
+    "cliente": "NATURGY",
+    "site": "Mariano Quesada",
+    "clave_operativa": "NATURGY ENERGIA SAN JUAN BO TL",
+    "segmento": "",
+    "campania": "NATURGY BO SAN JUAN"
+  },
+  {
+    "fila_excel": 81,
+    "cliente_proyectado": "GALICIA SEGUROS",
+    "clave_agrupacion": "GALICIA SEGUROSGerencia Multicampaña",
+    "cliente": "GALICIA SEGUROS",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "GALICIA SEGUROS",
+    "segmento": "",
+    "campania": "GALICIA SEGUROS - BACKOFFICE"
+  },
+  {
+    "fila_excel": 82,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER COBRANZASMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER COBRANZAS",
+    "segmento": "",
+    "campania": "TELECOBRANZAS"
+  },
+  {
+    "fila_excel": 83,
+    "cliente_proyectado": "BANCO PIANO",
+    "clave_agrupacion": "PIANO REFERIDOSGerencia Multicampaña",
+    "cliente": "BANCO PIANO",
+    "site": "Gerencia Multicampaña",
+    "clave_operativa": "PIANO REFERIDOS",
+    "segmento": "",
+    "campania": "BANCO PIANO ACCION REFERIDOS"
+  },
+  {
+    "fila_excel": 84,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER PRESTAMOSMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER PRESTAMOS",
+    "segmento": "",
+    "campania": "SANTANDER PRESTAMOS"
+  },
+  {
+    "fila_excel": 85,
+    "cliente_proyectado": "BNA",
+    "clave_agrupacion": "BNAMariano Quesada",
+    "cliente": "BNA",
+    "site": "Mariano Quesada",
+    "clave_operativa": "BNA",
+    "segmento": "",
+    "campania": "BNA - ATENCION AL CLIENTE"
+  },
+  {
+    "fila_excel": 86,
+    "cliente_proyectado": "BAPRO",
+    "clave_agrupacion": "BAPRO0",
+    "cliente": "BAPRO",
+    "site": "0",
+    "clave_operativa": "BAPRO",
+    "segmento": "NEXT GEN",
+    "campania": "BAPRO"
+  },
+  {
+    "fila_excel": 87,
+    "cliente_proyectado": "ANDREANI",
+    "clave_agrupacion": "ANDREANI0",
+    "cliente": "ANDREANI",
+    "site": "0",
+    "clave_operativa": "ANDREANI",
+    "segmento": "NEXT GEN",
+    "campania": "ANDREANI"
+  },
+  {
+    "fila_excel": 88,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER MIXTO COBRANZASMariano Quesada",
+    "cliente": "SANTANDER",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER MIXTO COBRANZAS",
+    "segmento": "",
+    "campania": "MIXTO COBRANZAS"
+  },
+  {
+    "fila_excel": 89,
+    "cliente_proyectado": "SANTANDER GETNET",
+    "clave_agrupacion": "SANTANDER GETNET SUPERVISOR EXCLUSIVOMariano Quesada",
+    "cliente": "SANTANDER GETNET",
+    "site": "Mariano Quesada",
+    "clave_operativa": "SANTANDER GETNET SUPERVISOR EXCLUSIVO",
+    "segmento": "",
+    "campania": "SANTANDER GETNET"
+  },
+  {
+    "fila_excel": 90,
+    "cliente_proyectado": "CLIC CLAC",
+    "clave_agrupacion": "CLIC CLAC0",
+    "cliente": "CLIC CLAC",
+    "site": "0",
+    "clave_operativa": "CLIC CLAC",
+    "segmento": "NEXT GEN",
+    "campania": "CLIC CLAC"
+  },
+  {
+    "fila_excel": 91,
+    "cliente_proyectado": "GALICIA SEGUROS",
+    "clave_agrupacion": "GALICIA SEGUROS - LITIGIOS0",
+    "cliente": "GALICIA SEGUROS",
+    "site": "0",
+    "clave_operativa": "GALICIA SEGUROS - LITIGIOS",
+    "segmento": "",
+    "campania": "GALICIA SEGUROS - LITIGIOS"
+  },
+  {
+    "fila_excel": 92,
+    "cliente_proyectado": "GALICIA SEGUROS",
+    "clave_agrupacion": "GALICIA SEGUROS - COBRANZAS0",
+    "cliente": "GALICIA SEGUROS",
+    "site": "0",
+    "clave_operativa": "GALICIA SEGUROS - COBRANZAS",
+    "segmento": "",
+    "campania": "GALICIA SEGUROS - COBRANZAS"
+  },
+  {
+    "fila_excel": 93,
+    "cliente_proyectado": "SANTANDER",
+    "clave_agrupacion": "SANTANDER MORA TARDÍA0",
+    "cliente": "SANTANDER",
+    "site": "0",
+    "clave_operativa": "SANTANDER MORA TARDÍA",
+    "segmento": "",
+    "campania": "MORA TARDIA"
+  }
+]

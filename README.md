@@ -1323,11 +1323,24 @@ facturación horas = horas proyectadas * precio mensual
 
 También contempla importes fijos cuando están cargados.
 
-La vista final consolida en una sola línea por campaña:
+La vista final presenta los conceptos de cada campaña y su total:
 
 ```text
-total campaña = facturación de horas + estimación variable + tarifaciones
+total campaña = facturación de horas + estimación variable + tarifaciones + Next Gen
 ```
+
+Facturación horas sigue el orden y las posiciones de la hoja `RESUMEN` del libro
+operativo de proyectados. La descarga individual conserva esa hoja y la descarga
+general incluye tanto `Facturación horas` como `RESUMEN`. Los nombres, encabezados
+y celdas existentes se mantienen para los controles; las campañas nuevas se
+agregan desde la fila 264 por orden de alta, debajo de las anteriores y con sus
+cuatro conceptos y total, para no desplazar el formato original. Los importes se
+calculan con los datos actuales del año seleccionado al generar cada archivo.
+
+La opción **Proyectados > Unificado** presenta una fila por clave operativa,
+con los importes mensuales de horas, variable, tarifación y Next Gen. Respeta
+el orden del libro de origen, agrega al final los servicios nuevos y permite
+descargar la hoja individualmente o dentro de la descarga completa.
 
 En PLP, las horas principales y nocturnas se calculan con su precio correspondiente y luego se consolidan bajo la clasificación base. La asociación de variables y tarifaciones ignora diferencias de mayúsculas, minúsculas y acentos. `Multicuentas` y `Gerencia Multicampaña` se presentan bajo la misma agrupación comercial.
 

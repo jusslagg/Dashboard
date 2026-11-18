@@ -102,9 +102,12 @@
                 <h2 class="text-xl font-bold text-gray-800">Asociaciones disponibles</h2>
                 <p id="contadorAsignaciones" class="mt-1 text-xs text-gray-500"></p>
             </div>
+            <div class="flex flex-wrap items-center gap-4">
+            <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-600"><input id="mostrarInactivasCatalogo" type="checkbox" class="rounded border-slate-300"> Mostrar inactivas</label>
             <button type="button" onclick="limpiarFiltrosCatalogo()" class="inline-flex items-center justify-center rounded bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800">
                 <i class="fas fa-rotate-left mr-2"></i>Limpiar filtros
             </button>
+            </div>
         </div>
         <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div class="xl:col-span-2">
@@ -239,7 +242,7 @@
 <div id="catalogosNormalizacion" role="tabpanel" hidden>
     <div class="nm-panel" style="margin-bottom:16px">
         <h2 style="font-size:19px">Normalizar nombres proyectados</h2>
-        <p class="text-sm text-slate-600">Elegí un nombre de la proyección y vinculá una o varias campañas de la matriz de Facturación. La relación se aplica al instante en Proyectado vs Facturado y en el Excel de Directorio. No cambia los nombres ni los importes originales.</p>
+        <p class="text-sm text-slate-600">Elegí un nombre de la proyección y vinculá una o varias campañas de Facturación como referencia. Proyectado vs Facturado y el Excel de Directorio se agrupan por cliente y no utilizan estas vinculaciones por campaña.</p>
         <label class="text-xs text-slate-600">Año para revisar los nombres proyectados<select id="normalizacionYear" class="nm-field" style="max-width:180px"></select></label>
         <p id="normalizacionResumen" class="nm-status" role="status" aria-live="polite"></p>
     </div>
@@ -328,7 +331,8 @@ async function cargarAsignaciones() {
     const tbody = document.getElementById('tablaAsignaciones');
     let data;
     try {
-        const response = await fetch('/api/asignaciones?activas=0&_ts=' + Date.now(), { cache: 'no-store' });
+        const incluirInactivas = document.getElementById('mostrarInactivasCatalogo').checked;
+        const response = await fetch('/api/asignaciones?activas=' + (incluirInactivas ? '0' : '1') + '&_ts=' + Date.now(), { cache: 'no-store' });
         data = await leerRespuestaJson(response);
     } catch (error) {
         tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-8 text-center text-red-600">${escapeHtml(error.message || 'No se pudieron cargar las asociaciones.')}</td></tr>`;
@@ -351,6 +355,7 @@ function poblarGruposFacturacion() {
 
 function inicializarFiltrosCatalogo() {
     document.getElementById('filtroTextoCatalogo').addEventListener('input', renderAsignaciones);
+    document.getElementById('mostrarInactivasCatalogo').addEventListener('change', cargarAsignaciones);
     document.querySelectorAll('[data-filtro-catalogo]').forEach(select => {
         select.addEventListener('change', renderAsignaciones);
     });
@@ -552,7 +557,7 @@ document.getElementById('tablaAsignaciones').addEventListener('click', event => 
 async function cargarConfiguracionValorHora() {
     const tbody = document.getElementById('tablaConfiguracionValorHora');
     try {
-        const data = await leerRespuestaJson(await fetch('/api/campanias?activas=0&_ts=' + Date.now(), { cache: 'no-store' }));
+        const data = await leerRespuestaJson(await fetch('/api/campanias?activas=1&con_asignacion=1&_ts=' + Date.now(), { cache: 'no-store' }));
         campaniasConfiguracion = data.campanias || [];
         tbody.innerHTML = campaniasConfiguracion.length ? campaniasConfiguracion.map(item => `
             <tr class="border-t"><td class="px-4 py-3 font-medium">${escapeHtml(item.cliente)}</td><td class="px-4 py-3">${escapeHtml(item.nombre)}</td><td class="px-4 py-3"><select onchange="guardarConfiguracionValorHora(${item.id}, this.value)" class="rounded border border-gray-300 bg-white px-3 py-2"><option value="" ${item.valor_hora_variable == null ? 'selected' : ''}>Sin configurar</option><option value="true" ${item.valor_hora_variable === true ? 'selected' : ''}>Sí</option><option value="false" ${item.valor_hora_variable === false ? 'selected' : ''}>No</option></select></td><td class="px-4 py-3 text-slate-600">${item.valor_hora_variable === true ? 'VH facturado independiente' : item.valor_hora_variable === false ? 'Repite VH objetivo' : 'Se preguntará en la primera carga'}</td></tr>

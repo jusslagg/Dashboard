@@ -1,0 +1,182 @@
+{% extends "layout.html" %}
+{% block title %}Unificado - Proyectados{% endblock %}
+{% block content %}
+<style>
+  .uni-wrap { max-width:1600px; margin:0 auto; color:#14253c; }
+  .uni-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:24px; }
+  .uni-kicker { color:#2563a7; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+  .uni-title { margin-top:4px; font-size:30px; font-weight:750; letter-spacing:-.035em; line-height:1.15; }
+  .uni-subtitle { color:#687b90; font-size:13px; margin-top:8px; }
+  .uni-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .uni-action { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:42px; border-radius:9px; padding:0 15px; font-size:12px; font-weight:700; }
+  .uni-download { background:#08785d; color:#fff; }
+  .uni-download:hover { background:#06634d; }
+  .uni-refresh { background:#fff; border:1px solid #d8e2ed; color:#344a63; }
+  .uni-card { background:#fff; border:1px solid #e0e8f0; border-radius:15px; box-shadow:0 3px 14px rgba(17,38,64,.04); }
+  .uni-kpis { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-bottom:16px; }
+  .uni-kpi { padding:19px 20px; min-width:0; }
+  .uni-kpi-label { color:#71839a; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }
+  .uni-kpi-value { font-size:22px; font-weight:750; line-height:1.2; letter-spacing:-.025em; margin-top:9px; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+  .uni-kpi-note { margin-top:6px; color:#7e8fa3; font-size:11px; }
+  .uni-filter { padding:19px 20px 20px; margin-bottom:16px; }
+  .uni-section-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .uni-section-title { font-size:14px; font-weight:750; color:#1e334d; }
+  .uni-section-note { font-size:12px; color:#7a8da2; margin-top:4px; }
+  .uni-clear { color:#2464a8; font-size:12px; font-weight:700; }
+  .uni-filters { display:grid; grid-template-columns:1.4fr repeat(4,1fr); gap:12px; margin-top:15px; }
+  .uni-label { display:block; color:#5c6f84; font-size:11px; font-weight:700; }
+  .uni-input { display:block; width:100%; height:42px; margin-top:6px; padding:0 11px; border:1px solid #d8e2ec; border-radius:8px; background:#fff; color:#253b52; font-size:12px; font-weight:400; }
+  .uni-input:focus-visible, .uni-action:focus-visible, .uni-clear:focus-visible, .uni-page:focus-visible, .uni-service summary:focus-visible { outline:2px solid #3b82f6; outline-offset:2px; }
+  .uni-chart-card { padding:19px 20px 14px; margin-bottom:20px; }
+  .uni-chart { position:relative; height:195px; margin-top:12px; }
+  .uni-list-head { margin-bottom:11px; }
+  .uni-service { overflow:hidden; margin-bottom:9px; }
+  .uni-service summary { cursor:pointer; list-style:none; display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto auto; gap:18px; align-items:center; padding:16px 18px; }
+  .uni-service summary::-webkit-details-marker { display:none; }
+  .uni-service summary:hover { background:#f8fbff; }
+  .uni-service-name { font-size:13px; font-weight:750; color:#203650; overflow-wrap:anywhere; }
+  .uni-service-meta { margin-top:5px; color:#8090a4; font-size:11px; overflow-wrap:anywhere; }
+  .uni-service-value { color:#153253; text-align:right; font-size:14px; font-weight:750; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .uni-chevron { color:#97a9bb; transition:transform .15s; }
+  .uni-service[open] .uni-chevron { transform:rotate(180deg); }
+  .uni-detail { border-top:1px solid #edf2f7; padding:17px 18px 20px; background:#fcfdff; }
+  .uni-detail-label { color:#77899d; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+  .uni-detail-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px 18px; margin:11px 0 19px; }
+  .uni-detail-value { color:#344c66; font-size:12px; line-height:1.45; margin-top:4px; overflow-wrap:anywhere; }
+  .uni-months { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; margin-top:10px; }
+  .uni-month { background:#f3f7fc; border:1px solid #e9f0f8; border-radius:8px; padding:10px; min-width:0; }
+  .uni-month.selected { border-color:#9ac2ed; background:#e9f3ff; }
+  .uni-month-name { color:#788da5; font-size:10px; font-weight:700; text-transform:uppercase; }
+  .uni-month-value { margin-top:5px; color:#25425f; font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+  .uni-pagination { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; padding-bottom:20px; color:#718398; font-size:12px; }
+  .uni-page-buttons { display:flex; gap:8px; }
+  .uni-page { background:#fff; border:1px solid #dce6ef; border-radius:8px; color:#37516b; font-size:12px; font-weight:700; padding:8px 12px; }
+  .uni-page:disabled { opacity:.4; cursor:not-allowed; }
+  .uni-empty { padding:28px; text-align:center; color:#708399; font-size:13px; }
+  @media (max-width:900px) { .uni-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } .uni-months { grid-template-columns:repeat(3,minmax(0,1fr)); } .uni-detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:620px) { .uni-kpis { grid-template-columns:1fr; } .uni-filters { grid-template-columns:1fr; } .uni-service summary { grid-template-columns:minmax(0,1fr) auto; gap:10px; } .uni-service-account { grid-column:1; grid-row:2; } .uni-service-value { grid-column:2; grid-row:1 / span 2; } .uni-chevron { display:none; } .uni-months { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+</style>
+<div class="uni-wrap">
+  <header class="uni-heading">
+    <div><p class="uni-kicker">Proyectados / Facturación</p><h1 class="uni-title">Unificado</h1><p class="uni-subtitle">La proyección consolidada por cliente, campaña y clave operativa.</p></div>
+    <div class="uni-actions"><button type="button" id="actualizar" class="uni-action uni-refresh"><i class="fas fa-rotate-right" aria-hidden="true"></i> Actualizar</button><a id="descarga" class="uni-action uni-download" href="#"><i class="fas fa-file-excel" aria-hidden="true"></i> Descargar Excel completo</a></div>
+  </header>
+
+  <section class="uni-kpis" aria-label="Resumen del unificado">
+    <article class="uni-card uni-kpi"><p class="uni-kpi-label">Total del año</p><p id="totalAnual" class="uni-kpi-value">—</p><p id="notaAnual" class="uni-kpi-note">Todas las claves operativas</p></article>
+    <article class="uni-card uni-kpi"><p class="uni-kpi-label">Total de la selección</p><p id="totalFiltrado" class="uni-kpi-value">—</p><p id="notaFiltrado" class="uni-kpi-note">Según los filtros elegidos</p></article>
+    <article class="uni-card uni-kpi"><p class="uni-kpi-label">Claves operativas</p><p id="cantidadClaves" class="uni-kpi-value">—</p><p class="uni-kpi-note">Incluidas en la selección</p></article>
+  </section>
+
+  <section class="uni-card uni-filter" aria-label="Filtros del unificado">
+    <div class="uni-section-head"><div><h2 class="uni-section-title">Explorar la proyección</h2><p class="uni-section-note">Buscá una cuenta o elegí el período que querés consultar.</p></div><button type="button" id="limpiar" class="uni-clear">Limpiar filtros</button></div>
+    <div class="uni-filters">
+      <label class="uni-label">Buscar<input id="buscar" class="uni-input" type="search" placeholder="Cliente, campaña o clave"></label>
+      <label class="uni-label">Cliente<select id="cliente" class="uni-input"><option value="">Todos los clientes</option></select></label>
+      <label class="uni-label">Site<select id="site" class="uni-input"><option value="">Todos los sites</option></select></label>
+      <label class="uni-label">Mes<select id="mes" class="uni-input"><option value="">Todo el año</option></select></label>
+      <label class="uni-label">Año<select id="anio" class="uni-input">{% for year in anios_disponibles %}<option value="{{ year }}"{% if year == anio_actual %} selected{% endif %}>{{ year }}</option>{% endfor %}</select></label>
+    </div>
+  </section>
+
+  <section class="uni-card uni-chart-card" aria-labelledby="tituloEvolucion">
+    <div class="uni-section-head"><div><h2 id="tituloEvolucion" class="uni-section-title">Evolución mensual</h2><p class="uni-section-note">Importe de las claves seleccionadas. Elegí una barra para consultar ese mes.</p></div><span id="periodoGrafico" class="uni-section-note"></span></div>
+    <div class="uni-chart"><canvas id="graficoUnificado" role="img" aria-label="Evolución mensual del importe unificado"></canvas></div>
+  </section>
+
+  <section aria-labelledby="tituloClaves">
+    <div class="uni-section-head uni-list-head"><div><h2 id="tituloClaves" class="uni-section-title">Detalle por clave operativa</h2><p class="uni-section-note">Abrí una clave para ver su identificación y los doce meses.</p></div><p id="estado" role="status" class="uni-section-note">Cargando...</p></div>
+    <div id="servicios"></div>
+    <div class="uni-pagination"><span id="paginacion"></span><div class="uni-page-buttons"><button type="button" id="anterior" class="uni-page">Anterior</button><button type="button" id="siguiente" class="uni-page">Siguiente</button></div></div>
+  </section>
+</div>
+<script>
+let datos = null, grafico = null, pagina = 0;
+const tamanoPagina = 12;
+const porId = id => document.getElementById(id);
+const escapeTexto = valor => String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const importe = valor => '$ ' + Number(valor || 0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const normalizar = valor => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const labelMes = mes => mes ? mes.label.replace('-', ' ') : '';
+
+function actualizarOpciones(selector, nombres, etiqueta) {
+  const actual = selector.value;
+  selector.innerHTML = `<option value="">${etiqueta}</option>` + nombres.map(nombre => `<option value="${escapeTexto(nombre)}">${escapeTexto(nombre)}</option>`).join('');
+  selector.value = nombres.includes(actual) ? actual : '';
+}
+async function cargar() {
+  const anio = porId('anio').value;
+  porId('estado').textContent = 'Cargando...';
+  porId('descarga').href = '/api/unificado/exportar?year=' + encodeURIComponent(anio);
+  try {
+    const respuesta = await fetch('/api/unificado?year=' + encodeURIComponent(anio), {credentials:'same-origin'});
+    if (!respuesta.ok) throw new Error('No se pudo consultar Unificado.');
+    datos = await respuesta.json();
+    for (const [campo,etiqueta] of [['cliente','Todos los clientes'],['site','Todos los sites']]) {
+      const nombres = [...new Set(datos.filas.map(fila => fila[campo]).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
+      actualizarOpciones(porId(campo), nombres, etiqueta);
+    }
+    const mesPrevio = porId('mes').value.slice(-2);
+    porId('mes').innerHTML = '<option value="">Todo el año</option>' + datos.meses.map(m => `<option value="${escapeTexto(m.value)}">${escapeTexto(labelMes(m))}</option>`).join('');
+    porId('mes').value = datos.meses.find(m => m.value.endsWith(mesPrevio) && mesPrevio)?.value || '';
+    pagina = 0;
+    mostrar();
+  } catch (error) {
+    datos = null;
+    porId('estado').textContent = error.message;
+    porId('servicios').innerHTML = '';
+  }
+}
+function filasSeleccionadas() {
+  const busqueda = normalizar(porId('buscar').value.trim()), cliente = porId('cliente').value, site = porId('site').value;
+  return datos.filas.filter(fila => (!cliente || fila.cliente === cliente) && (!site || fila.site === site) &&
+    normalizar([fila.cliente_proyectado,fila.clave_agrupacion,fila.cliente,fila.site,fila.clave_operativa,fila.segmento,fila.campania].join(' ')).includes(busqueda));
+}
+function dibujarGrafico(filas, mesSeleccionado) {
+  const totales = datos.meses.map(m => filas.reduce((suma,fila) => suma + Number(fila.meses[m.value] || 0),0));
+  const opciones = {responsive:true, maintainAspectRatio:false, animation:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:contexto => importe(contexto.raw)}}},
+    scales:{x:{grid:{display:false}, ticks:{color:'#7b8ca0',font:{size:10}}},y:{grid:{color:'#edf2f7'},ticks:{color:'#91a1b1',font:{size:10},callback:valor => '$ ' + (valor/1000000).toLocaleString('es-AR') + ' M'}}},
+    onClick:(evento,elementos) => {if (elementos.length) {porId('mes').value=datos.meses[elementos[0].index].value;pagina=0;mostrar();}}};
+  const colores = datos.meses.map(m => m.value === mesSeleccionado ? '#126b8d' : '#b6d5e8');
+  if (grafico) {grafico.destroy();grafico=null;}
+  grafico = new Chart(porId('graficoUnificado'), {type:'bar',data:{labels:datos.meses.map(labelMes),datasets:[{data:totales,backgroundColor:colores,borderRadius:5,maxBarThickness:32}]},options:opciones});
+}
+function detalleHtml(fila, mesSeleccionado) {
+  const identificacion = [['Cliente proyectado',fila.cliente_proyectado],['Cuenta',fila.cliente],['Site',fila.site],['Campaña',fila.campania],['Clave operativa',fila.clave_operativa],['Segmento',fila.segmento]];
+  const campos = identificacion.map(([titulo,valor]) => `<div><p class="uni-detail-label">${escapeTexto(titulo)}</p><p class="uni-detail-value">${escapeTexto(valor || '—')}</p></div>`).join('');
+  const meses = datos.meses.map(m => `<div class="uni-month ${m.value === mesSeleccionado ? 'selected' : ''}"><p class="uni-month-name">${escapeTexto(labelMes(m))}</p><p class="uni-month-value">${escapeTexto(importe(fila.meses[m.value]))}</p></div>`).join('');
+  return `<div class="uni-detail"><p class="uni-detail-label">Identificación</p><div class="uni-detail-grid">${campos}</div><p class="uni-detail-label">Importe por mes · ${escapeTexto(datos.year)}</p><div class="uni-months">${meses}</div></div>`;
+}
+function mostrar() {
+  if (!datos) return;
+  const filas = filasSeleccionadas(), mes = porId('mes').value, mesInfo = datos.meses.find(m => m.value === mes);
+  const total = filas.reduce((suma,fila) => suma + Number(mes ? fila.meses[mes] || 0 : fila.total || 0),0);
+  porId('totalAnual').textContent = importe(datos.total);
+  porId('notaAnual').textContent = `Todas las claves · ${datos.year}`;
+  porId('totalFiltrado').textContent = importe(total);
+  porId('notaFiltrado').textContent = mes ? `Selección · ${labelMes(mesInfo)}` : 'Selección · año completo';
+  porId('cantidadClaves').textContent = filas.length.toLocaleString('es-AR');
+  porId('periodoGrafico').textContent = String(datos.year);
+  porId('estado').textContent = `${filas.length} ${filas.length === 1 ? 'clave' : 'claves'}`;
+  dibujarGrafico(filas,mes);
+  const paginas = Math.max(1,Math.ceil(filas.length/tamanoPagina));
+  pagina = Math.min(pagina,paginas-1);
+  const inicio = pagina*tamanoPagina, visibles = filas.slice(inicio,inicio+tamanoPagina);
+  porId('servicios').innerHTML = visibles.map(fila => {
+    const valor = mes ? fila.meses[mes] : fila.total;
+    return `<details class="uni-card uni-service"><summary><div><p class="uni-service-name">${escapeTexto(fila.clave_operativa)}</p><p class="uni-service-meta">${escapeTexto(fila.campania || fila.cliente_proyectado || '—')}</p></div><div class="uni-service-account"><p class="uni-service-name">${escapeTexto(fila.cliente || '—')}</p><p class="uni-service-meta">${escapeTexto(fila.site || '—')}</p></div><div><p class="uni-service-value">${escapeTexto(importe(valor))}</p><p class="uni-service-meta">${mes ? escapeTexto(labelMes(mesInfo)) : 'Total anual'}</p></div><i class="fas fa-chevron-down uni-chevron" aria-hidden="true"></i></summary>${detalleHtml(fila,mes)}</details>`;
+  }).join('') || '<div class="uni-card uni-empty">No hay claves para los filtros seleccionados.</div>';
+  porId('paginacion').textContent = filas.length ? `Mostrando ${inicio+1}–${Math.min(inicio+tamanoPagina,filas.length)} de ${filas.length} claves` : 'Sin resultados';
+  porId('anterior').disabled = pagina === 0;
+  porId('siguiente').disabled = pagina >= paginas-1;
+}
+for (const id of ['buscar','cliente','site','mes']) porId(id).addEventListener(id === 'buscar' ? 'input' : 'change', () => {pagina=0;mostrar();});
+porId('anio').addEventListener('change',cargar);
+porId('actualizar').addEventListener('click',cargar);
+porId('limpiar').addEventListener('click',() => {for (const id of ['buscar','cliente','site','mes']) porId(id).value='';pagina=0;mostrar();});
+porId('anterior').addEventListener('click',() => {if (pagina>0) {pagina--;mostrar();}});
+porId('siguiente').addEventListener('click',() => {pagina++;mostrar();});
+document.addEventListener('DOMContentLoaded',cargar);
+</script>
+{% endblock %}

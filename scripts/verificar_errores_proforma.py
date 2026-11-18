@@ -3,6 +3,8 @@ import io
 import os
 from pathlib import Path
 import sys
+from zipfile import ZIP_DEFLATED, ZipFile
+from xml.etree import ElementTree
 
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 os.environ['APP_ENV'] = 'development'
@@ -29,6 +31,24 @@ def excel(rows, headers=ENCABEZADOS_PROFORMA_PERSONAL):
 def valid_row(segment='Campaña', business='MASIVO', period=202609, hours=10):
     return ['FDV', period, business, 'CAT', segment, '', 'NORMAL', hours,
             100, 1000, 5, 50, 0.5, 5, 55, 1055]
+
+
+def formulas_con_resultados(row):
+    origen = excel([row])
+    salida = io.BytesIO()
+    with ZipFile(origen) as fuente, ZipFile(salida, 'w', ZIP_DEFLATED) as destino:
+        for nombre in fuente.namelist():
+            contenido = fuente.read(nombre)
+            if nombre == 'xl/worksheets/sheet1.xml':
+                root = ElementTree.fromstring(contenido)
+                ns = {'x': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+                for referencia, valor in (('J2', '1000'), ('P2', '1055')):
+                    celda = root.find(f'.//x:c[@r="{referencia}"]', ns)
+                    celda.find('x:v', ns).text = valor
+                contenido = ElementTree.tostring(root, encoding='utf-8', xml_declaration=True)
+            destino.writestr(nombre, contenido)
+    salida.seek(0)
+    return salida
 
 
 app = create_app()
@@ -69,8 +89,17 @@ with app.app_context(), app.test_client() as client:
     diagnostic(upload(excel([valid_row(), valid_row('Soporte', 'SOPORTE')])), 'mezcla tipos')
     diagnostic(upload(excel([valid_row()]), selected='Personal Pay'), 'columna NEGOCIO')
     diagnostic(upload(io.BytesIO(b'broken workbook')), 'no se pudo abrir')
+    formulas_sin_resultado = valid_row()
+    formulas_sin_resultado[9] = '=H2*I2'
+    formulas_sin_resultado[15] = '=J2+O2'
+    diagnostic(upload(excel([formulas_sin_resultado])), 'no tienen un resultado numérico guardado')
 
-    success = upload(excel([valid_row()]))
+    success = upload(formulas_con_resultados(formulas_sin_resultado))
     assert success.status_code == 200, success.get_data(as_text=True)
     assert ProformaPersonal.query.count() == 1
-    print('OK: cabecera, período, número, duplicado, mezcla, selector y archivo dañado explican causa y corrección.')
+    reemplazo_invalido = upload(excel([formulas_sin_resultado]))
+    assert reemplazo_invalido.status_code == 400
+    assert ProformaPersonal.query.count() == 1
+    registro = ProformaPersonal.query.one()
+    assert registro.monto_fijo == 1000 and registro.total_proyeccion == 1055
+    print('OK: validaciones, fórmulas sin resultado guardado y conservación del lote anterior.')
