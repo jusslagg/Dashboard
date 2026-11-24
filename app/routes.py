@@ -9973,6 +9973,14 @@ ENCABEZADOS_PROFORMA_PERSONAL = (
 )
 TIPOS_PROFORMA_PERSONAL = ('Masivo', 'Personal Pay', 'Soporte')
 ESTADOS_PROFORMA_PERSONAL = ('Proyectada', 'Definitiva')
+FDV_PROFORMA_SOPORTE_CAT = 'PROFORMA PERSONAL - CAT'
+HOJAS_PROFORMA_SOPORTE = {
+    'cat proyectado': 'Proyectada',
+    'cat proyectada': 'Proyectada',
+    'definitivo cat': 'Definitiva',
+    'definitiva cat': 'Definitiva',
+    'cat definitiva': 'Definitiva',
+}
 
 
 def error_carga_proforma(causa, correccion, detalles=None, status=400):
@@ -10040,6 +10048,109 @@ def tipo_proforma_desde_negocio(negocio):
 def porcentaje_proforma_excel(celda):
     valor = parse_numero(celda.value)
     return valor * 100 if '%' in str(celda.number_format or '') else valor
+
+
+def numero_proforma_soporte(celda, *, porcentaje=False, opcional=False):
+    if celda.value in (None, '') and opcional:
+        return 0.0
+    try:
+        if celda.value in (None, '') or celda.data_type == 'e' or isinstance(celda.value, bool):
+            raise ValueError
+        valor = porcentaje_proforma_excel(celda) if porcentaje else parse_numero(celda.value)
+        if not math.isfinite(valor):
+            raise ValueError
+        return valor
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError(f'La celda {celda.coordinate} debe contener un valor numérico.') from None
+
+
+def leer_proforma_soporte_cat(hoja, estado):
+    """Convierte el detalle por campaña de la hoja CAT a filas de Proforma."""
+    definitiva = estado == 'Definitiva'
+    columna_horas = 4 if definitiva else 3
+    columna_importe = columna_horas + 2
+    prefijo_horas = 'horas netas ' if definitiva else 'horas logueadas '
+    periodo = None
+    total_excel = None
+    dentro_soporte = False
+    segmento = None
+    filas_campania = []
+    claves_archivo = set()
+    entradas = []
+    cierre_secciones = {'ajustes', 'capacitaciones', 'penalidad control ajustes'}
+
+    for fila in hoja.iter_rows(min_col=2, max_col=columna_importe):
+        etiqueta = normalizar_header(fila[0].value)
+        if not dentro_soporte:
+            etiqueta_periodo = etiqueta.partition('|')[0].strip()
+            if etiqueta == 'soporte':
+                if not periodo:
+                    raise ValueError('No se encontró un período válido en el encabezado de la hoja CAT.')
+                dentro_soporte = True
+            elif re.fullmatch(r'[a-z]+\s+\d{4}', etiqueta_periodo):
+                periodo = periodo_proforma(etiqueta_periodo) or periodo
+            elif any(normalizar_header(celda.value).startswith('total a facturar') for celda in fila[:2]):
+                total_excel = numero_proforma_soporte(fila[-1])
+            continue
+        if etiqueta in cierre_secciones:
+            break
+        if not etiqueta:
+            continue
+
+        if etiqueta.startswith(prefijo_horas):
+            if not segmento:
+                raise ValueError(f'Fila {fila[0].row}: se encontraron horas sin nombre de campaña.')
+            tipo = etiqueta[len(prefijo_horas):]
+            if not tipo.startswith(('normal', 'diurn', 'nocturn', 'feriad')):
+                raise ValueError(f'Fila {fila[0].row}: tipo de hora “{tipo}” no reconocido.')
+            tipo_hora = tipo_hora_seguimiento(tipo)
+            clave = (normalizar_header(segmento), tipo_hora)
+            if clave in claves_archivo:
+                raise ValueError(f'Fila {fila[0].row}: el tipo de hora “{tipo_hora}” se repite para “{segmento}”.')
+            claves_archivo.add(clave)
+            horas, precio, monto_fijo = (numero_proforma_soporte(celda) for celda in fila[-3:])
+            entrada = {
+                'tipo_proforma': 'Soporte', 'estado_proforma': estado,
+                'fdv': FDV_PROFORMA_SOPORTE_CAT, 'periodo': periodo, 'negocio': 'SOPORTE',
+                'sitio_proveedor': 'CAT', 'segmento': segmento, 'subsitio': None, 'tipo_hora': tipo_hora,
+                'total_horas': horas, 'precio': precio, 'monto_fijo': monto_fijo,
+                'porcentaje_bono_kpi_vs': 0, 'monto_variable_kpi_vs': 0,
+                'porcentaje_bono_ac': 0, 'monto_variable_ac': 0,
+                'monto_variable': 0, 'total_proyeccion': monto_fijo,
+                'bono_porcentaje_total': 0, '_fila_excel': fila[0].row,
+            }
+            filas_campania.append(entrada)
+            entradas.append(entrada)
+        elif etiqueta.startswith('bonificacion kpi'):
+            porcentaje = numero_proforma_soporte(fila[-3], porcentaje=True, opcional=True)
+            monto = numero_proforma_soporte(fila[-1])
+            base = math.fsum(item['monto_fijo'] for item in filas_campania)
+            if not filas_campania or (monto and not base):
+                raise ValueError(f'Fila {fila[0].row}: el bono KPI no tiene un detalle de horas al que asignarse.')
+            for item in filas_campania:
+                bono = monto * (item['monto_fijo'] / base) if base else 0
+                item.update(
+                    porcentaje_bono_kpi_vs=porcentaje, monto_variable_kpi_vs=bono,
+                    monto_variable=bono, total_proyeccion=item['monto_fijo'] + bono,
+                    bono_porcentaje_total=porcentaje,
+                )
+        elif not etiqueta.startswith(('horas ', 'penalidad', 'total')) and all(
+            celda.value in (None, '') for celda in fila[1:]
+        ):
+            segmento = str(fila[0].value).strip()
+            filas_campania = []
+
+    if not entradas:
+        raise ValueError('No se encontraron filas facturables dentro de la sección SOPORTE.')
+    if total_excel is None:
+        raise ValueError('No se encontró el total a facturar sin IVA de la Proforma.')
+    total_importado = math.fsum(item['total_proyeccion'] for item in entradas)
+    if not math.isclose(total_importado, total_excel, rel_tol=0, abs_tol=0.01):
+        raise ValueError(
+            f'El detalle de horas y bonos suma {total_importado:.2f}, pero el total a facturar '
+            f'sin IVA es {total_excel:.2f}. Revise si hay celdas o conceptos adicionales en ese total.'
+        )
+    return entradas
 
 
 @main_bp.route('/api/proforma-personal', methods=['GET'])
@@ -10147,53 +10258,7 @@ def api_template_proforma_personal():
     )
 
 
-@main_bp.route('/api/proforma-personal/importar', methods=['POST'])
-@carga_requerida
-def api_importar_proforma_personal():
-    tipo_proforma = str(request.form.get('tipo_proforma') or '').strip()
-    estado_proforma = str(request.form.get('estado_proforma') or '').strip()
-    if tipo_proforma not in TIPOS_PROFORMA_PERSONAL:
-        return error_carga_proforma(
-            'No se indicó qué tipo de Proforma se está cargando.',
-            'Seleccione Masivo, Personal Pay o Soporte y vuelva a intentar.',
-        )
-    if estado_proforma not in ESTADOS_PROFORMA_PERSONAL:
-        return error_carga_proforma(
-            'No se indicó si la Proforma es Proyectada o Definitiva.',
-            'Seleccione Proyectada o Definitiva antes de importar el archivo.',
-        )
-    archivo = request.files.get('archivo')
-    if not archivo or not archivo.filename:
-        return error_carga_proforma(
-            'No se recibió ningún archivo.',
-            'Seleccione el Excel de la Proforma y vuelva a presionar Importar.',
-        )
-    if not archivo.filename.lower().endswith('.xlsx'):
-        return error_carga_proforma(
-            f'El archivo “{archivo.filename}” no tiene formato .xlsx.',
-            'Abra el archivo en Excel y guárdelo como Libro de Excel (.xlsx). No use .xls, .csv ni PDF.',
-        )
-    contenido = archivo.read()
-    if not contenido:
-        return error_carga_proforma(
-            'El archivo seleccionado está vacío.',
-            'Vuelva a exportar o guardar la Proforma y compruebe que el archivo contenga datos.',
-        )
-    if len(contenido) > 20 * 1024 * 1024:
-        return error_carga_proforma(
-            f'El archivo pesa {len(contenido) / (1024 * 1024):.1f} MB y el máximo permitido es 20 MB.',
-            'Quite imágenes, hojas o formatos innecesarios, guarde nuevamente el .xlsx y vuelva a cargarlo.',
-        )
-    try:
-        from openpyxl import load_workbook
-        libro = load_workbook(io.BytesIO(contenido), data_only=True, read_only=False)
-        hoja = libro[libro.sheetnames[0]]
-    except Exception:
-        return error_carga_proforma(
-            'El archivo no se pudo abrir como un libro de Excel válido.',
-            'Compruebe que no esté dañado ni protegido con contraseña. Ábralo en Excel, use Guardar como .xlsx y vuelva a cargarlo.',
-        )
-
+def leer_proforma_personal_tabular(hoja, tipo_proforma, estado_proforma):
     fila_encabezado = None
     encabezados_esperados = [
         {normalizar_encabezado_proforma(valor)} for valor in ENCABEZADOS_PROFORMA_PERSONAL
@@ -10225,7 +10290,7 @@ def api_importar_proforma_personal():
                     diferencias.append(
                         f'Fila {mejor_fila}, columna {chr(64 + indice)}: se esperaba “{esperado}” y se encontró “{encontrado or "vacío"}”.'
                     )
-        return error_carga_proforma(
+        return None, error_carga_proforma(
             'No se encontró una cabecera válida con las 16 columnas requeridas de A a P.',
             'Use la plantilla descargable y mantenga los encabezados desde FDV hasta TOTAL_PROYECCION en el mismo orden.',
             diferencias,
@@ -10310,16 +10375,96 @@ def api_importar_proforma_personal():
             '_fila_excel': numero,
         })
     if errores:
-        return error_carga_proforma(
+        return None, error_carga_proforma(
             f'Hay {len(errores)} problema(s) en las filas de la Proforma.',
             'Corrija las filas indicadas en el Excel y vuelva a importarlo. No se guardó ningún registro.',
             errores,
         )
     if not entradas:
-        return error_carga_proforma(
+        return None, error_carga_proforma(
             'No se encontraron filas de datos debajo del encabezado.',
             'Complete al menos una fila desde la columna A hasta la P. Las filas con H:P totalmente vacías se ignoran.',
         )
+    return entradas, None
+
+
+@main_bp.route('/api/proforma-personal/importar', methods=['POST'])
+@carga_requerida
+def api_importar_proforma_personal():
+    tipo_proforma = str(request.form.get('tipo_proforma') or '').strip()
+    estado_proforma = str(request.form.get('estado_proforma') or '').strip()
+    if tipo_proforma not in TIPOS_PROFORMA_PERSONAL:
+        return error_carga_proforma(
+            'No se indicó qué tipo de Proforma se está cargando.',
+            'Seleccione Masivo, Personal Pay o Soporte y vuelva a intentar.',
+        )
+    if estado_proforma not in ESTADOS_PROFORMA_PERSONAL:
+        return error_carga_proforma(
+            'No se indicó si la Proforma es Proyectada o Definitiva.',
+            'Seleccione Proyectada o Definitiva antes de importar el archivo.',
+        )
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        return error_carga_proforma(
+            'No se recibió ningún archivo.',
+            'Seleccione el Excel de la Proforma y vuelva a presionar Importar.',
+        )
+    if not archivo.filename.lower().endswith('.xlsx'):
+        return error_carga_proforma(
+            f'El archivo “{archivo.filename}” no tiene formato .xlsx.',
+            'Abra el archivo en Excel y guárdelo como Libro de Excel (.xlsx). No use .xls, .csv ni PDF.',
+        )
+    contenido = archivo.read()
+    if not contenido:
+        return error_carga_proforma(
+            'El archivo seleccionado está vacío.',
+            'Vuelva a exportar o guardar la Proforma y compruebe que el archivo contenga datos.',
+        )
+    if len(contenido) > 20 * 1024 * 1024:
+        return error_carga_proforma(
+            f'El archivo pesa {len(contenido) / (1024 * 1024):.1f} MB y el máximo permitido es 20 MB.',
+            'Quite imágenes, hojas o formatos innecesarios, guarde nuevamente el .xlsx y vuelva a cargarlo.',
+        )
+    try:
+        from openpyxl import load_workbook
+        libro = load_workbook(io.BytesIO(contenido), data_only=True, read_only=False)
+        hoja = libro[libro.sheetnames[0]]
+    except Exception:
+        return error_carga_proforma(
+            'El archivo no se pudo abrir como un libro de Excel válido.',
+            'Compruebe que no esté dañado ni protegido con contraseña. Ábralo en Excel, use Guardar como .xlsx y vuelva a cargarlo.',
+        )
+
+    hojas_soporte = {
+        HOJAS_PROFORMA_SOPORTE[nombre]: libro[nombre_original]
+        for nombre_original in libro.sheetnames
+        if (nombre := normalizar_header(nombre_original)) in HOJAS_PROFORMA_SOPORTE
+    }
+    if hojas_soporte:
+        if tipo_proforma != 'Soporte':
+            return error_carga_proforma(
+                f'Se seleccionó “{tipo_proforma}”, pero el Excel tiene el formato nativo de Soporte.',
+                'Seleccione Soporte y el estado correspondiente para importar este archivo.',
+            )
+        hoja_soporte = hojas_soporte.get(estado_proforma)
+        if hoja_soporte is None:
+            return error_carga_proforma(
+                f'El Excel no contiene la pestaña CAT correspondiente a “{estado_proforma}”.',
+                'Cambie el estado seleccionado o cargue el archivo que corresponde a ese estado.',
+                [f'Pestañas CAT encontradas: {", ".join(hoja.title.strip() for hoja in hojas_soporte.values())}.'],
+            )
+        try:
+            entradas = leer_proforma_soporte_cat(hoja_soporte, estado_proforma)
+        except ValueError as error:
+            return error_carga_proforma(
+                f'No se pudo leer la Proforma de Soporte en la hoja “{hoja_soporte.title.strip()}”.',
+                'Revise los valores indicados en la hoja CAT original y vuelva a cargarla.',
+                [error],
+            )
+    else:
+        entradas, error = leer_proforma_personal_tabular(hoja, tipo_proforma, estado_proforma)
+        if error is not None:
+            return error
 
     filas_por_tipo = defaultdict(list)
     for entrada in entradas:
@@ -11521,6 +11666,23 @@ def aplicar_cierre_guardado_personal(contenido, cierre_guardado, proformas):
         clave for clave, items in proformas_por_clave.items()
         if any(item.tipo_proforma == tipo_proforma for item in items)
     }
+    if tipo_proforma == 'Soporte' and any(
+        item.tipo_proforma == tipo_proforma and item.fdv == FDV_PROFORMA_SOPORTE_CAT
+        for item in proformas
+    ):
+        # El cierre CAT abrevia Isla Especializada Móvil y trae líneas sin
+        # facturación en esta Proforma junto con el detalle de sus campañas.
+        for clave in list(cierre.keys() - objetivo):
+            segmento, tipo = clave
+            destino = ('isla especializada movil', tipo)
+            if segmento == 'especializada movil' and destino in objetivo and destino not in cierre:
+                cierre[destino] = cierre.pop(clave)
+            elif segmento == 'soporte' and {
+                ('soporte conectividad', tipo), ('soporte entretenimiento', tipo),
+            } <= objetivo:
+                cierre.pop(clave)
+            elif segmento == 'provision' and ('provision digital', tipo) in objetivo:
+                cierre.pop(clave)
     sobrantes = sorted(set(cierre) - objetivo)
     faltantes = sorted(objetivo - set(cierre))
     errores = []
