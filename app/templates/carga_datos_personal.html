@@ -24,6 +24,10 @@
         </div>
     </div>
 
+    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 class="text-lg font-bold">Control para publicar</h2>
+        <div id="controlCircuitoPersonal" aria-live="polite" class="mt-2 space-y-2 text-sm">Consultando el estado de la carga…</div>
+    </section>
     <div id="contenidoProformaPersonal" class="space-y-5">
         <section class="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-950">
             <div class="font-bold"><i class="fas fa-circle-info mr-2"></i>Formato de Proforma</div>
@@ -32,25 +36,25 @@
         </section>
 
         <section class="rounded-xl border border-indigo-200 bg-white shadow-sm">
-            <div class="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
-                <div>
+            <div class="space-y-4 p-5">
+                <div class="flex flex-wrap items-center justify-between gap-3">
                     <h2 class="text-lg font-bold text-indigo-950">Importar archivo de Proforma</h2>
-                    <p class="mt-1 text-sm text-indigo-700">Elegí el tipo y definí si el archivo es Proyectado o Definitivo. El cierre de tráfico sólo se habilita para Proformas definitivas.</p>
-                </div>
-                <div class="flex flex-col gap-2 sm:flex-row">
                     <a href="/api/proforma-personal/template" class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700"><i class="fas fa-file-excel mr-2"></i>Descargar template</a>
-                    <select id="tipoProformaPersonal" onchange="actualizarAvisoTipoProforma()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm font-semibold">
+                </div>
+                <p class="text-sm text-indigo-700">Elegí el tipo de proforma, indicá si es proyectada o definitiva y seleccioná el archivo Excel.</p>
+                <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));">
+                    <select id="tipoProformaPersonal" aria-label="Tipo de proforma" onchange="actualizarAvisoTipoProforma()" class="min-w-0 h-10 rounded border border-slate-300 bg-white px-3 text-sm font-semibold">
                         <option value="">Seleccionar tipo...</option>
                         <option value="Masivo">Masivo</option>
                         <option value="Personal Pay">Personal Pay</option>
                         <option value="Soporte">Soporte</option>
                     </select>
-                    <select id="estadoProformaPersonal" onchange="actualizarAvisoTipoProforma()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm font-semibold">
+                    <select id="estadoProformaPersonal" aria-label="Estado de la proforma" onchange="actualizarAvisoTipoProforma()" class="min-w-0 h-10 rounded border border-slate-300 bg-white px-3 text-sm font-semibold">
                         <option value="">Seleccionar estado...</option>
                         <option value="Proyectada">Proyectada</option>
                         <option value="Definitiva">Definitiva</option>
                     </select>
-                    <input id="archivoProformaPersonal" type="file" accept=".xlsx" class="block max-w-sm rounded border border-slate-300 bg-white text-sm file:mr-3 file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-semibold">
+                    <input id="archivoProformaPersonal" aria-label="Archivo Excel de proforma" type="file" accept=".xlsx" class="block min-w-0 w-full rounded border border-slate-300 bg-white text-sm file:mr-3 file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-semibold">
                     <button id="importarProformaBtn" type="button" onclick="importarProformaPersonal()" class="h-10 whitespace-nowrap rounded bg-indigo-600 px-5 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"><i class="fas fa-upload mr-2"></i>Importar Proforma</button>
                 </div>
             </div>
@@ -79,9 +83,9 @@
         </div>
 
         <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="space-y-3 border-b border-slate-200 px-5 py-4">
                 <div><h2 class="text-lg font-bold text-slate-950">Proformas importadas</h2><p id="contadorProformaPersonal" class="mt-1 text-xs text-slate-500">Cargando...</p></div>
-                <div class="flex flex-col gap-2 sm:flex-row">
+                <div class="flex flex-wrap gap-2">
                     <select multiple id="filtroPeriodoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los períodos</option></select>
                     <select multiple id="filtroTipoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos</option><option value="Masivo">Masivo</option><option value="Personal Pay">Personal Pay</option><option value="Soporte">Soporte</option></select>
                     <select multiple id="filtroEstadoProforma" onchange="renderProformaPersonal()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los estados</option><option value="Proyectada">Proyectadas</option><option value="Definitiva">Definitivas</option></select>
@@ -152,8 +156,8 @@
                     <button id="importarSeguimientoBtn" type="button" onclick="importarSeguimientoPersonal()" class="h-10 whitespace-nowrap rounded bg-indigo-600 px-5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60"><i class="fas fa-gears mr-2"></i>Cargar configuración inicial</button>
                 </div>
             </div>
-            <div id="mensajeSeguimientoPersonal" class="mx-5 mb-5 hidden rounded-lg p-3 text-sm"></div>
         </section>
+        <div id="mensajeSeguimientoPersonal" role="status" aria-live="polite" class="hidden rounded-lg p-3 text-sm"></div>
 
         <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
             <div class="flex flex-col gap-3 border-b border-slate-200 p-5 lg:flex-row lg:items-end lg:justify-between">
@@ -163,14 +167,17 @@
                     <p id="detalleHojaSeguimiento" class="mt-1 text-xs text-slate-500">Seleccione o importe un archivo.</p>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row">
-                    <select id="versionSeguimientoPersonal" onchange="cargarHojaSeguimiento()" class="h-10 min-w-[280px] rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Sin configuración</option></select>
+                    <select id="versionSeguimientoPersonal" onchange="cargarHojaSeguimiento()" class="h-10 min-w-0 max-w-full rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Sin configuración</option></select>
                 </div>
             </div>
             <div id="logicaHojaSeguimiento" class="border-b border-blue-100 bg-blue-50 px-5 py-3 text-sm text-blue-950"></div>
             <div id="alertasHojaSeguimiento" class="hidden border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-800"></div>
             <div id="resumenHojaSeguimiento" class="grid gap-3 border-b border-slate-200 bg-slate-50/70 p-5 sm:grid-cols-2 xl:grid-cols-5"></div>
-            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-3 xl:flex-row xl:items-center xl:justify-between">
-                <div class="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-3">
+                <label id="controlPendientesPersonal" class="hidden text-sm font-semibold text-slate-700">
+                    <input id="soloPendientesPersonal" type="checkbox" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()"> Solo pendientes de normalizar
+                </label>
+                <div class="grid w-full gap-2" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))">
                     <input id="buscarHojaSeguimiento" type="search" oninput="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="h-10 rounded border border-slate-300 px-3 text-sm" placeholder="Buscar campaña o dato...">
                     <select multiple id="filtroPeriodoHojaSeguimiento" onchange="cambiarPeriodoHojaSeguimiento()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los períodos</option></select>
                     <select multiple id="filtroEstadoHojaSeguimiento" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los estados</option></select>
@@ -187,7 +194,7 @@
                     <select multiple id="filtroNegocioAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los tipos de negocio</option></select>
                     <select multiple id="filtroProformaAux" onchange="paginaHojaSeguimiento=1; renderHojaSeguimiento()" class="filtro-detalle-aux hidden h-10 rounded border border-slate-300 bg-white px-3 text-sm"><option value="">Todos los grupos de Proforma</option></select>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <button id="guardarCambiosHorasAuxiliar" type="button" onclick="guardarCambiosHorasAuxiliarPersonal()" class="hidden h-9 shrink-0 whitespace-nowrap rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"><i class="fas fa-save mr-1"></i> Guardar cambios</button>
                     <button id="guardarCambiosAuxNormalizacion" type="button" onclick="guardarCambiosAuxNormalizacionPersonal()" class="hidden h-9 shrink-0 whitespace-nowrap rounded bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"><i class="fas fa-save mr-1"></i> Guardar correspondencias</button>
                     <button type="button" onclick="cambiarPaginaHoja(-1)" class="h-9 rounded border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50"><i class="fas fa-chevron-left"></i></button>
@@ -303,9 +310,55 @@ let importacionesSeguimiento = [];
 let cierresTraficoPersonal = [];
 let hojaSeguimientoActiva = 'base_objetivo_masivo';
 let planificacionPlpManual = false;
+let pendientesNormalizacionPersonal = new Set();
+let jefesDisponiblesPersonal = [];
 let guardandoAuxNormalizacion = false;
 let publicandoDashboardPersonal = false;
 let periodoTrabajoSeguimiento = null;
+let controlesCircuitoPersonal = {};
+let revisionCircuitoPersonal = 0;
+
+function mostrarControlCircuito() {
+    const panel = document.getElementById('controlCircuitoPersonal');
+    const cambios = cambiosHorasAuxiliarSeguimiento.size || cambiosAuxNormalizacionSeguimiento.size;
+    const periodos = Object.keys(controlesCircuitoPersonal).sort().reverse();
+    if (!periodos.length) {
+        panel.textContent = 'Pendiente de configuración inicial o de una proforma vigente.';
+        return;
+    }
+    panel.innerHTML = periodos.map(periodo => {
+        const orden = ['Proforma','Auxiliar Horas PLP','Cierre de tráfico','Aux y Datos Maestros','Precios','Hoja anual','Base objetivo y dashboard'];
+        const pasos = orden.map(nombre => [nombre,controlesCircuitoPersonal[periodo][nombre]]);
+        const pendientes = pasos.filter(([,paso]) => paso.errores.length).length;
+        const estado = cambios ? 'Cambios sin guardar' : pendientes ? 'Pendiente de publicación' : 'Listo para publicar';
+        const detalle = pasos.map(([nombre,paso]) => {
+            const errores = paso.errores;
+            if (errores.length) return `<details class="rounded border border-amber-200 p-2"><summary class="cursor-pointer text-amber-900">${escaparPersonal(nombre)} · Pendiente (${errores.length})</summary><ul class="mt-2 list-disc pl-5">${errores.map(e=>`<li>${escaparPersonal(e)}</li>`).join('')}</ul></details>`;
+            if (nombre === 'Base objetivo y dashboard' && (pendientes || cambios)) return '<div class="rounded border border-slate-200 p-2">Base objetivo y dashboard · En espera</div>';
+            return `<div class="rounded border border-slate-200 p-2">${escaparPersonal(nombre)} · ${paso.aplica ? '✓ Listo' : 'No aplica'}</div>`;
+        }).join('');
+        return `<details ${periodos.length === 1 || periodo === periodoTrabajoSeguimiento?.replace('-','') ? 'open' : ''}><summary class="cursor-pointer font-bold">${periodo.slice(4)}/${periodo.slice(0,4)} · ${estado}</summary><div class="mt-2 grid gap-2 sm:grid-cols-2">${detalle}</div></details>`;
+    }).join('');
+}
+
+async function consultarControlCircuito(importacionId) {
+    const revision = ++revisionCircuitoPersonal;
+    controlesCircuitoPersonal = {};
+    if (!importacionId) { mostrarControlCircuito(); return; }
+    const panel = document.getElementById('controlCircuitoPersonal');
+    panel.textContent = 'Verificando datos guardados…';
+    try {
+        const params = new URLSearchParams({importacion_id: importacionId, hoja:'aux', solo_controles:'1'});
+        const response = await fetch('/api/seguimiento-personal/hoja?' + params, {cache:'no-store'});
+        const data = await response.json();
+        if (revision !== revisionCircuitoPersonal) return;
+        if (!response.ok || !data.success) throw new Error();
+        controlesCircuitoPersonal = data.controles_dashboard || {};
+        mostrarControlCircuito();
+    } catch {
+        if (revision === revisionCircuitoPersonal) panel.textContent = 'No se pudo verificar el período. Volvé a cargar la pantalla.';
+    }
+}
 let datosHojaSeguimiento = null;
 let periodosProformaSeguimiento = [];
 let periodosDefinitivosAuxiliarSeguimiento = [];
@@ -363,7 +416,7 @@ const configuracionHojasSeguimientoExcel = {
     },
     aux: {
         tab: 'tabCargaAux', nombre: 'Aux',
-        logica: 'Es el catálogo de correspondencias. Relaciona cada campaña con segmento, jefatura, tipo de negocio, proforma y segmento de respaldo para alimentar las búsquedas del resto de las hojas.'
+        logica: 'Relaciona cada campaña con su segmento, jefatura, tipo de negocio y proforma.'
     }
 };
 
@@ -390,8 +443,8 @@ const configuracionHojasSeguimiento = {
     },
     aux: {
         tab: 'tabCargaAux', nombre: 'Aux', siguiente: 'base_objetivo_masivo', especial: 'aux_normalizacion', inicio: 1, periodo: null, estado: null,
-        logica: 'Normaliza el nombre original de cada campaña. Sus cinco correspondencias alimentan Base objetivo Masivo y la vista anual.',
-        columnas: [[1,'Campaña original','texto_fijo'],[2,'Segmento normalizado','texto_editable'],[3,'Jefatura','texto_editable'],[4,'Tipo de negocio','texto_editable'],[5,'Proforma','texto_editable'],[6,'Segmento de respaldo','texto_editable']]
+        logica: 'Las correspondencias de cada campaña alimentan Base objetivo Masivo y la vista anual.',
+        columnas: [[1,'Nombre Proforma','texto_fijo'],[2,'Segmento normalizado','texto_editable'],[3,'Jefatura','texto_editable'],[4,'Tipo de negocio','texto_editable'],[5,'Proforma','texto_editable']]
     }
 };
 
@@ -411,6 +464,7 @@ function seleccionarPestanaCargaPersonal(clave) {
     if (esCierre) cargarCierresTraficoPersonal();
     if (!esProforma && configuracionHojasSeguimiento[clave]) {
         hojaSeguimientoActiva = clave;
+        document.getElementById('controlPendientesPersonal').classList.toggle('hidden', !['aux','auxiliar_horas_plp_masivo'].includes(clave));
         paginaHojaSeguimiento = 1;
         document.getElementById('buscarHojaSeguimiento').value = '';
         document.getElementById('filtroPeriodoHojaSeguimiento').value = '';
@@ -485,6 +539,7 @@ async function importarCierreTraficoPersonal() {
 
 async function cargarCierresTraficoPersonal(periodoSeleccionar = null, tipoSeleccionar = null) {
     const importacionId = document.getElementById('versionCierreTraficoPersonal').value;
+    consultarControlCircuito(importacionId);
     const tbody = document.getElementById('tbodyCierreTraficoControl');
     if (!importacionId) {
         cierresTraficoPersonal = [];
@@ -554,6 +609,7 @@ async function cargarVersionesSeguimiento(seleccionarId = null) {
         selectorCierre.innerHTML = opciones;
         if ([...selector.options].some(option => option.value === anterior)) selector.value = anterior;
         if ([...selectorCierre.options].some(option => option.value === anterior)) selectorCierre.value = anterior;
+        if (document.getElementById('contenidoSeguimientoPersonal').classList.contains('hidden')) consultarControlCircuito(selector.value);
         actualizarDescargaSeguimiento();
     } catch (error) {
         mostrarMensajeSeguimiento(error.message);
@@ -568,6 +624,9 @@ async function cargarHojaSeguimiento() {
     const contenedor = document.getElementById('contenidoSeguimientoPersonal');
     if (contenedor.classList.contains('hidden')) return;
     const id = document.getElementById('versionSeguimientoPersonal').value;
+    const revision = ++revisionCircuitoPersonal;
+    controlesCircuitoPersonal = {};
+    document.getElementById('controlCircuitoPersonal').textContent = 'Verificando datos guardados…';
     actualizarDescargaSeguimiento();
     document.getElementById('tbodyHojaSeguimiento').innerHTML = '<tr><td class="p-8 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i>Cargando hoja...</td></tr>';
     try {
@@ -575,8 +634,13 @@ async function cargarHojaSeguimiento() {
         if (id) parametros.set('importacion_id', id);
         const response = await fetch(`/api/seguimiento-personal/hoja?${parametros.toString()}&_=${Date.now()}`, {cache: 'no-store'});
         const data = await response.json();
+        if (revision !== revisionCircuitoPersonal) return;
         if (!response.ok || !data.success) throw new Error((data.errores || ['No se pudo cargar la hoja']).join(' | '));
+        controlesCircuitoPersonal = data.controles_dashboard || {};
+        mostrarControlCircuito();
         datosHojaSeguimiento = data.hoja;
+        pendientesNormalizacionPersonal = new Set((data.pendientes_normalizacion || []).map(normalizarPersonal));
+        jefesDisponiblesPersonal = data.jefes_site_disponibles || [];
         planificacionPlpManual = data.planificacion_plp_manual === true;
         periodosProformaSeguimiento = data.periodos_proforma || [];
         periodosDefinitivosAuxiliarSeguimiento = data.periodos_definitivos_auxiliar || [];
@@ -597,6 +661,7 @@ async function cargarHojaSeguimiento() {
         renderHojaSeguimiento();
     } catch (error) {
         datosHojaSeguimiento = null;
+        document.getElementById('controlCircuitoPersonal').textContent = 'No se pudo verificar el período.';
         document.getElementById('tbodyHojaSeguimiento').innerHTML = `<tr><td class="p-8 text-center text-rose-700">${escaparPersonal(error.message)}</td></tr>`;
     }
 }
@@ -717,7 +782,7 @@ function construirVistaSeguimiento() {
             }
             return {
                 valores,
-                identidad, claveEdicion, pendiente,
+                identidad, claveEdicion, pendiente, porNormalizar: pendientesNormalizacionPersonal.has(normalizarPersonal(identidad.campania)),
             };
         }).filter(fila => fila.valores.slice(0, 17).some(valor => valor !== null && valor !== undefined && valor !== ''));
 
@@ -756,7 +821,7 @@ function construirVistaSeguimiento() {
         const vistos = new Set();
         const filas = [];
         datosHojaSeguimiento.filas.slice(1).forEach(fila => {
-            const valores = [1, 2, 3, 4, 5, 6].map(indice => fila[indice]?.v ?? '');
+            const valores = config.columnas.map(([indice]) => fila[indice]?.v ?? '');
             const origen = String(valores[0] || '').trim();
             const claveEdicion = normalizarPersonal(origen);
             if (!claveEdicion || vistos.has(claveEdicion)) return;
@@ -764,12 +829,11 @@ function construirVistaSeguimiento() {
             const pendiente = cambiosAuxNormalizacionSeguimiento.get(claveEdicion);
             if (pendiente) {
                 valores[1] = pendiente.segmento;
-                valores[2] = pendiente.jefatura;
+                if (pendiente.jefatura !== undefined) valores[2] = pendiente.jefatura;
                 valores[3] = pendiente.tipo_negocio;
                 valores[4] = pendiente.proforma;
-                valores[5] = pendiente.backup;
             }
-            filas.push({valores, identidad: {origen}, claveEdicion, pendiente});
+            filas.push({valores, identidad: {origen}, claveEdicion, pendiente, jefaturaActual: fila[3]?.v || '', nueva: Boolean(fila[1]?.segmento_pendiente), porNormalizar: pendientesNormalizacionPersonal.has(claveEdicion)});
         });
         return {columnas: config.columnas, filas};
     }
@@ -895,6 +959,7 @@ function filasFiltradasSeguimiento(vista) {
         [4, AppFilters.valores('filtroProformaAux')],
     ] : [];
     return vista.filas.filter(fila => {
+        if (fila.porNormalizar === false && document.getElementById('soloPendientesPersonal').checked) return false;
         if (consulta && !normalizarPersonal(fila.valores.join(' ')).includes(consulta)) return false;
         if (!AppFilters.coincide(periodo, periodoVistaSeguimiento(fila.valores[indicePeriodo]))) return false;
         if (!AppFilters.coincide(estado, normalizarPersonal(fila.valores[indiceEstado]))) return false;
@@ -941,6 +1006,7 @@ function marcarHorasAuxiliarPersonal(input) {
     fila.querySelectorAll('[data-campo-horas]').forEach(celda => celda.classList.add('border-amber-400', 'bg-amber-50'));
     actualizarBotonCambiosHorasAuxiliar();
     renderHojaSeguimiento();
+    mostrarControlCircuito();
 }
 
 async function guardarCambiosHorasAuxiliarPersonal() {
@@ -979,20 +1045,38 @@ function actualizarBotonCambiosAuxNormalizacion() {
     boton.innerHTML = `<i class="fas fa-save mr-1"></i> Guardar correspondencias${cantidad ? ` (${cantidad})` : ''}`;
 }
 
+function elegirCorrespondenciaPersonal(selector) {
+    const input = selector.nextElementSibling;
+    const manual = selector.selectedOptions[0].hasAttribute('data-manual');
+    input.hidden = !manual;
+    if (manual) {
+        input.focus();
+        input.select();
+        return;
+    }
+    input.value = selector.value;
+    marcarAuxNormalizacionPersonal(input);
+}
+
 function marcarAuxNormalizacionPersonal(input) {
     const fila = input.closest('tr');
     const identidad = JSON.parse(input.dataset.identidad || '{}');
     const clave = normalizarPersonal(identidad.origen);
+    const confirmar = fila.querySelector('[data-confirmar-segmento]');
+    const selectorJefe = fila.querySelector('[data-campo-aux="jefatura"]');
+    if (confirmar && input.dataset.campoAux === 'segmento') confirmar.checked = Boolean(input.value.trim());
     cambiosAuxNormalizacionSeguimiento.set(clave, {
         origen: identidad.origen,
+        confirmar_segmento: Boolean(confirmar?.checked),
         segmento: fila.querySelector('[data-campo-aux="segmento"]')?.value.trim() ?? '',
-        jefatura: fila.querySelector('[data-campo-aux="jefatura"]')?.value.trim() ?? '',
+        jefatura: selectorJefe && !selectorJefe.disabled && selectorJefe.value !== selectorJefe.dataset.actual ? selectorJefe.value : undefined,
         tipo_negocio: fila.querySelector('[data-campo-aux="tipo_negocio"]')?.value.trim() ?? '',
         proforma: fila.querySelector('[data-campo-aux="proforma"]')?.value.trim() ?? '',
-        backup: fila.querySelector('[data-campo-aux="backup"]')?.value.trim() ?? '',
     });
     fila.querySelectorAll('[data-campo-aux]').forEach(celda => celda.classList.add('border-amber-400', 'bg-amber-50'));
     actualizarBotonCambiosAuxNormalizacion();
+    mostrarControlCircuito();
+    actualizarImpactoFinalPersonal();
 }
 
 async function guardarCambiosAuxNormalizacionPersonal() {
@@ -1060,7 +1144,7 @@ function renderResumenHojaSeguimiento(filas) {
         tarjetas = [['Registros',filas.length.toLocaleString('es-AR'),'slate'],['Horas',`${formatoHorasPersonal(sumarVista(filas,6))} h`,'blue'],['Facturado horas',formatoMonedaProforma(sumarVista(filas,8)),'emerald'],['Bonos',formatoMonedaProforma(sumarVista(filas,10)),'amber'],['Total',formatoMonedaProforma(sumarVista(filas,12)),'violet']];
     } else if (hojaSeguimientoActiva === 'aux') {
         const unicos = indice => new Set(filas.map(fila => fila.valores[indice]).filter(Boolean)).size;
-        const pendientes = filas.filter(fila => !fila.valores[1] || !fila.valores[2] || !fila.valores[3] || !fila.valores[4]).length;
+        const pendientes = filas.filter(fila => fila.porNormalizar).length;
         tarjetas = [['Nombres de origen',filas.length.toLocaleString('es-AR'),'slate'],['Segmentos',unicos(1).toLocaleString('es-AR'),'blue'],['Jefaturas',unicos(2).toLocaleString('es-AR'),'emerald'],['Tipos de negocio',unicos(3).toLocaleString('es-AR'),'violet'],['Pendientes de normalizar',pendientes.toLocaleString('es-AR'),'amber']];
     } else {
         const unicos = indice => new Set(filas.map(fila => fila.valores[indice]).filter(Boolean)).size;
@@ -1085,17 +1169,36 @@ function renderHojaSeguimiento() {
     paginaHojaSeguimiento = Math.min(Math.max(1, paginaHojaSeguimiento), paginas);
     const desde = (paginaHojaSeguimiento - 1) * filasPorPaginaSeguimiento;
     const visibles = filas.slice(desde, desde + filasPorPaginaSeguimiento);
+    const opcionesAux = {};
+    if (hojaSeguimientoActiva === 'aux') {
+        for (const indice of [1, 2, 3, 4]) {
+            const nombres = vista.filas.map(fila => fila.valores[indice]).filter(Boolean).map(String);
+            if (indice === 2) nombres.push(...jefesDisponiblesPersonal);
+            opcionesAux[indice] = [...new Set(nombres)].sort((a,b) => a.localeCompare(b, 'es'));
+        }
+    }
     thead.innerHTML = `<tr>${vista.columnas.map(([,etiqueta,tipo]) => `<th class="border-b border-slate-200 px-3 py-3 ${['moneda','horas','horas_editables','porcentaje','porcentaje_editable'].includes(tipo) ? 'text-right' : 'text-left'}">${escaparPersonal(etiqueta)}</th>`).join('')}</tr>`;
     tbody.innerHTML = visibles.length ? visibles.map(fila => `<tr class="hover:bg-indigo-50/40">${fila.valores.map((valor, indice) => {
         const tipoOriginal = vista.columnas[indice][2];
         const tipo = tipoOriginal === 'horas_editables' && !planificacionPlpManual ? 'horas' : tipoOriginal;
+        if (tipo === 'texto_fijo' && fila.nueva) {
+            const identidad = escaparPersonal(JSON.stringify(fila.identidad));
+            return `<td class="border-b border-slate-100 px-3 py-2"><strong>${escaparPersonal(valor)}</strong><span class="block text-xs font-semibold text-amber-800">Nueva · segmento pendiente</span><label class="whitespace-nowrap text-xs"><input type="checkbox" data-confirmar-segmento data-identidad="${identidad}" onchange="marcarAuxNormalizacionPersonal(this)" ${fila.pendiente?.confirmar_segmento ? 'checked' : ''}> Confirmar segmento</label></td>`;
+        }
         if (tipo === 'estado') return `<td class="border-b border-slate-100 px-3 py-2"><span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-800">${escaparPersonal(valor || '—')}</span></td>`;
         if (tipo === 'texto_editable') {
-            const campos = {1: 'segmento', 2: 'jefatura', 3: 'tipo_negocio', 4: 'proforma', 5: 'backup'};
+            const campos = {1: 'segmento', 2: 'jefatura', 3: 'tipo_negocio', 4: 'proforma'};
             const campo = campos[indice];
             const identidad = escaparPersonal(JSON.stringify(fila.identidad || {}));
             const pendiente = Boolean(fila.pendiente);
-            return `<td class="min-w-[210px] border-b border-slate-100 px-2 py-1.5"><input type="text" data-campo-aux="${campo}" data-identidad="${identidad}" value="${escaparPersonal(valor ?? '')}" oninput="marcarAuxNormalizacionPersonal(this)" class="w-full rounded border ${pendiente ? 'border-amber-400 bg-amber-50' : 'border-indigo-300 bg-indigo-50'} px-2 py-1.5 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100" placeholder="Pendiente"></td>`;
+            const etiqueta = escaparPersonal(vista.columnas[indice][1] + ' de ' + fila.identidad.origen);
+            const opciones = opcionesAux[indice].map(nombre => `<option value="${escaparPersonal(nombre)}" ${nombre === valor ? 'selected' : ''}>${escaparPersonal(nombre)}</option>`).join('');
+            return `<td class="min-w-[210px] border-b border-slate-100 px-2 py-1.5">
+                <select aria-label="${etiqueta}" onchange="elegirCorrespondenciaPersonal(this)" class="selector-correspondencia-personal w-full rounded border border-indigo-300 bg-white px-2 py-1.5">
+                    <option value="">Sin asignar</option><option data-manual>Escribir a mano...</option>${opciones}
+                </select>
+                <input hidden type="text" aria-label="${etiqueta} (manual)" data-campo-aux="${campo}" data-identidad="${identidad}" data-actual="${escaparPersonal(campo === 'jefatura' ? fila.jefaturaActual : '')}" value="${escaparPersonal(valor ?? '')}" oninput="marcarAuxNormalizacionPersonal(this)" class="w-full rounded border ${pendiente ? 'border-amber-400 bg-amber-50' : 'border-indigo-300 bg-indigo-50'} px-2 py-1.5" placeholder="Ingresar valor">
+            </td>`;
         }
         if (tipo === 'horas_editables' || tipo === 'porcentaje_editable') {
             const campos = {5: 'planificadas_plp', 7: 'definitiva', 9: 'brutas', 11: 'adh'};
@@ -1118,14 +1221,14 @@ function renderHojaSeguimiento() {
         const selector = document.getElementById('periodoPublicacionPersonal');
         const periodos = [...new Set(periodosProformaSeguimiento.map(periodoVistaSeguimiento).filter(Boolean))].sort().reverse();
         selector.innerHTML = '<option value="">Seleccionar período...</option>' + periodos.map(periodo => `<option value="${periodo}">${formatoVistaSeguimiento(periodo, 'fecha')}</option>`).join('');
-        selector.value = periodos.includes(periodoTrabajoSeguimiento) ? periodoTrabajoSeguimiento : '';
+        selector.value = periodos.includes(periodoTrabajoSeguimiento) ? periodoTrabajoSeguimiento : (periodos.length === 1 ? periodos[0] : '');
     }
     document.getElementById('estadoPasoSeguimiento').textContent = esUltimoPaso
         ? 'Al finalizar se guardan los cambios y se publican los tipos de Proforma cargados para el mes, conservando los demás grupos.'
         : 'Revisá los totales filtrados antes de continuar.';
-    if (esUltimoPaso) actualizarImpactoFinalPersonal();
     boton.textContent = esUltimoPaso ? 'Finalizar y pasar al dashboard' : `Continuar a ${configuracionHojasSeguimiento[config.siguiente].nombre}`;
     boton.disabled = publicandoDashboardPersonal;
+    if (esUltimoPaso) actualizarImpactoFinalPersonal();
     boton.classList.toggle('hidden', !config.siguiente);
     actualizarBotonCambiosHorasAuxiliar();
     actualizarBotonCambiosAuxNormalizacion();
@@ -1144,7 +1247,12 @@ function textoImpactoDashboardPersonal(periodo) {
 function actualizarImpactoFinalPersonal() {
     const periodo = document.getElementById('periodoPublicacionPersonal')?.value;
     const impacto = textoImpactoDashboardPersonal(periodo);
-    if (impacto) document.getElementById('estadoPasoSeguimiento').textContent = impacto;
+    const pasos = controlesCircuitoPersonal[periodo.replace('-','')];
+    const cambios = cambiosHorasAuxiliarSeguimiento.size || cambiosAuxNormalizacionSeguimiento.size;
+    const listo = pasos && Object.values(pasos).every(paso => !paso.errores.length);
+    document.getElementById('siguientePasoSeguimiento').disabled = publicandoDashboardPersonal || !listo || Boolean(cambios);
+    document.getElementById('estadoPasoSeguimiento').textContent = cambios ? 'Guardá los cambios para verificar el período.' :
+        !periodo ? 'Seleccioná el período a publicar.' : listo ? impacto : 'Revisá los pendientes en Control para publicar.';
 }
 
 function actualizarPanelPublicacionDashboardPersonal(filas = []) {
@@ -1158,13 +1266,13 @@ function actualizarPanelPublicacionDashboardPersonal(filas = []) {
     const periodos = AppFilters.valores('filtroPeriodoHojaSeguimiento');
     const periodo = periodos.length === 1 ? periodos[0] : '';
     const errores = periodo ? (validacionesDashboardSeguimiento[periodo.replace('-', '')] || []) : [];
-    boton.disabled = !periodo || !filas.length || errores.length > 0;
+    boton.disabled = !periodo || !controlesCircuitoPersonal[periodo.replace('-','')] || !filas.length || errores.length > 0;
     if (!periodo) {
         detalle.textContent = 'Seleccione un período para ver el impacto. Se publica todo el mes, aunque haya filtros activos.';
         return;
     }
     if (errores.length) {
-        detalle.textContent = `${formatoVistaSeguimiento(periodo, 'fecha')}: faltan ${errores.length} campaña(s) por completar en el Auxiliar. ${errores[0]}`;
+        detalle.textContent = `${formatoVistaSeguimiento(periodo, 'fecha')} · ${errores[0]} Revisá Control para publicar.`;
         return;
     }
     detalle.textContent = `${formatoVistaSeguimiento(periodo, 'fecha')}: ${textoImpactoDashboardPersonal(periodo)} Los filtros no limitan la publicación.`;
@@ -1392,6 +1500,7 @@ async function importarProformaPersonal() {
         mostrarMensajeProforma(data.mensaje, (data.dashboard || []).some(item => item.estado === 'pendiente') ? 'warning' : 'success');
         input.value = '';
         await cargarProformaPersonal();
+        consultarControlCircuito(document.getElementById('versionSeguimientoPersonal').value);
         if (data.periodos?.length === 1) {
             document.getElementById('filtroPeriodoProforma').value = data.periodos[0];
             renderProformaPersonal();
