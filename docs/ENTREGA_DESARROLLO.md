@@ -341,7 +341,7 @@ Controles ejecutados al preparar esta entrega el 26 de noviembre de 2026
 | Matriz por segmento y jefatura | OK |
 | Handoff de esquema de 28 tablas | OK |
 | Paridad de la copia contra el manifiesto | OK |
-| Build y ejecución con Docker Engine | Pendiente en el entorno destino |
+| Build Linux/amd64 y ejecución con Docker Engine local | OK, healthcheck y persistencia tras reinicio |
 | Paridad contra PostgreSQL destino | Pendiente tras la migración |
 
 El manifiesto certifica el contenido de la copia preparada. La paridad contra

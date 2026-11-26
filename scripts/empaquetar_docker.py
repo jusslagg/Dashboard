@@ -58,7 +58,7 @@ def main():
         'La base y credenciales se transfieren por separado, por el canal interno autorizado.\n\n'
         'Version documental: 26 de noviembre de 2026.\n'
         'Validacion: ejecutar los controles incluidos en docs/ENTREGA_DESARROLLO.md.\n'
-        'Pendiente: build y ejecucion real con Docker Engine; Docker no esta instalado en la PC de origen.\n'
+        'Docker Engine: build Linux/amd64, arranque, healthcheck y persistencia verificados el 26/11/2026.\n'
         'MANIFIESTO_ARCHIVOS.json permite comprobar el contenido de cada archivo recibido.\n'
     ).encode('utf-8')
     manifest = {name: {'bytes':len(content), 'sha256':sha256(content).hexdigest()}

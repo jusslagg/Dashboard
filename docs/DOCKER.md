@@ -190,10 +190,24 @@ Ejecutar los controles de Personal y handoff enumerados en
    entorno separado.
 6. HTTPS permite conservar la sesión en modo `production`.
 
-**Validación de esta entrega:** los archivos quedan preparados para build y
-ejecución. Esta PC no tiene Docker instalado, por lo que no se ha construido
-la imagen ni ejecutado un contenedor aquí. La prueba del motor y la publicación
-en el registro deben completarse en un equipo con Docker.
+**Validación de esta entrega:** imagen Linux/amd64 construida el 26 de noviembre
+de 2026. Se verificaron arranque real, healthcheck, usuario 10001:10001,
+alta inicial, sesión segura, pantallas y PDF. Los datos de prueba persistieron
+después de reiniciar el contenedor con un volumen aislado.
+La migración a PostgreSQL y la aceptación en el servidor destino quedan a cargo
+de Desarrollo.
+
+La imagen se entrega como `dashboard-facturacion-2026-11-26.image.tar`,
+acompañada por su SHA-256. Para importarla en otro equipo
+
+```powershell
+docker load -i dashboard-facturacion-2026-11-26.image.tar
+```
+
+Configurar `DASHBOARD_IMAGE=dashboard-facturacion:2026-11-26` en el archivo de
+ambiente de Compose y arrancar con
+`docker compose --env-file .env.docker up -d --no-build`.
+La base operativa y los secretos se configuran por separado.
 
 Referencias de configuración: [variables de entorno de Compose](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
 y [volúmenes persistentes](https://docs.docker.com/reference/compose-file/volumes/).
