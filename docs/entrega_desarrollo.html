@@ -27,9 +27,14 @@
 <body>
   <div class="top"><strong>Entrega a Desarrollo · Acceso autorizado</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/entrega-desarrollo/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/entrega-desarrollo/esquema/sqlite">SQL SQLite</a><a class="button" href="/entrega-desarrollo/esquema/pdf">Esquema PDF</a><a class="button" href="/entrega-desarrollo/manifiesto">Manifiesto de datos</a><a class="button" href="/entrega-desarrollo/descargar">Descargar documento</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Entrega a Desarrollo y Base de Datos</h1><p>Procedimiento reproducible para configurar, crear, migrar y verificar la base sin cambiar los resultados de la aplicación.</p><p><strong>Acceso para Full o perfiles expresamente autorizados.</strong></p><small>Generada desde ENTREGA_DESARROLLO.md · Octubre de 2026</small></header>
+    <header class="cover"><h1>Entrega a Desarrollo y Base de Datos</h1><p>Procedimiento reproducible para configurar, crear, migrar y verificar la base sin cambiar los resultados de la aplicación.</p><p><strong>Acceso para Full o perfiles expresamente autorizados.</strong></p><small>Generada desde ENTREGA_DESARROLLO.md · Noviembre de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice de entrega</h2><ol><li class=""><a href="#acceso-desde-la-aplicacion">Acceso desde la aplicación</a></li>
 <li class=""><a href="#fuentes-autoritativas">Fuentes autoritativas</a></li>
+<li class=""><a href="#circuitos-vigentes-y-aceptacion-funcional">Circuitos vigentes y aceptación funcional</a></li>
+<li class="sub"><a href="#personal-y-publicacion">Personal y publicación</a></li>
+<li class="sub"><a href="#matriz-resumen-y-criterio-de-totales">Matriz, Resumen y criterio de totales</a></li>
+<li class="sub"><a href="#usabilidad-compartida">Usabilidad compartida</a></li>
+<li class="sub"><a href="#pruebas-del-circuito">Pruebas del circuito</a></li>
 <li class=""><a href="#configuracion-sin-valores-locales-fijos">Configuración sin valores locales fijos</a></li>
 <li class=""><a href="#filtros-de-interfaz">Filtros de interfaz</a></li>
 <li class=""><a href="#esquema-y-compatibilidad">Esquema y compatibilidad</a></li>
@@ -45,6 +50,46 @@
 <h2 id="acceso-desde-la-aplicacion">Acceso desde la aplicación<a class="anchor" href="#acceso-desde-la-aplicacion" aria-label="Enlace a esta sección">#</a></h2>
 <p class="">El documento se consulta dentro de la aplicación desde <strong>Ayuda &gt; Entrega a Desarrollo</strong> o mediante <code>/entrega-desarrollo</code>. Tanto la vista como las descargas del documento y del manifiesto están habilitadas automáticamente para <code>Full</code> y para usuarios con la autorización puntual <code>permisos_personalizados.entrega_desarrollo = true</code>.</p>
 <h2 id="fuentes-autoritativas">Fuentes autoritativas<a class="anchor" href="#fuentes-autoritativas" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Actualización de entrega del 26 de noviembre de 2026. Las revisiones históricas de UX y autonomía conservan sus fechas y se complementan con esta versión.</p>
+<p class="">La copia de datos preparada para esta entrega es <code>entregas/Base-Dashboard-2026-11-26.db</code>, con su archivo SHA-256. El manifiesto <code>docs/base_actual_manifest.json</code> corresponde a esa copia consistente del origen, tomada durante la preparación. Las cargas posteriores de la aplicación pertenecen a una nueva línea base. Transferir la copia por el canal interno acordado para datos operativos, junto con el manifiesto. El ZIP de código se entrega por separado.</p>
+<h2 id="circuitos-vigentes-y-aceptacion-funcional">Circuitos vigentes y aceptación funcional<a class="anchor" href="#circuitos-vigentes-y-aceptacion-funcional" aria-label="Enlace a esta sección">#</a></h2>
+<h3 id="personal-y-publicacion">Personal y publicación<a class="anchor" href="#personal-y-publicacion" aria-label="Enlace a esta sección">#</a></h3>
+<ol>
+<li>Seleccionar la configuración de seguimiento e importar la proforma del tipo</li>
+</ol>
+<p class="">Masivo, Personal Pay o Soporte como Proyectada o Definitiva.</p>
+<ol>
+<li>La definitiva reemplaza el lote del mismo tipo y período. La proyectada</li>
+</ol>
+<p class="">posterior a una definitiva se rechaza.</p>
+<ol>
+<li>Cargar la planificación PLP donde corresponda y guardar los cambios.</li>
+<li>Para una definitiva, cargar el cierre del mismo mes. Se admiten dos archivos</li>
+</ol>
+<p class="">originales. El de Soporte se aplica a Soporte. El general separa Masivo (incluye SMB) y Personal Pay automáticamente.</p>
+<ol>
+<li>Revisar las correspondencias nuevas en Aux y los responsables en Datos Maestros.</li>
+<li>Elegir el mes en «Checklist de publicación», resolver sus pendientes mediante</li>
+</ol>
+<p class="">«Revisar» y usar «Confirmar y publicar en dashboard».</p>
+<p class="">El importador nativo de cierres está en <code>app/cierre_trafico_cat.py</code>. Lee Resumen, Resumen SMB y Resumen Pay según el libro, toma el mes del detalle con actividad, aplica las distribuciones porcentuales de Horas Cuadro y conserva las horas a liquidar y la penalidad por adhesión del resumen. Evita sumar los subtotales junto con sus campañas. Un error de división en una jornada sin horas se trata como cero únicamente cuando las horas brutas de esa jornada son cero.</p>
+<p class="">El cierre puede llegar antes de la definitiva y quedar pendiente hasta su carga. Una carga repetida reemplaza el cierre del mismo tipo y período. El cierre general genera dos lotes internos con historial independiente.</p>
+<p class="">La sincronización automática sigue operativa cuando el circuito está completo. El botón del checklist permite confirmar y ejecutar la publicación desde el mismo lugar. El backend vuelve a validar el mes al recibir la solicitud. Objetivos negativos, PLP requerida ausente, cierres incompletos y asignaciones necesarias ausentes impiden publicar. El filtro de Aux muestra pendientes de proformas vigentes y omite los nombres heredados ajenos a ellas.</p>
+<h3 id="matriz-resumen-y-criterio-de-totales">Matriz, Resumen y criterio de totales<a class="anchor" href="#matriz-resumen-y-criterio-de-totales" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">Matriz distingue Total facturado de facturación comparable. Total facturado usa <code>total_dashboard</code>, incluyendo los conceptos independientes y el total manual cuando corresponde. Cumplimiento y desvío comparable mantienen su base operativa. Los importes se muestran con dos decimales.</p>
+<p class="">La última pestaña es «Resumen por segmento Personal». Sólo incluye registros de Personal con segmento asignado y sus indicadores se calculan sobre esa selección. «Sin segmento» queda fuera de esa vista.</p>
+<p class="">El reloj y el bloque operativo de Resumen usan horas facturadas divididas por horas objetivo. La tabla operativa termina en «Cumplimiento de horas» y mantiene los valores hora en pesos. Un porcentaje de valor hora debe identificarse como tal donde exista.</p>
+<h3 id="usabilidad-compartida">Usabilidad compartida<a class="anchor" href="#usabilidad-compartida" aria-label="Enlace a esta sección">#</a></h3>
+<p class=""><code>layout.html</code> carga <code>usabilidad.css</code> y <code>usabilidad.js</code>. Incluyen búsqueda por nombre o sección, estado vacío de búsqueda, apertura de la sección actual, enlace para saltar al contenido, foco de teclado, adaptación de formularios de archivo y aviso para tablas anchas. Las pestañas de Matriz admiten varias filas.</p>
+<p class="">La prueba visual realizada cubrió Personal, Matriz, Dashboard y Datos Maestros en 390 y 1366 píxeles. La comprobación visual de las demás pantallas y las pruebas con usuarios en el entorno destino quedan como aceptación de Desarrollo.</p>
+<h3 id="pruebas-del-circuito">Pruebas del circuito<a class="anchor" href="#pruebas-del-circuito" aria-label="Enlace a esta sección">#</a></h3>
+<pre><code class="language-powershell">python scripts/verificar_proforma_seguimiento.py
+python scripts/verificar_cierre_trafico_personal.py
+python scripts/verificar_dashboard_definitivas_personal.py
+python scripts/verificar_resumen_horas.py
+python scripts/verificar_matriz_segmentos.py
+python scripts/verificar_handoff.py</code></pre>
+<p class="">Para aceptar la entrega, probar además un mes con definitiva y ambos cierres, el reemplazo repetido del mismo lote, una campaña nueva sin correspondencia, la confirmación del checklist y el deshacer del historial. Verificar que otros grupos y meses mantengan sus datos y que los totales concilien con el origen.</p>
 <div class="table-wrap"><table><thead><tr>
 <th>Elemento</th>
 <th>Fuente</th>
@@ -93,11 +138,11 @@ SESSION_COOKIE_SECURE=1</code></pre>
 <p class="">El diseño de filtros es compartido por toda la aplicación. La plantilla <code>app/templates/layout.html</code> carga <code>app/static/ui-filters.css</code> y <code>app/static/ui-filters.js</code>. El script reconoce controles de búsqueda, período y filtros de negocio, incluidos los que se crean después de una llamada a la API. Los filtros de opciones abren una ventana centrada con fondo atenuado, búsqueda, opciones marcables, limpieza, cancelación y aplicación explícita. Los filtros múltiples conservan la selección previa hasta pulsar «Aplicar filtro» y disparan una sola actualización; los selectores de valor único mantienen esa restricción. El control original conserva su valor y su evento <code>change</code> para que las consultas existentes sigan funcionando. Los formularios de carga y edición no se modifican.</p>
 <p class="">Para un filtro nuevo se debe usar un identificador semántico (<code>filtro...</code>, <code>buscar...</code>) o el atributo <code>data-filter-control</code>. Cuando una sección contiene varios controles con nombres heredados, se marca con <code>data-filter-scope</code>. Una barra completa puede marcarse con <code>data-filter-bar</code>; los botones segmentados usan <code>app-filter-tabs</code>, <code>app-filter-tab</code> y <code>active</code>. No se deben copiar estilos de altura, borde o color dentro de cada plantilla.</p>
 <h2 id="esquema-y-compatibilidad">Esquema y compatibilidad<a class="anchor" href="#esquema-y-compatibilidad" aria-label="Enlace a esta sección">#</a></h2>
-<p class="">Una base nueva contiene 27 tablas. <code>facturacion_anio</code> es multianual; el nombre Python <code>Facturacion2026</code> se conserva únicamente como alias de compatibilidad y apunta al mismo modelo, no a otra tabla.</p>
+<p class="">Una base nueva contiene 28 tablas. <code>facturacion_anio</code> es multianual; el nombre Python <code>Facturacion2026</code> se conserva únicamente como alias de compatibilidad y apunta al mismo modelo, no a otra tabla.</p>
 <p class="">La SQLite operativa puede conservar artefactos históricos que la aplicación ya no consulta: la tabla vacía <code>bajas_operativas</code> y algunas columnas antiguas. El migrador omite esos artefactos. Si <code>bajas_operativas</code> tuviera filas, la auditoría la reportaría como tabla extra y la migración debe detenerse para revisión.</p>
 <p class="">Los importes usan <code>NUMERIC</code>, no <code>FLOAT</code>, con la precisión declarada en los DDL. Las fórmulas se calculan en Python a partir de columnas persistidas; no existen triggers ni columnas calculadas ocultas que deban recrearse en PostgreSQL.</p>
 <h2 id="datos-que-deben-migrarse">Datos que deben migrarse<a class="anchor" href="#datos-que-deben-migrarse" aria-label="Enlace a esta sección">#</a></h2>
-<p class="">Se copian las 27 tablas declaradas, incluidos:</p>
+<p class="">Se copian las 28 tablas declaradas, incluidos:</p>
 <ul>
 <li>usuarios y hashes de contraseña;</li>
 <li>catálogos, asignaciones y vigencias;</li>
@@ -185,6 +230,49 @@ python scripts/reprocesar_facturacion_2026.py &quot;RUTA_EXCEL&quot; --year 2026
 <p class="">En producción se usa una sola instancia lógica detrás del proxy o balanceador, una <code>SECRET_KEY</code> persistente y HTTPS. Las migraciones o normalizaciones no deben ejecutarse desde dos procesos simultáneamente. Antes del primer arranque sobre PostgreSQL se aplica el DDL o el migrador; después se inicia la aplicación con una cuenta de ejecución con los permisos mínimos necesarios.</p>
 <p class="">No se versionan <code>.env</code>, logs, bases temporales ni credenciales. Los respaldos de datos reales deben almacenarse en el repositorio de backups definido por el área responsable y no dentro del repositorio de código.</p>
 <h2 id="criterio-de-aceptacion">Criterio de aceptación<a class="anchor" href="#criterio-de-aceptacion" aria-label="Enlace a esta sección">#</a></h2>
+<p class="">Controles ejecutados al preparar esta entrega el 26 de noviembre de 2026</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Control</th>
+<th>Resultado</th>
+</tr></thead><tbody>
+<tr>
+<td>Entrega, rutas, seguridad y DDL SQLite</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>Importación, reemplazo y deshacer de proformas</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>Cierres de tráfico y publicación de definitivas</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>Resumen de horas sobre la copia de entrega</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>Matriz por segmento y jefatura</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>Handoff de esquema de 28 tablas</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>Paridad de la copia contra el manifiesto</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>Build y ejecución con Docker Engine</td>
+<td>Pendiente en el entorno destino</td>
+</tr>
+<tr>
+<td>Paridad contra PostgreSQL destino</td>
+<td>Pendiente tras la migración</td>
+</tr>
+</tbody></table></div>
+<p class="">El manifiesto certifica el contenido de la copia preparada. La paridad contra PostgreSQL se verifica después de migrar con <code>--target-url</code>. Las pruebas con usuarios y la revisión visual de todas las pantallas se completan en la aceptación del destino.</p>
 <ul>
 <li><code>verificar_handoff.py</code> finaliza con <code>HANDOFF OK</code>.</li>
 <li><code>verificar_paridad_bases.py</code> finaliza con <code>PARIDAD OK</code>.</li>

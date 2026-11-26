@@ -70,7 +70,7 @@
       <h1>Dashboard de Facturación</h1>
       <p>Guía sencilla para cargar información, preparar proyecciones y controlar los resultados.</p>
       <p><strong>Incluye:</strong> facturación real, Facturación horas, PLP, precios, variables, Directorio, dotaciones, ratios, historial e importaciones.</p>
-      <small>Guía funcional para usuarios · Actualizada en septiembre de 2026</small>
+      <small>Guía funcional para usuarios · Actualizada el 26 de noviembre de 2026</small>
     </header>
 
     <nav class="toc" id="indice">
@@ -194,13 +194,18 @@
       <h3>Justificaciones</h3>
       <p>Usá esta pantalla para explicar ajustes, bonos, penalizaciones o diferencias. La justificación queda asociada al registro real.</p>
       <h3>Carga de datos Personal</h3>
-      <p>Esta pantalla reúne el circuito mensual de <strong>Proforma</strong> y <strong>Seguimiento</strong> de Personal.</p>
-      <ul>
-        <li>En Proforma, seleccioná el tipo y el estado correcto antes de importar. Una proforma definitiva puede alimentar el cierre y la publicación del período.</li>
-        <li>En Seguimiento, importá el libro fuente, revisá hojas, fórmulas y advertencias, y completá las correspondencias pendientes.</li>
-        <li>Antes de publicar al Dashboard, verificá el período, el cierre de tráfico y que no queden campañas sin clasificar.</li>
-        <li>Las importaciones y publicaciones compatibles quedan registradas en Historial y pueden deshacerse desde allí.</li>
-      </ul>
+      <p>El <strong>Checklist de publicación</strong> reúne el estado del mes y los accesos para completar cada pendiente.</p>
+      <ol>
+        <li>En el primer uso, importá la configuración de seguimiento. En las siguientes cargas seleccioná la configuración que corresponde.</li>
+        <li>En <strong>Proforma</strong>, elegí Masivo, Personal Pay o Soporte y el estado Proyectada o Definitiva. Subí el Excel. Soporte admite su libro CAT original y reconoce la hoja de definitiva por su nombre o encabezado.</li>
+        <li>Completá y guardá las horas de planificación PLP donde el checklist las solicite.</li>
+        <li>Para una definitiva, abrí <strong>Cierre de tráfico</strong> y dejá «Detectar por archivo». Subí el cierre de Soporte y el cierre general por separado. El general incluye Masivo, SMB y Personal Pay. Cada archivo se carga una vez.</li>
+        <li>En <strong>Aux</strong>, revisá los nombres nuevos de las proformas que todavía necesitan correspondencia. El filtro «Solo pendientes de normalizar» omite los pendientes heredados ajenos a las proformas vigentes. Asigná el segmento y completá los datos necesarios antes de guardar.</li>
+        <li>En el checklist, elegí el mes. Usá <strong>Revisar</strong> junto a cada pendiente para ir a su pantalla. Cuando esté listo, pulsá <strong>Confirmar y publicar en dashboard</strong> y aceptá la confirmación.</li>
+      </ol>
+      <p>El cierre debe pertenecer al mismo mes que la definitiva, aunque lo cargues más tarde. Si llega primero, queda guardado para cruzarse cuando importes la definitiva. La definitiva reemplaza la proyectada del mismo tipo y mes. Una proyectada no puede reemplazar una definitiva.</p>
+      <div class="note">La publicación automática continúa cuando el circuito está completo. Los objetivos negativos, las horas PLP requeridas ausentes y los cierres o responsables incompletos aparecen como pendientes en el checklist. Cada publicación abarca los tipos cargados para ese mes.</div>
+      <p>Las cargas y publicaciones quedan registradas en <strong>Historial</strong>. Para corregir una carga, revisá el movimiento y sus dependencias antes de deshacerlo.</p>
       <a class="back" href="#indice">Volver al índice ↑</a>
     </section>
 
@@ -212,6 +217,11 @@
       <p>Lista los registros reales. Desde aquí podés buscar, editar, eliminar o exportar según tus permisos.</p>
       <h3>Comparativo y Matriz</h3>
       <p>Comparativo enfrenta objetivo contra real. Matriz organiza la información en una vista mensual compacta.</p>
+      <p>En Matriz, la última pestaña es <strong>Resumen por segmento Personal</strong>. Muestra Personal con segmento asignado. Sus indicadores corresponden a los segmentos visibles.</p>
+      <p><strong>Total facturado</strong> incluye la facturación completa. El desvío comparable usa el bloque operativo de horas, variable, bonos y penalizaciones contra su objetivo. En Resumen, el reloj y la columna <strong>Cumplimiento de horas</strong> comparan horas facturadas con horas objetivo.</p>
+      <h3>Encontrar una pantalla y consultar tablas</h3>
+      <p>Usá <strong>Buscar pantalla</strong> en el menú para localizar una sección por su nombre. Podés escribir «Personal» o «Resumen» y borrar la búsqueda con Escape. La pantalla actual aparece marcada y su sección queda abierta.</p>
+      <p>En el celular, abrí el menú con su botón. Cuando una tabla exceda el ancho disponible, desplazala horizontalmente para ver las demás columnas. También podés recorrer controles con Tab y desplazar una tabla enfocada con las flechas.</p>
       <div class="success"><strong>Consejo:</strong> si un total parece incorrecto, quitá primero todos los filtros y luego aplicalos de a uno.</div>
       <a class="back" href="#indice">Volver al índice ↑</a>
     </section>

@@ -14,24 +14,16 @@ def verificar():
     with app.app_context():
         usuario = Usuario.query.filter_by(activo=True).first()
         registros = Facturacion2026.query.filter(Facturacion2026.mes.like('2026-%')).all()
-        operativos = [fila for fila in registros if not fila.es_next_gen]
-        historico = HistoricoClienteMensual.query.filter_by(year=2026).all()
+        meses_facturados = {fila.mes for fila in registros}
+        historico = [fila.base_dict() for fila in HistoricoClienteMensual.query.filter_by(year=2026)
+                     if fila.mes not in meses_facturados]
+        objetivo = round(sum(float(fila.horas_objetivo or 0) for fila in registros)
+                         + sum(float(fila.get('horas_requeridas') or 0) for fila in historico), 2)
+        facturadas = round(sum(float(fila.horas_facturadas or 0) for fila in registros)
+                           + sum(float(fila.get('horas_realizadas') or 0) for fila in historico), 2)
+        fuente_horas = 'facturacion_anio'
         if historico:
-            meses_historicos = {fila.mes for fila in historico}
-            parciales = [fila for fila in operativos if fila.mes not in meses_historicos]
-            objetivo = round(
-                sum(float(fila.base_dict().get('horas_requeridas') or 0) for fila in historico)
-                + sum(float(fila.horas_objetivo or 0) for fila in parciales), 2
-            )
-            facturadas = round(
-                sum(float(fila.base_dict().get('horas_realizadas') or 0) for fila in historico)
-                + sum(float(fila.horas_facturadas or 0) for fila in parciales), 2
-            )
-            fuente_horas = 'historico_y_facturacion' if parciales else 'historico_clientes_mensuales'
-        else:
-            objetivo = round(sum(float(fila.horas_objetivo or 0) for fila in operativos), 2)
-            facturadas = round(sum(float(fila.horas_facturadas or 0) for fila in operativos), 2)
-            fuente_horas = 'facturacion_anio'
+            fuente_horas = 'historico_y_facturacion' if registros else 'historico_clientes_mensuales'
         next_gen = round(sum(float(fila.netx_gen or 0) for fila in registros), 2)
         total_facturado = round(sum(float(fila.total_dashboard or 0) for fila in registros), 2)
         assert usuario is not None

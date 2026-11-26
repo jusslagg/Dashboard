@@ -15,6 +15,94 @@ para usuarios con la autorización puntual
 
 ## Fuentes autoritativas
 
+Actualización de entrega del 26 de noviembre de 2026. Las revisiones históricas
+de UX y autonomía conservan sus fechas y se complementan con esta versión.
+
+La copia de datos preparada para esta entrega es
+`entregas/Base-Dashboard-2026-11-26.db`, con su archivo SHA-256. El manifiesto
+`docs/base_actual_manifest.json` corresponde a esa copia consistente del origen,
+tomada durante la preparación. Las cargas posteriores de la aplicación
+pertenecen a una nueva línea base. Transferir la copia por el canal interno
+acordado para datos operativos, junto con el manifiesto. El ZIP de código
+se entrega por separado.
+
+## Circuitos vigentes y aceptación funcional
+
+### Personal y publicación
+
+1. Seleccionar la configuración de seguimiento e importar la proforma del tipo
+   Masivo, Personal Pay o Soporte como Proyectada o Definitiva.
+2. La definitiva reemplaza el lote del mismo tipo y período. La proyectada
+   posterior a una definitiva se rechaza.
+3. Cargar la planificación PLP donde corresponda y guardar los cambios.
+4. Para una definitiva, cargar el cierre del mismo mes. Se admiten dos archivos
+   originales. El de Soporte se aplica a Soporte. El general separa Masivo
+   (incluye SMB) y Personal Pay automáticamente.
+5. Revisar las correspondencias nuevas en Aux y los responsables en Datos Maestros.
+6. Elegir el mes en «Checklist de publicación», resolver sus pendientes mediante
+   «Revisar» y usar «Confirmar y publicar en dashboard».
+
+El importador nativo de cierres está en `app/cierre_trafico_cat.py`. Lee Resumen,
+Resumen SMB y Resumen Pay según el libro, toma el mes del detalle con actividad,
+aplica las distribuciones porcentuales de Horas Cuadro y conserva las horas a
+liquidar y la penalidad por adhesión del resumen. Evita sumar los subtotales
+junto con sus campañas. Un error de división en una jornada sin horas se trata
+como cero únicamente cuando las horas brutas de esa jornada son cero.
+
+El cierre puede llegar antes de la definitiva y quedar pendiente hasta su carga.
+Una carga repetida reemplaza el cierre del mismo tipo y período. El cierre
+general genera dos lotes internos con historial independiente.
+
+La sincronización automática sigue operativa cuando el circuito está completo.
+El botón del checklist permite confirmar y ejecutar la publicación desde el
+mismo lugar. El backend vuelve a validar el mes al recibir la solicitud.
+Objetivos negativos, PLP requerida ausente, cierres incompletos y asignaciones
+necesarias ausentes impiden publicar. El filtro de Aux muestra pendientes de
+proformas vigentes y omite los nombres heredados ajenos a ellas.
+
+### Matriz, Resumen y criterio de totales
+
+Matriz distingue Total facturado de facturación comparable. Total facturado usa
+`total_dashboard`, incluyendo los conceptos independientes y el total manual
+cuando corresponde. Cumplimiento y desvío comparable mantienen su base
+operativa. Los importes se muestran con dos decimales.
+
+La última pestaña es «Resumen por segmento Personal». Sólo incluye registros
+de Personal con segmento asignado y sus indicadores se calculan sobre esa
+selección. «Sin segmento» queda fuera de esa vista.
+
+El reloj y el bloque operativo de Resumen usan horas facturadas divididas por
+horas objetivo. La tabla operativa termina en «Cumplimiento de horas» y mantiene
+los valores hora en pesos. Un porcentaje de valor hora debe identificarse como
+tal donde exista.
+
+### Usabilidad compartida
+
+`layout.html` carga `usabilidad.css` y `usabilidad.js`. Incluyen búsqueda por
+nombre o sección, estado vacío de búsqueda, apertura de la sección actual,
+enlace para saltar al contenido, foco de teclado, adaptación de formularios de
+archivo y aviso para tablas anchas. Las pestañas de Matriz admiten varias filas.
+
+La prueba visual realizada cubrió Personal, Matriz, Dashboard y Datos Maestros
+en 390 y 1366 píxeles. La comprobación visual de las demás pantallas y las pruebas
+con usuarios en el entorno destino quedan como aceptación de Desarrollo.
+
+### Pruebas del circuito
+
+```powershell
+python scripts/verificar_proforma_seguimiento.py
+python scripts/verificar_cierre_trafico_personal.py
+python scripts/verificar_dashboard_definitivas_personal.py
+python scripts/verificar_resumen_horas.py
+python scripts/verificar_matriz_segmentos.py
+python scripts/verificar_handoff.py
+```
+
+Para aceptar la entrega, probar además un mes con definitiva y ambos cierres,
+el reemplazo repetido del mismo lote, una campaña nueva sin correspondencia,
+la confirmación del checklist y el deshacer del historial. Verificar que otros
+grupos y meses mantengan sus datos y que los totales concilien con el origen.
+
 | Elemento | Fuente |
 | --- | --- |
 | Modelo lógico y reglas de cálculo | `app/models.py` y `app/routes.py` |
@@ -83,7 +171,7 @@ altura, borde o color dentro de cada plantilla.
 
 ## Esquema y compatibilidad
 
-Una base nueva contiene 27 tablas. `facturacion_anio` es multianual; el nombre
+Una base nueva contiene 28 tablas. `facturacion_anio` es multianual; el nombre
 Python `Facturacion2026` se conserva únicamente como alias de compatibilidad y
 apunta al mismo modelo, no a otra tabla.
 
@@ -98,7 +186,7 @@ triggers ni columnas calculadas ocultas que deban recrearse en PostgreSQL.
 
 ## Datos que deben migrarse
 
-Se copian las 27 tablas declaradas, incluidos:
+Se copian las 28 tablas declaradas, incluidos:
 
 - usuarios y hashes de contraseña;
 - catálogos, asignaciones y vigencias;
@@ -241,6 +329,25 @@ datos reales deben almacenarse en el repositorio de backups definido por el áre
 responsable y no dentro del repositorio de código.
 
 ## Criterio de aceptación
+
+Controles ejecutados al preparar esta entrega el 26 de noviembre de 2026
+
+| Control | Resultado |
+| --- | --- |
+| Entrega, rutas, seguridad y DDL SQLite | OK |
+| Importación, reemplazo y deshacer de proformas | OK |
+| Cierres de tráfico y publicación de definitivas | OK |
+| Resumen de horas sobre la copia de entrega | OK |
+| Matriz por segmento y jefatura | OK |
+| Handoff de esquema de 28 tablas | OK |
+| Paridad de la copia contra el manifiesto | OK |
+| Build y ejecución con Docker Engine | Pendiente en el entorno destino |
+| Paridad contra PostgreSQL destino | Pendiente tras la migración |
+
+El manifiesto certifica el contenido de la copia preparada. La paridad contra
+PostgreSQL se verifica después de migrar con `--target-url`. Las pruebas con
+usuarios y la revisión visual de todas las pantallas se completan en la
+aceptación del destino.
 
 - `verificar_handoff.py` finaliza con `HANDOFF OK`.
 - `verificar_paridad_bases.py` finaliza con `PARIDAD OK`.

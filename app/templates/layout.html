@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='montserrat.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='ui-filters.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='usabilidad.css') }}">
     <link rel="preload" href="{{ url_for('static', filename='fonts/Montserrat-VariableFont_wght.ttf') }}" as="font" type="font/ttf" crossorigin>
     <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
     <script>
@@ -84,6 +85,7 @@
     </style>
 </head>
 <body class="bg-gray-100{% if usuario_actual %} app-authenticated{% endif %}">
+    <a class="app-skip-link" href="#contenidoPrincipal">Ir al contenido</a>
     <div id="appShell" class="flex flex-col md:flex-row min-h-screen">
         <!-- Sidebar -->
         <aside id="sidebar" class="w-full md:w-72 md:flex-shrink-0 bg-slate-800 text-white flex flex-col overflow-x-hidden">
@@ -100,6 +102,11 @@
                 </button>
             </div>
             <nav id="sidebarNav" class="flex-1 p-3 md:p-4 flex md:block gap-2 overflow-x-auto md:overflow-x-hidden text-sm">
+                <div class="app-nav-search">
+                    <label for="buscarPantalla">Buscar pantalla</label>
+                    <input id="buscarPantalla" type="search" placeholder="Ej. Personal, Resumen…" autocomplete="off" aria-controls="sidebarNav">
+                    <p id="sinPantallas" hidden role="status">No hay pantallas con ese nombre.</p>
+                </div>
                 {% if usuario_actual and usuario_actual.puede_ver_facturacion %}
                 <section class="min-w-fit md:min-w-0 md:mb-3" data-sidebar-group="facturacion">
                     <button type="button" class="sidebar-group-toggle mb-1 flex w-full items-center justify-between rounded px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-300" aria-expanded="false" aria-controls="sidebarGroupFacturacion" onclick="toggleSidebarGroup('facturacion')">
@@ -320,7 +327,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="min-w-0 flex-1 overflow-auto p-4 md:p-8">
+        <main id="contenidoPrincipal" tabindex="-1" class="min-w-0 flex-1 overflow-auto p-4 md:p-8">
             {% if request.path in ['/indicadores', '/cumplimiento-horas-clientes'] %}
             <div class="mb-4 flex justify-end">
                 <button type="button" onclick="restaurarColoresPagina()" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">
@@ -513,6 +520,7 @@
     </script>
     <script src="{{ url_for('static', filename='password-fields.js') }}"></script>
     <script src="{{ url_for('static', filename='ui-filters.js') }}"></script>
+    <script src="{{ url_for('static', filename='usabilidad.js') }}" defer></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

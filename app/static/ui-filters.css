@@ -183,6 +183,27 @@ select.app-filter-control { min-width: 90px !important; padding-right: 27px !imp
 .app-filter-select-trigger[hidden] { display: none !important; }
 .app-filter-select-trigger:disabled { opacity: .55; cursor: not-allowed; }
 
+#contenidoSeguimientoPersonal .app-filter-select-trigger {
+    min-width: 0;
+    max-width: 100%;
+    height: auto !important;
+    min-height: 36px;
+    padding-block: 6px !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+}
+#contenidoSeguimientoPersonal #versionSeguimientoPersonal {
+    width: min(100%, 30rem);
+    text-overflow: ellipsis;
+}
+.selector-correspondencia-personal {
+    appearance: auto;
+    min-height: 36px;
+    cursor: pointer;
+}
+.selector-correspondencia-personal + input:not([hidden]) { margin-top: 4px; }
+
 body.app-filter-dialog-open { overflow: hidden; }
 .app-filter-dialog[hidden],
 .app-filter-dialog [hidden] { display: none !important; }

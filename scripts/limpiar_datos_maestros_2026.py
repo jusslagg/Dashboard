@@ -11,8 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import create_app, db
 from app.models import AsignacionComercial, Facturacion2026, HistorialCambio, _clave_nombre
 
-FACTURACION = Path(r'C:\Users\jegil\Downloads\2026 Facturacion V2 (2).xlsx')
-PROYECCION = Path(r'C:\Users\jegil\Downloads\Proyeccion Horas V4 (5).xlsx')
+FACTURACION = Path.home() / 'Downloads' / '2026 Facturacion V2 (2).xlsx'
+PROYECCION = Path.home() / 'Downloads' / 'Proyeccion Horas V4 (5).xlsx'
 
 
 def clave(*valores):

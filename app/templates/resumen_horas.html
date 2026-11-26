@@ -15,6 +15,17 @@
     <label class="rs-label">Año<select id="year" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs" onchange="cargar()"></select></label>
   </div>
   <div id="kpis" class="rs-kpis"></div>
+  <section class="rs-card mb-2" aria-labelledby="tituloRelojResumen">
+    <h2 id="tituloRelojResumen" class="text-sm font-bold">Reloj de cumplimiento de horas</h2>
+    <p id="periodoRelojResumen" class="text-xs text-slate-600"></p>
+    <div class="grid items-center gap-3 sm:grid-cols-2">
+      <figure class="min-w-0 text-center">
+        <canvas id="relojResumen" class="mx-auto w-full max-w-sm" height="290" aria-label="Cumplimiento de horas de TOTAL CAT"></canvas>
+        <figcaption id="valorRelojResumen" class="text-2xl font-bold text-slate-900"></figcaption>
+      </figure>
+      <div id="medicionRelojResumen" class="grid grid-cols-2 gap-2"></div>
+    </div>
+  </section>
   <div class="rs-strip">
     <section class="rs-card"><div><b class="text-xs">Evolución de horas</b><p id="subtituloGrafico" class="text-[9px] text-slate-500">Según la vista seleccionada</p></div><div id="leyendaHoras" class="rs-legend" aria-label="Leyenda del gráfico"><span class="rs-legend-item"><i class="rs-legend-swatch rs-legend-objective" aria-hidden="true"></i>Barra azul: objetivo (horas)</span><span class="rs-legend-item"><i class="rs-legend-swatch rs-legend-billed" aria-hidden="true"></i>Barra verde: facturadas (horas)</span><span class="rs-legend-item"><i class="rs-legend-line" aria-hidden="true"></i>Línea roja: cumplimiento (%)</span></div><div id="leyendaNextGen" class="rs-legend" aria-label="Leyenda del gráfico" hidden><span class="rs-legend-item"><i class="rs-legend-swatch rs-legend-nextgen" aria-hidden="true"></i>Barra violeta: facturación Next Gen ($)</span></div><div id="grafico" class="rs-chart"></div></section>
     <section class="rs-card rs-result"><div><span id="alcanceTitulo" class="rs-label text-slate-400">Alcance de horas</span><small id="alcanceFiltro" class="block max-w-[180px] truncate text-[9px] text-slate-400">Total anual</small><strong id="alcance">—</strong></div><div><div class="rs-progress"><i id="progreso"></i></div><p id="desvio" class="mt-2 text-[10px]"></p></div></section>
@@ -32,16 +43,34 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script src="{{ url_for('static',filename='reloj-horas.js') }}"></script>
 <script>
 const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const vistasDef=[['filas','Mensual'],['trimestres','Trimestres'],['grupos','Grupos'],['gerencias','Gerencias'],['jefaturas','Jefaturas'],['detalle','Detalle jefatura'],['next_gen','Next Gen']];
 const bloques={
- operacion:[['Objetivo horas','horas_objetivo','num'],['Horas facturadas','horas_facturadas','num'],['Alcance Hs.','porcentaje_cumplimiento_horas','pct'],['VH promedio','valor_hora_promedio','money'],['VH objetivo','vh_objetivo_resumen','money'],['Alcance VH','porcentaje_alcance_vh','pct']],
+ operacion:[['Objetivo horas','horas_objetivo','num'],['Horas facturadas','horas_facturadas','num'],['VH promedio','valor_hora_promedio','money'],['VH objetivo','vh_objetivo_resumen','money'],['Cumplimiento de horas','porcentaje_cumplimiento_horas','pct']],
  facturacion:[['OTROS','otros_real','money'],['Facturado horas','horas_real','money'],['Variable productivo','variable_real','money'],['Penalizaciones / bonos','penalizaciones_bonos','money'],['Next Gen','netx_gen_real','money'],['Tarifación','tarifacion_real','money'],['Total facturado','total_facturado','money'],['Participación','participacion_operativa','pct']],
  objetivos:[['Objetivo horas $','horas_obj','money'],['Objetivo bono','variable_obj','money'],['Total objetivo','total_obj','money'],['Total facturado','total_facturado','money'],['Alcance Fact.','porcentaje_cumplimiento','pct']],
  desvios:[['Dif. horas vs obj.','desvio_horas_monto','money'],['Dif. bono vs obj.','desvio_variable','money'],['Penalidad / bonos','penalizaciones_bonos','money'],['Total desvío','total_desvio','money'],['Desvío / objetivo','porcentaje_desvio','pct'],['Peso horas','participacion_desvio_horas','pct'],['Peso bono','participacion_desvio_variable','pct'],['Peso penalidad','participacion_desvio_penalizaciones','pct']]
 };
 let data=null,vista='filas';
+function mostrarRelojResumen(){
+    if (!data) return;
+    const r = data.reloj;
+    const mes = valor => new Intl.DateTimeFormat('es-AR',{month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(valor+'-01T00:00:00Z'));
+    document.getElementById('periodoRelojResumen').textContent = r.desde ? 'TOTAL CAT · '+mes(r.desde)+' a '+mes(r.hasta) : 'Sin horas cargadas para el año seleccionado';
+    document.getElementById('medicionRelojResumen').innerHTML = [
+        tarjeta('Horas requeridas',r.desde ? num(r.requerido) : '—'),
+        tarjeta('Horas realizadas',r.desde ? num(r.realizado) : '—'),
+        tarjeta('Diferencia de horas',r.desde ? num(r.diferencia) : '—'),
+        tarjeta('Cumplimiento',r.requerido ? pct(r.cumplimiento*100) : '—')
+    ].join('');
+    const canvas = document.getElementById('relojResumen');
+    document.getElementById('valorRelojResumen').textContent = r.requerido ? pct(r.cumplimiento*100) : '—';
+    canvas.hidden = !r.requerido;
+    if (r.requerido) dibujarRelojHoras(canvas,r.cumplimiento,'#0f172a');
+}
+addEventListener('resize',mostrarRelojResumen);
 const num=v=>Number(v||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const money=v=>'$ '+num(v),pct=v=>num(v)+'%';
 function valor(f,k,t){let v=k==='ajustes'?Number(f.tarifacion_real||0)+Number(f.otros_real||0):f[k];return t==='money'?money(v):t==='pct'?pct(v):num(v)}
@@ -59,7 +88,7 @@ function totalActual(){if(vista!=='detalle')return data.total;const d=data.detal
 function render(){const campos=bloques[document.getElementById('bloque').value],filas=filasActuales(),total=totalActual();document.getElementById('tabla').innerHTML='<table class="rs-table"><thead><tr><th>Detalle</th>'+campos.map(c=>'<th>'+c[0]+'</th>').join('')+'</tr></thead><tbody>'+filas.map((f,i)=>'<tr><td title="'+nombre(f,i)+'"><b>'+nombre(f,i)+'</b></td>'+campos.map(([l,k,t])=>'<td data-label="'+l+'" class="'+((k.includes('desvio')||k==='penalizaciones_bonos')&&Number(f[k])<0?'rs-neg':'')+'">'+valor(f,k,t)+'</td>').join('')+'</tr>').join('')+'</tbody><tfoot><tr><td>TOTAL CAT</td>'+campos.map(([l,k,t])=>'<td data-label="'+l+'">'+valor(total,k,t)+'</td>').join('')+'</tr></tfoot></table>';renderKpis(total);renderGrafico()}
 function cambiarVista(v){vista=v;const es=v==='detalle';document.getElementById('jefatura').classList.toggle('hidden',!es);document.getElementById('periodoJefatura').classList.toggle('hidden',!es);document.getElementById('leyendaHoras').hidden=v==='next_gen';document.getElementById('leyendaNextGen').hidden=v!=='next_gen';if(v==='next_gen')document.getElementById('bloque').value='facturacion';renderVistas();render()}
 function cambiarJefatura(){cargar()}
-async function cargar(){const seleccion=AppFilters.valores('jefatura'),params=new URLSearchParams({year:document.getElementById('year').value});AppFilters.agregar(params,'jefatura',seleccion);const r=await fetch('/api/resumen-horas?'+params),d=await r.json();if(!d.success)return;data=d;data.total.participacion_operativa=100;const sel=document.getElementById('jefatura');sel.replaceChildren(new Option('Todas las jefaturas',''));data.detalle_jefaturas.forEach(x=>sel.add(new Option(x.nombre,x.nombre)));AppFilters.seleccionar(sel,seleccion);renderVistas();render()}
+async function cargar(){const seleccion=AppFilters.valores('jefatura'),params=new URLSearchParams({year:document.getElementById('year').value});AppFilters.agregar(params,'jefatura',seleccion);const r=await fetch('/api/resumen-horas?'+params),d=await r.json();if(!d.success)return;data=d;mostrarRelojResumen();data.total.participacion_operativa=100;const sel=document.getElementById('jefatura');sel.replaceChildren(new Option('Todas las jefaturas',''));data.detalle_jefaturas.forEach(x=>sel.add(new Option(x.nombre,x.nombre)));AppFilters.seleccionar(sel,seleccion);renderVistas();render()}
 document.addEventListener('DOMContentLoaded',()=>{const actual={{ anio_actual }},s=document.getElementById('year');for(let y=2020;y<=Math.max(actual,new Date().getFullYear());y++)s.add(new Option(y,y));s.value=actual;cargar()});
 </script>
 {% endblock %}

@@ -1,0 +1,50 @@
+/* Ajustes compartidos de lectura, navegación y formularios. */
+.app-skip-link { position: fixed; top: 8px; left: 8px; z-index: 9999; transform: translateY(-160%); padding: 12px 18px; border-radius: 8px; background: #fff; color: #0f172a; }
+.app-skip-link:focus { transform: none; }
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 3px solid #0284c7; outline-offset: 3px; }
+.app-nav-search { margin: 0 0 18px; }
+.app-nav-search label { display: block; margin-bottom: 6px; color: #cbd5e1; font-size: 12px; font-weight: 600; }
+.app-nav-search input { width: 100%; min-width: 0; border: 1px solid #64748b; border-radius: 8px; background: #0f172a; color: #fff; padding: 10px 12px; font: inherit; }
+.app-nav-search input::placeholder { color: #94a3b8; }
+.app-nav-search p { margin-top: 8px; color: #e2e8f0; font-size: 12px; }
+body.sidebar-collapsed .app-nav-search { display: none; }
+#sidebarNav .sidebar-link { white-space: normal; line-height: 1.45; }
+#sidebarNav .sidebar-link.active { background: #334e68; box-shadow: inset 3px 0 #67e8f9; font-weight: 650; }
+#sidebarNav [hidden] { display: none !important; }
+body.app-authenticated { background: #f3f6fa; color: #1e293b; }
+body.app-authenticated main { line-height: 1.5; }
+main h1 { letter-spacing: -.025em; line-height: 1.2; }
+main h2 { line-height: 1.35; }
+main :where(input, select, textarea) { font-family: inherit; }
+main :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]), select, textarea) { min-width: 0; }
+main :where(input[type=checkbox], input[type=radio]) { accent-color: #2563eb; }
+main button:disabled { cursor: not-allowed; }
+main input[type=file] { min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; }
+main .app-form-row { display: grid !important; grid-template-columns: minmax(0,1fr) !important; align-items: start !important; gap: 18px !important; }
+main .app-form-row > * { min-width: 0; max-width: 100%; }
+main .app-form-controls { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)) !important; gap: 12px !important; align-items: end !important; }
+main .app-form-controls :where(input, select, button) { width: 100%; min-width: 0 !important; }
+main .app-table-scroll { position: relative; overscroll-behavior-x: contain; scrollbar-width: auto; scrollbar-color: #94a3b8 #edf2f7; }
+main .app-table-scroll:focus-visible { outline-offset: -3px; }
+main .app-table-scroll th { vertical-align: middle; }
+main .app-table-scroll tbody tr:hover { background-color: #f0f7ff; }
+main .app-scroll-note { margin: 6px 0; color: #475569; font-size: 12px; }
+main .app-filter-control { min-height: 36px; height: 36px !important; font-size: 12px !important; line-height: normal; }
+main .app-filter-label { font-size: 10px !important; }
+main .app-filter-trigger[data-filter-name]::before { font-size: 10px; }
+main .app-filter-panel > .grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 10px; }
+main .rs-table th { font-size: 10px; padding: 8px; }
+main .rs-table td { font-size: 12px; padding: 8px; }
+main .rs-kpi small { font-size: 10px; }
+main .rs-kpi { padding: 10px 12px; }
+@media (max-width: 1023px) {
+    body.sidebar-collapsed #sidebar { width: 100%; }
+    body.sidebar-collapsed .app-nav-search { display: block; }
+    body.sidebar-collapsed #sidebarNav .sidebar-text { opacity: 1; width: auto; display: inline; }
+    body.sidebar-collapsed #sidebarNav .sidebar-link { justify-content: flex-start; }
+    main .app-filter-control { min-height: 42px; height: 42px !important; font-size: 13px !important; }
+    main :where(button, select, input[type=file]) { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

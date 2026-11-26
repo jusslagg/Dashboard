@@ -59,7 +59,7 @@ def verificar() -> None:
             bice_fijo.importe_fijo = None
             assert bice_fijo.objetivo_facturacion_horas == 396 * 18778.42
 
-            assert len(db.metadata.tables) == 27, "La cantidad de tablas cambio sin actualizar el contrato."
+            assert len(db.metadata.tables) == 28, "La cantidad de tablas cambio sin actualizar el contrato."
             assert "facturacion_anio" in db.metadata.tables
             assert "facturacion_2026" not in db.metadata.tables
             assert "normalizacion_nombres_proyectados" in db.metadata.tables
@@ -214,7 +214,7 @@ def verificar() -> None:
             tables = connection.execute(
                 "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
             ).fetchall()
-            assert len(tables) == 27, "El DDL SQLite no crea las 27 tablas documentadas."
+            assert len(tables) == 28, "El DDL SQLite no crea las 28 tablas documentadas."
 
         local_database = RAIZ / "instance" / "facturacion.db"
         if local_database.exists():

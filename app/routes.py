@@ -4386,13 +4386,13 @@ def deshacer_item_historial(item):
         return {'success': True, 'mensaje': f'Movimiento #{item.id} deshecho: correspondencias de Aux restauradas'}, 200
 
     if item.entidad == 'seguimiento_personal_cierre':
+        cierres_movimiento = despues.get('lotes_modificados', despues.get('cierres_trafico_importados') or [])
         try:
             restaurado = restaurar_dashboard_asociado_historial(item.id)
         except ValueError as error:
             db.session.rollback()
             return {'success': False, 'errores': [str(error)]}, 400
         if not restaurado:
-            cierres_movimiento = despues.get('cierres_trafico_importados') or []
             alcances_cierre = {(str(cierre.get('periodo') or ''), cierre.get('tipo_proforma'))
                                for cierre in cierres_movimiento}
             for posterior in HistorialCambio.query.filter(
@@ -4427,11 +4427,22 @@ def deshacer_item_historial(item):
                 str(ajuste.get('periodo') or '') == str(cierre.get('periodo') or '')
                 and normalizar_header(ajuste.get('campania')) == normalizar_header(detalle.get('campania'))
                 and normalizar_header(ajuste.get('tipo_vh')) == normalizar_header(detalle.get('tipo_vh'))
-                for cierre in (despues.get('cierres_trafico_importados') or [])
+                for cierre in cierres_movimiento
                 for detalle in (cierre.get('detalle') or [])
             ):
                 ajustes.pop(clave, None)
-        if 'cierres_trafico_importados' in antes:
+        if 'lotes_modificados' in despues:
+            vigentes = contenido.get('cierres_trafico_importados') or []
+            for lote in cierres_movimiento:
+                if not any(c.get('periodo') == lote.get('periodo') and c.get('fecha') == lote.get('fecha')
+                           and c.get('archivo') == lote.get('archivo') for c in vigentes):
+                    db.session.rollback()
+                    return {'success': False, 'errores': ['Deshaga primero el reemplazo posterior de este cierre.']}, 400
+            contenido['cierres_trafico_importados'] = [
+                c for c in vigentes if not any(c.get('periodo') == lote.get('periodo')
+                and c.get('fecha') == lote.get('fecha') and c.get('archivo') == lote.get('archivo') for lote in cierres_movimiento)
+            ] + (antes.get('lotes_reemplazados') or [])
+        elif 'cierres_trafico_importados' in antes:
             contenido['cierres_trafico_importados'] = antes['cierres_trafico_importados']
         contenido.pop('periodos_definitivos_auxiliar', None)
         importacion.contenido_hojas = zlib.compress(
@@ -5593,7 +5604,11 @@ def api_matriz():
         'tipo_negocio': filtros.get('tipo_negocio') or '',
         'total_gerencia': matriz_grupos(registros_year, 'gerente', meses),
         'total': metricas_matriz(registros_year),
-        'resumen_segmento': matriz_grupos(registros_year, segmento_registro, meses),
+        'resumen_segmento': matriz_grupos([
+            registro for registro in registros_year
+            if normalizar_header(registro.cliente).startswith('personal')
+            and normalizar_header(segmento_registro(registro)) not in ('', 'sin segmento')
+        ], segmento_registro, meses),
         'resumen_jefatura': matriz_grupos(registros_year, 'jefe_site', meses),
         'apertura_jefe_site': matriz_servicios_por_jefatura(registros_year, meses),
         'jefe_site': jefe_site_unico,
@@ -10214,6 +10229,7 @@ HOJAS_PROFORMA_SOPORTE = {
     'definitivo cat': 'Definitiva',
     'definitiva cat': 'Definitiva',
     'cat definitiva': 'Definitiva',
+    'cat definitivo': 'Definitiva',
 }
 
 
@@ -10688,6 +10704,27 @@ def api_importar_proforma_personal():
         for nombre_original in libro.sheetnames
         if (nombre := normalizar_header(nombre_original)) in HOJAS_PROFORMA_SOPORTE
     }
+    if tipo_proforma == 'Soporte' and estado_proforma == 'Definitiva' and estado_proforma not in hojas_soporte:
+        # Algunos libros cambian el nombre de la pestaña, pero conservan el
+        # encabezado CAT y el período marcado como definitivo en la columna B.
+        candidatas = []
+        for candidata in libro.worksheets:
+            etiquetas = {
+                normalizar_encabezado_proforma(valor)
+                for (valor,) in candidata.iter_rows(min_col=2, max_col=2, max_row=30, values_only=True)
+            }
+            if 'proforma personal cat' in etiquetas and any(
+                re.fullmatch(r'[a-z]+ \d{4} definitiv[oa]', etiqueta) for etiqueta in etiquetas
+            ):
+                candidatas.append(candidata)
+        if len(candidatas) > 1:
+            return error_carga_proforma(
+                'Hay varias hojas CAT con encabezado de definitiva.',
+                'Identifique la hoja que corresponde al cierre con el nombre Definitivo CAT.',
+                [hoja.title for hoja in candidatas],
+            )
+        if candidatas:
+            hojas_soporte[estado_proforma] = candidatas[0]
     if hojas_soporte:
         if tipo_proforma != 'Soporte':
             return error_carga_proforma(
@@ -11254,7 +11291,7 @@ def aplicar_proformas_a_seguimiento(contenido):
             nueva[indice] = celda_seguimiento_automatica(valor)
         if clave in campanias_activas:
             revisado = ajuste and ajuste.get('segmento') and ajuste.get('segmento_revisado', True)
-            nueva[1]['segmento_pendiente'] = not revisado
+            nueva[1]['segmento_pendiente'] = not (revisado or asignacion)
         hoja_aux['filas'].append(nueva)
         filas_aux_por_clave.setdefault(clave, []).append(nueva)
 
@@ -11263,6 +11300,8 @@ def aplicar_proformas_a_seguimiento(contenido):
     for clave, clasificacion in mapa_aux.items():
         clasificacion['proforma'] = proforma_aux_personal(clave, clasificacion['proforma'])
         for fila in filas_aux_por_clave.get(clave, []):
+            if clave not in campanias_activas or mapa_asignaciones.get(clave):
+                fila[1].pop('segmento_pendiente', None)
             for indice, campo in ((2, 'segmento'), (3, 'jefatura'), (4, 'tipo_negocio'), (5, 'proforma'), (6, 'backup')):
                 fila[indice] = celda_seguimiento_automatica(clasificacion[campo])
             asignacion = mapa_asignaciones.get(clave)
@@ -11486,6 +11525,8 @@ def aplicar_proformas_a_seguimiento(contenido):
         totales_campania = totales_cierre_brutas[(item.periodo, normalizar_header(item.segmento))]
         if horas_brutas is None:
             horas_con_tope = None
+        elif ajuste.get('brutas_con_tope') is not None:
+            horas_con_tope = ajuste['brutas_con_tope']
         elif totales_campania['definitiva'] and totales_campania['brutas'] > totales_campania['definitiva'] * 1.03:
             horas_con_tope = totales_campania['definitiva'] * 1.03 * float(horas_brutas) / totales_campania['brutas']
         else:
@@ -12025,10 +12066,11 @@ def api_hoja_seguimiento_personal():
     contenido = aplicar_proformas_a_seguimiento(contenido_seguimiento_personal(importacion))
     proformas = ProformaPersonal.query.order_by(ProformaPersonal.periodo.desc()).all()
     pendientes_normalizacion = set()
+    nombres_proforma = {normalizar_header(item.segmento) for item in proformas}
     if clave_hoja in ('aux', 'auxiliar_horas_plp_masivo'):
         for fila in contenido['hojas']['aux']['filas'][1:]:
             nombre = valor_fila_seguimiento(fila, 1)
-            if nombre and (fila[1].get('segmento_pendiente') or any(
+            if normalizar_header(nombre) in nombres_proforma and (fila[1].get('segmento_pendiente') or any(
                 not str(valor_fila_seguimiento(fila, i) or '').strip() for i in range(2, 6)
             )):
                 pendientes_normalizacion.add(nombre)
@@ -12040,8 +12082,6 @@ def api_hoja_seguimiento_personal():
         controles_dashboard[periodo] = {}
         filas_periodo, errores_periodo = filas_dashboard_desde_seguimiento_personal(contenido, periodo, controles=controles_dashboard[periodo])
         validaciones_dashboard[periodo] = errores_periodo
-        if request.args.get('solo_controles') == '1':
-            continue
         mes = f'{periodo[:4]}-{periodo[4:]}'
         existentes = query_reemplazo_personal_mes({'mes': mes}).all()
         grupos_publicados = {item.get('tipo_negocio') for item in filas_periodo if item.get('tipo_negocio')}
@@ -12055,7 +12095,7 @@ def api_hoja_seguimiento_personal():
             'grupos_ausentes': sorted(grupo for grupo in grupos_actuales if normalizar_header(grupo) not in nuevas_claves),
         }
     if request.args.get('solo_controles') == '1':
-        return jsonify(success=True, controles_dashboard=controles_dashboard)
+        return jsonify(success=True, controles_dashboard=controles_dashboard, impacto_dashboard=impacto_dashboard)
     return jsonify({
         'success': True,
         'importacion': importacion.to_dict(),
@@ -12182,6 +12222,7 @@ def detalle_cierre_trafico(cierre):
     return [
         {
             'hoja': ', '.join(origen.get('hojas') or []),
+            'brutas_con_tope': origen.get('brutas_con_tope'),
             'campania': origen.get('campania'), 'tipo_vh': origen.get('tipo_vh'),
             'planificadas': round(float(origen.get('definitiva') or 0), 6),
             'brutas': round(float(origen.get('brutas') or 0), 6),
@@ -12197,6 +12238,7 @@ def aplicar_cierre_guardado_personal(contenido, cierre_guardado, proformas):
         (normalizar_header(item.get('campania')), normalizar_header(item.get('tipo_vh'))): {
             'campania': item.get('campania'), 'tipo_vh': item.get('tipo_vh'),
             'definitiva': item.get('planificadas'), 'brutas': item.get('brutas'),
+            'brutas_con_tope': item.get('brutas_con_tope'),
             'adh': item.get('adh'),
         }
         for item in cierre_guardado.get('detalle') or []
@@ -12274,6 +12316,7 @@ def aplicar_cierre_guardado_personal(contenido, cierre_guardado, proformas):
             'tipo_vh': tipo_hora_seguimiento(item.tipo_hora),
             'proyectada': float(item.total_horas or 0),
             'definitiva': round(float(origen.get('definitiva') or 0), 6),
+            'brutas_con_tope': origen.get('brutas_con_tope'),
             'brutas': round(float(origen.get('brutas') or 0), 6),
             'adh': round(float(origen.get('adh') or 0), 8),
         }
@@ -12325,7 +12368,15 @@ def api_importar_cierre_trafico_personal():
     if len(contenido_archivo) > 20 * 1024 * 1024:
         return jsonify({'success': False, 'errores': ['El cierre de tráfico supera el máximo de 20 MB.']}), 400
     try:
-        periodo, cierre, hojas = extraer_cierre_trafico_personal(contenido_archivo)
+        from app.cierre_trafico_cat import leer_cierre_cat
+        nativo = leer_cierre_cat(contenido_archivo, normalizar_header, tipo_hora_seguimiento)
+        if nativo:
+            periodo, lotes = nativo
+            if tipo_seleccionado and tipo_seleccionado not in {tipo for tipo, _, _ in lotes}:
+                raise ValueError('El archivo pertenece a otro grupo de Proforma.')
+        else:
+            periodo, cierre, hojas = extraer_cierre_trafico_personal(contenido_archivo)
+            lotes = [(tipo_seleccionado, cierre, hojas)]
     except Exception as error:
         current_app.logger.warning('Cierre de tráfico rechazado: %s', error)
         return jsonify({'success': False, 'errores': [
@@ -12333,11 +12384,31 @@ def api_importar_cierre_trafico_personal():
             'Use el archivo original de cierre, sin cambiar los encabezados ni protegerlo con contraseña.',
         ]}), 400
 
+    resultados = []
+    for tipo, cierre, hojas in lotes:
+        resultado = guardar_lote_cierre_personal(importacion, archivo.filename, periodo, tipo, cierre, hojas)
+        if not resultado['success']:
+            db.session.rollback()
+            return jsonify(resultado), 400
+        resultados.append(resultado)
+    db.session.commit()
+    if len(resultados) == 1:
+        return jsonify(resultados[0])
+    return jsonify({
+        'success': True, 'periodo': periodo, 'tipo_proforma': None,
+        'aplicado': all(r['aplicado'] for r in resultados),
+        'mensaje': ' '.join(f"{r['tipo_proforma']}: {r['mensaje']}" for r in resultados),
+        'advertencias': [aviso for r in resultados for aviso in r['advertencias']],
+        'lotes': resultados,
+    })
+
+
+def guardar_lote_cierre_personal(importacion, nombre_archivo, periodo, tipo_seleccionado, cierre, hojas):
     contenido = contenido_seguimiento_personal(importacion)
     cierres = contenido.setdefault('cierres_trafico_importados', [])
     cierres_anteriores = list(cierres)
     cierre_guardado = {
-        'archivo': archivo.filename[:255], 'periodo': periodo,
+        'archivo': nombre_archivo[:255], 'periodo': periodo,
         'tipo_proforma': tipo_seleccionado or None, 'filas': len(cierre),
         'hojas': hojas, 'fecha': datetime.utcnow().isoformat(),
         'detalle': detalle_cierre_trafico(cierre),
@@ -12370,6 +12441,8 @@ def api_importar_cierre_trafico_personal():
         claves_anteriores = {(normalizar_header(fila.get('campania')), normalizar_header(fila.get('tipo_vh')))
                              for fila in item.get('detalle') or []}
         return bool(claves_nuevas) and claves_nuevas == claves_anteriores
+    if errores_match and any(es_mismo_cierre(item) and item.get('estado') == 'Aplicado' for item in cierres):
+        return {'success': False, 'errores': errores_match}
     cierres[:] = [item for item in cierres if not es_mismo_cierre(item)]
     cierres.append(cierre_guardado)
     importacion.contenido_hojas = zlib.compress(
@@ -12381,21 +12454,23 @@ def api_importar_cierre_trafico_personal():
         f'Cierre de tráfico {periodo}: {len(cierre_guardado["detalle"])} fila(s) de control ({"aplicado" if aplicado else "pendiente"})',
         antes={
             'importacion_id': importacion.id, 'ajustes': anteriores,
+            'lotes_reemplazados': [item for item in cierres_anteriores if es_mismo_cierre(item)],
             'cierres_trafico_importados': cierres_anteriores,
         },
         despues={
             'importacion_id': importacion.id, 'ajustes': posteriores,
+            'lotes_modificados': [cierre_guardado],
             'cierres_trafico_importados': list(cierres),
         },
-        detalle=f'Archivo “{archivo.filename[:120]}”. Queda disponible para cruzar con la Proforma definitiva del mismo período.',
+        detalle=f'Archivo “{nombre_archivo[:120]}”. Queda disponible para cruzar con la Proforma definitiva del mismo período.',
     )
     db.session.flush()
     resultado_dashboard = None
     if aplicado:
         resultado_dashboard = sincronizar_proforma_definitiva_dashboard(importacion, periodo, tipo_proforma, movimiento_cierre.id)
-    db.session.commit()
+    db.session.flush()
     mes = f'{periodo[4:]}/{periodo[:4]}'
-    return jsonify({
+    return {
         'success': True,
         'mensaje': (
             (f'Cierre cargado para {mes} y aplicado a la Proforma definitiva. ' +
@@ -12410,7 +12485,7 @@ def api_importar_cierre_trafico_personal():
         'advertencias': errores_match,
         'dashboard': resultado_dashboard,
         'cierre': cierres[-1],
-    })
+    }
 
 
 @main_bp.route('/api/seguimiento-personal/auxiliar-horas', methods=['POST'])
@@ -12474,6 +12549,8 @@ def api_guardar_horas_auxiliar_personal():
         if campo in data:
             cambios[campo] = valor
     ajustes[clave] = {**anterior, **cambios}
+    if any(k in cambios and cambios[k] != anterior.get(k) for k in ('brutas', 'definitiva')):
+        ajustes[clave].pop('brutas_con_tope', None)
     cierre_campania = any(
         item.get('periodo') == periodo
         and normalizar_header(item.get('grupo')) == normalizar_header(grupo)
@@ -12551,7 +12628,10 @@ def api_guardar_lote_horas_auxiliar_personal():
                     cambio[campo] = numero_entrada(entrada[campo], etiqueta)
             if 'adh' in entrada:
                 cambio['adh'] = porcentaje_adh / 100 if porcentaje_adh is not None else None
-            ajustes[clave] = {**(ajustes.get(clave) or {}), **cambio}
+            anterior = ajustes.get(clave) or {}
+            ajustes[clave] = {**anterior, **cambio}
+            if any(k in cambio and cambio[k] != anterior.get(k) for k in ('brutas', 'definitiva')):
+                ajustes[clave].pop('brutas_con_tope', None)
     except ValueError as error:
         return jsonify({'success': False, 'errores': [str(error)]}), 400
 

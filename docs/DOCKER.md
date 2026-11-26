@@ -175,6 +175,12 @@ del código y de la imagen.
 
 ## 6. Aceptación antes de habilitar usuarios
 
+Entrega actualizada el 26 de noviembre de 2026. El paquete incluye los recursos
+compartidos de usabilidad y el lector de cierres CAT. La guía de Personal y el
+checklist están actualizados en `docs/guia_usuario.html` y su PDF.
+Ejecutar los controles de Personal y handoff enumerados en
+`docs/ENTREGA_DESARROLLO.md` antes de aceptar la versión.
+
 1. `docker compose ... ps` muestra el servicio `healthy` y sin reinicios.
 2. Se puede iniciar sesión y funcionan los permisos por rol.
 3. Facturación, Proyectados y la apertura por clientes/campañas concilian con

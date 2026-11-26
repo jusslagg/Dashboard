@@ -1,7 +1,7 @@
 {
   "format": 1,
   "engine": "sqlite",
-  "schema_sha256": "33d8313df741bb341aab6997f31af73aa0bd1ab1f88e0c4a80a513d4938543b3",
+  "schema_sha256": "4570160b608829495b3459017bbc96cc592563a836ddbfa3b3b0131ef0e23d5b",
   "missing_tables": [],
   "extra_tables": [],
   "ignored_empty_legacy_tables": [],
@@ -17,16 +17,20 @@
   },
   "tables": {
     "campanias": {
-      "rows": 115,
-      "sha256": "04f8818ec8507389368f3125e44c15abd9cffe213538f95bc46a5c899a7f6b5f"
+      "rows": 200,
+      "sha256": "1ff1773be12ae81a6a268649097b93511c7cbed7c5869de0b00d68ef90503bca"
+    },
+    "configuracion_operativa": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "dashboard_operativo": {
       "rows": 726,
-      "sha256": "9834801d27011d98728201ddebe03794cfd4f7b430610c369a5faa3a0acfbd5b"
+      "sha256": "54ee928b08df1abf59dbc717e575cdd23882cf74b6223f7aadba485c9f29ba69"
     },
     "dotaciones_clientes_mensuales": {
       "rows": 2060,
-      "sha256": "e252d8e6443c844eb37252e170eee31180157d38ca2a7bccc107ca91aa8e6574"
+      "sha256": "500eaf8729f483b5aa4c1d4317f004c56a3ea86a8d325b134e112ddf46fe9189"
     },
     "dotaciones_mensuales": {
       "rows": 43,
@@ -37,44 +41,44 @@
       "sha256": "42ff251c5d48bcf3bbf5e962ced3bac075d741af4ce7c1d39225201c4732e4f5"
     },
     "facturacion_anio": {
-      "rows": 1619,
-      "sha256": "06b836440750f05946090f5e921bbd0193990c79958e466fa85284ff8e82247d"
+      "rows": 2448,
+      "sha256": "7ae5ed34f2f7e1eab08fb38b296d00e18a2692438c280dbab40a7a57b6a01c26"
     },
     "feriados_operativos": {
       "rows": 18,
       "sha256": "b7ea8232e19dd2647a5ec49d16296a4b37d09903a8b5a517bc0719130b50bb9b"
     },
     "graficos_dotaciones_mensuales": {
-      "rows": 32,
-      "sha256": "a57e9e38fcc30978054d75188daf50f89b8ede2ba00c6db5639c1df8e1c294b3"
+      "rows": 34,
+      "sha256": "54505f05f879b82a301710371fb933113ca18af05302fd07488e4c59322bcd63"
     },
     "historico_clientes_mensuales": {
       "rows": 2471,
-      "sha256": "4631e2f82272016331b59933626b445131723147f99eddf058cd62c627688e59"
+      "sha256": "f1a4fb7aecacc774154b95e3c2bc99e6164e9b672f2301b5915c028c8441a061"
     },
     "matriz_precios": {
-      "rows": 993,
-      "sha256": "703fc09859d023e63626d5905351a28f945aee3ce875158fd42c2ad8b84aa4ec"
+      "rows": 1008,
+      "sha256": "c22696154acea856566bfdd96a0fc2e3185f5b51fa3326d6e5379854b291e999"
     },
     "matriz_proyecciones": {
-      "rows": 1192,
-      "sha256": "b31ffaa95011f4ca6a0b2a1a2982ecde2a13dea53d940e7fe0284245deb9aeb0"
+      "rows": 1218,
+      "sha256": "6b835b63ffe70f7a413b5d3fa47a48933870387c320ff21a82dbe67974d308cc"
     },
     "next_gen_dolar": {
       "rows": 12,
       "sha256": "92cc1cd34cf0742e8b17cee843f09b8224d5d61ba643da2ff9984734a64bedfc"
     },
     "next_gen_productos": {
-      "rows": 138,
-      "sha256": "ad35ef3a8bffb69426e95f9e674b8376aedc43692cfe60c6b13901997db1ee5b"
+      "rows": 141,
+      "sha256": "303e78c82af1792a88e1b9609ee3d49161e5cd3abd5f81391a647ee02d6d069f"
     },
     "personal_distribucion_horas": {
       "rows": 48,
       "sha256": "0a272a732972c8dc15c0c985b4acc1030804612b13286da1c7d8aedbdbc9e7c7"
     },
     "proforma_personal": {
-      "rows": 6,
-      "sha256": "76fe1d0e01632beff35e1e60af98661aea36349f7424ddd955fdc9f398b581c6"
+      "rows": 21,
+      "sha256": "c222b56e59da784d0109723e37a4a8fb7d0f53e64b37833939420041386927c7"
     },
     "ratio_eli_ii_mensual": {
       "rows": 31,
@@ -85,36 +89,36 @@
       "sha256": "319952325274ca4214643b34d140fa9a6a19c68756b3d21668983b34bc643a33"
     },
     "sites_proyecciones": {
-      "rows": 80,
-      "sha256": "1516c5a7126b181b4260aabbb3ce9063d6f66452a65ab9d52ca3e2af7680ed6e"
+      "rows": 127,
+      "sha256": "c5dc4e185a3a740f05c6ee047efd32d55acc8ce21fb76273efc8150733b585a3"
     },
     "tarifaciones_campanias": {
       "rows": 282,
-      "sha256": "64da90cc5622347aca325418e7efeda0e3080e0d06c2e0fe5964c348f5962302"
+      "sha256": "49583c71af5a42dfb579837c5d1d94b08eeeaf4217274164cd696d41f4529342"
     },
     "usuarios": {
       "rows": 5,
-      "sha256": "ae8b0922b6ebb379303db0eb3a9cbfa3384f2e768f7f1af5535edc212a8bf7e5"
+      "sha256": "8a797bd64719454cc9f265d69b4d919b7a1b8a05cb3d763ea97ac73488fa85cc"
     },
     "variables_campanias": {
-      "rows": 220,
-      "sha256": "fb934dd11f49708e8d058ec2418baecbe2b4a5ad32a4365dbed6f424528abb35"
+      "rows": 222,
+      "sha256": "2f99d4e07624278331e978832ff774e6da6fcf628998d5f695fb75ddbce908ab"
     },
     "asignaciones_comerciales": {
-      "rows": 146,
-      "sha256": "98310c08d896f427c2e4c4a001a1a3491d6a38d5834dc84f139d019571072340"
+      "rows": 256,
+      "sha256": "fd4b2cc1ee78761bb5000a2506a7d5bb47983aab125b0e060a623324fa2749b2"
     },
     "historial_cambios": {
-      "rows": 791,
-      "sha256": "ca868289e8022ca366a4d0aeb55e9ab9f270d94e108d98fc245cccd9d96586d6"
+      "rows": 877,
+      "sha256": "7d853c9f3b9874b113274c1a3fcc94def6962de7414f887fa1e2acaacfba2155"
     },
     "justificaciones_ajustes": {
-      "rows": 44,
-      "sha256": "5ca955ab7a23814ac0080942397e236eb28fa6744e0b776b6f7d95e47cdafe03"
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "matriz_proyecciones_jornadas": {
-      "rows": 1554,
-      "sha256": "8e34f4ee42aa12a01f13c5958d21b9aa3ec98623d6d881dd9af38441c3ea2b3c"
+      "rows": 1484,
+      "sha256": "7d0e98b0050e5484271f5a0dec72148c529b8c884be413a049ea91299eb1a2a2"
     },
     "normalizacion_nombres_proyectados": {
       "rows": 4,
@@ -122,7 +126,7 @@
     },
     "seguimiento_personal_importaciones": {
       "rows": 1,
-      "sha256": "25583b0ede22c68b6bfa02e9137054895ba262a5a44f434741eeb48c06ae4386"
+      "sha256": "349b3741dcea2f3cc4905b034f2000b774b811b71c02eab25ba7d76eca7a3019"
     }
   }
 }

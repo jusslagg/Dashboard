@@ -62,22 +62,20 @@ def verificar():
             facturacion_reloj = Facturacion2026.query.filter(Facturacion2026.mes.like(f'{year}-%')).all()
             horas_facturacion = {}
             for item in facturacion_reloj:
-                if item.es_next_gen:
-                    continue
                 valores = horas_facturacion.setdefault(item.mes, {'requerido': 0.0, 'realizado': 0.0})
                 valores['requerido'] += float(item.horas_objetivo or 0)
                 valores['realizado'] += float(item.horas_facturadas or 0)
-            for mes, valores in horas_facturacion.items():
-                if mes not in horas_esperadas:
-                    horas_esperadas[mes] = valores
+            horas_esperadas.update(horas_facturacion)
             meses_historicos = {item.mes for item in historico_reloj}
-            meses_parciales = set(horas_esperadas) - meses_historicos
+            solo_historico = meses_historicos - set(horas_facturacion)
             meses_reloj = sorted(horas_esperadas)
             corte_reloj = meses_reloj[-1] if meses_reloj else None
             requerido_reloj = sum(item['requerido'] for item in horas_esperadas.values())
             realizado_reloj = sum(item['realizado'] for item in horas_esperadas.values())
         if historico_reloj:
-            fuente_esperada = 'historico_y_facturacion' if meses_parciales else 'historico_clientes_mensuales'
+            fuente_esperada = 'facturacion_anio'
+            if solo_historico:
+                fuente_esperada = 'historico_y_facturacion' if horas_facturacion else 'historico_clientes_mensuales'
             if reloj.get('fuente') != fuente_esperada:
                 errores.append('Reloj: no combina correctamente cierres históricos y meses parciales')
             if reloj.get('corte') != corte_reloj:
@@ -103,6 +101,8 @@ def verificar():
                 if respuesta_invalida.status_code != 400:
                     errores.append('Reloj: acepta un rango Desde/Hasta invertido')
             resumen_horas = cliente.get(f'/api/resumen-horas?year={year}').get_json()
+            if resumen_horas.get('reloj') != reloj:
+                errores.append('Reloj: el Resumen y Directorio difieren para el mismo ejercicio')
             total_resumen = resumen_horas.get('total', {})
             if not cerca(reloj.get('requerido'), total_resumen.get('horas_objetivo')):
                 errores.append('Reloj: requerido distinto de TOTAL CAT en Resumen de horas')

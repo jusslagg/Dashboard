@@ -1,5 +1,15 @@
 # Revisión de autonomía operativa
 
+## Actualización de entrega del 26 de noviembre de 2026
+
+El circuito de Personal dispone de checklist por mes, accesos «Revisar» y
+confirmación directa de publicación. Reconoce dos cierres de tráfico CAT, aplica
+el general a Masivo/SMB y Personal Pay y el específico a Soporte. Los pendientes
+de normalización se limitan a las proformas vigentes. La guía actual es
+`guia_usuario.html` y el contrato de entrega está en `ENTREGA_DESARROLLO.md`.
+La interfaz compartida incorpora búsqueda de pantallas y mejoras adaptables.
+Las observaciones siguientes corresponden a la revisión histórica indicada.
+
 Revisión del 28 de octubre de 2026. Objetivo: que el uso habitual se resuelva
 desde la aplicación; el código se modifica cuando cambia el producto o una
 regla de cálculo, y Tecnología administra su infraestructura.

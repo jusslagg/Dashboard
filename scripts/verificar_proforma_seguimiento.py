@@ -107,6 +107,11 @@ with app.app_context(), app.test_client() as client:
     def publish():
         return post('/api/seguimiento-personal/dashboard', json={'importacion_id': config.id, 'periodo': '202608'})
 
+    def planificar(grupo, campania, horas):
+        post('/api/seguimiento-personal/auxiliar-horas/lote', json={'importacion_id': config.id, 'filas': [{
+            'periodo': '2026-08', 'grupo': grupo, 'campania': campania, 'tipo_vh': 'Diurnas', 'planificadas_plp': horas,
+        }]})
+
     def undo(history_id):
         post(f'/api/historial/{history_id}/deshacer')
 
@@ -139,6 +144,10 @@ with app.app_context(), app.test_client() as client:
     assert impacto['estados'] == ['Proyectada'] and 'Personal Soporte' in impacto['grupos_ausentes']
     db.session.delete(previo_soporte)
     db.session.commit()
+    assert preview['controles_dashboard']['202608']['Auxiliar Horas PLP']['errores']
+    assert client.post('/api/seguimiento-personal/dashboard', headers=headers,
+                       json={'importacion_id': config.id, 'periodo': '202608'}).status_code == 400
+    planificar('MASIVO', 'Campaña M', 0)
     assert publish()['creadas'] == 1
     assert dashboard_hours() == [10]
     fila_bono = query_reemplazo_personal_mes({'mes': '2026-08'}).one()
@@ -151,6 +160,7 @@ with app.app_context(), app.test_client() as client:
     publish()
     assert dashboard_hours() == [10], 'La publicación repetida no duplica filas'
     second = upload('Soporte', 'SOPORTE', 'Campaña S', 20)
+    planificar('SOPORTE', 'Campaña S', 20)
     publish()
     assert dashboard_hours() == [10, 20]
     publicados = query_reemplazo_personal_mes({'mes': '2026-08'}).all()
@@ -186,6 +196,7 @@ with app.app_context(), app.test_client() as client:
     ).get_json()['hoja']['filas']
     fila_agosto = next(fila for fila in auxiliar[1:] if str(fila[3]['v']).startswith('2026-08'))
     assert fila_agosto[5]['v'] is None, 'La planificacion manual empieza vacia'
+    planificar('MASIVO', 'Campaña M', 12)
     publish()
     assert dashboard_hours() == [12]
     upload('Masivo', 'MASIVO', 'Campaña M', 12, 'Definitiva')
@@ -230,4 +241,46 @@ with app.app_context(), app.test_client() as client:
                            json={'importacion_id': config.id, 'periodo': '202608'})
     assert response.status_code == 400
     assert dashboard_hours() == [12], 'La validación fallida no modifica lo publicado'
+    upload('Soporte', 'SOPORTE', 'Campaña nueva', 8)
+    def nombres_aux():
+        filas = client.get(f'/api/seguimiento-personal/hoja?importacion_id={config.id}&hoja=aux').get_json()['hoja']['filas']
+        return {fila[1]['v']: fila for fila in filas[1:]}
+
+    assert nombres_aux()['Campaña nueva'][1]['segmento_pendiente']
+    assert not nombres_aux()['Campaña M'][1].get('segmento_pendiente')
+    assert nombres_aux()['Campaña M'][3]['de_maestros']
+    assert not nombres_aux()['Campaña nueva'][3]['de_maestros']
+    catalogo = client.get(f'/api/seguimiento-personal/hoja?importacion_id={config.id}&hoja=aux').get_json()
+    assert set(catalogo['jefes_site_disponibles']) == {'Canalini, Walter', 'Del Soto, Alejandro'}
+    manual = {'origen': 'Campaña M', 'segmento': 'Campaña M', 'jefatura': 'Jefatura nueva',
+              'tipo_negocio': 'Negocio nuevo', 'proforma': 'Proforma nueva'}
+    post('/api/seguimiento-personal/aux-normalizacion/lote',
+         json={'importacion_id': config.id, 'filas': [manual]})
+    assert [c['v'] for c in nombres_aux()['Campaña M'][3:6]] == ['Jefatura nueva', 'Negocio nuevo', 'Proforma nueva']
+    correspondencia = {'origen': 'Campaña nueva', 'segmento': 'Segmento asignado',
+                       'jefatura': 'Canalini, Walter', 'tipo_negocio': 'Soporte', 'proforma': 'Personal Soporte'}
+    for confirmar in (False, True):
+        correspondencia['confirmar_segmento'] = confirmar
+        post('/api/seguimiento-personal/aux-normalizacion/lote',
+             json={'importacion_id': config.id, 'filas': [correspondencia]})
+        fila = nombres_aux()['Campaña nueva']
+        assert fila[1]['segmento_pendiente'] == (not confirmar)
+        assert fila[2]['v'] == 'Segmento asignado'
+        assert fila[3]['v'] == 'Canalini, Walter'
+        for hoja in ('aux', 'auxiliar_horas_plp_masivo'):
+            datos = client.get(f'/api/seguimiento-personal/hoja?importacion_id={config.id}&hoja={hoja}').get_json()
+            assert ('Campaña nueva' in datos['pendientes_normalizacion']) == (not confirmar)
+    upload('Soporte', 'SOPORTE', 'Campaña nueva', 9)
+    assert not nombres_aux()['Campaña nueva'][1]['segmento_pendiente']
+    hoja_url = f'/api/seguimiento-personal/hoja?importacion_id={config.id}&hoja=aux'
+    def falta_gerente_segmento():
+        errores = client.get(hoja_url).get_json()['validaciones_dashboard']['202608']
+        return any('Segmento asignado' in error and 'gerente' in error for error in errores)
+
+    assert not falta_gerente_segmento()
+    db.session.add(AsignacionComercial(campania_id=1, cliente='Personal', gerente='Otro gerente',
+                   jefe_site='Canalini, Walter', campania='Otra campaña', subcampania='Otra campaña',
+                   tipo_negocio='Soporte', activa=True))
+    db.session.commit()
+    assert falta_gerente_segmento(), 'Una jefatura con dos gerentes requiere una asignación específica'
     print('OK: importar, publicar sin duplicados, reemplazar, deshacer por tipo, vaciar y volver a cargar.')

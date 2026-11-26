@@ -1,5 +1,19 @@
 # Revisión de Facturación y Proyectados
 
+## Actualización del 26 de noviembre de 2026
+
+La interfaz compartida incorpora búsqueda de pantallas, sección actual marcada
+y abierta, formularios de archivo adaptables, filtros más legibles, foco visible
+y avisos de desplazamiento en tablas. Personal ofrece checklist por mes,
+pendientes específicos y confirmación de publicación desde ese bloque.
+La última pestaña de Matriz se llama «Resumen por segmento Personal» y excluye
+los registros sin segmento.
+
+Se comprobaron Personal, Matriz, Dashboard y Datos Maestros en 390 y 1366 píxeles.
+La revisión visual de las demás pantallas y la aceptación con usuarios en el
+destino siguen pendientes. Las secciones siguientes conservan la revisión
+histórica y sus propuestas.
+
 Revisión del 27 de octubre de 2026 sobre las vistas Flask. Se conservaron las fórmulas y las reglas de negocio. Las pruebas de escritura se realizan sobre una copia de la base local.
 
 ## Mejoras implementadas en esta pasada

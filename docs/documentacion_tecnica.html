@@ -34,9 +34,10 @@
 <body>
   <div class="top"><strong>Documentación técnica</strong><div class="buttons"><a class="button" href="/">Volver a la aplicación</a><a class="button primary" href="/documentacion-tecnica/esquema/pdf">Esquema BD en PDF</a><a class="button" href="/documentacion-tecnica/esquema/sqlite">SQL SQLite</a><a class="button" href="/documentacion-tecnica/esquema/postgresql">SQL PostgreSQL</a><a class="button" href="/documentacion-tecnica/descargar">Documentación completa PDF</a></div></div>
   <main class="page">
-    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso para Admin y Full.</strong></p><small>Generada desde README.md · Octubre de 2026</small></header>
+    <header class="cover"><h1>Dashboard de Facturación</h1><p>Documentación técnica para instalación, mantenimiento, soporte, comprensión del modelo de datos y transferencia del sistema.</p><p><strong>Acceso para Admin y Full.</strong></p><small>Generada desde README.md · Noviembre de 2026</small></header>
     <nav class="toc" id="indice"><h2>Índice técnico</h2><ol><li class=""><a href="#documentacion-disponible">Documentación disponible</a></li>
 <li class=""><a href="#estado-del-proyecto">Estado del proyecto</a></li>
+<li class="sub"><a href="#entrega-actualizada-al-26-de-noviembre-de-2026">Entrega actualizada al 26 de noviembre de 2026</a></li>
 <li class=""><a href="#estructura">Estructura</a></li>
 <li class=""><a href="#requisitos">Requisitos</a></li>
 <li class=""><a href="#instalacion-local">Instalación local</a></li>
@@ -166,6 +167,10 @@
 <pre><code class="language-text">/guia-usuario/descargar                 # Cualquier usuario autenticado
 /documentacion-tecnica/descargar        # Admin y Full</code></pre>
 <h2 id="estado-del-proyecto">Estado del proyecto<a class="anchor" href="#estado-del-proyecto" aria-label="Enlace a esta sección">#</a></h2>
+<h3 id="entrega-actualizada-al-26-de-noviembre-de-2026">Entrega actualizada al 26 de noviembre de 2026<a class="anchor" href="#entrega-actualizada-al-26-de-noviembre-de-2026" aria-label="Enlace a esta sección">#</a></h3>
+<p class="">El circuito operativo de Personal se documenta en la sección «Carga de datos Personal» de la guía de usuario y en «Circuitos vigentes y aceptación funcional» de <code>docs/ENTREGA_DESARROLLO.md</code>. Incluye los dos formatos de cierre CAT, el cruce por mes y grupo, la confirmación desde el checklist y los pendientes de nuevas proformas en Aux.</p>
+<p class="">La interfaz compartida carga <code>app/static/usabilidad.css</code> y <code>app/static/usabilidad.js</code> desde <code>layout.html</code>. Estos recursos incorporan búsqueda de pantallas, identificación de la sección actual, formularios adaptables, foco de teclado y avisos de desplazamiento en tablas. La tipografía del proyecto continúa siendo Montserrat.</p>
+<p class="">El ZIP de entrega se regenera con <code>python scripts/empaquetar_docker.py</code>. Incluye código Flask, configuración de ejemplo, documentación y verificadores. La base operativa se transfiere por el canal interno acordado, acompañada por <code>docs/base_actual_manifest.json</code>. La aceptación requiere comprobar la base recibida contra ese manifiesto.</p>
 <p class="">El proyecto tiene dos frentes:</p>
 <ul>
 <li><strong>Flask</strong>: backend principal, autenticación, base de datos, APIs y pantallas operativas.</li>
@@ -812,8 +817,9 @@ WHERE a.cliente &lt;&gt; c.cliente OR a.campania &lt;&gt; c.nombre;</code></pre>
 <li>restricciones <code>UNIQUE</code>;</li>
 <li>índices y columnas indexadas.</li>
 </ul>
-<p class="">El esquema incluye las 27 tablas vigentes:</p>
-<pre><code class="language-text">usuarios
+<p class="">El esquema incluye las 28 tablas vigentes:</p>
+<pre><code class="language-text">configuracion_operativa
+usuarios
 historial_cambios
 facturacion_anio
 justificaciones_ajustes
@@ -838,7 +844,7 @@ campanias
 excepciones_calculo
 asignaciones_comerciales
 normalizacion_nombres_proyectados
-proformas_personal
+proforma_personal
 seguimiento_personal_importaciones</code></pre>
 <h3 id="caracteristicas-de-las-bases-de-directorio-y-control">Características de las bases de Directorio y control<a class="anchor" href="#caracteristicas-de-las-bases-de-directorio-y-control" aria-label="Enlace a esta sección">#</a></h3>
 <div class="table-wrap"><table><thead><tr>
@@ -899,7 +905,7 @@ seguimiento_personal_importaciones</code></pre>
 <p class="">Los campos JSON de <code>dashboard_operativo.datos</code> e <code>historico_clientes_mensuales.datos_base</code> conservan las columnas variables de la fuente importada. Los campos que participan en filtros, edición o unicidad se mantienen como columnas tipadas. El detalle físico de <strong>cada campo</strong>, tipo, obligatoriedad, clave, índice y restricción está en los anexos DDL generados que acompañan esta ficha.</p>
 <p class="">Estos archivos se generan directamente desde <code>app/models.py</code>; por eso son la fuente técnica para construir una base nueva y evitan copiar accidentalmente datos reales de <code>instance/facturacion.db</code>. Cada cambio de modelos exige volver a generar los scripts y la documentación:</p>
 <h4 id="compatibilidad-con-bases-locales-anteriores">Compatibilidad con bases locales anteriores<a class="anchor" href="#compatibilidad-con-bases-locales-anteriores" aria-label="Enlace a esta sección">#</a></h4>
-<p class="">El contrato nuevo está formado por las <strong>27 tablas declaradas en los DDL</strong>. Una base SQLite local actualizada durante versiones anteriores puede conservar la tabla vacía <code>bajas_operativas</code>, las columnas vacías <code>facturacion_anio.mes_baja</code> y <code>facturacion_anio.motivo_baja</code>, o las columnas en cero <code>matriz_precios.aplica_dolar</code> y <code>matriz_precios.valor_dolar</code>. Son artefactos legacy no consultados por la aplicación y <strong>no deben crearse en una base nueva</strong>. La valorización vigente en dólares utiliza <code>next_gen_dolar</code>, <code>next_gen_productos.cantidad_usd</code> y <code>next_gen_productos.cotizacion_aplicada</code>.</p>
+<p class="">El contrato nuevo está formado por las <strong>28 tablas declaradas en los DDL</strong>. Una base SQLite local actualizada durante versiones anteriores puede conservar la tabla vacía <code>bajas_operativas</code>, las columnas vacías <code>facturacion_anio.mes_baja</code> y <code>facturacion_anio.motivo_baja</code>, o las columnas en cero <code>matriz_precios.aplica_dolar</code> y <code>matriz_precios.valor_dolar</code>. Son artefactos legacy no consultados por la aplicación y <strong>no deben crearse en una base nueva</strong>. La valorización vigente en dólares utiliza <code>next_gen_dolar</code>, <code>next_gen_productos.cantidad_usd</code> y <code>next_gen_productos.cotizacion_aplicada</code>.</p>
 <p class="callout">Nota: varios valores predeterminados actuales son aplicados por SQLAlchemy desde Python y no son <code>DEFAULT</code> físicos del motor. El DDL muestra deliberadamente sólo las garantías que la base puede imponer por sí misma; esto permite que el tercero distinga las restricciones de base de las reglas ejecutadas por la aplicación.</p>
 <pre><code class="language-powershell">python scripts\generar_esquema_base_datos.py
 python scripts\generar_documentacion_tecnica.py</code></pre>
@@ -1743,8 +1749,10 @@ python scripts\generar_documentacion_tecnica.py</code></pre>
 <p class="">Calcula:</p>
 <pre><code class="language-text">facturación horas = horas proyectadas * precio mensual</code></pre>
 <p class="">También contempla importes fijos cuando están cargados.</p>
-<p class="">La vista final consolida en una sola línea por campaña:</p>
-<pre><code class="language-text">total campaña = facturación de horas + estimación variable + tarifaciones</code></pre>
+<p class="">La vista final presenta los conceptos de cada campaña y su total:</p>
+<pre><code class="language-text">total campaña = facturación de horas + estimación variable + tarifaciones + Next Gen</code></pre>
+<p class="">Facturación horas sigue el orden y las posiciones de la hoja <code>RESUMEN</code> del libro operativo de proyectados. La descarga individual conserva esa hoja y la descarga general incluye tanto <code>Facturación horas</code> como <code>RESUMEN</code>. Los nombres, encabezados y celdas existentes se mantienen para los controles; las campañas nuevas se agregan desde la fila 264 por orden de alta, debajo de las anteriores y con sus cuatro conceptos y total, para no desplazar el formato original. Los importes se calculan con los datos actuales del año seleccionado al generar cada archivo.</p>
+<p class="">La opción <strong>Proyectados &gt; Unificado</strong> presenta una fila por clave operativa, con los importes mensuales de horas, variable, tarifación y Next Gen. Respeta el orden del libro de origen, agrega al final los servicios nuevos y permite descargar la hoja individualmente o dentro de la descarga completa.</p>
 <p class="">En PLP, las horas principales y nocturnas se calculan con su precio correspondiente y luego se consolidan bajo la clasificación base. La asociación de variables y tarifaciones ignora diferencias de mayúsculas, minúsculas y acentos. <code>Multicuentas</code> y <code>Gerencia Multicampaña</code> se presentan bajo la misma agrupación comercial.</p>
 <p class="">La identificación es editable directamente desde el lápiz de la columna <strong>Site</strong>. Allí se pueden regularizar el site, el cliente y la campaña. El cliente/campaña ingresado funciona como nombre canónico: si varias identificaciones de origen se asignan al mismo nombre, sus Horas, Variable, Tarifación y Next Gen se consolidan y suman en una única línea para cada mes. La regularización se guarda en <code>sites_proyecciones</code>, no modifica los nombres históricos de las tablas de origen, queda registrada en Historial y puede deshacerse.</p>
 <p class="">Las proyecciones comunes se calculan por cada apertura de campaña, respetando su precio y porcentaje variable, y después se consolidan bajo el cliente. Si una apertura no tiene proyección propia para un mes, se utiliza la proyección base del cliente como respaldo. PLP conserva como excepción sus clasificaciones Personal, Personal CX, Personal Soporte y Personal SMB.</p>
@@ -3008,6 +3016,7 @@ CREATE TABLE facturacion_anio (
 	id INTEGER NOT NULL,
 	fecha DATE NOT NULL,
 	mes VARCHAR(20) NOT NULL,
+	mes_apertura_origen VARCHAR(7),
 	cliente VARCHAR(100) NOT NULL,
 	gerente VARCHAR(100),
 	jefe_site VARCHAR(100),
@@ -3029,6 +3038,7 @@ CREATE TABLE facturacion_anio (
 	control_penalizaciones_bonos NUMERIC(18, 2),
 	control_total_facturado NUMERIC(18, 2),
 	control_objetivo_total NUMERIC(18, 2),
+	control_objetivo_horas NUMERIC(24, 10),
 	tarifacion NUMERIC(18, 2),
 	importe_fijo NUMERIC(18, 2),
 	variable_objetivo NUMERIC(18, 2),
@@ -3596,6 +3606,7 @@ CREATE TABLE facturacion_anio (
 	id SERIAL NOT NULL,
 	fecha DATE NOT NULL,
 	mes VARCHAR(20) NOT NULL,
+	mes_apertura_origen VARCHAR(7),
 	cliente VARCHAR(100) NOT NULL,
 	gerente VARCHAR(100),
 	jefe_site VARCHAR(100),
@@ -3617,6 +3628,7 @@ CREATE TABLE facturacion_anio (
 	control_penalizaciones_bonos NUMERIC(18, 2),
 	control_total_facturado NUMERIC(18, 2),
 	control_objetivo_total NUMERIC(18, 2),
+	control_objetivo_horas NUMERIC(24, 10),
 	tarifacion NUMERIC(18, 2),
 	importe_fijo NUMERIC(18, 2),
 	variable_objetivo NUMERIC(18, 2),

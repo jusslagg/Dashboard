@@ -107,6 +107,7 @@ sin cambios conservan el contenido importado. ``periodos=None`` calcula todo.
             objetivo = numero(fila[7].get('v')) if proyectada else cierre
             formula = f'=IF(P{n}="proyectada",H{n},{suma_aux("H")})'
         importe = objetivo * numero(fila[8].get('v'))
+        fila[6]['requiere_plp'] = proyectada and regla.startswith('diurnas') and formula is not None
         bono = numero(fila[16].get('v')) * objetivo - importe
         for indice, valor, formula_celda in (
             (6, objetivo, formula), (18, importe, f'=G{n}*I{n}'),

@@ -37,6 +37,26 @@ La guía puede descargarse directamente en PDF por cualquier usuario autenticado
 
 ## Estado del proyecto
 
+### Entrega actualizada al 26 de noviembre de 2026
+
+El circuito operativo de Personal se documenta en la sección «Carga de datos Personal»
+de la guía de usuario y en «Circuitos vigentes y aceptación funcional» de
+`docs/ENTREGA_DESARROLLO.md`. Incluye los dos formatos de cierre CAT, el cruce
+por mes y grupo, la confirmación desde el checklist y los pendientes de nuevas
+proformas en Aux.
+
+La interfaz compartida carga `app/static/usabilidad.css` y
+`app/static/usabilidad.js` desde `layout.html`. Estos recursos incorporan búsqueda
+de pantallas, identificación de la sección actual, formularios adaptables, foco
+de teclado y avisos de desplazamiento en tablas. La tipografía del proyecto
+continúa siendo Montserrat.
+
+El ZIP de entrega se regenera con `python scripts/empaquetar_docker.py`.
+Incluye código Flask, configuración de ejemplo, documentación y verificadores.
+La base operativa se transfiere por el canal interno acordado, acompañada por
+`docs/base_actual_manifest.json`. La aceptación requiere comprobar la base
+recibida contra ese manifiesto.
+
 El proyecto tiene dos frentes:
 
 - **Flask**: backend principal, autenticación, base de datos, APIs y pantallas operativas.
@@ -589,9 +609,10 @@ Los scripts contienen, tabla por tabla, la definición física en formato
 - restricciones `UNIQUE`;
 - índices y columnas indexadas.
 
-El esquema incluye las 27 tablas vigentes:
+El esquema incluye las 28 tablas vigentes:
 
 ```text
+configuracion_operativa
 usuarios
 historial_cambios
 facturacion_anio
@@ -617,7 +638,7 @@ campanias
 excepciones_calculo
 asignaciones_comerciales
 normalizacion_nombres_proyectados
-proformas_personal
+proforma_personal
 seguimiento_personal_importaciones
 ```
 
@@ -648,7 +669,7 @@ generar los scripts y la documentación:
 
 #### Compatibilidad con bases locales anteriores
 
-El contrato nuevo está formado por las **27 tablas declaradas en los DDL**. Una
+El contrato nuevo está formado por las **28 tablas declaradas en los DDL**. Una
 base SQLite local actualizada durante versiones anteriores puede conservar la
 tabla vacía `bajas_operativas`, las columnas vacías `facturacion_anio.mes_baja`
 y `facturacion_anio.motivo_baja`, o las columnas en cero

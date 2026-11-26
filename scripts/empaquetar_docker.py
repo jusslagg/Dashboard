@@ -6,11 +6,16 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOT_FILES = ('Dockerfile', 'compose.yaml', '.dockerignore', '.env.docker.example',
-              '.gitignore', 'requirements.txt', 'run.py', 'README.md')
+              '.gitignore', 'requirements.txt', 'run.py', 'README.md', '.env.example')
 SCRIPTS = ('database_contract.py', 'migrar_base_datos.py', 'docker_healthcheck.py',
            'verificar_arranque_docker.py', 'verificar_administracion.py',
            'verificar_migracion_configuracion.py', 'verificar_continuidad_anual.py',
-           'verificar_alertas_dashboard.py', 'empaquetar_docker.py')
+           'verificar_alertas_dashboard.py', 'empaquetar_docker.py',
+           'generar_documentacion_tecnica.py', 'generar_esquema_base_datos.py',
+           'verificar_handoff.py', 'verificar_entrega.py', 'verificar_paridad_bases.py',
+           'verificar_proforma_seguimiento.py', 'verificar_cierre_trafico_personal.py',
+           'verificar_dashboard_definitivas_personal.py', 'verificar_resumen_horas.py',
+           'verificar_matriz_segmentos.py')
 
 
 def allowed(path):
@@ -19,7 +24,7 @@ def allowed(path):
         return False
     name = path.name.lower()
     if name.startswith('.env'):
-        return relative.as_posix() == '.env.docker.example'
+        return relative.as_posix() in ('.env.docker.example', '.env.example')
     return not (name.endswith(('.pyc', '.pyo', '.db', '.sqlite', '.sqlite3', '.log', '.pem', '.key', '.pfx'))
                 or '.db-' in name)
 
@@ -51,7 +56,8 @@ def main():
         'Empresa: configurar HTTPS, APP_ENV=production, base y secretos del servidor.\n'
         'Acordar registro de imagenes, repositorio y version con Infraestructura.\n'
         'La base y credenciales se transfieren por separado, por el canal interno autorizado.\n\n'
-        'Validacion: smoke local de arranque, login HTTPS, persistencia y healthcheck aprobado.\n'
+        'Version documental: 26 de noviembre de 2026.\n'
+        'Validacion: ejecutar los controles incluidos en docs/ENTREGA_DESARROLLO.md.\n'
         'Pendiente: build y ejecucion real con Docker Engine; Docker no esta instalado en la PC de origen.\n'
         'MANIFIESTO_ARCHIVOS.json permite comprobar el contenido de cada archivo recibido.\n'
     ).encode('utf-8')
