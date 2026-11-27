@@ -6,7 +6,8 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOT_FILES = ('Dockerfile', 'compose.yaml', '.dockerignore', '.env.docker.example',
-              '.gitignore', 'requirements.txt', 'run.py', 'README.md', '.env.example')
+              '.gitignore', 'requirements.txt', 'run.py', 'README.md', '.env.example',
+              '.github/workflows/docker.yml')
 SCRIPTS = ('database_contract.py', 'migrar_base_datos.py', 'docker_healthcheck.py',
            'verificar_arranque_docker.py', 'verificar_administracion.py',
            'verificar_migracion_configuracion.py', 'verificar_continuidad_anual.py',
@@ -15,7 +16,8 @@ SCRIPTS = ('database_contract.py', 'migrar_base_datos.py', 'docker_healthcheck.p
            'verificar_handoff.py', 'verificar_entrega.py', 'verificar_paridad_bases.py',
            'verificar_proforma_seguimiento.py', 'verificar_cierre_trafico_personal.py',
            'verificar_dashboard_definitivas_personal.py', 'verificar_resumen_horas.py',
-           'verificar_matriz_segmentos.py')
+           'verificar_matriz_segmentos.py', 'actualizar_docker.py',
+           'configurar_actualizacion_docker.ps1')
 
 
 def allowed(path):

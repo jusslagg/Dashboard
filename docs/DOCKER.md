@@ -58,6 +58,11 @@ empresa deben permitir ese acceso.
 
 ## 2. Datos persistentes y actualizaciones
 
+La actualización desde GitHub se configura en
+[Actualización automática de Docker](ACTUALIZACION_DOCKER.md). La tarea local
+comprueba la rama seleccionada cada minuto, construye una imagen por commit,
+verifica su arranque y respalda la base antes de actualizar el contenedor.
+
 SQLite vive en `/opt/dashboard/instance/facturacion.db`, sobre el volumen
 `dashboard_data`. Compose le agrega el nombre del proyecto como prefijo.
 Las rutas `/opt/dashboard/app`, `/opt/dashboard/config` y `/opt/dashboard/docs`

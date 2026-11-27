@@ -1,0 +1,56 @@
+name: Imagen Docker
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Identificar imagen
+        shell: bash
+        run: |
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+          echo "BRANCH_TAG=$(printf '%s' "$GITHUB_REF_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_.-]/-/g' | cut -c1-120)" >> "$GITHUB_ENV"
+      - name: Construir
+        run: docker build --pull --tag "$IMAGE:sha-$GITHUB_SHA" .
+      - name: Probar arranque
+        shell: bash
+        run: |
+          export SECRET_KEY="$(openssl rand -hex 48)"
+          docker run -d --name dashboard-check --env SECRET_KEY --health-interval=2s --health-start-period=5s "$IMAGE:sha-$GITHUB_SHA"
+          trap 'docker rm -fv dashboard-check >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 40); do
+            if [ "$(docker inspect --format '{{.State.Health.Status}}' dashboard-check)" = healthy ]; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs dashboard-check
+          exit 1
+      - name: Publicar en GitHub Container Registry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        shell: bash
+        run: |
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE:sha-$GITHUB_SHA"
+          docker tag "$IMAGE:sha-$GITHUB_SHA" "$IMAGE:$BRANCH_TAG"
+          docker push "$IMAGE:$BRANCH_TAG"
+          if [ "$GITHUB_REF_NAME" = "$DEFAULT_BRANCH" ]; then
+            docker tag "$IMAGE:sha-$GITHUB_SHA" "$IMAGE:latest"
+            docker push "$IMAGE:latest"
+          fi
